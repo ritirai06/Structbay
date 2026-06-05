@@ -1,0 +1,318 @@
+{
+  "info": {
+    "name": "StructBay Phase 3 — Admin CMS & Platform Control",
+    "description": "Complete API collection for StructBay CMS, Admin Dashboard, and Platform Control Center.\n\n**Setup:**\n1. Set `baseUrl` variable to `http://localhost:5000/api/v1`\n2. Set `adminToken` variable after logging in as ADMIN\n\n**Auth:** All admin routes require `Authorization: Bearer {{adminToken}}`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "structbay-phase3-cms"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000/api/v1", "type": "string" },
+    { "key": "adminToken", "value": "", "type": "string" },
+    { "key": "bannerId", "value": "", "type": "string" },
+    { "key": "categoryId", "value": "", "type": "string" },
+    { "key": "serviceId", "value": "", "type": "string" },
+    { "key": "testimonialId", "value": "", "type": "string" },
+    { "key": "blogId", "value": "", "type": "string" },
+    { "key": "announcementId", "value": "", "type": "string" },
+    { "key": "adId", "value": "", "type": "string" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Admin Dashboard",
+      "item": [
+        {
+          "name": "Get Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/admin/dashboard",
+            "description": "Returns total users, customers, vendors, pending approvals, CMS stats, and recent activity."
+          }
+        },
+        {
+          "name": "Get Audit Logs",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/admin/audit-logs?page=1&limit=20",
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "module", "value": "", "disabled": true },
+                { "key": "action", "value": "", "disabled": true },
+                { "key": "startDate", "value": "", "disabled": true },
+                { "key": "endDate", "value": "", "disabled": true }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Homepage CMS",
+      "item": [
+        {
+          "name": "Get Homepage CMS",
+          "request": { "method": "GET", "url": "{{baseUrl}}/cms/homepage" }
+        },
+        {
+          "name": "Update Homepage CMS",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/cms/homepage",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"heroTitle\": \"India's Largest Construction Marketplace\",\n  \"heroSubtitle\": \"Source materials, find vendors, manage projects — all in one place.\",\n  \"heroCtaText\": \"Start Procuring\",\n  \"featuredCategories\": []\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Banners",
+      "item": [
+        {
+          "name": "List Banners",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/cms/banners?status=ACTIVE&page=1&limit=20", "query": [{ "key": "status", "value": "ACTIVE" }, { "key": "page", "value": "1" }, { "key": "limit", "value": "20" }] } }
+        },
+        {
+          "name": "Create Banner",
+          "event": [{ "listen": "test", "script": { "exec": ["const r = pm.response.json(); if(r.data && r.data[0]) pm.collectionVariables.set('bannerId', r.data[0]._id || '');"] } }],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/cms/banners",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Grand Summer Sale\",\n  \"subtitle\": \"Up to 30% off on all construction materials\",\n  \"description\": \"Limited time offer on cement, steel, and more.\",\n  \"imageUrl\": \"https://res.cloudinary.com/demo/image/upload/sample.jpg\",\n  \"imagePublicId\": \"structbay/banners/sample\",\n  \"buttonText\": \"Shop Now\",\n  \"buttonLink\": \"/shop\",\n  \"displayOrder\": 1,\n  \"status\": \"ACTIVE\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Banner",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/cms/banners/{{bannerId}}",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Updated Banner Title\",\n  \"status\": \"ACTIVE\"\n}" }
+          }
+        },
+        {
+          "name": "Toggle Banner",
+          "request": { "method": "PATCH", "url": "{{baseUrl}}/cms/banners/{{bannerId}}/toggle" }
+        },
+        {
+          "name": "Delete Banner",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/cms/banners/{{bannerId}}" }
+        }
+      ]
+    },
+    {
+      "name": "Categories",
+      "item": [
+        {
+          "name": "List Categories",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/categories?status=ACTIVE&page=1&limit=50", "query": [{ "key": "status", "value": "ACTIVE" }, { "key": "page", "value": "1" }, { "key": "limit", "value": "50" }] } }
+        },
+        {
+          "name": "Create Category",
+          "event": [{ "listen": "test", "script": { "exec": ["const r = pm.response.json(); if(r.data) pm.collectionVariables.set('categoryId', r.data._id || '');"] } }],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/categories",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Civil Construction\",\n  \"description\": \"All civil construction services and materials\",\n  \"icon\": \"🏗️\",\n  \"sortOrder\": 1,\n  \"status\": \"ACTIVE\"\n}" }
+          }
+        },
+        {
+          "name": "Update Category",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/categories/{{categoryId}}",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"description\": \"Updated description\",\n  \"sortOrder\": 2\n}" }
+          }
+        },
+        {
+          "name": "Update Category Image",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/categories/{{categoryId}}/image",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"imageUrl\": \"https://res.cloudinary.com/demo/image/upload/civil.jpg\",\n  \"imagePublicId\": \"structbay/categories/civil\"\n}" }
+          }
+        },
+        {
+          "name": "Toggle Category",
+          "request": { "method": "PATCH", "url": "{{baseUrl}}/categories/{{categoryId}}/toggle" }
+        },
+        {
+          "name": "Delete Category",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/categories/{{categoryId}}" }
+        }
+      ]
+    },
+    {
+      "name": "Services",
+      "item": [
+        { "name": "List Services", "request": { "method": "GET", "url": "{{baseUrl}}/cms/services" } },
+        {
+          "name": "Create Service",
+          "event": [{ "listen": "test", "script": { "exec": ["const r = pm.response.json(); if(r.data) pm.collectionVariables.set('serviceId', r.data._id || '');"] } }],
+          "request": {
+            "method": "POST", "url": "{{baseUrl}}/cms/services",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Construction\",\n  \"description\": \"End-to-end construction services\",\n  \"icon\": \"🏛️\",\n  \"displayOrder\": 1,\n  \"status\": \"ACTIVE\"\n}" }
+          }
+        },
+        { "name": "Update Service", "request": { "method": "PATCH", "url": "{{baseUrl}}/cms/services/{{serviceId}}", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"description\": \"Updated service description\"\n}" } } },
+        { "name": "Delete Service", "request": { "method": "DELETE", "url": "{{baseUrl}}/cms/services/{{serviceId}}" } }
+      ]
+    },
+    {
+      "name": "Testimonials",
+      "item": [
+        { "name": "List Testimonials", "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/cms/testimonials?status=ACTIVE", "query": [{ "key": "status", "value": "ACTIVE" }] } } },
+        {
+          "name": "Create Testimonial",
+          "event": [{ "listen": "test", "script": { "exec": ["const r = pm.response.json(); if(r.data) pm.collectionVariables.set('testimonialId', r.data._id || '');"] } }],
+          "request": {
+            "method": "POST", "url": "{{baseUrl}}/cms/testimonials",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"customerName\": \"Rahul Sharma\",\n  \"designation\": \"Project Manager\",\n  \"company\": \"BuildCo Pvt Ltd\",\n  \"review\": \"StructBay made our procurement 10x faster. Highly recommended!\",\n  \"rating\": 5,\n  \"isFeatured\": true,\n  \"status\": \"ACTIVE\"\n}" }
+          }
+        },
+        { "name": "Update Testimonial", "request": { "method": "PATCH", "url": "{{baseUrl}}/cms/testimonials/{{testimonialId}}", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"isFeatured\": false\n}" } } },
+        { "name": "Delete Testimonial", "request": { "method": "DELETE", "url": "{{baseUrl}}/cms/testimonials/{{testimonialId}}" } }
+      ]
+    },
+    {
+      "name": "Blogs",
+      "item": [
+        {
+          "name": "List Blogs (Admin — all statuses)",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/cms/blogs?page=1&limit=20", "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }] } }
+        },
+        {
+          "name": "List Published Blogs (Public)",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/cms/blogs?status=PUBLISHED", "query": [{ "key": "status", "value": "PUBLISHED" }] } }
+        },
+        {
+          "name": "Create Blog (Draft)",
+          "event": [{ "listen": "test", "script": { "exec": ["const r = pm.response.json(); if(r.data) pm.collectionVariables.set('blogId', r.data._id || '');"] } }],
+          "request": {
+            "method": "POST", "url": "{{baseUrl}}/cms/blogs",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Top 5 Construction Materials for 2026\",\n  \"description\": \"A comprehensive guide to the best materials this year.\",\n  \"content\": \"<h2>Introduction</h2><p>Construction in 2026...</p>\",\n  \"metaTitle\": \"Top 5 Construction Materials for 2026 | StructBay\",\n  \"metaDescription\": \"Discover the top materials driving construction in 2026.\",\n  \"author\": \"StructBay Team\",\n  \"status\": \"DRAFT\",\n  \"tags\": [\"cement\", \"steel\", \"construction\"],\n  \"category\": \"Construction Tips\"\n}" }
+          }
+        },
+        { "name": "Publish Blog", "request": { "method": "PATCH", "url": "{{baseUrl}}/cms/blogs/{{blogId}}", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"status\": \"PUBLISHED\"\n}" } } },
+        { "name": "Get Blog by Slug", "request": { "method": "GET", "url": "{{baseUrl}}/cms/blogs/top-5-construction-materials-for-2026" } },
+        { "name": "Delete Blog", "request": { "method": "DELETE", "url": "{{baseUrl}}/cms/blogs/{{blogId}}" } }
+      ]
+    },
+    {
+      "name": "Announcements",
+      "item": [
+        { "name": "List Live Announcements (Public)", "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/cms/announcements?liveOnly=true", "query": [{ "key": "liveOnly", "value": "true" }] } } },
+        {
+          "name": "Create Announcement",
+          "event": [{ "listen": "test", "script": { "exec": ["const r = pm.response.json(); if(r.data) pm.collectionVariables.set('announcementId', r.data._id || '');"] } }],
+          "request": {
+            "method": "POST", "url": "{{baseUrl}}/cms/announcements",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Platform Maintenance Scheduled\",\n  \"description\": \"StructBay will undergo scheduled maintenance on Jan 15, 2026 from 2AM to 4AM IST.\",\n  \"priority\": \"HIGH\",\n  \"isPinned\": true,\n  \"startDate\": \"2026-01-14T00:00:00.000Z\",\n  \"endDate\": \"2026-01-16T00:00:00.000Z\",\n  \"audience\": [\"ALL\"]\n}" }
+          }
+        },
+        { "name": "Delete Announcement", "request": { "method": "DELETE", "url": "{{baseUrl}}/cms/announcements/{{announcementId}}" } }
+      ]
+    },
+    {
+      "name": "Advertisements",
+      "item": [
+        { "name": "List Ads", "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/cms/ads?placement=HOME_TOP", "query": [{ "key": "placement", "value": "HOME_TOP" }] } } },
+        {
+          "name": "Create Ad",
+          "event": [{ "listen": "test", "script": { "exec": ["const r = pm.response.json(); if(r.data) pm.collectionVariables.set('adId', r.data._id || '');"] } }],
+          "request": {
+            "method": "POST", "url": "{{baseUrl}}/cms/ads",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Ultratech Cement — Monsoon Offer\",\n  \"imageUrl\": \"https://res.cloudinary.com/demo/image/upload/ad_ultratech.jpg\",\n  \"imagePublicId\": \"structbay/ads/ultratech_monsoon\",\n  \"link\": \"/shop?brand=ultratech\",\n  \"placement\": \"HOME_TOP\",\n  \"startDate\": \"2026-06-01T00:00:00.000Z\",\n  \"endDate\": \"2026-08-31T23:59:59.000Z\",\n  \"status\": \"ACTIVE\"\n}" }
+          }
+        },
+        { "name": "Track Impression", "request": { "method": "POST", "url": "{{baseUrl}}/cms/ads/{{adId}}/impression" } },
+        { "name": "Track Click", "request": { "method": "POST", "url": "{{baseUrl}}/cms/ads/{{adId}}/click" } },
+        { "name": "Delete Ad", "request": { "method": "DELETE", "url": "{{baseUrl}}/cms/ads/{{adId}}" } }
+      ]
+    },
+    {
+      "name": "SEO",
+      "item": [
+        { "name": "Get All SEO Settings", "request": { "method": "GET", "url": "{{baseUrl}}/cms/seo" } },
+        { "name": "Get SEO for Page", "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/cms/seo?page=home", "query": [{ "key": "page", "value": "home" }] } } },
+        {
+          "name": "Upsert SEO — Home",
+          "request": {
+            "method": "POST", "url": "{{baseUrl}}/cms/seo",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"page\": \"home\",\n  \"metaTitle\": \"StructBay — India's #1 Construction Marketplace\",\n  \"metaDescription\": \"Buy cement, steel, HVAC, plumbing materials from verified vendors at the best prices.\",\n  \"keywords\": [\"construction materials\", \"cement price\", \"steel price\", \"building supplies india\"],\n  \"ogTitle\": \"StructBay — India's #1 Construction Marketplace\",\n  \"ogDescription\": \"One-stop procurement for all your construction needs.\",\n  \"ogImage\": \"https://res.cloudinary.com/demo/image/upload/og_home.jpg\",\n  \"canonicalUrl\": \"https://structbay.com/\",\n  \"robotsDirective\": \"index,follow\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Contact",
+      "item": [
+        { "name": "Get Contact Info", "request": { "method": "GET", "url": "{{baseUrl}}/cms/contact" } },
+        {
+          "name": "Update Contact Info",
+          "request": {
+            "method": "PUT", "url": "{{baseUrl}}/cms/contact",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"phone\": \"+91 70905 70505\",\n  \"email\": \"hello@structbay.com\",\n  \"supportEmail\": \"support@structbay.com\",\n  \"address\": \"Vidyaranyapura, Bengaluru, Karnataka 560097\",\n  \"whatsapp\": \"+91 70905 70505\",\n  \"mapLink\": \"https://maps.google.com/?q=structbay\",\n  \"workingHours\": \"Mon–Sat, 9AM–6PM IST\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Footer",
+      "item": [
+        { "name": "Get Footer", "request": { "method": "GET", "url": "{{baseUrl}}/cms/footer" } },
+        {
+          "name": "Update Footer",
+          "request": {
+            "method": "PATCH", "url": "{{baseUrl}}/cms/footer",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"companyDescription\": \"StructBay combines reliability, competitive pricing, and single-window sourcing for construction.\",\n  \"copyrightText\": \"© 2026 StructBay. All Rights Reserved.\",\n  \"socialLinks\": {\n    \"instagram\": \"https://instagram.com/structbay\",\n    \"linkedin\": \"https://linkedin.com/company/structbay\"\n  }\n}" }
+          }
+        },
+        {
+          "name": "Add Quick Link",
+          "request": {
+            "method": "POST", "url": "{{baseUrl}}/cms/footer/quick-links",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"label\": \"About Us\",\n  \"href\": \"/about\",\n  \"sortOrder\": 1\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Newsletter",
+      "item": [
+        {
+          "name": "Subscribe",
+          "request": {
+            "method": "POST", "url": "{{baseUrl}}/cms/newsletter/subscribe",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"customer@example.com\"\n}" }
+          }
+        },
+        { "name": "Get Subscribers (Admin)", "request": { "method": "GET", "url": "{{baseUrl}}/cms/newsletter/subscribers" } }
+      ]
+    }
+  ]
+}
