@@ -1,0 +1,37 @@
+const mongoose = require('mongoose');
+
+const wholesaleSlabSchema = new mongoose.Schema(
+  {
+    minQty: { type: Number, required: true },
+    maxQty: { type: Number, default: null },
+    price: { type: Number, required: true },
+  },
+  { _id: false }
+);
+
+const cityPricingSchema = new mongoose.Schema(
+  {
+    product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+    variation: { type: mongoose.Schema.Types.ObjectId, ref: 'ProductVariation', default: null },
+    city: { type: mongoose.Schema.Types.ObjectId, ref: 'City', required: true },
+
+    regularPrice: { type: Number, required: true, min: 0 },
+    salePrice: { type: Number, default: null, min: 0 },
+
+    wholesaleSlabs: [wholesaleSlabSchema],   // up to 5 slabs
+
+    isVisible: { type: Boolean, default: true },
+    isDeleted: { type: Boolean, default: false, select: false },
+    updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  },
+  {
+    timestamps: true,
+    toJSON: { virtuals: true, transform(doc, ret) { delete ret.__v; delete ret.isDeleted; return ret; } },
+  }
+);
+
+cityPricingSchema.index({ product: 1, city: 1 }, { unique: false });
+cityPricingSchema.index({ product: 1, variation: 1, city: 1 }, { unique: true, sparse: true });
+cityPricingSchema.pre(/^find/, function (next) { this.where({ isDeleted: false }); next(); });
+
+module.exports = mongoose.model('CityPricing', cityPricingSchema);

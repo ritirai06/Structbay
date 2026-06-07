@@ -40,9 +40,18 @@ const userRoutes      = require('./src/routes/user.routes');
 const adminRoutes     = require('./src/routes/admin.routes');
 const customerRoutes  = require('./src/routes/customer.routes');
 const vendorRoutes    = require('./src/routes/vendor.routes');
-const categoryRoutes  = require('./src/routes/category.routes');
-const cmsRoutes       = require('./src/routes/cms.routes');
-const uploadRoutes    = require('./src/routes/upload.routes');
+const categoryRoutes      = require('./src/routes/category.routes');
+const cmsRoutes           = require('./src/routes/cms.routes');
+const uploadRoutes        = require('./src/routes/upload.routes');
+const brandRoutes         = require('./src/routes/brand.routes');
+const cityRoutes          = require('./src/routes/city.routes');
+const productRoutes       = require('./src/routes/product.routes');
+const pricingRoutes       = require('./src/routes/pricing.routes');
+const inventoryRoutes     = require('./src/routes/inventory.routes');
+const orderRoutes         = require('./src/routes/order.routes');
+const bulkEnquiryRoutes   = require('./src/routes/bulkEnquiry.routes');
+const concreteRFQRoutes   = require('./src/routes/concreteRFQ.routes');
+const categoryFilterRoutes= require('./src/routes/categoryFilter.routes');
 
 const app = express();
 
@@ -118,9 +127,18 @@ app.use(`${V1}/users`,      userRoutes);
 app.use(`${V1}/admin`,      adminRoutes);
 app.use(`${V1}/customer`,   customerRoutes);
 app.use(`${V1}/vendor`,     vendorRoutes);
-app.use(`${V1}/categories`, categoryRoutes);
-app.use(`${V1}/cms`,        cmsRoutes);
-app.use(`${V1}/upload`,     uploadRoutes);
+app.use(`${V1}/categories`,         categoryRoutes);
+app.use(`${V1}/cms`,                cmsRoutes);
+app.use(`${V1}/upload`,             uploadRoutes);
+app.use(`${V1}/brands`,             brandRoutes);
+app.use(`${V1}/cities`,             cityRoutes);
+app.use(`${V1}/products`,           productRoutes);
+app.use(`${V1}/pricing`,            pricingRoutes);
+app.use(`${V1}/inventory`,          inventoryRoutes);
+app.use(`${V1}/orders`,             orderRoutes);
+app.use(`${V1}/bulk-enquiries`,     bulkEnquiryRoutes);
+app.use(`${V1}/concrete-rfqs`,      concreteRFQRoutes);
+app.use(`${V1}/category-filters`,   categoryFilterRoutes);
 
 // ─── Swagger UI (admin-only in production) ──────────────────────────────────────────────
 if (process.env.NODE_ENV !== 'production') {

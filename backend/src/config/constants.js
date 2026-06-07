@@ -28,12 +28,16 @@ const UPLOAD_FOLDERS = {
   BLOG: 'structbay/blogs',
   ADVERTISEMENT: 'structbay/ads',
   CATEGORY: 'structbay/categories',
+  BRAND: 'structbay/brands',
+  PRODUCT: 'structbay/products',
   PROFILE: 'structbay/profiles',
   CUSTOMER_DOCS: 'structbay/customer/documents',
   VENDOR_DOCS: 'structbay/vendor/documents',
   VENDOR_PORTFOLIO: 'structbay/vendor/portfolio',
   VENDOR_CERTS: 'structbay/vendor/certificates',
   QUOTATION: 'structbay/quotations',
+  BULK_ENQUIRY: 'structbay/bulk-enquiries',
+  INVOICE: 'structbay/invoices',
 };
 
 // ─── File Limits ─────────────────────────────────────────────────────────────

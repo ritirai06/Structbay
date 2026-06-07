@@ -140,6 +140,11 @@ export function Cart() {
               Proceed to Checkout <ArrowRight className="w-5 h-5" />
             </button>
 
+            {/* Delivery charges notice */}
+            <div className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+              ⚠️ Additional Delivery Charges Applicable. Charges To Be Paid At Site.
+            </div>
+
             <Link to="/category/cement" className="block text-center mt-3 text-sm text-muted-foreground hover:text-foreground">
               Continue Shopping
             </Link>
