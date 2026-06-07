@@ -224,7 +224,7 @@ export function Homepage() {
   const { city } = useApp();
   const navigate = useNavigate();
 
-  if (!city) { navigate("/city"); return null; }
+  if (!city) { navigate("/city-selection"); return null; }
 
   // Filter products by current city
   const cityProducts = ALL_PRODUCTS.filter(p => !p.availableCities || p.availableCities.includes(city));
