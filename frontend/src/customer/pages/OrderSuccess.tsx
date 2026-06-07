@@ -21,10 +21,16 @@ export function OrderSuccess() {
         Your order has been confirmed. You'll receive a confirmation on your registered email and phone number.
       </p>
 
-      <div style={{ backgroundColor: "var(--sb-blue)" }} className="rounded-2xl p-6 text-white mb-6">
+      <div style={{ backgroundColor: "var(--sb-blue)" }} className="rounded-2xl p-6 text-white mb-4">
         <p className="text-white/70 text-sm mb-1">Order Number</p>
         <p className="font-bold text-2xl tracking-wide">{ORDER_ID}</p>
         <p className="text-white/70 text-sm mt-2">Expected Delivery: 2–4 Business Days</p>
+      </div>
+
+      {/* Delivery charges notice */}
+      <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-6 text-sm text-amber-800 text-left">
+        <span className="shrink-0 mt-0.5">⚠️</span>
+        <span><strong>Delivery Charges Notice:</strong> Additional Delivery Charges Applicable. Charges To Be Paid At Site.</span>
       </div>
 
       <div className="bg-white rounded-2xl border border-border p-6 mb-6 text-left">

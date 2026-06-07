@@ -1,260 +1,419 @@
-import { useState } from "react";
-import { useNavigate } from "react-router";
-import { Button } from "@shared/components/ui/button";
-import { Input } from "@shared/components/ui/input";
-import { Label } from "@shared/components/ui/label";
-import { Textarea } from "@shared/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@shared/components/ui/select";
-import { Checkbox } from "@shared/components/ui/checkbox";
-import { ArrowLeft, Upload } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router";
+import { ArrowLeft, Plus, Trash2, Loader2, Save, Shield, Zap, TrendingUp, Star } from "lucide-react";
+
+const API = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
+const getToken = () => localStorage.getItem("adminToken") || "";
+async function apiFetch(path: string, opts: RequestInit = {}) {
+  const res = await fetch(`${API}${path}`, {
+    ...opts,
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}`, ...opts.headers },
+  });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.message || "API Error");
+  return data;
+}
+
+const DEMO_CATS = ["Cement", "Steel", "Concrete", "Bricks", "Paints", "Pipes", "Hardware", "Electricals"];
+const DEMO_BRANDS = ["UltraTech", "TATA Steel", "ACC", "Ambuja", "Asian Paints", "Berger", "Nerolac", "JK Cement"];
+const VARIATION_ATTRS = ["weight", "grade", "size", "color", "finish", "diameter"];
+
+const emptyForm = {
+  name: "", sku: "", category: "", brand: "",
+  shortDescription: "", description: "",
+  gstPercentage: 18, status: "DRAFT",
+  isFeatured: false, isTopSelling: false, isAssured: false, isExpress: false,
+  displayOrder: 0,
+  seo: { metaTitle: "", metaDescription: "", metaKeywords: [] },
+  faqs: [] as { question: string; answer: string }[],
+  videos: [] as { title: string; url: string }[],
+};
+
+const emptyVariation = { weight: "", grade: "", size: "", color: "", finish: "", diameter: "", sku: "" };
+
+function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
+  return (
+    <div>
+      <label className="text-xs text-[#D4C4A8]/60 mb-1.5 block font-medium">
+        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+const inp = "w-full bg-[#171717] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#F4E9D8] placeholder:text-[#D4C4A8]/30 focus:outline-none focus:border-[#FE5E00] focus:ring-1 focus:ring-[#FE5E00]/20 transition-colors";
+const sel = `${inp} cursor-pointer`;
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-[#1A1A1A] border border-white/10 rounded-xl overflow-hidden">
+      <div className="px-5 py-3.5 border-b border-white/8">
+        <h3 className="font-semibold text-[#F4E9D8] text-sm">{title}</h3>
+      </div>
+      <div className="p-5 space-y-4">{children}</div>
+    </div>
+  );
+}
+
+function Toggle({ checked, onChange, label, icon: Icon, accent = "#FE5E00" }: {
+  checked: boolean; onChange: (v: boolean) => void; label: string; icon: any; accent?: string;
+}) {
+  return (
+    <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${checked ? "border-[#FE5E00]/30 bg-[#FE5E00]/5" : "border-white/8 bg-[#111] hover:border-white/15"}`}>
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${checked ? "bg-[#FE5E00]/20" : "bg-white/5"}`}>
+        <Icon className={`w-4 h-4 ${checked ? "text-[#FE5E00]" : "text-[#D4C4A8]/40"}`} />
+      </div>
+      <div className="flex-1">
+        <p className={`text-sm font-medium ${checked ? "text-[#F4E9D8]" : "text-[#D4C4A8]/60"}`}>{label}</p>
+      </div>
+      <div className={`w-9 h-5 rounded-full transition-colors flex items-center px-0.5 ${checked ? "bg-[#FE5E00]" : "bg-white/15"}`}
+        onClick={() => onChange(!checked)}>
+        <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-4" : ""}`} />
+      </div>
+    </label>
+  );
+}
 
 export function AddProduct() {
   const navigate = useNavigate();
-  const [productName, setProductName] = useState("");
-  const [sku, setSku] = useState("");
+  const { id } = useParams();
+  const isEdit = !!id;
+
+  const [form, setForm] = useState(emptyForm);
+  const [variations, setVariations] = useState<any[]>([]);
+  const [newVar, setNewVar] = useState(emptyVariation);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(isEdit);
+  const [newFaq, setNewFaq] = useState({ question: "", answer: "" });
+  const [tab, setTab] = useState<"info" | "media" | "variations" | "seo" | "faqs">("info");
+
+  useEffect(() => {
+    if (!isEdit) return;
+    apiFetch(`/products/${id}`)
+      .then(d => {
+        const p = d.data;
+        setForm({
+          name: p.name, sku: p.sku, category: p.category?._id || p.category,
+          brand: p.brand?._id || p.brand, shortDescription: p.shortDescription || "",
+          description: p.description || "", gstPercentage: p.gstPercentage,
+          status: p.status, isFeatured: p.isFeatured, isTopSelling: p.isTopSelling,
+          isAssured: p.isAssured, isExpress: p.isExpress, displayOrder: p.displayOrder,
+          seo: p.seo || { metaTitle: "", metaDescription: "", metaKeywords: [] },
+          faqs: p.faqs || [], videos: p.videos || [],
+        });
+        setVariations(p.variations || []);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [id, isEdit]);
+
+  const set = (field: string, value: any) => setForm(f => ({ ...f, [field]: value }));
+
+  const save = async () => {
+    if (!form.name || !form.sku) return alert("Name and SKU are required.");
+    setSaving(true);
+    try {
+      if (isEdit) await apiFetch(`/products/${id}`, { method: "PATCH", body: JSON.stringify(form) });
+      else await apiFetch("/products", { method: "POST", body: JSON.stringify(form) });
+      navigate("/products");
+    } catch (e: any) { alert(e.message); }
+    setSaving(false);
+  };
+
+  const addVariation = async () => {
+    if (!isEdit) return alert("Save product first to add variations.");
+    try {
+      const v = await apiFetch(`/products/${id}/variations`, {
+        method: "POST",
+        body: JSON.stringify({ attributes: newVar, sku: newVar.sku || undefined }),
+      });
+      setVariations(prev => [...prev, v.data]);
+      setNewVar(emptyVariation);
+    } catch (e: any) { alert(e.message); }
+  };
+
+  const deleteVariation = async (varId: string) => {
+    if (!confirm("Delete this variation?")) return;
+    await apiFetch(`/products/${id}/variations/${varId}`, { method: "DELETE" }).catch(e => alert(e.message));
+    setVariations(prev => prev.filter(v => v._id !== varId));
+  };
+
+  const addFaq = () => {
+    if (!newFaq.question || !newFaq.answer) return;
+    set("faqs", [...form.faqs, { ...newFaq }]);
+    setNewFaq({ question: "", answer: "" });
+  };
+
+  const TABS = [
+    { key: "info", label: "General" },
+    { key: "media", label: "Media" },
+    { key: "variations", label: "Variations" },
+    { key: "seo", label: "SEO" },
+    { key: "faqs", label: "FAQs" },
+  ] as const;
+
+  if (loading) return <div className="flex justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-[#FE5E00]" /></div>;
 
   return (
-    <div className="p-6">
+    <div className="p-6 bg-[#0D0D0D] min-h-full">
+      {/* Header */}
       <div className="mb-6">
-        <Button variant="ghost" onClick={() => navigate("/products")} className="mb-4">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Products
-        </Button>
-        <h1 className="text-3xl font-black text-[#F4E9D8]">Add Product</h1>
-        <p className="text-[#D4C4A8]/60">Create a new product in your catalog</p>
+        <button onClick={() => navigate("/products")}
+          className="flex items-center gap-2 text-sm text-[#D4C4A8]/60 hover:text-[#F4E9D8] mb-4 transition-colors">
+          <ArrowLeft className="w-4 h-4" /> Back to Products
+        </button>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-black text-[#F4E9D8]">{isEdit ? "Edit Product" : "Add Product"}</h1>
+            <p className="text-[#D4C4A8]/60 text-sm mt-1">Admin-only product management</p>
+          </div>
+          <div className="flex gap-3">
+            <button onClick={() => { set("status", "DRAFT"); save(); }}
+              className="px-4 py-2.5 border border-white/15 rounded-lg text-sm text-[#D4C4A8] hover:border-white/30 transition-colors">
+              Save Draft
+            </button>
+            <button onClick={save} disabled={saving}
+              className="flex items-center gap-2 bg-[#FE5E00] hover:bg-[#E05200] text-[#0D0D0D] font-bold px-5 py-2.5 rounded-lg text-sm transition-colors disabled:opacity-60">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {isEdit ? "Update Product" : "Publish Product"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 mb-6 bg-[#1A1A1A] border border-white/10 rounded-lg p-1 w-fit">
+        {TABS.map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${tab === t.key ? "bg-[#FE5E00] text-[#0D0D0D]" : "text-[#D4C4A8]/60 hover:text-[#F4E9D8]"}`}>
+            {t.label}
+          </button>
+        ))}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>General Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="productName">Product Name *</Label>
-                <Input
-                  id="productName"
-                  placeholder="e.g., Cement PPC 53 Grade"
-                  value={productName}
-                  onChange={(e) => setProductName(e.target.value)}
-                />
-              </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+          {/* General Info */}
+          {tab === "info" && (
+            <Section title="General Information">
+              <Field label="Product Name" required>
+                <input className={inp} placeholder="e.g. Cement PPC 53 Grade" value={form.name} onChange={e => set("name", e.target.value)} />
+              </Field>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="SKU" required>
+                  <input className={inp} placeholder="CEM-PPC-53-001" value={form.sku} onChange={e => set("sku", e.target.value.toUpperCase())} />
+                </Field>
+                <Field label="GST Percentage" required>
+                  <select className={sel} value={form.gstPercentage} onChange={e => set("gstPercentage", +e.target.value)}>
+                    {[0, 5, 12, 18, 28].map(g => <option key={g} value={g}>{g}%</option>)}
+                  </select>
+                </Field>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Category" required>
+                  <select className={sel} value={form.category} onChange={e => set("category", e.target.value)}>
+                    <option value="">Select category</option>
+                    {DEMO_CATS.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </Field>
+                <Field label="Brand" required>
+                  <select className={sel} value={form.brand} onChange={e => set("brand", e.target.value)}>
+                    <option value="">Select brand</option>
+                    {DEMO_BRANDS.map(b => <option key={b} value={b}>{b}</option>)}
+                  </select>
+                </Field>
+              </div>
+              <Field label="Short Description">
+                <textarea className={`${inp} resize-none`} rows={2} placeholder="Brief description (max 500 chars)" value={form.shortDescription} onChange={e => set("shortDescription", e.target.value)} />
+              </Field>
+              <Field label="Full Description">
+                <textarea className={`${inp} resize-none`} rows={6} placeholder="Detailed product description, features and specifications..." value={form.description} onChange={e => set("description", e.target.value)} />
+              </Field>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Display Order">
+                  <input type="number" className={inp} min={0} value={form.displayOrder} onChange={e => set("displayOrder", +e.target.value)} />
+                </Field>
+                <Field label="Status">
+                  <select className={sel} value={form.status} onChange={e => set("status", e.target.value)}>
+                    <option value="DRAFT">Draft</option>
+                    <option value="ACTIVE">Active</option>
+                    <option value="ARCHIVED">Archived</option>
+                  </select>
+                </Field>
+              </div>
+            </Section>
+          )}
+
+          {/* Media */}
+          {tab === "media" && (
+            <Section title="Product Media">
+              <Field label="Product Images">
+                <div className="border-2 border-dashed border-white/15 rounded-lg p-8 text-center hover:border-[#FE5E00]/40 transition-colors">
+                  <p className="text-sm text-[#D4C4A8]/60 mb-3">Use the Upload endpoint to get Cloudinary URLs, then attach them to the product</p>
+                  <a href="/upload" className="text-[#FE5E00] text-sm hover:underline">Go to Media Upload →</a>
+                </div>
+              </Field>
+              <Field label="Product Videos">
+                {form.videos.map((v, i) => (
+                  <div key={i} className="flex gap-2 mb-2">
+                    <input className={`${inp} flex-1`} placeholder="Title" value={v.title} onChange={e => {
+                      const vids = [...form.videos]; vids[i].title = e.target.value; set("videos", vids);
+                    }} />
+                    <input className={`${inp} flex-1`} placeholder="YouTube/Vimeo URL" value={v.url} onChange={e => {
+                      const vids = [...form.videos]; vids[i].url = e.target.value; set("videos", vids);
+                    }} />
+                    <button onClick={() => set("videos", form.videos.filter((_, j) => j !== i))}
+                      className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+                <button onClick={() => set("videos", [...form.videos, { title: "", url: "" }])}
+                  className="flex items-center gap-2 text-sm text-[#FE5E00] hover:text-[#E05200] transition-colors">
+                  <Plus className="w-4 h-4" /> Add Video
+                </button>
+              </Field>
+            </Section>
+          )}
+
+          {/* Variations */}
+          {tab === "variations" && (
+            <Section title="Product Variations">
+              {!isEdit && (
+                <p className="text-xs text-[#D4C4A8]/50 bg-[#111] border border-white/8 rounded-lg p-3">
+                  💡 Save the product first to add variations.
+                </p>
+              )}
+              {variations.length > 0 && (
                 <div className="space-y-2">
-                  <Label htmlFor="sku">SKU *</Label>
-                  <Input
-                    id="sku"
-                    placeholder="e.g., CEM-PPC-53-001"
-                    value={sku}
-                    onChange={(e) => setSku(e.target.value)}
-                  />
+                  {variations.map(v => (
+                    <div key={v._id} className="flex items-center gap-3 p-3 bg-[#111] border border-white/8 rounded-lg">
+                      <div className="flex-1 flex flex-wrap gap-2">
+                        {Object.entries(v.attributes || {}).filter(([k, val]) => k !== 'custom' && val).map(([k, val]) => (
+                          <span key={k} className="text-xs bg-[#2A2A2A] border border-white/10 text-[#D4C4A8] px-2 py-0.5 rounded-full capitalize">
+                            {k}: {val as string}
+                          </span>
+                        ))}
+                        {v.sku && <span className="text-xs font-mono text-[#D4C4A8]/50">{v.sku}</span>}
+                      </div>
+                      <span className={`text-xs px-2 py-0.5 rounded-full border ${v.status === "ACTIVE" ? "bg-green-500/15 text-green-400 border-green-500/20" : "bg-white/8 text-[#D4C4A8]/60 border-white/12"}`}>{v.status}</span>
+                      <button onClick={() => deleteVariation(v._id)} className="p-1.5 text-red-400 hover:bg-red-400/10 rounded-lg">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="gst">GST Percentage *</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select GST" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="5">5%</SelectItem>
-                      <SelectItem value="12">12%</SelectItem>
-                      <SelectItem value="18">18%</SelectItem>
-                      <SelectItem value="28">28%</SelectItem>
-                    </SelectContent>
-                  </Select>
+              )}
+              {isEdit && (
+                <div className="border border-white/10 rounded-lg p-4 space-y-3 bg-[#0D0D0D]">
+                  <p className="text-xs font-semibold text-[#D4C4A8]/60 uppercase tracking-wider">Add New Variation</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {VARIATION_ATTRS.map(attr => (
+                      <div key={attr}>
+                        <label className="text-xs text-[#D4C4A8]/50 mb-1 block capitalize">{attr}</label>
+                        <input className={inp} placeholder={`e.g. ${attr === "weight" ? "50kg" : attr === "grade" ? "M30" : attr}`}
+                          value={(newVar as any)[attr]} onChange={e => setNewVar(v => ({ ...v, [attr]: e.target.value }))} />
+                      </div>
+                    ))}
+                    <div>
+                      <label className="text-xs text-[#D4C4A8]/50 mb-1 block">SKU (optional)</label>
+                      <input className={inp} placeholder="Variant SKU" value={newVar.sku} onChange={e => setNewVar(v => ({ ...v, sku: e.target.value }))} />
+                    </div>
+                  </div>
+                  <button onClick={addVariation} className="flex items-center gap-2 bg-[#FE5E00]/15 hover:bg-[#FE5E00]/25 text-[#FE5E00] font-medium px-4 py-2 rounded-lg text-sm transition-colors">
+                    <Plus className="w-4 h-4" /> Add Variation
+                  </button>
                 </div>
-              </div>
+              )}
+            </Section>
+          )}
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="category">Category *</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cement">Cement</SelectItem>
-                      <SelectItem value="steel">Steel</SelectItem>
-                      <SelectItem value="concrete">Concrete</SelectItem>
-                      <SelectItem value="bricks">Bricks</SelectItem>
-                    </SelectContent>
-                  </Select>
+          {/* SEO */}
+          {tab === "seo" && (
+            <Section title="SEO Settings">
+              <Field label="Meta Title">
+                <input className={inp} placeholder="SEO title (max 60 chars)" value={form.seo.metaTitle}
+                  onChange={e => set("seo", { ...form.seo, metaTitle: e.target.value })} />
+              </Field>
+              <Field label="Meta Description">
+                <textarea className={`${inp} resize-none`} rows={3} placeholder="SEO description (max 160 chars)"
+                  value={form.seo.metaDescription} onChange={e => set("seo", { ...form.seo, metaDescription: e.target.value })} />
+              </Field>
+              <Field label="Meta Keywords (comma separated)">
+                <input className={inp} placeholder="cement, construction, building materials"
+                  value={form.seo.metaKeywords?.join(", ")}
+                  onChange={e => set("seo", { ...form.seo, metaKeywords: e.target.value.split(",").map(k => k.trim()).filter(Boolean) })} />
+              </Field>
+            </Section>
+          )}
+
+          {/* FAQs */}
+          {tab === "faqs" && (
+            <Section title="Product FAQs">
+              {form.faqs.map((faq, i) => (
+                <div key={i} className="p-3 bg-[#111] border border-white/8 rounded-lg space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-medium text-[#F4E9D8]">Q: {faq.question}</p>
+                    <button onClick={() => set("faqs", form.faqs.filter((_, j) => j !== i))}
+                      className="p-1 text-red-400 hover:bg-red-400/10 rounded shrink-0">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <p className="text-xs text-[#D4C4A8]/60">A: {faq.answer}</p>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="brand">Brand *</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select brand" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ultratech">UltraTech</SelectItem>
-                      <SelectItem value="acc">ACC</SelectItem>
-                      <SelectItem value="ambuja">Ambuja</SelectItem>
-                      <SelectItem value="tata">TATA Steel</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              ))}
+              <div className="border border-white/10 rounded-lg p-4 space-y-3 bg-[#0D0D0D]">
+                <Field label="Question">
+                  <input className={inp} value={newFaq.question} onChange={e => setNewFaq(f => ({ ...f, question: e.target.value }))} />
+                </Field>
+                <Field label="Answer">
+                  <textarea className={`${inp} resize-none`} rows={2} value={newFaq.answer} onChange={e => setNewFaq(f => ({ ...f, answer: e.target.value }))} />
+                </Field>
+                <button onClick={addFaq} className="flex items-center gap-2 bg-[#FE5E00]/15 hover:bg-[#FE5E00]/25 text-[#FE5E00] font-medium px-4 py-2 rounded-lg text-sm transition-colors">
+                  <Plus className="w-4 h-4" /> Add FAQ
+                </button>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="shortDescription">Short Description</Label>
-                <Textarea
-                  id="shortDescription"
-                  placeholder="Brief product description (max 200 characters)"
-                  rows={2}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Full Description</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Detailed product description, features, and specifications"
-                  rows={6}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Media</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Product Images</Label>
-                <div className="border-2 border-dashed border-white/15 rounded-lg p-8 text-center hover:border-[#F97316]/40 transition-colors">
-                  <Upload className="mx-auto h-12 w-12 text-[#D4C4A8]/30 mb-4" />
-                  <p className="text-sm text-[#D4C4A8]/60 mb-2">
-                    Drop images here or click to upload
-                  </p>
-                  <Button variant="outline" size="sm">
-                    Choose Files
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Documents (PDF)</Label>
-                <div className="border-2 border-dashed border-white/15 rounded-lg p-6 text-center hover:border-[#F97316]/40 transition-colors">
-                  <Button variant="outline" size="sm">
-                    Upload Documents
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Product Relationships</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Cross-Sell Products</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select related products" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">TMT Steel Bars</SelectItem>
-                    <SelectItem value="2">Ready Mix Concrete</SelectItem>
-                    <SelectItem value="3">Red Clay Bricks</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Upsell Products</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select premium alternatives" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">Premium Cement PPC 53 Grade</SelectItem>
-                    <SelectItem value="2">High-Grade TMT Bars</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
+            </Section>
+          )}
         </div>
 
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Status</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Product Status</Label>
-                <Select defaultValue="draft">
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="archived">Archived</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Sidebar */}
+        <div className="space-y-5">
+          <Section title="Product Badges">
+            <div className="space-y-2">
+              <Toggle checked={form.isAssured} onChange={v => set("isAssured", v)} label="StructBay Assured" icon={Shield} />
+              <Toggle checked={form.isExpress} onChange={v => set("isExpress", v)} label="StructBay Express" icon={Zap} />
+              <Toggle checked={form.isFeatured} onChange={v => set("isFeatured", v)} label="Featured Product" icon={Star} />
+              <Toggle checked={form.isTopSelling} onChange={v => set("isTopSelling", v)} label="Top Selling" icon={TrendingUp} />
+            </div>
+          </Section>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Badges</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center space-x-2">
-                <Checkbox id="assured" />
-                <label
-                  htmlFor="assured"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  StructBay Assured
-                </label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox id="express" />
-                <label
-                  htmlFor="express"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  StructBay Express
-                </label>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="bg-[#1A1A1A] border border-white/10 rounded-xl p-4 space-y-3">
+            <h3 className="font-semibold text-[#F4E9D8] text-sm">Quick Save</h3>
+            <button onClick={save} disabled={saving}
+              className="w-full flex items-center justify-center gap-2 bg-[#FE5E00] hover:bg-[#E05200] text-[#0D0D0D] font-bold py-2.5 rounded-lg text-sm transition-colors disabled:opacity-60">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {isEdit ? "Update Product" : "Publish Product"}
+            </button>
+            <button onClick={() => navigate("/products")}
+              className="w-full py-2.5 border border-white/15 rounded-lg text-sm text-[#D4C4A8] hover:border-white/30 transition-colors">
+              Cancel
+            </button>
+          </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>FAQs</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Button variant="outline" className="w-full">
-                Add FAQ
-              </Button>
-            </CardContent>
-          </Card>
-
-          <div className="space-y-3">
-            <Button className="w-full">Publish Product</Button>
-            <Button variant="outline" className="w-full">
-              Save as Draft
-            </Button>
+          <div className="bg-[#1A1A1A] border border-white/10 rounded-xl p-4">
+            <h3 className="font-semibold text-[#F4E9D8] text-sm mb-3">Quick Links</h3>
+            <div className="space-y-2">
+              {isEdit && [
+                { label: "→ Manage Pricing", href: `/pricing?product=${id}` },
+                { label: "→ Manage Inventory", href: `/inventory?product=${id}` },
+              ].map(l => (
+                <a key={l.label} href={l.href} className="block text-sm text-[#FE5E00] hover:underline">{l.label}</a>
+              ))}
+              {!isEdit && <p className="text-xs text-[#D4C4A8]/40">Save product first to manage pricing & inventory</p>}
+            </div>
           </div>
         </div>
       </div>

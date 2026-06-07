@@ -224,6 +224,9 @@ export function Checkout() {
             >
               Place Order ₹{total.toLocaleString()}
             </button>
+            <div className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+              ⚠️ Additional Delivery Charges Applicable. Charges To Be Paid At Site.
+            </div>
             <p className="text-center text-xs text-muted-foreground mt-3">
               By placing the order, you agree to our Terms of Service
             </p>
