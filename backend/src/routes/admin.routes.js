@@ -38,7 +38,15 @@ router.get('/vendors',                  ...adminOnly, adminUserController.getAll
 router.put('/vendors/:id/approve',      ...adminOnly, adminUserController.approveVendor);
 router.put('/vendors/:id/reject',       ...adminOnly, rejectVendorValidator, validate, adminUserController.rejectVendor);
 
-// ─── Vendor Order Assignment ──────────────────────────────────────────────────
+// ─── Order Activity Logs ─────────────────────────────────────────────────────
+const OrderActivityLog = require('../models/OrderActivityLog');
+router.get('/order-activity/:orderId', ...adminOnly, asyncHandler(async (req, res) => {
+  const logs = await OrderActivityLog.find({ masterOrder: req.params.orderId })
+    .sort({ createdAt: -1 }).limit(200);
+  return ApiResponse.success(res, 200, 'Order activity logs retrieved.', logs);
+}));
+
+// ─── Vendor Order Assignment (legacy) ────────────────────────────────────────
 const adminVendorOrderCtrl = require('../controllers/adminVendorOrderController');
 router.get ('/vendor-orders/analytics',          ...adminOnly, asyncHandler(adminVendorOrderCtrl.getVendorOrderAnalytics));
 router.get ('/vendor-orders',                    ...adminOnly, asyncHandler(adminVendorOrderCtrl.getAllVendorOrders));

@@ -9,26 +9,26 @@ import { cn } from "@shared/components/ui/utils";
 import logoImg from "/shared/assets/logos/Structbay-Logo-F-1.png";
 
 const navItems = [
-  { path: "/",              label: "Dashboard",         icon: LayoutDashboard },
-  { path: "/products",      label: "Products",          icon: Package },
-  { path: "/categories",    label: "Categories",        icon: FolderTree },
-  { path: "/brands",        label: "Brands",            icon: Award },
-  { path: "/cities",        label: "Cities",            icon: MapPin },
-  { path: "/pricing",       label: "Pricing",           icon: DollarSign },
-  { path: "/inventory",     label: "Inventory",         icon: Warehouse },
-  { path: "/vendors",       label: "Vendors",           icon: Users },
-  { path: "/orders",        label: "Orders",            icon: ShoppingCart },
-  { path: "/dispatch",      label: "Dispatch",          icon: Truck },
-  { path: "/invoices",      label: "Invoices",          icon: FileText },
-  { path: "/rfqs",          label: "RFQs",              icon: ClipboardList },
-  { path: "/bulk-enquiries",label: "Bulk Enquiries",    icon: Briefcase },
-  { path: "/finance-leads", label: "Finance Leads",     icon: CreditCard },
-  { path: "/customers",     label: "Customers",         icon: UserCircle },
-  { path: "/cms",           label: "CMS Control",       icon: Layout },
-  { path: "/reports",       label: "Reports",           icon: BarChart3 },
-  { path: "/audit-logs",    label: "Audit Logs",        icon: History },
-  { path: "/settings",      label: "Settings",          icon: Settings },
-  { path: "/admin-users",   label: "Admin Users",       icon: UserCog },
+  { path: "/admin",              label: "Dashboard",         icon: LayoutDashboard },
+  { path: "/admin/products",     label: "Products",          icon: Package },
+  { path: "/admin/categories",   label: "Categories",        icon: FolderTree },
+  { path: "/admin/brands",       label: "Brands",            icon: Award },
+  { path: "/admin/cities",       label: "Cities",            icon: MapPin },
+  { path: "/admin/pricing",      label: "Pricing",           icon: DollarSign },
+  { path: "/admin/inventory",    label: "Inventory",         icon: Warehouse },
+  { path: "/admin/vendors",      label: "Vendors",           icon: Users },
+  { path: "/admin/orders",       label: "Orders",            icon: ShoppingCart },
+  { path: "/admin/dispatch",     label: "Dispatch",          icon: Truck },
+  { path: "/admin/invoices",     label: "Invoices",          icon: FileText },
+  { path: "/admin/rfqs",         label: "RFQs",              icon: ClipboardList },
+  { path: "/admin/bulk-enquiries", label: "Bulk Enquiries",  icon: Briefcase },
+  { path: "/admin/finance-leads", label: "Finance Leads",   icon: CreditCard },
+  { path: "/admin/customers",    label: "Customers",         icon: UserCircle },
+  { path: "/admin/cms",          label: "CMS Control",       icon: Layout },
+  { path: "/admin/reports",      label: "Reports",           icon: BarChart3 },
+  { path: "/admin/audit-logs",   label: "Audit Logs",        icon: History },
+  { path: "/admin/settings",     label: "Settings",          icon: Settings },
+  { path: "/admin/admin-users",  label: "Admin Users",       icon: UserCog },
 ];
 
 export function Sidebar() {
@@ -46,7 +46,10 @@ export function Sidebar() {
       <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = location.pathname === item.path;
+          const isActive =
+            item.path === "/admin"
+              ? location.pathname === "/admin" || location.pathname === "/admin/"
+              : location.pathname === item.path || location.pathname.startsWith(item.path + "/");
           return (
             <Link
               key={item.path}

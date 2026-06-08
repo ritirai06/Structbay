@@ -152,6 +152,16 @@ const cmsSchema = new mongoose.Schema(
       },
     },
 
+    // ─── Vendor FAQs ────────────────────────────────────
+    vendorFaqs: [
+      {
+        question: { type: String, trim: true, required: true },
+        answer:   { type: String, trim: true, required: true },
+        sortOrder: { type: Number, default: 0 },
+        isActive: { type: Boolean, default: true },
+      },
+    ],
+
     // Track who last updated
     lastUpdatedBy: {
       type: mongoose.Schema.Types.ObjectId,

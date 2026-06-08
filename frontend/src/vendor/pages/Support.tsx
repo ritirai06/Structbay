@@ -1,36 +1,10 @@
-import { useState } from 'react';
-import { HelpCircle, MessageSquare, Send, Phone, Mail, Clock, ChevronDown } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { HelpCircle, MessageSquare, Send, Phone, Mail, Clock, ChevronDown, CheckCircle, AlertCircle } from 'lucide-react';
+import { api } from '../lib/api';
 
 const SB = { color: 'var(--sb-text-primary)', muted: 'var(--sb-text-muted)', faint: 'var(--sb-text-faint)', orange: 'var(--sb-orange)', card: 'var(--sb-card)', border: 'var(--sb-border)', bg: 'var(--sb-bg-section)' };
 const inputCls = 'w-full px-3 py-2.5 rounded-xl text-sm transition-all';
 const inputStyle = { background: 'var(--sb-bg-section)', border: '1px solid var(--sb-border)', color: 'var(--sb-text-primary)' };
-
-const FAQS = [
-  {
-    q: 'How do I upload an invoice?',
-    a: 'Go to Assigned Orders, select the order, and click "Upload Invoice". Fill in invoice details and upload the PDF. StructBay will review within 24 hours.',
-  },
-  {
-    q: 'When will StructBay pick up my material?',
-    a: 'After you submit pickup details via "Warehouse Details", StructBay logistics will schedule collection within 24–48 hours based on your availability.',
-  },
-  {
-    q: 'How do I download shipping documents?',
-    a: 'Navigate to Document Center from the sidebar. All StructBay-generated documents — e-way bills, shipping labels, packing slips — are available for download.',
-  },
-  {
-    q: 'What if I cannot fulfill the complete quantity?',
-    a: 'Contact StructBay support immediately. Partial fulfillment requires prior approval from the operations team.',
-  },
-  {
-    q: 'Can I edit product details or pricing?',
-    a: 'No. As per StructBay policy, vendors cannot edit product details, pricing, or inventory. You only manage fulfillment of assigned orders.',
-  },
-  {
-    q: 'How do I update dispatch status after shipping?',
-    a: 'Go to Dispatch Management, select your order, click "Update Status" tab, and update to Dispatched with tracking details.',
-  },
-];
 
 function FaqItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
@@ -42,10 +16,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
         style={{ background: open ? 'var(--sb-orange-subtle)' : SB.bg }}
       >
         <span className="text-sm font-semibold pr-4" style={{ color: SB.color }}>{q}</span>
-        <ChevronDown
-          className="w-4 h-4 shrink-0 transition-transform"
-          style={{ color: SB.orange, transform: open ? 'rotate(180deg)' : 'none' }}
-        />
+        <ChevronDown className="w-4 h-4 shrink-0 transition-transform" style={{ color: SB.orange, transform: open ? 'rotate(180deg)' : 'none' }} />
       </button>
       {open && (
         <div className="px-4 pb-4 pt-2" style={{ background: SB.bg }}>
@@ -57,21 +28,39 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 }
 
 export function Support() {
+  const [contact, setContact] = useState<any>(null);
+  const [faqs, setFaqs] = useState<any[]>([]);
   const [showTicket, setShowTicket] = useState(false);
   const [subject, setSubject] = useState('');
   const [priority, setPriority] = useState('medium');
   const [description, setDescription] = useState('');
-  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  function handleSubmit(e: React.FormEvent) {
+  useEffect(() => {
+    api.getContact().then((r: any) => setContact(r.data)).catch(() => {});
+    fetch('/api/v1/cms/vendor-faqs')
+      .then(r => r.json())
+      .then((r: any) => { if (Array.isArray(r.data)) setFaqs(r.data); })
+      .catch(() => {});
+  }, []);
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => {
-      setShowTicket(false);
-      setSubmitted(false);
-      setSubject(''); setDescription('');
-    }, 2000);
+    setSubmitting(true); setMsg(null);
+    try {
+      await api.submitSupportTicket({ subject, priority, description });
+      setMsg({ type: 'success', text: 'Ticket submitted! Our team will respond within 24–48 hours.' });
+      setSubject(''); setDescription(''); setPriority('medium');
+      setTimeout(() => { setShowTicket(false); setMsg(null); }, 3000);
+    } catch (err: any) {
+      setMsg({ type: 'error', text: err.message ?? 'Submission failed. Please try again.' });
+    } finally { setSubmitting(false); }
   }
+
+  const phone = contact?.phone || contact?.supportPhone;
+  const email = contact?.email || contact?.supportEmail;
+  const hours = contact?.businessHours || contact?.hours;
 
   return (
     <div className="space-y-5">
@@ -90,89 +79,114 @@ export function Support() {
         </button>
       </div>
 
-      {/* Ticket Form */}
+      {msg && (
+        <div className="flex items-center gap-3 p-4 rounded-2xl" style={{ background: msg.type === 'success' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', border: `1px solid ${msg.type === 'success' ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}` }}>
+          {msg.type === 'success' ? <CheckCircle className="w-4 h-4 text-green-400 shrink-0" /> : <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />}
+          <p className={`text-sm font-medium ${msg.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>{msg.text}</p>
+        </div>
+      )}
+
       {showTicket && (
         <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
           <h2 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: SB.muted }}>New Support Ticket</h2>
-          {submitted ? (
-            <div className="flex items-center gap-3 p-4 rounded-xl" style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)' }}>
-              <p className="text-sm font-semibold text-green-400">Ticket submitted! Our team will respond within 24–48 hours.</p>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: SB.muted }}>
-                    Subject <span className="text-red-400">*</span>
-                  </label>
-                  <input type="text" value={subject} onChange={e => setSubject(e.target.value)}
-                    required placeholder="Brief description of your issue"
-                    className={inputCls} style={inputStyle} />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: SB.muted }}>Priority</label>
-                  <select value={priority} onChange={e => setPriority(e.target.value)} className={inputCls} style={inputStyle}>
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                    <option value="urgent">Urgent</option>
-                  </select>
-                </div>
-              </div>
-              <div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="md:col-span-2">
                 <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: SB.muted }}>
-                  Description <span className="text-red-400">*</span>
+                  Subject <span className="text-red-400">*</span>
                 </label>
-                <textarea value={description} onChange={e => setDescription(e.target.value)}
-                  required rows={5} placeholder="Please describe your issue in detail, including order numbers if applicable..."
+                <input type="text" value={subject} onChange={e => setSubject(e.target.value)}
+                  required placeholder="Brief description of your issue"
                   className={inputCls} style={inputStyle} />
               </div>
-              <div className="flex gap-3">
-                <button type="button" onClick={() => setShowTicket(false)}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-                  style={{ background: SB.bg, color: SB.muted, border: `1px solid ${SB.border}` }}>
-                  Cancel
-                </button>
-                <button type="submit"
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold"
-                  style={{ background: 'var(--sb-orange)', color: '#0D0D0D' }}>
-                  <Send className="w-4 h-4" /> Submit Ticket
-                </button>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: SB.muted }}>Priority</label>
+                <select value={priority} onChange={e => setPriority(e.target.value)} className={inputCls} style={inputStyle}>
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
               </div>
-            </form>
-          )}
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: SB.muted }}>
+                Description <span className="text-red-400">*</span>
+              </label>
+              <textarea value={description} onChange={e => setDescription(e.target.value)}
+                required rows={5} placeholder="Please describe your issue in detail, including order numbers if applicable..."
+                className={inputCls} style={inputStyle} />
+            </div>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setShowTicket(false)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                style={{ background: SB.bg, color: SB.muted, border: `1px solid ${SB.border}` }}>
+                Cancel
+              </button>
+              <button type="submit" disabled={submitting}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold disabled:opacity-60"
+                style={{ background: 'var(--sb-orange)', color: '#0D0D0D' }}>
+                {submitting ? <div className="w-4 h-4 rounded-full border-2 border-[#0D0D0D]/30 border-t-[#0D0D0D] animate-spin" /> : <Send className="w-4 h-4" />}
+                {submitting ? 'Submitting...' : 'Submit Ticket'}
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Contact Info */}
+        {/* Contact Info — from CMS */}
         <div className="rounded-2xl p-5 space-y-4" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
           <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: SB.muted }}>Contact StructBay</h2>
-          {[
-            { icon: Phone, label: 'Phone', value: '1800-123-4567', sub: 'Mon–Sat, 9 AM – 6 PM' },
-            { icon: Mail,  label: 'Email', value: 'vendor.support@structbay.com', sub: '24–48 hour response' },
-            { icon: Clock, label: 'Hours', value: 'Monday – Saturday', sub: '9:00 AM – 6:00 PM IST' },
-          ].map(({ icon: Icon, label, value, sub }) => (
-            <div key={label} className="flex items-start gap-3 p-3 rounded-xl" style={{ background: SB.bg, border: `1px solid ${SB.border}` }}>
+          {phone && (
+            <div className="flex items-start gap-3 p-3 rounded-xl" style={{ background: SB.bg, border: `1px solid ${SB.border}` }}>
               <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--sb-orange-subtle)' }}>
-                <Icon className="w-4 h-4" style={{ color: SB.orange }} />
+                <Phone className="w-4 h-4" style={{ color: SB.orange }} />
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: SB.faint }}>{label}</p>
-                <p className="text-sm font-medium mt-0.5" style={{ color: SB.color }}>{value}</p>
-                <p className="text-xs mt-0.5" style={{ color: SB.faint }}>{sub}</p>
+                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: SB.faint }}>Phone</p>
+                <p className="text-sm font-medium mt-0.5" style={{ color: SB.color }}>{phone}</p>
               </div>
             </div>
-          ))}
+          )}
+          {email && (
+            <div className="flex items-start gap-3 p-3 rounded-xl" style={{ background: SB.bg, border: `1px solid ${SB.border}` }}>
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--sb-orange-subtle)' }}>
+                <Mail className="w-4 h-4" style={{ color: SB.orange }} />
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: SB.faint }}>Email</p>
+                <p className="text-sm font-medium mt-0.5" style={{ color: SB.color }}>{email}</p>
+              </div>
+            </div>
+          )}
+          {hours && (
+            <div className="flex items-start gap-3 p-3 rounded-xl" style={{ background: SB.bg, border: `1px solid ${SB.border}` }}>
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--sb-orange-subtle)' }}>
+                <Clock className="w-4 h-4" style={{ color: SB.orange }} />
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: SB.faint }}>Hours</p>
+                <p className="text-sm font-medium mt-0.5" style={{ color: SB.color }}>{hours}</p>
+              </div>
+            </div>
+          )}
+          {!phone && !email && !hours && (
+            <p className="text-sm" style={{ color: SB.faint }}>Contact info managed by admin.</p>
+          )}
         </div>
 
-        {/* FAQ */}
+        {/* FAQ — from CMS if available, else empty */}
         <div className="lg:col-span-2 space-y-3">
           <div className="flex items-center gap-2">
             <HelpCircle className="w-4 h-4" style={{ color: SB.orange }} />
             <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: SB.muted }}>Frequently Asked Questions</h2>
           </div>
-          {FAQS.map(faq => <FaqItem key={faq.q} {...faq} />)}
+          {faqs.length === 0 ? (
+            <p className="text-sm" style={{ color: SB.faint }}>FAQs are managed by admin in the CMS.</p>
+          ) : (
+            faqs.map((faq: any) => <FaqItem key={faq.question || faq.q} q={faq.question || faq.q} a={faq.answer || faq.a} />)
+          )}
         </div>
       </div>
     </div>

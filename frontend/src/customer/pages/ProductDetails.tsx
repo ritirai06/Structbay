@@ -1,39 +1,72 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router";
 import {
   Star, Shield, Zap, ShoppingCart, ChevronRight, Plus, Minus,
-  Download, ChevronDown, ChevronUp, Truck, RotateCcw, Phone,
+  Download, ChevronDown, ChevronUp, Truck, RotateCcw, Phone, MapPin,
 } from "lucide-react";
-import { PRODUCTS } from "../data/products";
+import { api } from "../lib/api";
 import { useApp } from "../context/AppContext";
 
-const FAQS = [
-  { q: "What is the minimum order quantity?", a: "Minimum order is 1 unit. For bulk orders above 50 units, contact our sales team for special pricing." },
-  { q: "What are the delivery timelines?", a: "Express products: 24–48 hours. Standard: 3–5 business days. Bulk orders: 5–7 days depending on quantity." },
-  { q: "Can I get a GST invoice?", a: "Yes, all orders come with GST-compliant invoices that can be downloaded from your order history." },
-  { q: "Is the product BIS certified?", a: "Yes, all products on StructBay are BIS/ISI certified and sourced from authorized dealers." },
-];
-
 export function ProductDetails() {
-  const { id } = useParams<{ id: string }>();
+  const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { addToCart, city } = useApp();
-  const [qty, setQty] = useState(1);
-  const [activeImage, setActiveImage] = useState(0);
-  const [activeTab, setActiveTab] = useState("specs");
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-  const product = PRODUCTS.find(p => p.id === id);
+  const [product, setProduct]   = useState<any>(null);
+  const [loading, setLoading]   = useState(true);
+  const [qty, setQty]           = useState(1);
+  const [activeImage, setActiveImage] = useState(0);
+  const [activeTab, setActiveTab]     = useState("description");
+  const [openFaq, setOpenFaq]         = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!slug) return;
+    setLoading(true);
+    api.getProductDetails(slug, city || undefined)
+      .then((res: any) => {
+        if (!res.data) { navigate("/shop", { replace: true }); return; }
+        setProduct(res.data);
+      })
+      .catch(() => navigate("/shop", { replace: true }))
+      .finally(() => setLoading(false));
+  }, [slug, city]);
+
+  if (loading) return (
+    <div className="max-w-7xl mx-auto px-4 py-16 text-center bg-[#0D0D0D] min-h-screen">
+      <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin mx-auto" style={{ borderColor: "#FE5E00", borderTopColor: "transparent" }} />
+    </div>
+  );
 
   if (!product) return (
     <div className="max-w-7xl mx-auto px-4 py-16 text-center bg-[#0D0D0D] min-h-screen">
       <p className="text-[#D4C4A8]/60 text-lg">Product not found.</p>
-      <Link to="/" className="text-[#FE5E00] underline mt-2 inline-block">Go Home</Link>
+      <Link to="/shop" className="text-[#FE5E00] underline mt-2 inline-block">Browse Shop</Link>
     </div>
   );
 
-  const discount = Math.round((1 - product.price / product.mrp) * 100);
-  const related = PRODUCTS.filter(p => p.category === product.category && p.id !== product.id);
+  const images: string[] = (product.images || []).map((i: any) => i?.url || i).filter(Boolean);
+  const price     = product.pricing?.salePrice || product.pricing?.regularPrice || 0;
+  const mrp       = product.pricing?.regularPrice || price;
+  const discount  = mrp && price < mrp ? Math.round((1 - price / mrp) * 100) : 0;
+  const gst       = product.gstPercentage || 18;
+  const related: any[] = product.related || [];
+  const variations: any[] = product.variations || [];
+  const faqs: any[] = product.faqs || [];
+  const brandName = product.brand?.name || product.brand || "";
+  const categorySlug = product.category?.slug || "";
+  const categoryName = product.category?.name || "";
+
+  const handleAddToCart = () => {
+    addToCart({
+      id: product.slug || product._id,
+      name: product.name,
+      brand: brandName,
+      price,
+      qty,
+      unit: product.unit || "unit",
+      image: images[0],
+    });
+  };
 
   return (
     <div className="bg-[#0D0D0D] min-h-screen">
@@ -42,8 +75,12 @@ export function ProductDetails() {
         <nav className="flex items-center gap-2 text-sm text-[#D4C4A8]/50 mb-6">
           <Link to="/" className="hover:text-[#FE5E00] transition-colors">Home</Link>
           <ChevronRight className="w-3 h-3" />
-          <Link to={`/category/${product.category}`} className="hover:text-[#FE5E00] transition-colors capitalize">{product.category}</Link>
-          <ChevronRight className="w-3 h-3" />
+          {categorySlug && (
+            <>
+              <Link to={`/category/${categorySlug}`} className="hover:text-[#FE5E00] transition-colors capitalize">{categoryName}</Link>
+              <ChevronRight className="w-3 h-3" />
+            </>
+          )}
           <span className="text-[#F4E9D8] line-clamp-1">{product.name}</span>
         </nav>
 
@@ -51,117 +88,122 @@ export function ProductDetails() {
           {/* Gallery */}
           <div>
             <div className="bg-[#171717] border border-white/10 rounded-2xl aspect-square overflow-hidden mb-3">
-              <img src={product.images[activeImage]} alt={product.name} className="w-full h-full object-cover" />
+              {images[activeImage] && (
+                <img src={images[activeImage]} alt={product.name} className="w-full h-full object-cover" />
+              )}
             </div>
-            <div className="flex gap-2">
-              {product.images.map((img, i) => (
-                <button
-                  key={i}
-                  onClick={() => setActiveImage(i)}
-                  className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-colors ${i === activeImage ? "border-[#FE5E00]" : "border-white/10 hover:border-white/30"}`}
-                >
-                  <img src={img} alt="" className="w-full h-full object-cover" />
-                </button>
-              ))}
-            </div>
+            {images.length > 1 && (
+              <div className="flex gap-2 flex-wrap">
+                {images.map((img, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveImage(i)}
+                    className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-colors ${i === activeImage ? "border-[#FE5E00]" : "border-white/10 hover:border-white/30"}`}
+                  >
+                    <img src={img} alt="" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Product Info */}
           <div>
             <div className="flex gap-2 mb-3">
-              {product.assured && (
+              {product.isAssured && (
                 <span className="bg-[#0D0D0D] text-[#C9A227] border border-[#C9A227]/40 text-xs px-2.5 py-1 rounded-full flex items-center gap-1 font-semibold">
                   <Shield className="w-3 h-3" /> StructBay Assured
                 </span>
               )}
-              {product.express && (
+              {product.isExpress && (
                 <span className="bg-[#FE5E00] text-[#0D0D0D] text-xs px-2.5 py-1 rounded-full flex items-center gap-1 font-semibold">
                   <Zap className="w-3 h-3" /> Express Delivery
                 </span>
               )}
             </div>
 
-            <p className="text-sm text-[#D4C4A8]/60 mb-1">{product.brand}</p>
-            <h1 className="text-2xl font-bold text-[#F4E9D8] mb-3">{product.name}</h1>
-
-            <div className="flex items-center gap-3 mb-5">
-              <div className="flex">
-                {[1,2,3,4,5].map(n => (
-                  <Star key={n} className={`w-4 h-4 ${n <= Math.round(product.rating) ? "fill-[#C9A227] text-[#C9A227]" : "text-white/20"}`} />
-                ))}
-              </div>
-              <span className="font-semibold text-[#F4E9D8]">{product.rating}</span>
-              <span className="text-[#D4C4A8]/50 text-sm">({product.reviews} reviews)</span>
-            </div>
+            <p className="text-sm text-[#D4C4A8]/60 mb-1">{brandName}</p>
+            <h1 className="text-2xl font-bold text-[#F4E9D8] mb-1">{product.name}</h1>
+            <p className="text-xs text-[#D4C4A8]/40 mb-3">SKU: {product.sku}</p>
 
             {/* Pricing */}
             <div className="bg-[#171717] border border-white/10 rounded-2xl p-5 mb-5">
-              <div className="flex items-baseline gap-3">
-                <span className="text-3xl font-black text-[#FE5E00]">₹{product.price.toLocaleString()}</span>
-                <span className="text-lg text-[#D4C4A8]/50 line-through">₹{product.mrp.toLocaleString()}</span>
-                <span className="bg-[#C9A227] text-[#0D0D0D] text-sm font-bold px-2 py-0.5 rounded-lg">{discount}% OFF</span>
-              </div>
-              <p className="text-sm text-[#D4C4A8]/60 mt-1">per {product.unit}{city ? ` · ${city} price` : ""}</p>
-              <div className="flex gap-4 mt-2 text-sm text-[#D4C4A8]/60">
-                <span>+ GST (18%): ₹{Math.round(product.price * 0.18).toLocaleString()}</span>
-                <span className="font-semibold text-[#F4E9D8]">Total: ₹{Math.round(product.price * 1.18).toLocaleString()}</span>
-              </div>
+              {price > 0 ? (
+                <>
+                  <div className="flex items-baseline gap-3">
+                    <span className="text-3xl font-black text-[#FE5E00]">₹{price.toLocaleString()}</span>
+                    {discount > 0 && (
+                      <>
+                        <span className="text-lg text-[#D4C4A8]/50 line-through">₹{mrp.toLocaleString()}</span>
+                        <span className="bg-[#C9A227] text-[#0D0D0D] text-sm font-bold px-2 py-0.5 rounded-lg">{discount}% OFF</span>
+                      </>
+                    )}
+                  </div>
+                  <p className="text-sm text-[#D4C4A8]/60 mt-1">
+                    per {product.unit || "unit"}{city ? ` · ` : ""}
+                    {city && <span className="flex items-center gap-1 inline-flex"><MapPin className="w-3 h-3" />{city} price</span>}
+                  </p>
+                  <div className="flex gap-4 mt-2 text-sm text-[#D4C4A8]/60">
+                    <span>+ GST ({gst}%): ₹{Math.round(price * gst / 100).toLocaleString()}</span>
+                    <span className="font-semibold text-[#F4E9D8]">Total: ₹{Math.round(price * (1 + gst / 100)).toLocaleString()}</span>
+                  </div>
+                </>
+              ) : (
+                <p className="text-[#D4C4A8]/60 text-sm">{city ? "Select your city for pricing" : "Price on request"}</p>
+              )}
             </div>
 
-            {/* Wholesale */}
-            {product.wholesalePricing.length > 0 && (
+            {/* Wholesale slabs */}
+            {product.pricing?.wholesaleSlabs?.length > 0 && (
               <div className="mb-5">
                 <h4 className="font-semibold text-sm text-[#F4E9D8] mb-2">Wholesale Pricing</h4>
                 <div className="grid grid-cols-2 gap-2">
-                  {product.wholesalePricing.map(tier => (
-                    <div key={tier.qty} className="flex justify-between bg-[#171717] border border-white/10 rounded-xl px-3 py-2 text-sm">
-                      <span className="text-[#D4C4A8]/60">{tier.qty}</span>
-                      <span className="font-semibold text-[#FE5E00]">₹{tier.price.toLocaleString()}</span>
+                  {product.pricing.wholesaleSlabs.map((slab: any, i: number) => (
+                    <div key={i} className="flex justify-between bg-[#171717] border border-white/10 rounded-xl px-3 py-2 text-sm">
+                      <span className="text-[#D4C4A8]/60">{slab.minQty}+ {product.unit || "units"}</span>
+                      <span className="font-semibold text-[#FE5E00]">₹{slab.price?.toLocaleString()}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Stock */}
-            <div className="mb-4">
-              {product.inStock ? (
-                <span className="flex items-center gap-1.5 text-sm text-green-400">
-                  <div className="w-2 h-2 bg-green-400 rounded-full" /> In Stock · Ready to ship
-                </span>
-              ) : (
-                <span className="flex items-center gap-1.5 text-sm text-red-400">
-                  <div className="w-2 h-2 bg-red-400 rounded-full" /> Out of Stock
-                </span>
-              )}
-            </div>
+            {/* Variations */}
+            {variations.length > 0 && (
+              <div className="mb-5">
+                <h4 className="font-semibold text-sm text-[#F4E9D8] mb-2">Variants</h4>
+                <div className="flex flex-wrap gap-2">
+                  {variations.map((v: any) => (
+                    <button key={v._id} className="px-3 py-1.5 rounded-lg border border-white/15 text-xs text-[#D4C4A8] hover:border-[#FE5E00] hover:text-[#FE5E00] transition-colors">
+                      {Object.values(v.attributes || {}).join(" · ")}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Quantity */}
             <div className="flex items-center gap-3 mb-5">
               <span className="text-sm font-medium text-[#D4C4A8]">Quantity:</span>
               <div className="flex items-center border border-white/15 rounded-xl overflow-hidden">
-                <button onClick={() => setQty(q => Math.max(1, q - 1))} className="px-3 py-2 hover:bg-[#222222] transition-colors text-[#D4C4A8]">
-                  <Minus className="w-4 h-4" />
-                </button>
+                <button onClick={() => setQty(q => Math.max(1, q - 1))} className="px-3 py-2 hover:bg-[#222222] transition-colors text-[#D4C4A8]"><Minus className="w-4 h-4" /></button>
                 <span className="px-4 py-2 font-semibold text-sm border-x border-white/15 min-w-[3rem] text-center text-[#F4E9D8]">{qty}</span>
-                <button onClick={() => setQty(q => q + 1)} className="px-3 py-2 hover:bg-[#222222] transition-colors text-[#D4C4A8]">
-                  <Plus className="w-4 h-4" />
-                </button>
+                <button onClick={() => setQty(q => q + 1)} className="px-3 py-2 hover:bg-[#222222] transition-colors text-[#D4C4A8]"><Plus className="w-4 h-4" /></button>
               </div>
-              <span className="text-sm text-[#D4C4A8]/50">{product.unit}s</span>
+              <span className="text-sm text-[#D4C4A8]/50">{product.unit || "units"}</span>
             </div>
 
             {/* Actions */}
-            {product.inStock && (
+            {price > 0 && (
               <div className="flex gap-3 mb-6">
                 <button
-                  onClick={() => addToCart({ id: product.id, name: product.name, brand: product.brand, price: product.price, qty, unit: product.unit, image: product.image })}
+                  onClick={handleAddToCart}
                   className="flex-1 flex items-center justify-center gap-2 border-2 border-[#FE5E00] text-[#FE5E00] rounded-2xl py-3 font-semibold transition-colors hover:bg-[#FE5E00]/10"
                 >
                   <ShoppingCart className="w-5 h-5" /> Add to Cart
                 </button>
                 <button
-                  onClick={() => { addToCart({ id: product.id, name: product.name, brand: product.brand, price: product.price, qty, unit: product.unit, image: product.image }); navigate("/cart"); }}
+                  onClick={() => { handleAddToCart(); navigate("/cart"); }}
                   className="flex-1 flex items-center justify-center gap-2 bg-[#FE5E00] hover:bg-[#E05200] text-[#0D0D0D] rounded-2xl py-3 font-semibold transition-colors"
                 >
                   <Zap className="w-5 h-5" /> Buy Now
@@ -181,7 +223,7 @@ export function ProductDetails() {
               </div>
               <div className="flex items-center gap-3 text-sm">
                 <Phone className="w-4 h-4 shrink-0 text-green-400" />
-                <div><span className="font-medium text-[#F4E9D8]">Expert Support</span><span className="text-[#D4C4A8]/60"> +91 80 4567 8900</span></div>
+                <div><span className="font-medium text-[#F4E9D8]">Expert Support</span><span className="text-[#D4C4A8]/60"> +91 70905 70505</span></div>
               </div>
             </div>
           </div>
@@ -190,73 +232,70 @@ export function ProductDetails() {
         {/* Tabs */}
         <div className="mb-12">
           <div className="flex border-b border-white/10 mb-6 overflow-x-auto">
-            {["specs", "description", "documents", "faq"].map(tab => (
+            {[
+              { key: "description", label: "Description" },
+              { key: "documents",   label: "Documents" },
+              ...(faqs.length > 0 ? [{ key: "faq", label: "FAQ" }] : []),
+            ].map(tab => (
               <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-6 py-3 text-sm font-medium capitalize transition-colors border-b-2 -mb-px whitespace-nowrap ${
-                  activeTab === tab
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ${
+                  activeTab === tab.key
                     ? "border-[#FE5E00] text-[#FE5E00]"
                     : "border-transparent text-[#D4C4A8]/60 hover:text-[#F4E9D8]"
                 }`}
               >
-                {tab === "faq" ? "FAQ" : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                {tab.label}
               </button>
             ))}
           </div>
 
-          {activeTab === "specs" && (
-            <div className="bg-[#171717] border border-white/10 rounded-2xl overflow-hidden">
-              <table className="w-full text-sm">
-                <tbody>
-                  {Object.entries(product.specs).map(([key, value], i) => (
-                    <tr key={key} className={i % 2 === 0 ? "bg-[#1A1A1A]" : "bg-[#171717]"}>
-                      <td className="px-4 py-3 font-medium text-[#F4E9D8] w-1/3">{key}</td>
-                      <td className="px-4 py-3 text-[#D4C4A8]/70">{value}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
           {activeTab === "description" && (
             <div className="bg-[#171717] border border-white/10 rounded-2xl p-6">
-              <p className="text-[#D4C4A8]/80 leading-relaxed">{product.description}</p>
+              <p className="text-[#D4C4A8]/80 leading-relaxed whitespace-pre-line">
+                {product.description || product.shortDescription || "No description available."}
+              </p>
             </div>
           )}
 
           {activeTab === "documents" && (
             <div className="bg-[#171717] border border-white/10 rounded-2xl p-6">
-              <div className="space-y-3">
-                {["Technical Data Sheet", "Safety Data Sheet", "BIS Certificate", "Test Report"].map(doc => (
-                  <button key={doc} className="flex items-center justify-between w-full p-4 border border-white/10 rounded-xl hover:bg-[#222222] hover:border-[#FE5E00]/30 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-[#FE5E00] flex items-center justify-center">
-                        <Download className="w-4 h-4 text-[#0D0D0D]" />
+              {product.documents?.length > 0 ? (
+                <div className="space-y-3">
+                  {product.documents.map((doc: any, i: number) => (
+                    <a key={i} href={doc.url} target="_blank" rel="noreferrer"
+                      className="flex items-center justify-between w-full p-4 border border-white/10 rounded-xl hover:bg-[#222222] hover:border-[#FE5E00]/30 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-[#FE5E00] flex items-center justify-center">
+                          <Download className="w-4 h-4 text-[#0D0D0D]" />
+                        </div>
+                        <span className="font-medium text-sm text-[#F4E9D8]">{doc.name}</span>
                       </div>
-                      <span className="font-medium text-sm text-[#F4E9D8]">{doc}</span>
-                    </div>
-                    <span className="text-xs text-[#D4C4A8]/50">PDF · 245 KB</span>
-                  </button>
-                ))}
-              </div>
+                      <span className="text-xs text-[#D4C4A8]/50">Download</span>
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[#D4C4A8]/50 text-sm">No documents available.</p>
+              )}
             </div>
           )}
 
-          {activeTab === "faq" && (
+          {activeTab === "faq" && faqs.length > 0 && (
             <div className="space-y-2">
-              {FAQS.map((faq, i) => (
+              {faqs.map((faq: any, i: number) => (
                 <div key={i} className="bg-[#171717] border border-white/10 rounded-2xl overflow-hidden">
                   <button
                     onClick={() => setOpenFaq(openFaq === i ? null : i)}
                     className="flex items-center justify-between w-full px-5 py-4 text-left"
                   >
-                    <span className="font-medium text-sm text-[#F4E9D8]">{faq.q}</span>
+                    <span className="font-medium text-sm text-[#F4E9D8]">{faq.question}</span>
                     {openFaq === i ? <ChevronUp className="w-4 h-4 text-[#FE5E00]" /> : <ChevronDown className="w-4 h-4 text-[#D4C4A8]/50" />}
                   </button>
                   {openFaq === i && (
-                    <div className="px-5 pb-4 text-sm text-[#D4C4A8]/70 border-t border-white/8 pt-3">{faq.a}</div>
+                    <div className="px-5 pb-4 text-sm text-[#D4C4A8]/70 border-t border-white/8 pt-3">{faq.answer}</div>
                   )}
                 </div>
               ))}
@@ -269,18 +308,16 @@ export function ProductDetails() {
           <div className="mb-24 md:mb-6">
             <h2 className="text-[#F4E9D8] font-bold text-xl mb-4">Related Products</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {related.slice(0, 4).map(p => {
-                const disc = Math.round((1 - p.price / p.mrp) * 100);
+              {related.slice(0, 4).map((p: any) => {
+                const img = Array.isArray(p.images) ? p.images[0]?.url : p.image;
                 return (
-                  <Link key={p.id} to={`/product/${p.id}`} className="bg-[#222222] border border-white/10 rounded-2xl overflow-hidden hover:border-[#FE5E00]/50 hover:shadow-[0_4px_20px_rgba(254,94,0,0.1)] transition-all group">
-                    <div className="aspect-square overflow-hidden bg-[#171717] relative">
-                      <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                      <div className="absolute top-2 right-2 bg-[#C9A227] text-[#0D0D0D] text-xs font-bold px-2 py-0.5 rounded-full">-{disc}%</div>
+                  <Link key={p._id} to={`/products/${p.slug}`} className="bg-[#222222] border border-white/10 rounded-2xl overflow-hidden hover:border-[#FE5E00]/50 hover:shadow-[0_4px_20px_rgba(254,94,0,0.1)] transition-all group">
+                    <div className="aspect-square overflow-hidden bg-[#171717]">
+                      {img && <img src={img} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />}
                     </div>
                     <div className="p-3">
-                      <p className="text-xs text-[#D4C4A8]/50">{p.brand}</p>
+                      <p className="text-xs text-[#D4C4A8]/50">{p.brand?.name || p.brand}</p>
                       <p className="text-sm font-medium text-[#F4E9D8] line-clamp-2 mt-0.5">{p.name}</p>
-                      <p className="font-bold text-[#FE5E00] mt-1">₹{p.price.toLocaleString()}</p>
                     </div>
                   </Link>
                 );
@@ -291,18 +328,12 @@ export function ProductDetails() {
       </div>
 
       {/* Sticky mobile footer */}
-      {product.inStock && (
+      {price > 0 && (
         <div className="fixed bottom-0 left-0 right-0 bg-[#0D0D0D] border-t border-white/10 px-4 py-3 md:hidden flex gap-3 z-40">
-          <button
-            onClick={() => addToCart({ id: product.id, name: product.name, brand: product.brand, price: product.price, qty, unit: product.unit, image: product.image })}
-            className="flex-1 flex items-center justify-center gap-2 border-2 border-[#FE5E00] text-[#FE5E00] rounded-2xl py-3 font-semibold text-sm"
-          >
+          <button onClick={handleAddToCart} className="flex-1 flex items-center justify-center gap-2 border-2 border-[#FE5E00] text-[#FE5E00] rounded-2xl py-3 font-semibold text-sm">
             <ShoppingCart className="w-4 h-4" /> Add to Cart
           </button>
-          <button
-            onClick={() => { addToCart({ id: product.id, name: product.name, brand: product.brand, price: product.price, qty, unit: product.unit, image: product.image }); navigate("/cart"); }}
-            className="flex-1 flex items-center justify-center gap-2 bg-[#FE5E00] hover:bg-[#E05200] text-[#0D0D0D] rounded-2xl py-3 font-semibold text-sm"
-          >
+          <button onClick={() => { handleAddToCart(); navigate("/cart"); }} className="flex-1 flex items-center justify-center gap-2 bg-[#FE5E00] hover:bg-[#E05200] text-[#0D0D0D] rounded-2xl py-3 font-semibold text-sm">
             Buy Now
           </button>
         </div>

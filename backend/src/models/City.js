@@ -5,6 +5,7 @@ const citySchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true, unique: true, maxlength: 100 },
     slug: { type: String, unique: true, lowercase: true, trim: true },
+    referenceNumber: { type: String, unique: true, sparse: true },
     state: { type: String, required: true, trim: true },
     status: { type: String, enum: ['ACTIVE', 'INACTIVE'], default: 'ACTIVE' },
     isServiceable: { type: Boolean, default: true },

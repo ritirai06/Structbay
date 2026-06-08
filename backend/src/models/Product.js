@@ -11,6 +11,7 @@ const productSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true, maxlength: 200 },
     slug: { type: String, unique: true, lowercase: true, trim: true },
     sku: { type: String, required: true, trim: true, unique: true, uppercase: true },
+    referenceNumber: { type: String, unique: true, sparse: true },
 
     category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
     brand: { type: mongoose.Schema.Types.ObjectId, ref: 'Brand', required: true },

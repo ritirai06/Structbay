@@ -6,7 +6,7 @@ import {
   Zap, ShieldCheck, BadgeCheck,
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
-import { CATEGORIES } from "../data/categories";
+import { api } from "../lib/api";
 import { CitySelection } from "../pages/CitySelection";
 import { SearchDropdown } from "./SearchDropdown";
 import logoImg from "/shared/assets/logos/Structbay-Logo-F-1.png";
@@ -42,16 +42,30 @@ function AnnouncementSlider() {
 
 export function Header() {
   const { city, cartCount, isLoggedIn, user, setIsLoggedIn, addRecentSearch } = useApp();
-  const [searchQuery, setSearchQuery]   = useState("");
+  const [searchQuery, setSearchQuery]     = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
-  const [menuOpen, setMenuOpen]         = useState(false);
-  const [catOpen, setCatOpen]           = useState(false);
-  const [userOpen, setUserOpen]         = useState(false);
+  const [menuOpen, setMenuOpen]           = useState(false);
+  const [catOpen, setCatOpen]             = useState(false);
+  const [userOpen, setUserOpen]           = useState(false);
   const [cityModalOpen, setCityModalOpen] = useState(false);
-  const navigate = useNavigate();
+  const [categories, setCategories]       = useState<any[]>([]);
+  const navigate  = useNavigate();
   const searchRef = useRef<HTMLDivElement>(null);
   const catRef    = useRef<HTMLDivElement>(null);
   const userRef   = useRef<HTMLDivElement>(null);
+
+  // Fetch live categories from backend
+  useEffect(() => {
+    fetch('/api/v1/cms/categories')
+      .then(r => r.json())
+      .then(res => {
+        if (res.data && Array.isArray(res.data)) setCategories(res.data);
+      })
+      .catch(() => {
+        // fallback: fetch from customer products API
+        api.getProducts({ limit: 1 }).catch(() => null);
+      });
+  }, []);
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -175,7 +189,7 @@ export function Header() {
                   >
                     All Categories <ChevronRight className="w-3.5 h-3.5" />
                   </Link>
-                  {CATEGORIES.map(cat => (
+                  {categories.map(cat => (
                     <NavLink
                       key={cat.slug}
                       to={`/category/${cat.slug}`}
@@ -383,7 +397,7 @@ export function Header() {
             >
               All
             </NavLink>
-            {CATEGORIES.map(cat => (
+            {categories.map(cat => (
               <NavLink
                 key={cat.slug}
                 to={`/category/${cat.slug}`}
@@ -473,7 +487,7 @@ export function Header() {
               >
                 All Categories
               </NavLink>
-              {CATEGORIES.map(cat => (
+              {categories.map(cat => (
                 <NavLink
                   key={cat.slug}
                   to={`/category/${cat.slug}`}

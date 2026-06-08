@@ -8,13 +8,9 @@ const Inventory     = require('../models/Inventory');
 const City          = require('../models/City');
 const Notification  = require('../models/Notification');
 const { sendEmail } = require('../services/email.service');
+const { generateMasterOrderNumber, logOrderActivity } = require('../services/order.service');
 
-const pad = (n, len = 6) => String(n).padStart(len, '0');
-const genOrderNumber = async () => {
-  const count = await Order.countDocuments();
-  const d = new Date();
-  return `SB${d.getFullYear()}${pad(d.getMonth() + 1, 2)}${pad(d.getDate(), 2)}${pad(count + 1)}`;
-};
+const genOrderNumber = generateMasterOrderNumber;
 
 // POST /customer/checkout/validate
 exports.validate = asyncHandler(async (req, res) => {
@@ -163,9 +159,12 @@ exports.placeOrder = asyncHandler(async (req, res) => {
     grandTotal,
     paymentMethod: paymentMethod || null,
     paymentStatus: 'PENDING',
-    status: 'PENDING',
-    statusHistory: [{ status: 'PENDING', changedBy: req.user._id, note: 'Order placed by customer.' }],
+    status: 'VENDOR_ASSIGNMENT_PENDING',
+    statusHistory: [{ status: 'VENDOR_ASSIGNMENT_PENDING', changedBy: req.user._id, note: 'Order placed by customer.' }],
   });
+
+  await logOrderActivity({ masterOrder: order._id, actorType: 'CUSTOMER', actor: req.user._id,
+    action: 'ORDER_PLACED', description: `Order ${orderNumber} placed by customer.` });
 
   // Clear cart active items
   await Cart.findOneAndUpdate(

@@ -8,15 +8,15 @@ import logoImg from "/shared/assets/logos/Structbay-Logo-F-1.png";
 import { useAuth } from "../context/AuthContext";
 
 const navItems = [
-  { to: "/",              icon: LayoutDashboard, label: "Dashboard",       exact: true },
-  { to: "/orders",        icon: Package,         label: "Assigned Orders" },
-  { to: "/dispatch",      icon: Truck,           label: "Dispatch" },
-  { to: "/documents",     icon: FolderOpen,      label: "Documents" },
-  { to: "/notifications", icon: Bell,            label: "Notifications" },
-  { to: "/history",       icon: History,         label: "Order History" },
-  { to: "/analytics",     icon: TrendingUp,      label: "Analytics" },
-  { to: "/profile",       icon: User,            label: "Profile" },
-  { to: "/support",       icon: HelpCircle,      label: "Support" },
+  { to: "/vendor",              icon: LayoutDashboard, label: "Dashboard",       exact: true },
+  { to: "/vendor/orders",       icon: Package,         label: "Assigned Orders" },
+  { to: "/vendor/dispatch",     icon: Truck,           label: "Dispatch" },
+  { to: "/vendor/documents",    icon: FolderOpen,      label: "Documents" },
+  { to: "/vendor/notifications",icon: Bell,            label: "Notifications" },
+  { to: "/vendor/history",      icon: History,         label: "Order History" },
+  { to: "/vendor/analytics",    icon: TrendingUp,      label: "Analytics" },
+  { to: "/vendor/profile",      icon: User,            label: "Profile" },
+  { to: "/vendor/support",      icon: HelpCircle,      label: "Support" },
 ];
 
 export function Sidebar() {
@@ -25,7 +25,7 @@ export function Sidebar() {
 
   async function handleLogout() {
     await logout();
-    navigate("/login");
+    navigate("/vendor/login");
   }
 
   return (
