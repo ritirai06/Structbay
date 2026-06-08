@@ -49,6 +49,7 @@ import { Settings as AdminSettings } from "./admin/pages/Settings";
 import { AdminUsers as AdminUsersPage } from "./admin/pages/AdminUsers";
 
 // --- VENDOR PORTAL ---
+import { AuthProvider as VendorAuthProvider } from "./vendor/context/AuthContext";
 import { Login as VendorLogin } from "./vendor/pages/Login";
 import { Layout as VendorLayout } from "./vendor/components/Layout";
 import { Dashboard as VendorDashboard } from "./vendor/pages/Dashboard";
@@ -62,6 +63,8 @@ import { DispatchManagement as VendorDispatch } from "./vendor/pages/DispatchMan
 import { Notifications as VendorNotifications } from "./vendor/pages/Notifications";
 import { Profile as VendorProfile } from "./vendor/pages/Profile";
 import { Support as VendorSupport } from "./vendor/pages/Support";
+import { Analytics as VendorAnalytics } from "./vendor/pages/Analytics";
+import { OrderHistory as VendorOrderHistory } from "./vendor/pages/OrderHistory";
 
 // --- FULLSCREEN routes (no header/footer) ---
 const FULLSCREEN_ROUTES = [

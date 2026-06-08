@@ -170,6 +170,7 @@ const sendWelcomeEmail = async ({ to, name }) => {
 };
 
 module.exports = {
+  sendEmail,
   sendVerificationEmail,
   sendPasswordResetEmail,
   sendVendorApplicationEmail,

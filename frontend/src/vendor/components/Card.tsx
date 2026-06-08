@@ -5,14 +5,26 @@ interface CardProps {
   children: ReactNode;
   className?: string;
   action?: ReactNode;
+  icon?: ReactNode;
 }
 
-export function Card({ title, children, className = "", action }: CardProps) {
+export function Card({ title, children, className = "", action, icon }: CardProps) {
   return (
-    <div className={`bg-[#222222] border border-white/10 rounded-xl overflow-hidden ${className}`}>
+    <div
+      className={`rounded-2xl overflow-hidden ${className}`}
+      style={{ background: "var(--sb-card)", border: "1px solid var(--sb-border)" }}
+    >
       {title && (
-        <div className="px-5 py-4 border-b border-white/8 flex items-center justify-between">
-          <h2 className="font-semibold text-[#F4E9D8] text-sm">{title}</h2>
+        <div
+          className="px-5 py-3.5 flex items-center justify-between"
+          style={{ borderBottom: "1px solid var(--sb-border)" }}
+        >
+          <div className="flex items-center gap-2">
+            {icon && <span style={{ color: "var(--sb-orange)" }}>{icon}</span>}
+            <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--sb-text-muted)" }}>
+              {title}
+            </h2>
+          </div>
           {action}
         </div>
       )}

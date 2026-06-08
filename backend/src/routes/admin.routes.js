@@ -38,6 +38,17 @@ router.get('/vendors',                  ...adminOnly, adminUserController.getAll
 router.put('/vendors/:id/approve',      ...adminOnly, adminUserController.approveVendor);
 router.put('/vendors/:id/reject',       ...adminOnly, rejectVendorValidator, validate, adminUserController.rejectVendor);
 
+// ─── Vendor Order Assignment ──────────────────────────────────────────────────
+const adminVendorOrderCtrl = require('../controllers/adminVendorOrderController');
+router.get ('/vendor-orders/analytics',          ...adminOnly, asyncHandler(adminVendorOrderCtrl.getVendorOrderAnalytics));
+router.get ('/vendor-orders',                    ...adminOnly, asyncHandler(adminVendorOrderCtrl.getAllVendorOrders));
+router.post('/vendor-orders',                    ...adminOnly, asyncHandler(adminVendorOrderCtrl.assignOrderToVendor));
+router.get ('/vendor-orders/:id',                ...adminOnly, asyncHandler(adminVendorOrderCtrl.getVendorOrderById));
+router.put ('/vendor-orders/:id',                ...adminOnly, asyncHandler(adminVendorOrderCtrl.updateVendorOrder));
+router.delete('/vendor-orders/:id',              ...adminOnly, asyncHandler(adminVendorOrderCtrl.cancelVendorOrder));
+router.post('/vendor-orders/:id/request-invoice',...adminOnly, asyncHandler(adminVendorOrderCtrl.requestInvoice));
+router.post('/vendor-orders/:id/request-dispatch',...adminOnly, asyncHandler(adminVendorOrderCtrl.requestDispatch));
+
 // ─── Session Management ───────────────────────────────────────────────────────
 router.get('/sessions',          ...adminOnly, adminSessionController.getAllSessions);
 router.get('/sessions/user/:id', ...adminOnly, adminSessionController.getUserSessions);
