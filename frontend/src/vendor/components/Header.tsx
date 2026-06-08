@@ -1,42 +1,78 @@
-import { Bell, Search } from "lucide-react";
-import { Link } from "react-router";
+import { Bell, Search } from 'lucide-react';
+import { Link, useNavigate } from 'react-router';
+import { useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { api } from '../lib/api';
 
 export function Header() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [unread, setUnread] = useState(0);
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    api.getNotifications('unread', 1)
+      .then(r => setUnread(r.data?.unreadCount ?? 0))
+      .catch(() => {});
+  }, []);
+
+  function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    if (search.trim()) navigate(`/orders?search=${encodeURIComponent(search.trim())}`);
+  }
+
+  async function handleLogout() {
+    await logout();
+    navigate('/login');
+  }
+
+  const initials = (user?.name ?? user?.companyName ?? 'V').charAt(0).toUpperCase();
+
   return (
-    <header className="bg-[#0D0D0D] border-b border-white/8 px-6 py-3.5 shrink-0">
-      <div className="flex items-center justify-between">
-        {/* Search */}
-        <div className="flex-1 max-w-md">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#D4C4A8]/40" />
-            <input
-              type="text"
-              placeholder="Search orders, products..."
-              className="w-full pl-10 pr-4 py-2 bg-[#222222] border border-white/10 rounded-lg text-sm text-[#F4E9D8] placeholder:text-[#D4C4A8]/40 focus:outline-none focus:border-[#FE5E00] focus:ring-2 focus:ring-[#FE5E00]/20 transition-colors"
-            />
-          </div>
-        </div>
+    <header
+      className="px-6 py-3 shrink-0 flex items-center justify-between gap-4"
+      style={{ background: 'var(--sb-nav)', borderBottom: '1px solid var(--sb-border)' }}
+    >
+      <form onSubmit={handleSearch} className="flex-1 max-w-sm relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--sb-text-faint)' }} />
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search orders..."
+          className="w-full pl-9 pr-4 py-2 rounded-xl text-sm transition-all"
+          style={{ background: 'var(--sb-card)', border: '1px solid var(--sb-border)', color: 'var(--sb-text-primary)' }}
+        />
+      </form>
 
-        <div className="flex items-center gap-3">
-          {/* Notifications */}
-          <Link
-            to="/notifications"
-            className="relative p-2 rounded-lg text-[#D4C4A8]/60 hover:text-[#F4E9D8] hover:bg-[#222222] transition-colors"
+      <div className="flex items-center gap-2">
+        <Link to="/notifications" className="relative p-2 rounded-xl transition-colors" style={{ color: 'var(--sb-text-muted)' }}>
+          <Bell className="w-5 h-5" />
+          {unread > 0 && (
+            <span className="absolute top-1 right-1 w-4 h-4 rounded-full text-white flex items-center justify-center text-[10px] font-bold" style={{ background: 'var(--sb-orange)' }}>
+              {unread > 9 ? '9+' : unread}
+            </span>
+          )}
+        </Link>
+
+        <div className="flex items-center gap-2.5 pl-3" style={{ borderLeft: '1px solid var(--sb-border)' }}>
+          {user?.profileImage?.url
+            ? <img src={user.profileImage.url} className="w-8 h-8 rounded-full object-cover" alt="" />
+            : <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-black text-sm" style={{ background: 'var(--sb-orange)' }}>{initials}</div>
+          }
+          <div className="hidden md:block">
+            <p className="text-sm font-semibold" style={{ color: 'var(--sb-text-primary)' }}>
+              {user?.companyName ?? user?.name ?? 'Vendor'}
+            </p>
+            <p className="text-xs" style={{ color: 'var(--sb-text-faint)' }}>{user?.email}</p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="hidden md:block ml-1 text-xs px-2 py-1 rounded-lg transition-colors"
+            style={{ color: 'var(--sb-text-faint)', border: '1px solid var(--sb-border)' }}
           >
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#FE5E00] rounded-full" />
-          </Link>
-
-          {/* User */}
-          <div className="flex items-center gap-2.5 pl-3 border-l border-white/8">
-            <div className="w-8 h-8 bg-[#FE5E00] rounded-full flex items-center justify-center text-[#0D0D0D] font-black text-sm">
-              V
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-[#F4E9D8]">Vendor Name</p>
-              <p className="text-xs text-[#D4C4A8]/50">vendor@company.com</p>
-            </div>
-          </div>
+            Logout
+          </button>
         </div>
       </div>
     </header>

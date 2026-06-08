@@ -4,37 +4,48 @@ interface StatCardProps {
   title: string;
   value: number | string;
   icon: LucideIcon;
-  color?: string;
+  accent?: boolean;
+  trend?: string;
+  trendUp?: boolean;
 }
 
-export function StatCard({ title, value, icon: Icon, color }: StatCardProps) {
-  const iconColor = color?.includes("orange") ? "text-[#FE5E00]"
-                  : color?.includes("blue")   ? "text-[#FE5E00]"
-                  : color?.includes("green")  ? "text-green-400"
-                  : color?.includes("red")    ? "text-red-400"
-                  : color?.includes("purple") ? "text-[#C9A227]"
-                  : color?.includes("cyan")   ? "text-[#EADCC6]"
-                  : "text-[#FE5E00]";
-
-  const iconBg = color?.includes("orange") ? "bg-[#FE5E00]/15"
-               : color?.includes("blue")   ? "bg-[#FE5E00]/15"
-               : color?.includes("green")  ? "bg-green-500/15"
-               : color?.includes("red")    ? "bg-red-500/15"
-               : color?.includes("purple") ? "bg-[#C9A227]/15"
-               : color?.includes("cyan")   ? "bg-white/10"
-               : "bg-[#FE5E00]/15";
-
+export function StatCard({ title, value, icon: Icon, accent, trend, trendUp }: StatCardProps) {
   return (
-    <div className="bg-[#222222] border border-white/10 rounded-xl p-5 hover:border-white/20 transition-colors">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-[#D4C4A8]/60">{title}</p>
-          <p className="text-2xl font-black text-[#F4E9D8] mt-1.5">{value}</p>
-        </div>
-        <div className={`p-3 rounded-xl ${iconBg}`}>
-          <Icon className={`w-6 h-6 ${iconColor}`} />
+    <div
+      className="rounded-2xl p-5 transition-all duration-300 hover:-translate-y-1"
+      style={{
+        background: accent
+          ? "linear-gradient(135deg, var(--sb-orange) 0%, var(--sb-orange-hover) 100%)"
+          : "var(--sb-card)",
+        border: accent ? "none" : "1px solid var(--sb-border)",
+        boxShadow: accent ? "0 8px 24px var(--sb-orange-glow)" : "0 2px 8px rgba(0,0,0,0.12)",
+      }}
+    >
+      <div className="flex items-start justify-between mb-3">
+        <p
+          className="text-xs font-bold uppercase tracking-widest"
+          style={{ color: accent ? "rgba(255,255,255,0.75)" : "var(--sb-text-muted)" }}
+        >
+          {title}
+        </p>
+        <div
+          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+          style={{
+            background: accent ? "rgba(255,255,255,0.2)" : "var(--sb-orange-subtle)",
+            border: accent ? "none" : "1px solid var(--sb-orange-border)",
+          }}
+        >
+          <Icon className="w-4 h-4" style={{ color: accent ? "#fff" : "var(--sb-orange)" }} />
         </div>
       </div>
+      <p className="text-3xl font-black" style={{ color: accent ? "#fff" : "var(--sb-text-primary)" }}>
+        {value}
+      </p>
+      {trend && (
+        <p className="text-xs mt-1.5 font-semibold" style={{ color: trendUp ? "var(--sb-green)" : accent ? "rgba(255,255,255,0.6)" : "var(--sb-text-faint)" }}>
+          {trend}
+        </p>
+      )}
     </div>
   );
 }

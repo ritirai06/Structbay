@@ -100,6 +100,27 @@ const userSchema = new mongoose.Schema(
       default: null,
     },
     vendorApprovedAt: { type: Date, default: null },
+
+    // ─── Vendor Extended Profile ─────────────────────────────
+    panNumber: { type: String, trim: true, uppercase: true, default: null },
+    officeAddress: {
+      street: String, area: String, city: String,
+      state: String, pincode: String, landmark: String,
+    },
+    bankDetails: {
+      accountHolderName: String, accountNumber: String,
+      ifscCode: String, bankName: String, branch: String,
+    },
+    notifications: {
+      email:           { type: Boolean, default: true },
+      sms:             { type: Boolean, default: true },
+      whatsapp:        { type: Boolean, default: false },
+      orderAssigned:   { type: Boolean, default: true },
+      invoiceRequest:  { type: Boolean, default: true },
+      dispatchRequest: { type: Boolean, default: true },
+      deliveryUpdates: { type: Boolean, default: true },
+      announcements:   { type: Boolean, default: true },
+    },
   },
   {
     timestamps: true,
