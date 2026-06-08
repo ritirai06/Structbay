@@ -7,7 +7,117 @@ import {
   ChevronLeft, MapPin,
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
-import { CATEGORY_ICONS } from "../data/categories";
+import { PRODUCTS as ALL_PRODUCTS, type Product } from "../data/products";
+
+
+const BRANDS = [
+  {
+    name: "Ultratech",
+    logo: "/brands/ultratech.png",
+  },
+  {
+    name: "ACC",
+    logo: "/brands/acc.png",
+  },
+  {
+    name: "Ambuja",
+    logo: "/brands/ambuja.png",
+  },
+  {
+    name: "JK Cement",
+    logo: "/brands/jk-cement.png",
+  },
+  {
+    name: "Asian Paints",
+    logo: "/brands/asian-paints.png",
+  },
+  {
+    name: "TATA Steel",
+    logo: "/brands/tata-steel.png",
+  },
+  {
+    name: "Pidilite",
+    logo: "/brands/pidilite.png",
+  },
+  {
+    name: "Supreme",
+    logo: "/brands/supreme.png",
+  },
+];
+const CAT_DATA = [
+  {
+    slug: "cement",
+    name: "Cement",
+    image: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400",
+    productCount: 120,
+  },
+  {
+    slug: "steel",
+    name: "Steel",
+    image: "https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=400",
+    productCount: 80,
+  },
+  {
+    slug: "paints",
+    name: "Paints",
+    image: "https://images.unsplash.com/photo-1562259949-e8e7689d7828?w=400",
+    productCount: 60,
+  },
+  {
+    slug: "tiles",
+    name: "Tiles",
+    image: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=400",
+    productCount: 95,
+  },
+  {
+    slug: "plywood",
+    name: "Plywood",
+    image: "https://images.unsplash.com/photo-1582582429416-47e2b3f5b7e0?w=400",
+    productCount: 75,
+  },
+  {
+    slug: "electrical",
+    name: "Electrical",
+    image: "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=400",
+    productCount: 140,
+  },
+  {
+    slug: "plumbing",
+    name: "Plumbing",
+    image: "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=400",
+    productCount: 110,
+  },
+  {
+    slug: "hardware",
+    name: "Hardware",
+    image: "https://images.unsplash.com/photo-1581092919535-7146ff1a5905?w=400",
+    productCount: 90,
+  },
+  {
+    slug: "doors",
+    name: "Doors",
+    image: "https://images.unsplash.com/photo-1513694203232-719a280e022f?w=400",
+    productCount: 55,
+  },
+  {
+    slug: "windows",
+    name: "Windows",
+    image: "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=400",
+    productCount: 45,
+  },
+  {
+    slug: "waterproofing",
+    name: "Waterproofing",
+    image: "https://images.unsplash.com/photo-1523413651479-597eb2da0ad6?w=400",
+    productCount: 70,
+  },
+  {
+    slug: "adhesives",
+    name: "Adhesives",
+    image: "https://images.unsplash.com/photo-1581093458791-9d15482442f6?w=400",
+    productCount: 50,
+  },
+];
 
 const HERO_BANNERS = [
   {
@@ -152,10 +262,9 @@ function HeroCarousel({ city }: { city: string | null }) {
   );
 }
 
-import { CATEGORIES as CAT_DATA } from "../data/categories";
-import { PRODUCTS as ALL_PRODUCTS, type Product } from "../data/products";
 
-const BRANDS = ["Ultratech", "ACC", "Ambuja", "JK Cement", "Asian Paints", "TATA Steel", "Pidilite", "Supreme"];
+
+
 
 const TESTIMONIALS = [
   { name: "Rajesh Kumar",  role: "Builder, Bengaluru",       text: "StructBay has transformed how we procure materials. The prices are competitive and delivery is always on time.", rating: 5, company: "Kumar Constructions" },
@@ -258,7 +367,7 @@ export function Homepage() {
       </section>
 
       {/* ── Categories ──────────────────────────────────────────────────── */}
-      <section className="bg-[#0D0D0D] max-w-7xl mx-auto px-4 py-14">
+      {/* <section className="bg-[#0D0D0D] max-w-7xl mx-auto px-4 py-14">
         <div className="flex items-center justify-between mb-7">
           <div>
             <h2 className="text-[#F4E9D8]">Browse Categories</h2>
@@ -288,7 +397,62 @@ export function Homepage() {
             );
           })}
         </div>
-      </section>
+      </section> */}
+
+      <section className="bg-[#0D0D0D] max-w-7xl mx-auto px-4 py-14">
+  <div className="flex items-center justify-between mb-8">
+    <div>
+      <h2 className="text-3xl font-bold text-[#F4E9D8]">
+        Browse Categories
+      </h2>
+      <p className="text-[#D4C4A8]/60 text-sm mt-2">
+        Find exactly what you need
+      </p>
+    </div>
+
+    <Link
+      to="/shop"
+      className="flex items-center gap-1 text-sm font-semibold text-[#FE5E00] hover:text-[#ff7b33] transition-colors"
+    >
+      View All
+      <ChevronRight className="w-4 h-4" />
+    </Link>
+  </div>
+
+  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
+    {CAT_DATA.map((cat) => (
+      <Link
+        key={cat.slug}
+        to={`/category/${cat.slug}`}
+        className="group"
+      >
+        <div className="bg-[#1A1A1A] border border-white/5 rounded-3xl overflow-hidden transition-all duration-300 hover:border-[#FE5E00]/50 hover:-translate-y-1 hover:shadow-[0_12px_30px_rgba(254,94,0,0.15)]">
+
+          {/* Image Container */}
+          <div className="bg-[#DDE8E8] m-3 rounded-2xl h-40 flex items-center justify-center overflow-hidden">
+            <img
+              src={cat.image}
+              alt={cat.name}
+              className="w-[80%] h-[80%] object-contain transition-transform duration-300 group-hover:scale-110"
+            />
+          </div>
+
+          {/* Content */}
+          <div className="px-4 pb-5 text-center">
+            <h3 className="text-[#F4E9D8] font-semibold text-sm leading-tight">
+              {cat.name}
+            </h3>
+
+            <p className="text-[#D4C4A8]/60 text-xs mt-1">
+              {cat.productCount}+ Products
+            </p>
+          </div>
+
+        </div>
+      </Link>
+    ))}
+  </div>
+</section>
 
       {/* ── Why StructBay? (Dark Section) ──────────────────────────────── */}
       <section className="bg-[#171717] border-y border-white/8 py-14 px-4">
@@ -347,7 +511,7 @@ export function Homepage() {
       </section>
 
       {/* ── StructBay Assured Banner ─────────────────────────────────────── */}
-      <section className="max-w-7xl mx-auto px-4 py-10">
+      {/* <section className="max-w-7xl mx-auto px-4 py-10">
         <div className="rounded-3xl p-8 md:p-12 flex flex-col md:flex-row items-center gap-10 bg-[#222222] border border-white/10 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-1 h-full bg-[#C9A227]" />
           <div className="flex-1 pl-4">
@@ -374,10 +538,10 @@ export function Homepage() {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* ── StructBay Express ────────────────────────────────────────────── */}
-      <section className="max-w-7xl mx-auto px-4 pb-10">
+      <section className="max-w-7xl mx-auto px-4 pt-10 pb-10">
         <div className="rounded-3xl p-8 flex flex-col md:flex-row items-center gap-8 bg-gradient-to-br from-[#FE5E00] to-[#E05200] relative overflow-hidden">
           <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&h=400&fit=crop')", backgroundSize: "cover" }} />
           <div className="relative flex-1">
@@ -404,7 +568,7 @@ export function Homepage() {
       </section>
 
       {/* ── Our Brands ──────────────────────────────────────────────────── */}
-      <section className="bg-[#171717] py-14 px-4 border-y border-white/8">
+      {/* <section className="bg-[#171717] py-14 px-4 border-y border-white/8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-8">
             <h2 className="text-[#F4E9D8]">Our Brands</h2>
@@ -427,7 +591,43 @@ export function Homepage() {
             </div>
           </div>
         </div>
-      </section>
+      </section> */}
+
+      <section className="bg-[#171717] py-14 px-4 border-y border-white/8">
+  <div className="max-w-7xl mx-auto">
+    
+    <div className="text-center mb-10">
+      <h2 className="text-[#F4E9D8] text-3xl font-bold">
+        Our Brands
+      </h2>
+      <p className="text-[#D4C4A8]/60 text-sm mt-2">
+        Authorized dealers for India's top construction brands
+      </p>
+    </div>
+
+    <div className="bg-[#222222] rounded-3xl border border-white/10 p-8">
+      
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-6">
+
+        {BRANDS.map((brand) => (
+          <Link
+            key={brand.name}
+            to={`/brand/${brand.name.toLowerCase().replace(/\s+/g, "-")}`}
+            className="group flex items-center justify-center h-24 rounded-2xl bg-[#1A1A1A] border border-white/5 hover:border-[#FE5E00]/40 hover:bg-[#252525] transition-all duration-300"
+          >
+            <img
+              src={brand.logo}
+              alt={brand.name}
+              className="h-12 md:h-14 w-auto object-contain opacity-80 group-hover:opacity-100 transition-all duration-300"
+            />
+          </Link>
+        ))}
+
+      </div>
+
+    </div>
+  </div>
+</section>
 
       {/* ── CTA Banners Row ─────────────────────────────────────────────── */}
       <section className="max-w-7xl mx-auto px-4 py-12 grid md:grid-cols-3 gap-5">
