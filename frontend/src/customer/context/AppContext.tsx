@@ -1,7 +1,13 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from "react";
+import { getApiV1Base } from "../../lib/apiBase";
+import { clearCustomerSession, getCustomerAccessToken } from "../lib/authStorage";
 
 export interface CartItem {
   id: string;
+  /** Product slug (without variation composite). */
+  productSlug?: string;
+  variationId?: string;
+  variationLabel?: string;
   name: string;
   brand: string;
   price: number;
@@ -10,9 +16,47 @@ export interface CartItem {
   image: string;
 }
 
+/** Serviceable city from admin / DB — drives warehouse pricing via `cityId` on APIs. */
+export type SelectedCity = {
+  id: string;
+  name: string;
+  state: string;
+  slug?: string;
+};
+
+const STORAGE_KEY = "sb_selected_city";
+const LEGACY_CITY_KEY = "sb_city";
+
+function readStoredCity(): SelectedCity | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const o = JSON.parse(raw);
+    if (o?.id && o?.name) {
+      return {
+        id: String(o.id),
+        name: String(o.name),
+        state: String(o.state || ""),
+        slug: o.slug ? String(o.slug) : undefined,
+      };
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+function persistCity(c: SelectedCity | null) {
+  if (c) localStorage.setItem(STORAGE_KEY, JSON.stringify(c));
+  else localStorage.removeItem(STORAGE_KEY);
+}
+
 interface AppContextType {
+  /** MongoDB City id for `cityId` query param (pricing / availability per warehouse). */
+  cityId: string | null;
+  /** Display name for header, PDP, checkout messaging. */
   city: string | null;
-  setCity: (city: string) => void;
+  setSelectedCity: (c: SelectedCity | null) => void;
   cart: CartItem[];
   addToCart: (item: CartItem) => void;
   removeFromCart: (id: string) => void;
@@ -46,34 +90,121 @@ const MAX_RECENT_SEARCHES = 5;
 const MAX_COMPARE = 3;
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [city, setCity] = useState<string | null>(() => localStorage.getItem("sb_city"));
+  const [selectedCity, setSelectedCityState] = useState<SelectedCity | null>(() => readStoredCity());
+
+  const setSelectedCity = useCallback((c: SelectedCity | null) => {
+    setSelectedCityState(c);
+    persistCity(c);
+    if (!c) localStorage.removeItem(LEGACY_CITY_KEY);
+  }, []);
+
+  /** One-time migration: old `sb_city` stored display name only — resolve to id from API. */
+  useEffect(() => {
+    if (readStoredCity()) return;
+    const legacy = localStorage.getItem(LEGACY_CITY_KEY);
+    if (!legacy?.trim()) return;
+
+    fetch("/api/v1/customer/cities")
+      .then((r) => r.json())
+      .then((res) => {
+        const list = res.data || [];
+        const key = legacy.trim().toLowerCase();
+        const match = list.find(
+          (c: any) =>
+            String(c.name || "").toLowerCase() === key ||
+            String(c.slug || "").toLowerCase() === key
+        );
+        if (match?._id) {
+          const next: SelectedCity = {
+            id: String(match._id),
+            name: match.name,
+            state: match.state || "",
+            slug: match.slug,
+          };
+          setSelectedCityState(next);
+          persistCity(next);
+        }
+        localStorage.removeItem(LEGACY_CITY_KEY);
+      })
+      .catch(() => {
+        /* keep legacy key until cities load later */
+      });
+  }, []);
+
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<{ name: string; company: string; email: string } | null>(null);
 
-  // Wishlist — persisted
+  /** Restore session from JWT after refresh (login stores tokens in localStorage). */
+  useEffect(() => {
+    const t = getCustomerAccessToken();
+    if (!t) return;
+
+    const base = getApiV1Base().replace(/\/$/, "");
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch(`${base}/customer/profile`, {
+          headers: { Authorization: `Bearer ${t}` },
+        });
+        const json = (await res.json()) as {
+          success?: boolean;
+          message?: string;
+          data?: { name?: string; email?: string; companyName?: string; role?: string };
+        };
+        if (!res.ok || json.success === false) {
+          clearCustomerSession();
+          return;
+        }
+        const d = json.data;
+        if (!d || cancelled) return;
+        if (d.role !== "CUSTOMER") {
+          clearCustomerSession();
+          return;
+        }
+        setUser({
+          name: String(d.name || ""),
+          company: String(d.companyName || ""),
+          email: String(d.email || ""),
+        });
+        setIsLoggedIn(true);
+      } catch {
+        if (!cancelled) clearCustomerSession();
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const [wishlist, setWishlist] = useState<string[]>(() => {
-    try { return JSON.parse(localStorage.getItem("sb_wishlist") || "[]"); } catch { return []; }
+    try {
+      return JSON.parse(localStorage.getItem("sb_wishlist") || "[]");
+    } catch {
+      return [];
+    }
   });
 
-  // Compare list — session only
   const [compareList, setCompareList] = useState<string[]>([]);
 
-  // Recent searches — persisted
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
-    try { return JSON.parse(localStorage.getItem("sb_recent_searches") || "[]"); } catch { return []; }
+    try {
+      return JSON.parse(localStorage.getItem("sb_recent_searches") || "[]");
+    } catch {
+      return [];
+    }
   });
 
-  const handleSetCity = (c: string) => {
-    setCity(c);
-    localStorage.setItem("sb_city", c);
-  };
+  const cityId = selectedCity?.id ?? null;
+  const city = selectedCity?.name ?? null;
 
   /* ── Cart ─────────────────────────────────────────────────── */
   const addToCart = (item: CartItem) => {
     setCart((prev) => {
       const existing = prev.find((i) => i.id === item.id);
-      if (existing) return prev.map((i) => i.id === item.id ? { ...i, qty: i.qty + item.qty } : i);
+      if (existing) return prev.map((i) => (i.id === item.id ? { ...i, qty: i.qty + item.qty } : i));
       return [...prev, item];
     });
   };
@@ -81,14 +212,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const removeFromCart = (id: string) => setCart((prev) => prev.filter((i) => i.id !== id));
 
   const updateQty = (id: string, qty: number) => {
-    if (qty <= 0) { removeFromCart(id); return; }
-    setCart((prev) => prev.map((i) => i.id === id ? { ...i, qty } : i));
+    if (qty <= 0) {
+      removeFromCart(id);
+      return;
+    }
+    setCart((prev) => prev.map((i) => (i.id === id ? { ...i, qty } : i)));
   };
 
   const cartTotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
   const cartCount = cart.reduce((sum, i) => sum + i.qty, 0);
 
-  /* ── Wishlist ────────────────────────────────────────────── */
   const addToWishlist = (id: string) => {
     setWishlist((prev) => {
       const next = prev.includes(id) ? prev : [...prev, id];
@@ -107,7 +240,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const isWishlisted = (id: string) => wishlist.includes(id);
 
-  /* ── Compare ────────────────────────────────────────────── */
   const addToCompare = (id: string) => {
     setCompareList((prev) => {
       if (prev.includes(id) || prev.length >= MAX_COMPARE) return prev;
@@ -115,13 +247,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const removeFromCompare = (id: string) =>
-    setCompareList((prev) => prev.filter((i) => i !== id));
+  const removeFromCompare = (id: string) => setCompareList((prev) => prev.filter((i) => i !== id));
 
   const isComparing = (id: string) => compareList.includes(id);
   const clearCompare = () => setCompareList([]);
 
-  /* ── Recent Searches ────────────────────────────────────── */
   const addRecentSearch = (term: string) => {
     const trimmed = term.trim();
     if (!trimmed) return;
@@ -140,8 +270,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return (
     <AppContext.Provider
       value={{
+        cityId,
         city,
-        setCity: handleSetCity,
+        setSelectedCity,
         cart,
         addToCart,
         removeFromCart,

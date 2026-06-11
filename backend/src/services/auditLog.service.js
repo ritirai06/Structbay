@@ -10,6 +10,7 @@ const { generateRefNumber } = require('./refNumber.service');
  * @param {string} [opts.targetId]
  * @param {string} [opts.description]
  * @param {string} [opts.ipAddress]
+ * @param {string} [opts.platform]
  * @param {any}    [opts.oldData]
  * @param {any}    [opts.newData]
  */
@@ -23,7 +24,11 @@ const logAction = async (opts) => {
         logNumber = null;
       }
     }
-    await AuditLog.create({ ...opts, logNumber });
+    await AuditLog.create({
+      ...opts,
+      logNumber,
+      platform: opts.platform || null,
+    });
   } catch {
     // Audit logging must never break the main request
   }

@@ -3,22 +3,27 @@ import { Link } from "react-router";
 import { Phone, Mail, MapPin, Facebook, Twitter, Instagram, Linkedin, Youtube, Send } from "lucide-react";
 import { useFooterCMS } from "@shared/hooks/useFooterCMS";
 import logoImg from "/shared/assets/logos/Structbay-Logo-F-1.png";
+import { useApp } from "../context/AppContext";
+import { api } from "../lib/api";
 
 const SOCIAL_ICONS = [Facebook, Twitter, Instagram, Linkedin, Youtube];
 const SOCIAL_KEYS = ["facebook", "twitter", "instagram", "linkedin", "youtube"] as const;
 
 export function Footer() {
   const { data: cms } = useFooterCMS();
+  const { cityId, city } = useApp();
   const [categories, setCategories] = useState<any[]>([]);
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
 
   useEffect(() => {
-    fetch("/api/v1/categories?status=ACTIVE&limit=8")
-      .then(r => r.json())
-      .then(d => setCategories(d.data || []))
-      .catch(() => {});
-  }, []);
+    const params: Record<string, string> = { status: "ACTIVE", limit: "8" };
+    if (cityId) params.cityId = cityId;
+    api
+      .getCategories(params)
+      .then((d: any) => setCategories(d.data || []))
+      .catch(() => setCategories([]));
+  }, [cityId]);
 
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,9 +92,14 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Categories — dynamic from API */}
+          {/* Categories — same city-scoped catalogue as storefront (pricing ∩ stock) */}
           <div>
             <h4 className="font-semibold mb-4 text-[#F4E9D8] text-sm uppercase tracking-wider">Categories</h4>
+            {city && (
+              <p className="text-[10px] text-[#FE5E00]/80 mb-2 leading-relaxed">
+                With stock in {city}
+              </p>
+            )}
             <ul className="space-y-2.5 text-sm text-[#D4C4A8]/70">
               {categories.map(cat => (
                 <li key={cat.slug}>
@@ -135,6 +145,12 @@ export function Footer() {
         </div>
 
         <hr className="border-white/8 my-10" />
+
+        <p className="text-xs text-[#D4C4A8]/55 max-w-4xl mb-8 leading-relaxed">
+          <strong className="text-[#F4E9D8]/90">Orders &amp; support:</strong> You may cancel before the order reaches &quot;Out for Delivery&quot;; after dispatch, cancellation is not available online — please call support.
+          Replacements apply for wrong or damaged deliveries only and are coordinated by StructBay; other cases are handled case-by-case with our team.
+          Online checkout uses Zoho Payments for the full order value only (no partial payments). Payment status: Pending, Paid, or Failed.
+        </p>
 
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-[#D4C4A8]/40">
           <p>{cms.copyrightText}</p>

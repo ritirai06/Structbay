@@ -1,37 +1,37 @@
-const mongoose = require('mongoose');
 const VendorOrder = require('../models/VendorOrder');
 const VendorNotification = require('../models/VendorNotification');
 const VendorActivityLog = require('../models/VendorActivityLog');
 const ApiResponse = require('../utils/apiResponse');
+const { vendorOrderMatch } = require('../utils/vendorOrderAccess');
 
 // @desc    Get Vendor Dashboard Stats
 // @route   GET /api/v1/vendor/dashboard
 exports.getDashboardStats = async (req, res) => {
-  const vendorId = req.user._id;
+  const match = await vendorOrderMatch(req.user);
 
   const [
     totalOrders, pendingOrders, readyForDispatch,
     inTransit, delivered, pendingInvoices,
     unreadNotifications, recentOrders, recentActivities, monthlyStats,
   ] = await Promise.all([
-    VendorOrder.countDocuments({ vendor: vendorId }),
-    VendorOrder.countDocuments({ vendor: vendorId, status: { $in: ['new_order_alert', 'ready_for_dispatch'] } }),
-    VendorOrder.countDocuments({ vendor: vendorId, status: 'ready_for_dispatch' }),
-    VendorOrder.countDocuments({ vendor: vendorId, status: { $in: ['dispatched', 'in_transit', 'pickup_scheduled'] } }),
-    VendorOrder.countDocuments({ vendor: vendorId, status: { $in: ['material_delivered', 'delivery_confirmed', 'completed'] } }),
-    VendorOrder.countDocuments({ vendor: vendorId, invoiceStatus: 'pending' }),
-    VendorNotification.countDocuments({ vendor: vendorId, isRead: false }),
-    VendorOrder.find({ vendor: vendorId })
+    VendorOrder.countDocuments(match),
+    VendorOrder.countDocuments({ ...match, status: { $in: ['ASSIGNED', 'READY_FOR_DISPATCH', 'INVOICE_UPLOADED'] } }),
+    VendorOrder.countDocuments({ ...match, status: 'READY_FOR_DISPATCH' }),
+    VendorOrder.countDocuments({ ...match, status: { $in: ['PICKUP_SCHEDULED', 'PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'] } }),
+    VendorOrder.countDocuments({ ...match, status: { $in: ['DELIVERED', 'COMPLETED'] } }),
+    VendorOrder.countDocuments({ ...match, invoiceStatus: 'PENDING' }),
+    VendorNotification.countDocuments({ vendor: req.user._id, isRead: false }),
+    VendorOrder.find(match)
       .sort({ createdAt: -1 }).limit(10)
-      .populate('assignedProducts.product', 'name')
-      .select('orderNumber status createdAt totalAmount deliveryAddress assignedProducts priority'),
-    VendorActivityLog.find({ vendor: vendorId }).sort({ createdAt: -1 }).limit(10).select('action description createdAt'),
+      .populate('items.product', 'name')
+      .select('orderNumber status createdAt totalAmount deliveryAddress items priority'),
+    VendorActivityLog.find({ vendor: req.user._id }).sort({ createdAt: -1 }).limit(10).select('action description createdAt'),
     VendorOrder.aggregate([
-      { $match: { vendor: vendorId, createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } },
+      { $match: { ...match, createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } },
       { $group: {
         _id: null,
         totalOrders: { $sum: 1 },
-        completedOrders: { $sum: { $cond: [{ $in: ['$status', ['material_delivered', 'delivery_confirmed', 'completed']] }, 1, 0] } },
+        completedOrders: { $sum: { $cond: [{ $in: ['$status', ['DELIVERED', 'COMPLETED']] }, 1, 0] } },
         totalAmount: { $sum: '$totalAmount' },
       }},
     ]),
@@ -49,30 +49,30 @@ exports.getDashboardStats = async (req, res) => {
 // @desc    Get Performance Analytics
 // @route   GET /api/v1/vendor/dashboard/analytics
 exports.getAnalytics = async (req, res) => {
-  const vendorId = req.user._id;
+  const match = await vendorOrderMatch(req.user);
   const { period = '30' } = req.query;
-  const startDate = new Date(Date.now() - parseInt(period) * 24 * 60 * 60 * 1000);
+  const startDate = new Date(Date.now() - parseInt(period, 10) * 24 * 60 * 60 * 1000);
 
   const [ordersByStatus, ordersByDate, invoiceStats, dispatchStats, fulfillmentTime] = await Promise.all([
     VendorOrder.aggregate([
-      { $match: { vendor: vendorId, createdAt: { $gte: startDate } } },
+      { $match: { ...match, createdAt: { $gte: startDate } } },
       { $group: { _id: '$status', count: { $sum: 1 } } },
     ]),
     VendorOrder.aggregate([
-      { $match: { vendor: vendorId, createdAt: { $gte: startDate } } },
+      { $match: { ...match, createdAt: { $gte: startDate } } },
       { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, count: { $sum: 1 }, amount: { $sum: '$totalAmount' } } },
       { $sort: { _id: 1 } },
     ]),
     VendorOrder.aggregate([
-      { $match: { vendor: vendorId, createdAt: { $gte: startDate } } },
+      { $match: { ...match, createdAt: { $gte: startDate } } },
       { $group: { _id: '$invoiceStatus', count: { $sum: 1 } } },
     ]),
     VendorOrder.aggregate([
-      { $match: { vendor: vendorId, createdAt: { $gte: startDate } } },
+      { $match: { ...match, createdAt: { $gte: startDate } } },
       { $group: { _id: '$dispatchStatus', count: { $sum: 1 } } },
     ]),
     VendorOrder.aggregate([
-      { $match: { vendor: vendorId, actualDeliveryDate: { $exists: true }, createdAt: { $gte: startDate } } },
+      { $match: { ...match, actualDeliveryDate: { $exists: true }, createdAt: { $gte: startDate } } },
       { $project: { hrs: { $divide: [{ $subtract: ['$actualDeliveryDate', '$createdAt'] }, 3600000] } } },
       { $group: { _id: null, avg: { $avg: '$hrs' } } },
     ]),

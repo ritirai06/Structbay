@@ -6,8 +6,7 @@ export function SplashScreen() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const stored = localStorage.getItem("sb_city");
-    const timer = setTimeout(() => navigate(stored ? "/" : "/city"), 2800);
+    const timer = setTimeout(() => navigate("/"), 2800);
     return () => clearTimeout(timer);
   }, [navigate]);
 
@@ -28,17 +27,17 @@ export function SplashScreen() {
       <div className="relative z-10 flex flex-col items-center gap-6 animate-pulse">
         <div className="flex items-center gap-3">
           <div style={{ backgroundColor: "var(--sb-orange)" }} className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-2xl">
-            <Package className="w-10 h-10 text-[#0D0D0D]" />
+            <Package className="w-10 h-10 text-sb-on-orange" />
           </div>
           <div>
-            <p className="text-[#F4E9D8] text-5xl font-bold leading-none tracking-tight">
+            <p className="text-sb-ink text-5xl font-bold leading-none tracking-tight">
               Struct<span style={{ color: "var(--sb-orange)" }}>Bay</span>
             </p>
-            <p className="text-[#D4C4A8]/60 text-sm tracking-widest uppercase mt-1">Construction Marketplace</p>
+            <p className="text-sb-ink-muted/60 text-sm tracking-widest uppercase mt-1">Construction Marketplace</p>
           </div>
         </div>
 
-        <p className="text-[#D4C4A8]/80 text-lg text-center max-w-xs">
+        <p className="text-sb-ink-muted/80 text-lg text-center max-w-xs">
           Building India's Future, One Material at a Time
         </p>
 
@@ -49,7 +48,7 @@ export function SplashScreen() {
             { icon: Zap, label: "Express Delivery" },
             { icon: Truck, label: "Bulk Orders" },
           ].map(({ icon: Icon, label }) => (
-            <div key={label} className="flex items-center gap-1.5 bg-white/10 rounded-full px-3 py-1.5 text-[#D4C4A8]/80 text-xs">
+            <div key={label} className="flex items-center gap-1.5 bg-white/10 rounded-full px-3 py-1.5 text-sb-ink-muted/80 text-xs">
               <Icon className="w-3 h-3" />
               {label}
             </div>

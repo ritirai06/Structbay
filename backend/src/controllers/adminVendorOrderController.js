@@ -12,8 +12,8 @@ const { generateSubOrderNumber } = require('../services/refNumber.service');
 async function genVendorOrderNumber(masterOrderId) {
   const master = await Order.findById(masterOrderId).select('orderNumber');
   if (!master?.orderNumber) {
-    const { generateRefNumber } = require('../services/refNumber.service');
-    return generateRefNumber('ORDER');
+    const { generatePrdMasterOrderNumber } = require('../services/refNumber.service');
+    return generatePrdMasterOrderNumber();
   }
   const nextIdx = (await VendorOrder.countDocuments({ masterOrder: masterOrderId })) + 1;
   return generateSubOrderNumber(master.orderNumber, nextIdx);
@@ -134,35 +134,47 @@ const getVendorOrderById = asyncHandler(async (req, res) => {
 });
 
 // ─── PUT /api/v1/admin/vendor-orders/:id  ─────────────────────────────────────
-// Admin can update notes, status, dates
+// Admin can update notes, status, dates, StructBay logistics (Type B delivery)
 const updateVendorOrder = asyncHandler(async (req, res) => {
   const allowed = ['adminNotes', 'dispatchInstructions', 'status', 'priority',
     'expectedDispatchDate', 'expectedDeliveryDate', 'invoiceStatus'];
 
-  const updates = {};
-  allowed.forEach(f => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });
-
-  const order = await VendorOrder.findByIdAndUpdate(req.params.id, updates, {
-    new: true, runValidators: true,
-  }).populate('vendor', 'name email companyName');
-
+  const order = await VendorOrder.findById(req.params.id);
   if (!order) throw new AppError('Vendor order not found.', 404);
+
+  allowed.forEach((f) => {
+    if (req.body[f] !== undefined) order[f] = req.body[f];
+  });
+
+  if (req.body.structbayLogistics && typeof req.body.structbayLogistics === 'object') {
+    order.structbayLogistics = {
+      ...(order.structbayLogistics && order.structbayLogistics.toObject
+        ? order.structbayLogistics.toObject()
+        : order.structbayLogistics || {}),
+      ...req.body.structbayLogistics,
+    };
+  }
+
+  await order.save();
+
+  const populated = await VendorOrder.findById(order._id)
+    .populate('vendor', 'name email companyName');
 
   // Notify vendor on status change
   if (req.body.status) {
     notifyVendor({
-      vendorId: order.vendor._id,
+      vendorId: populated.vendor._id,
       type: 'order_status_change',
       title: 'Order Status Updated',
-      message: `Order ${order.orderNumber} status changed to: ${req.body.status.replace(/_/g, ' ')}.`,
+      message: `Order ${populated.orderNumber} status changed to: ${req.body.status.replace(/_/g, ' ')}.`,
       priority: 'normal',
-      relatedOrder: order._id,
-      actionUrl: `/orders/${order._id}`,
+      relatedOrder: populated._id,
+      actionUrl: `/orders/${populated._id}`,
       createdBy: req.user._id,
     }).catch(() => {});
   }
 
-  return ApiResponse.success(res, 200, 'Vendor order updated.', order);
+  return ApiResponse.success(res, 200, 'Vendor order updated.', populated);
 });
 
 // ─── POST /api/v1/admin/vendor-orders/:id/request-invoice  ───────────────────

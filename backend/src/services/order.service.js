@@ -4,13 +4,13 @@ const Inventory          = require('../models/Inventory');
 const InventoryLog       = require('../models/InventoryLog');
 const { sendEmail }      = require('./email.service');
 const {
-  generateRefNumber,
+  generatePrdMasterOrderNumber,
   generateSubOrderNumber,
   getNextSubOrderIndex,
 } = require('./refNumber.service');
 
-/** Master order: ORDDDMYY001 (centralized atomic counter). */
-const generateMasterOrderNumber = () => generateRefNumber('ORDER');
+/** Master order: PRD format YYMMDD + 4-digit sequence (e.g. 2605310001). */
+const generateMasterOrderNumber = () => generatePrdMasterOrderNumber();
 
 // ─── Activity Log ─────────────────────────────────────────────────────────────
 const logOrderActivity = async ({

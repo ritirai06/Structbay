@@ -81,12 +81,19 @@ const vendorOrderSchema = new mongoose.Schema(
     priority:     { type: String, enum: ['normal', 'high', 'urgent'], default: 'normal' },
     adminNotes:   String,
     dispatchInstructions: String,
+
+    /** Type B (StructBay delivery): admin-entered logistics shown to vendor after booking Porter/Delhivery etc. */
+    structbayLogistics: {
+      pickupScheduledText: { type: String, default: null },
+      companyName:         { type: String, default: null },
+      driverContactDetails:{ type: String, default: null },
+    },
   },
   { timestamps: true }
 );
 
 vendorOrderSchema.index({ vendor: 1, status: 1 });
-vendorOrderSchema.index({ orderNumber: 1 });
+// orderNumber: unique index from field definition
 vendorOrderSchema.index({ masterOrder: 1 });
 vendorOrderSchema.index({ createdAt: -1 });
 

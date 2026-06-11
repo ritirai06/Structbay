@@ -7,6 +7,8 @@ const citySchema = new mongoose.Schema(
     slug: { type: String, unique: true, lowercase: true, trim: true },
     referenceNumber: { type: String, unique: true, sparse: true },
     state: { type: String, required: true, trim: true },
+    /** 6-digit PIN codes where this city is serviceable (admin-managed). */
+    pincodes: [{ type: String, trim: true }],
     status: { type: String, enum: ['ACTIVE', 'INACTIVE'], default: 'ACTIVE' },
     isServiceable: { type: Boolean, default: true },
     priority: { type: Number, default: 0 },

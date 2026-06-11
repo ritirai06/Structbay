@@ -71,7 +71,7 @@ export function Sidebar() {
       {/* Footer */}
       <div className="p-3 border-t border-white/8">
         <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[#222222] border border-white/8">
-          <div className="w-7 h-7 rounded-full bg-[#FE5E00] flex items-center justify-center text-[#0D0D0D] font-black text-xs shrink-0">A</div>
+          <div className="w-7 h-7 rounded-full bg-[#FE5E00] flex items-center justify-center text-[#0D0D0D] font-semibold text-xs shrink-0">A</div>
           <div className="min-w-0">
             <p className="text-xs font-semibold text-[#F4E9D8] truncate">Admin User</p>
             <p className="text-[10px] text-[#D4C4A8]/50 truncate">Super Admin</p>

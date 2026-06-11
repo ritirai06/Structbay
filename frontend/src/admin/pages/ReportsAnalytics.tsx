@@ -1,254 +1,331 @@
+import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/card";
 import { Button } from "@shared/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@shared/components/ui/tabs";
-import { Download, FileSpreadsheet, FileText } from "lucide-react";
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { Download, FileSpreadsheet, Loader2, RefreshCw } from "lucide-react";
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { adminFetch, getAdminToken } from "../../lib/adminApi";
+import { getApiV1Base } from "../../lib/apiBase";
 
-const revenueData = [
-  { month: "Jan", revenue: 45000 },
-  { month: "Feb", revenue: 52000 },
-  { month: "Mar", revenue: 48000 },
-  { month: "Apr", revenue: 61000 },
-  { month: "May", revenue: 55000 },
-  { month: "Jun", revenue: 67000 },
-];
+function money(n: number) {
+  return `₹${Math.round(n || 0).toLocaleString("en-IN")}`;
+}
 
-const categoryData = [
-  { category: "Cement", sales: 28000 },
-  { category: "Steel", sales: 22000 },
-  { category: "Concrete", sales: 17000 },
-  { category: "Bricks", sales: 12000 },
-];
+async function downloadCsv(path: string, filename: string) {
+  const base = getApiV1Base().replace(/\/$/, "");
+  const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${getAdminToken()}` } });
+  if (!res.ok) throw new Error("Export failed");
+  const blob = await res.blob();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
 
 export function ReportsAnalytics() {
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+  const [kpi, setKpi] = useState<any>(null);
+  const [salesSummary, setSalesSummary] = useState<any>(null);
+  const [trend, setTrend] = useState<any[]>([]);
+  const [topProducts, setTopProducts] = useState<any[]>([]);
+  const [brands, setBrands] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [cities, setCities] = useState<any[]>([]);
+  const [vendorSummary, setVendorSummary] = useState<any>(null);
+  const [vendorRank, setVendorRank] = useState<any[]>([]);
+  const [gstRows, setGstRows] = useState<any[]>([]);
+  const [paySummary, setPaySummary] = useState<any>(null);
+  const [invoiceAgg, setInvoiceAgg] = useState<any[]>([]);
+  const [delivery, setDelivery] = useState<any>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setErr(null);
+    try {
+      const [
+        kpiRes,
+        sumRes,
+        trendRes,
+        prodRes,
+        brandRes,
+        catRes,
+        cityRes,
+        vsumRes,
+        vrankRes,
+        gstRes,
+        payRes,
+        invRes,
+        delRes,
+      ] = await Promise.all([
+        adminFetch("/analytics/kpi"),
+        adminFetch("/analytics/sales/summary"),
+        adminFetch("/analytics/sales/trend?period=monthly"),
+        adminFetch("/analytics/sales/top-products?limit=10"),
+        adminFetch("/analytics/brands?limit=12"),
+        adminFetch("/analytics/categories?limit=12"),
+        adminFetch("/analytics/cities"),
+        adminFetch("/analytics/vendors/summary"),
+        adminFetch("/analytics/vendors/ranking?limit=10"),
+        adminFetch("/analytics/payments/gst?period=monthly"),
+        adminFetch("/analytics/payments/summary"),
+        adminFetch("/analytics/payments/invoices"),
+        adminFetch("/analytics/delivery/summary"),
+      ]);
+      setKpi(kpiRes.data);
+      setSalesSummary(sumRes.data);
+      setTrend(Array.isArray(trendRes.data) ? trendRes.data : []);
+      setTopProducts(Array.isArray(prodRes.data) ? prodRes.data : []);
+      setBrands(Array.isArray(brandRes.data) ? brandRes.data : []);
+      setCategories(Array.isArray(catRes.data) ? catRes.data : []);
+      setCities(Array.isArray(cityRes.data) ? cityRes.data : []);
+      setVendorSummary(vsumRes.data);
+      setVendorRank(Array.isArray(vrankRes.data) ? vrankRes.data : []);
+      setGstRows(Array.isArray(gstRes.data) ? gstRes.data : []);
+      setPaySummary(payRes.data);
+      setInvoiceAgg(Array.isArray(invRes.data) ? invRes.data : []);
+      setDelivery(delRes.data);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Failed to load reports");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const trendChart = trend.map((r: any) => ({
+    label: r._id?.month && r._id?.year ? `${r._id.month}/${String(r._id.year).slice(-2)}` : "—",
+    revenue: Math.round(r.revenue || 0),
+  }));
+
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-black text-[#F4E9D8]">Reports & Analytics</h1>
-        <p className="text-[#D4C4A8]/60">Comprehensive business insights and reports</p>
+    <div className="p-6 bg-[#0D0D0D] min-h-full">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-black text-[#F4E9D8]">Reports</h1>
+          <p className="text-[#D4C4A8]/60 text-sm mt-1">
+            Live data from analytics APIs: sales, GST, payments, invoices, delivery, vendors, brands, categories, and cities.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => downloadCsv("/analytics/export/orders?format=csv", "orders.csv")}>
+            <FileSpreadsheet className="mr-2 h-4 w-4" /> Orders CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => downloadCsv("/analytics/export/vendor-orders?format=csv", "vendor-orders.csv")}>
+            <Download className="mr-2 h-4 w-4" /> Vendor orders CSV
+          </Button>
+        </div>
       </div>
 
-      <Tabs defaultValue="revenue" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="revenue">Revenue</TabsTrigger>
-          <TabsTrigger value="products">Products</TabsTrigger>
-          <TabsTrigger value="vendors">Vendors</TabsTrigger>
-          <TabsTrigger value="gst">GST</TabsTrigger>
-        </TabsList>
+      {err && (
+        <div className="mb-4 text-sm text-red-400 border border-red-500/30 rounded-xl px-4 py-3 bg-red-500/10">{err}</div>
+      )}
 
-        <TabsContent value="revenue" className="space-y-4">
-          <div className="flex justify-end gap-2">
-            <Button variant="outline">
-              <FileSpreadsheet className="mr-2 h-4 w-4" />
-              Export CSV
-            </Button>
-            <Button variant="outline">
-              <FileText className="mr-2 h-4 w-4" />
-              Export PDF
-            </Button>
-          </div>
+      {loading && !kpi ? (
+        <div className="flex justify-center py-24"><Loader2 className="h-8 w-8 animate-spin text-[#FE5E00]" /></div>
+      ) : (
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList className="flex flex-wrap h-auto gap-1 bg-[#1A1A1A] p-1 rounded-xl border border-white/10">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="sales">Sales & products</TabsTrigger>
+            <TabsTrigger value="dimensions">Brand / category / city</TabsTrigger>
+            <TabsTrigger value="vendors">Vendors</TabsTrigger>
+            <TabsTrigger value="gst">GST & payments</TabsTrigger>
+            <TabsTrigger value="ops">Dispatch & invoices</TabsTrigger>
+          </TabsList>
 
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-[#D4C4A8]/60">
-                  Total Revenue
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">₹67,000</div>
-                <p className="text-sm text-green-400">+12.5% vs last month</p>
+          <TabsContent value="overview" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <Card className="border-white/10 bg-[#1A1A1A]">
+                <CardHeader className="pb-2"><CardTitle className="text-sm text-[#D4C4A8]/60">Total sales revenue (paid orders, all time)</CardTitle></CardHeader>
+                <CardContent><div className="text-2xl font-bold text-[#F4E9D8]">{money(kpi?.totalRevenue)}</div></CardContent>
+              </Card>
+              <Card className="border-white/10 bg-[#1A1A1A]">
+                <CardHeader className="pb-2"><CardTitle className="text-sm text-[#D4C4A8]/60">Pending master orders</CardTitle></CardHeader>
+                <CardContent><div className="text-2xl font-bold text-[#FE5E00]">{kpi?.pendingOrders ?? "—"}</div></CardContent>
+              </Card>
+              <Card className="border-white/10 bg-[#1A1A1A]">
+                <CardHeader className="pb-2"><CardTitle className="text-sm text-[#D4C4A8]/60">Vendor sub-orders assigned</CardTitle></CardHeader>
+                <CardContent><div className="text-2xl font-bold text-[#F4E9D8]">{kpi?.vendorOrdersAssigned ?? "—"}</div></CardContent>
+              </Card>
+              <Card className="border-white/10 bg-[#1A1A1A]">
+                <CardHeader className="pb-2"><CardTitle className="text-sm text-[#D4C4A8]/60">Shipments pending pickup</CardTitle></CardHeader>
+                <CardContent><div className="text-2xl font-bold text-[#F4E9D8]">{delivery?.pending ?? "—"}</div></CardContent>
+              </Card>
+            </div>
+            <Card className="border-white/10 bg-[#1A1A1A]">
+              <CardHeader><CardTitle className="text-[#F4E9D8]">Paid revenue trend (monthly)</CardTitle></CardHeader>
+              <CardContent className="h-[320px]">
+                {trendChart.length === 0 ? (
+                  <p className="text-sm text-[#D4C4A8]/50">No trend data for the selected window.</p>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={trendChart}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                      <XAxis dataKey="label" tick={{ fill: "#D4C4A8", fontSize: 11 }} />
+                      <YAxis tick={{ fill: "#D4C4A8", fontSize: 11 }} />
+                      <Tooltip contentStyle={{ background: "#111", border: "1px solid #333" }} />
+                      <Line type="monotone" dataKey="revenue" stroke="#F97316" strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-[#D4C4A8]/60">
-                  Average Order Value
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">₹37,222</div>
-                <p className="text-sm text-[#D4C4A8]/60">180 orders</p>
+          </TabsContent>
+
+          <TabsContent value="sales" className="space-y-4">
+            <div className="grid md:grid-cols-3 gap-4">
+              <Card className="border-white/10 bg-[#1A1A1A]">
+                <CardHeader className="pb-2"><CardTitle className="text-sm text-[#D4C4A8]/60">Revenue (range filter default)</CardTitle></CardHeader>
+                <CardContent><div className="text-xl font-bold">{money(salesSummary?.revenue)}</div><p className="text-xs text-[#D4C4A8]/50 mt-1">{salesSummary?.orders ?? 0} orders</p></CardContent>
+              </Card>
+              <Card className="border-white/10 bg-[#1A1A1A]">
+                <CardHeader className="pb-2"><CardTitle className="text-sm text-[#D4C4A8]/60">GST on orders</CardTitle></CardHeader>
+                <CardContent><div className="text-xl font-bold">{money(salesSummary?.gstTotal)}</div></CardContent>
+              </Card>
+              <Card className="border-white/10 bg-[#1A1A1A]">
+                <CardHeader className="pb-2"><CardTitle className="text-sm text-[#D4C4A8]/60">Avg order value</CardTitle></CardHeader>
+                <CardContent><div className="text-xl font-bold">{money(salesSummary?.avgOrderValue)}</div></CardContent>
+              </Card>
+            </div>
+            <Card className="border-white/10 bg-[#1A1A1A]">
+              <CardHeader><CardTitle className="text-[#F4E9D8]">Top products by line revenue</CardTitle></CardHeader>
+              <CardContent className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={topProducts.slice(0, 8).map((p: any) => ({ name: (p.name || "Product").slice(0, 18), revenue: Math.round(p.revenue || 0) }))}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <XAxis dataKey="name" tick={{ fill: "#D4C4A8", fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={70} />
+                    <YAxis tick={{ fill: "#D4C4A8", fontSize: 11 }} />
+                    <Tooltip contentStyle={{ background: "#111", border: "1px solid #333" }} />
+                    <Bar dataKey="revenue" fill="#f97316" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-[#D4C4A8]/60">
-                  Best Month
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">June 2026</div>
-                <p className="text-sm text-[#D4C4A8]/60">₹67,000</p>
-              </CardContent>
-            </Card>
-          </div>
+          </TabsContent>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Revenue Trend (Last 6 Months)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <LineChart data={revenueData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="revenue" stroke="#F97316" strokeWidth={2.5} />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="products" className="space-y-4">
-          <div className="flex justify-end gap-2">
-            <Button variant="outline">
-              <FileSpreadsheet className="mr-2 h-4 w-4" />
-              Export CSV
-            </Button>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Sales by Category</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={categoryData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="category" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="sales" fill="#f97316" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Top Selling Products</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {[
-                    { name: "Cement PPC 53 Grade", sales: 145 },
-                    { name: "TMT Steel Bars 16mm", sales: 98 },
-                    { name: "Ready Mix Concrete M30", sales: 67 },
-                  ].map((product, i) => (
-                    <div key={i} className="flex justify-between items-center">
-                      <span className="text-sm">{product.name}</span>
-                      <span className="font-medium">{product.sales} units</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Low Stock Items</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {[
-                    { name: "TMT Steel Bars 16mm", stock: 40 },
-                    { name: "Cement OPC 43 Grade", stock: 28 },
-                    { name: "Ready Mix Concrete M30", stock: 0 },
-                  ].map((product, i) => (
-                    <div key={i} className="flex justify-between items-center">
-                      <span className="text-sm">{product.name}</span>
-                      <span
-                        className={`font-medium ${
-                          product.stock === 0 ? "text-red-400" : "text-[#F97316]"
-                        }`}
-                      >
-                        {product.stock} units
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="vendors" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Vendor Performance</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {[
-                  { name: "ABC Suppliers Pvt Ltd", orders: 145, rating: 4.5, revenue: "₹18.5L" },
-                  { name: "XYZ Distributors", orders: 98, rating: 4.2, revenue: "₹12.8L" },
-                  { name: "PQR Materials Ltd", orders: 67, rating: 4.8, revenue: "₹9.2L" },
-                ].map((vendor, i) => (
-                  <div key={i} className="border-b pb-3 last:border-0">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h4 className="font-medium">{vendor.name}</h4>
-                        <p className="text-sm text-[#D4C4A8]/60">Rating: {vendor.rating}/5</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium">{vendor.revenue}</p>
-                        <p className="text-sm text-[#D4C4A8]/60">{vendor.orders} orders</p>
-                      </div>
-                    </div>
+          <TabsContent value="dimensions" className="grid md:grid-cols-3 gap-4">
+            <Card className="border-white/10 bg-[#1A1A1A]">
+              <CardHeader><CardTitle className="text-[#F4E9D8] text-sm">Brand-wise sales</CardTitle></CardHeader>
+              <CardContent className="space-y-2 max-h-72 overflow-y-auto text-sm">
+                {brands.map((b: any) => (
+                  <div key={String(b._id)} className="flex justify-between gap-2 border-b border-white/5 pb-2">
+                    <span className="text-[#D4C4A8]/80 truncate">{b.brand?.name || "—"}</span>
+                    <span className="text-[#F4E9D8] font-semibold shrink-0">{money(b.revenue)}</span>
                   </div>
                 ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                {brands.length === 0 && <p className="text-[#D4C4A8]/50 text-xs">No brand data.</p>}
+              </CardContent>
+            </Card>
+            <Card className="border-white/10 bg-[#1A1A1A]">
+              <CardHeader><CardTitle className="text-[#F4E9D8] text-sm">Category-wise sales</CardTitle></CardHeader>
+              <CardContent className="space-y-2 max-h-72 overflow-y-auto text-sm">
+                {categories.map((c: any) => (
+                  <div key={String(c._id)} className="flex justify-between gap-2 border-b border-white/5 pb-2">
+                    <span className="text-[#D4C4A8]/80 truncate">{c.category?.name || "—"}</span>
+                    <span className="text-[#F4E9D8] font-semibold shrink-0">{money(c.revenue)}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+            <Card className="border-white/10 bg-[#1A1A1A]">
+              <CardHeader><CardTitle className="text-[#F4E9D8] text-sm">City-wise sales</CardTitle></CardHeader>
+              <CardContent className="space-y-2 max-h-72 overflow-y-auto text-sm">
+                {cities.map((c: any) => (
+                  <div key={String(c._id)} className="flex justify-between gap-2 border-b border-white/5 pb-2">
+                    <span className="text-[#D4C4A8]/80 truncate">{c.city?.name || "—"}</span>
+                    <span className="text-[#F4E9D8] font-semibold shrink-0">{money(c.revenue)}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        <TabsContent value="gst" className="space-y-4">
-          <div className="flex justify-end gap-2">
-            <Button variant="outline">
-              <Download className="mr-2 h-4 w-4" />
-              Download GST Report
-            </Button>
-          </div>
+          <TabsContent value="vendors" className="space-y-4">
+            <div className="grid md:grid-cols-2 gap-4">
+              <Card className="border-white/10 bg-[#1A1A1A]">
+                <CardHeader><CardTitle className="text-sm text-[#D4C4A8]/60">Vendor directory</CardTitle></CardHeader>
+                <CardContent className="text-sm text-[#D4C4A8]/80 space-y-2">
+                  <p>Total: <strong className="text-[#F4E9D8]">{vendorSummary?.total ?? 0}</strong></p>
+                  <p>Active: <strong className="text-[#F4E9D8]">{vendorSummary?.active ?? 0}</strong></p>
+                  <p>Pending verification: <strong className="text-[#FE5E00]">{vendorSummary?.pending ?? 0}</strong></p>
+                  <p>Inactive: <strong className="text-[#F4E9D8]">{vendorSummary?.inactive ?? 0}</strong></p>
+                </CardContent>
+              </Card>
+              <Card className="border-white/10 bg-[#1A1A1A]">
+                <CardHeader><CardTitle className="text-sm text-[#F4E9D8]">Top vendors</CardTitle></CardHeader>
+                <CardContent className="space-y-2 text-sm max-h-80 overflow-y-auto">
+                  {vendorRank.map((v: any, i: number) => (
+                    <div key={i} className="flex justify-between border-b border-white/5 pb-2">
+                      <span className="text-[#D4C4A8]/80">{v.vendor?.companyName || v.vendor?.contactPerson || "—"}</span>
+                      <span className="text-[#F4E9D8] font-medium">{money(v.revenue)}</span>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
 
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-[#D4C4A8]/60">
-                  Total GST Collected
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">₹12.06L</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-[#D4C4A8]/60">
-                  GST @ 18%
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">₹10.8L</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-[#D4C4A8]/60">
-                  GST @ 12%
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">₹1.26L</div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="gst" className="space-y-4">
+            <div className="grid md:grid-cols-2 gap-4">
+              <Card className="border-white/10 bg-[#1A1A1A]">
+                <CardHeader><CardTitle className="text-sm text-[#F4E9D8]">GST accrual by period (from paid orders)</CardTitle></CardHeader>
+                <CardContent className="h-[260px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={gstRows.slice(-12).map((r: any) => ({
+                      label: r._id?.month ? `M${r._id.month}` : "—",
+                      gst: Math.round(r.gst || 0),
+                    }))}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                      <XAxis dataKey="label" tick={{ fill: "#D4C4A8", fontSize: 10 }} />
+                      <YAxis tick={{ fill: "#D4C4A8", fontSize: 11 }} />
+                      <Tooltip contentStyle={{ background: "#111", border: "1px solid #333" }} />
+                      <Bar dataKey="gst" fill="#C9A227" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+              <Card className="border-white/10 bg-[#1A1A1A]">
+                <CardHeader><CardTitle className="text-sm text-[#F4E9D8]">Payment gateway summary</CardTitle></CardHeader>
+                <CardContent className="text-sm text-[#D4C4A8]/80 space-y-2">
+                  <p>Paid: <strong className="text-[#F4E9D8]">{money(paySummary?.totalCollected)}</strong> ({paySummary?.countPaid ?? 0} txns)</p>
+                  <p>Pending: <strong className="text-[#F4E9D8]">{money(paySummary?.totalPending)}</strong></p>
+                  <p>Failed: <strong className="text-[#F4E9D8]">{money(paySummary?.totalFailed)}</strong></p>
+                  <p>Refunded: <strong className="text-[#F4E9D8]">{money(paySummary?.totalRefunded)}</strong></p>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="ops" className="space-y-4">
+            <div className="grid md:grid-cols-2 gap-4">
+              <Card className="border-white/10 bg-[#1A1A1A]">
+                <CardHeader><CardTitle className="text-sm text-[#F4E9D8]">Delivery / dispatch</CardTitle></CardHeader>
+                <CardContent className="text-sm text-[#D4C4A8]/80 space-y-1">
+                  <p>Total shipments: <strong className="text-[#F4E9D8]">{delivery?.total ?? 0}</strong></p>
+                  <p>In transit: <strong className="text-[#F4E9D8]">{delivery?.inTransit ?? 0}</strong></p>
+                  <p>Pending pickup: <strong className="text-[#FE5E00]">{delivery?.pending ?? 0}</strong></p>
+                  <p>Delivered: <strong className="text-green-400">{delivery?.delivered ?? 0}</strong></p>
+                </CardContent>
+              </Card>
+              <Card className="border-white/10 bg-[#1A1A1A]">
+                <CardHeader><CardTitle className="text-sm text-[#F4E9D8]">Uploaded documents (invoices / e-way)</CardTitle></CardHeader>
+                <CardContent className="text-xs font-mono text-[#D4C4A8]/70 max-h-56 overflow-y-auto">
+                  {invoiceAgg.length === 0 ? <p>No document aggregates.</p> : invoiceAgg.map((row: any, i: number) => (
+                    <div key={i} className="border-b border-white/5 py-1">{JSON.stringify(row._id)} → {row.count}</div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
+      )}
     </div>
   );
 }

@@ -102,6 +102,9 @@ const userSchema = new mongoose.Schema(
     },
     vendorApprovedAt: { type: Date, default: null },
 
+    /** VENDOR: cities this vendor serves (ObjectIds → City). Empty/unset = legacy “all cities” until configured in admin. */
+    serviceCityIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'City' }],
+
     // ─── Vendor Extended Profile ─────────────────────────────
     panNumber: { type: String, trim: true, uppercase: true, default: null },
     officeAddress: {
@@ -155,6 +158,18 @@ userSchema.virtual('isVendor').get(function () {
 
 userSchema.virtual('isAdmin').get(function () {
   return this.role === ROLES.ADMIN;
+});
+
+/** At most one user may have role ADMIN (platform owner). */
+userSchema.pre('validate', async function () {
+  if (this.role !== ROLES.ADMIN) return;
+  const Model = this.constructor;
+  const filter = { role: ROLES.ADMIN };
+  if (this._id) filter._id = { $ne: this._id };
+  const others = await Model.countDocuments(filter);
+  if (others >= 1) {
+    this.invalidate('role', 'Only one ADMIN user is allowed. Use the existing admin or change role in the database.');
+  }
 });
 
 // ─── Pre-save: Hash password ─────────────────────────────────

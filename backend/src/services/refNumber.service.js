@@ -22,6 +22,8 @@ const MODULE_PREFIXES = {
   PRODUCT:         'PRD',
   CITY:            'CITY',
   AUDIT_LOG:       'LOG',
+  /** Internal counter only — output format is PRD `YYMMDD` + 4-digit seq (no prefix). */
+  MASTER_ORDER:    'MO',
 };
 
 function getDateKey(date = new Date()) {
@@ -29,6 +31,14 @@ function getDateKey(date = new Date()) {
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const y = String(date.getFullYear()).slice(-2);
   return `${d}${m}${y}`;
+}
+
+/** PRD master order date key: YYMMDD (e.g. 260531). */
+function getDateKeyYYMMDD(date = new Date()) {
+  const d = String(date.getDate()).padStart(2, '0');
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const y = String(date.getFullYear()).slice(-2);
+  return `${y}${m}${d}`;
 }
 
 /**
@@ -94,10 +104,61 @@ async function generateRefNumber(module, options = {}) {
 }
 
 /**
- * Vendor sub-order: ORDDDMYY001-01 (2-digit suffix, daily master sequence in prefix).
+ * Vendor sub-order: `{masterOrderNumber}-{n}` (PRD e.g. 2605310001-1, 2605310001-2).
  */
 function generateSubOrderNumber(masterOrderNumber, subIndex) {
-  return `${masterOrderNumber}-${String(subIndex).padStart(2, '0')}`;
+  return `${masterOrderNumber}-${Number(subIndex)}`;
+}
+
+/**
+ * Concrete RFQ reference: `RFQCON` + `YYMMDD` + 4-digit daily sequence (e.g. RFQCON2606120001).
+ */
+async function generateConcreteRfqNumber(options = {}) {
+  const module = 'CONCRETE_RFQ';
+  const prefix = 'RFQCON';
+  const date = getDateKeyYYMMDD();
+  const maxRetries = 6;
+
+  for (let attempt = 0; attempt < maxRetries; attempt += 1) {
+    try {
+      const counter = await ReferenceCounter.findOneAndUpdate(
+        { module, date },
+        {
+          $inc: { currentSequence: 1 },
+          $set: {
+            prefix,
+            lastGeneratedAt: new Date(),
+            status: 'ACTIVE',
+          },
+        },
+        { new: true, upsert: true, session: options.session }
+      );
+
+      const seq = String(counter.currentSequence).padStart(4, '0');
+      const referenceNumber = `${prefix}${date}${seq}`;
+
+      if (!options.skipAllocationLog) {
+        await ReferenceAllocation.create(
+          [{
+            module,
+            referenceNumber,
+            dateKey: date,
+            sequence: counter.currentSequence,
+            entityModel: options.entityModel || null,
+            entityId: options.entityId || null,
+          }],
+          { session: options.session }
+        ).catch(() => {});
+      }
+
+      return referenceNumber;
+    } catch (err) {
+      if (err && err.code === 11000 && attempt < maxRetries - 1) continue;
+      throw err;
+    }
+  }
+
+  throw new Error('Failed to allocate concrete RFQ reference');
 }
 
 async function getNextSubOrderIndex(masterOrderId) {
@@ -106,10 +167,65 @@ async function getNextSubOrderIndex(masterOrderId) {
   return count + 1;
 }
 
+/**
+ * Master order number per PRD: YYMMDD + 4-digit daily sequence (e.g. 2605310001).
+ * Sub-orders append `-1`, `-2`, … via {@link generateSubOrderNumber}.
+ */
+async function generatePrdMasterOrderNumber(options = {}) {
+  const module = 'MASTER_ORDER';
+  const prefix = MODULE_PREFIXES[module];
+  const date = getDateKeyYYMMDD();
+  const maxRetries = 6;
+
+  for (let attempt = 0; attempt < maxRetries; attempt += 1) {
+    try {
+      const counter = await ReferenceCounter.findOneAndUpdate(
+        { module, date },
+        {
+          $inc: { currentSequence: 1 },
+          $set: {
+            prefix,
+            lastGeneratedAt: new Date(),
+            status: 'ACTIVE',
+          },
+        },
+        { new: true, upsert: true, session: options.session }
+      );
+
+      const seq = String(counter.currentSequence).padStart(4, '0');
+      const referenceNumber = `${date}${seq}`;
+
+      if (!options.skipAllocationLog) {
+        await ReferenceAllocation.create(
+          [{
+            module,
+            referenceNumber,
+            dateKey: date,
+            sequence: counter.currentSequence,
+            entityModel: options.entityModel || null,
+            entityId: options.entityId || null,
+          }],
+          { session: options.session }
+        ).catch(() => {});
+      }
+
+      return referenceNumber;
+    } catch (err) {
+      if (err && err.code === 11000 && attempt < maxRetries - 1) continue;
+      throw err;
+    }
+  }
+
+  throw new Error('Failed to allocate PRD master order number');
+}
+
 module.exports = {
   generateRefNumber,
+  generatePrdMasterOrderNumber,
+  generateConcreteRfqNumber,
   generateSubOrderNumber,
   getNextSubOrderIndex,
   MODULE_PREFIXES,
   getDateKey,
+  getDateKeyYYMMDD,
 };

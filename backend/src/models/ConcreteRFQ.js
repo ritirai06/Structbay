@@ -6,6 +6,7 @@ const concreteRFQSchema = new mongoose.Schema(
 
     customer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     customerName: { type: String, required: true },
+    companyName: { type: String, default: null },
     customerPhone: { type: String, required: true },
     customerEmail: { type: String, default: null },
 

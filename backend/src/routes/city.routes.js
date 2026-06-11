@@ -6,6 +6,7 @@ const ctrl = require('../controllers/city.controller');
 const adminOnly = [protect, requireRole('ADMIN')];
 
 router.get('/',               ctrl.getAll);
+router.post('/bulk-import',  ...adminOnly, ctrl.bulkImport);
 router.get('/:id',            ctrl.getById);
 router.post('/',              ...adminOnly, ctrl.create);
 router.patch('/:id',          ...adminOnly, ctrl.update);

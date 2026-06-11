@@ -1,21 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { Search, RefreshCw, Eye, UserPlus, Loader2, ClipboardList } from "lucide-react";
-
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
-const getToken = () => localStorage.getItem("adminToken") || "";
-async function apiFetch(path: string, opts: RequestInit = {}) {
-  const res = await fetch(`${API}${path}`, { ...opts, headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}`, ...opts.headers } });
-  const data = await res.json();
-  if (!data.success) throw new Error(data.message || "API Error");
-  return data;
-}
-
-const DEMO = [
-  { _id: "1", rfqNumber: "RFQCON260604001", customerName: "ABC Builders", customerPhone: "+91 98765 43210", grade: "M30", quantity: 50, location: "Whitefield", city: "Bengaluru", pumpRequired: true, status: "PENDING", assignedTo: null, createdAt: "2026-06-04" },
-  { _id: "2", rfqNumber: "RFQCON260603002", customerName: "XYZ Construction", customerPhone: "+91 98765 43211", grade: "M25", quantity: 30, location: "Hitech City", city: "Hyderabad", pumpRequired: false, status: "IN_PROGRESS", assignedTo: { name: "Rajesh Kumar" }, createdAt: "2026-06-03" },
-  { _id: "3", rfqNumber: "RFQCON260602003", customerName: "PQR Developers", customerPhone: "+91 98765 43212", grade: "M40", quantity: 75, location: "OMR", city: "Chennai", pumpRequired: true, status: "QUOTED", assignedTo: { name: "Priya Sharma" }, createdAt: "2026-06-02" },
-  { _id: "4", rfqNumber: "RFQCON260601004", customerName: "Metro Projects", customerPhone: "+91 98765 43213", grade: "M35", quantity: 200, location: "Electronic City", city: "Bengaluru", pumpRequired: true, status: "CONVERTED", assignedTo: { name: "Amit Singh" }, createdAt: "2026-06-01" },
-];
+import { Search, RefreshCw, Eye, Loader2, ClipboardList } from "lucide-react";
+import { adminFetch as apiFetch } from "../../lib/adminApi";
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: "bg-[#FE5E00]/15 text-[#FE5E00] border-[#FE5E00]/25",
@@ -42,23 +27,40 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 const inp = "w-full bg-[#0D0D0D] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#F4E9D8] placeholder:text-[#D4C4A8]/30 focus:outline-none focus:border-[#FE5E00] transition-colors";
 
 export function RFQManagement() {
-  const [items, setItems] = useState<any[]>(DEMO);
+  const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [selected, setSelected] = useState<any>(null);
-  const [stats, setStats] = useState({ total: 156, pending: 23, inProgress: 45, quoted: 33, converted: 88 });
+  const [stats, setStats] = useState({ total: 0, pending: 0, inProgress: 0, quoted: 0, converted: 0 });
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
+    setLoadError(null);
     const params = new URLSearchParams({ limit: "20" });
     if (statusFilter) params.set("status", statusFilter);
     apiFetch(`/concrete-rfqs?${params}`)
-      .then(d => setItems(d.data || []))
-      .catch(() => setItems(DEMO))
+      .then((d) => {
+        const raw = d.data;
+        if (!Array.isArray(raw)) {
+          setItems([]);
+          setLoadError("Unexpected response from server (expected a list of RFQs).");
+          return;
+        }
+        setItems(raw);
+      })
+      .catch((e) => {
+        setItems([]);
+        setLoadError(e instanceof Error ? e.message : "Failed to load RFQs.");
+      })
       .finally(() => setLoading(false));
-    apiFetch("/concrete-rfqs/stats").then(d => setStats(d.data)).catch(() => {});
+    apiFetch("/concrete-rfqs/stats")
+      .then((d) => {
+        if (d.data && typeof d.data === "object") setStats(d.data as typeof stats);
+      })
+      .catch(() => {});
   }, [statusFilter]);
 
   useEffect(() => { load(); }, [load]);
@@ -71,7 +73,14 @@ export function RFQManagement() {
     setSelected(null);
   };
 
-  const filtered = items.filter(i => !search || i.rfqNumber.includes(search) || i.customerName.toLowerCase().includes(search.toLowerCase()) || i.city.toLowerCase().includes(search.toLowerCase()));
+  const q = search.trim().toLowerCase();
+  const filtered = items.filter((i) => {
+    if (!q) return true;
+    const num = String(i.rfqNumber ?? "");
+    const name = String(i.customerName ?? "").toLowerCase();
+    const city = String(i.city ?? "").toLowerCase();
+    return num.includes(search) || name.includes(q) || city.includes(q);
+  });
 
   return (
     <div className="p-6 bg-[#0D0D0D] min-h-full">
@@ -95,6 +104,16 @@ export function RFQManagement() {
           </div>
         ))}
       </div>
+
+      {loadError && (
+        <div className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          <p className="font-semibold text-red-100">Could not load concrete RFQs</p>
+          <p className="mt-1 text-red-200/90 whitespace-pre-wrap">{loadError}</p>
+          <p className="mt-2 text-xs text-red-200/70">
+            Common causes: admin session expired (sign in again), not using the Vite dev server (so <code className="text-red-100/90">/api</code> is not proxied), or your account is not role ADMIN.
+          </p>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex gap-3 mb-5">

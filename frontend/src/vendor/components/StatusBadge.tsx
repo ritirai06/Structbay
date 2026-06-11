@@ -33,10 +33,13 @@ const cfg: Record<string, { label: string; bg: string; color: string; border: st
   ready_dispatch:      { label: 'Ready for Dispatch', bg: 'rgba(168,85,247,0.12)', color: '#A855F7',          border: 'rgba(168,85,247,0.25)' },
   dispatch_pending:    { label: 'Dispatch Pending',   bg: 'rgba(156,163,175,0.1)', color: 'var(--sb-text-muted)', border: 'rgba(156,163,175,0.2)' },
   approved:            { label: 'Approved',           bg: 'rgba(34,197,94,0.12)',  color: '#22C55E',          border: 'rgba(34,197,94,0.25)'  },
+  dispatch_confirmed:  { label: 'Dispatch Confirmed', bg: 'rgba(168,85,247,0.12)', color: '#A855F7',          border: 'rgba(168,85,247,0.25)' },
+  picked_up:           { label: 'Picked Up',          bg: 'rgba(6,182,212,0.12)',  color: '#22D3EE',          border: 'rgba(6,182,212,0.25)'  },
 };
 
 export function StatusBadge({ status }: { status: string }) {
-  const c = cfg[status] ?? cfg.pending;
+  const key = String(status ?? '').toLowerCase();
+  const c = cfg[key] ?? cfg.pending;
   return (
     <span
       className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap"

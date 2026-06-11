@@ -1,37 +1,74 @@
 const nodemailer = require('nodemailer');
 const logger = require('../config/logger');
 
+/** dotenv does not trim values — `KEY= value` leaves a leading space. */
+const trim = (v) => (typeof v === 'string' ? v.trim() : v || '');
+
 // ─── Transporter ────────────────────────────────────────────────────────────
-const createTransporter = () => {
-  // Use SMTP (production) or Ethereal (dev fallback)
-  if (process.env.SMTP_HOST) {
+/**
+ * Builds nodemailer transport from env (preferred order):
+ * 1. SMTP_HOST + (SMTP_USER|GMAIL_USER) + (SMTP_PASS|GMAIL_PASS)
+ * 2. service "gmail" + GMAIL_USER + GMAIL_PASS when SMTP_HOST is unset
+ * Returns null if not configured (sendEmail no-ops with a log).
+ */
+const buildTransporter = () => {
+  const host = trim(process.env.SMTP_HOST);
+  const smtpUser = trim(process.env.SMTP_USER);
+  const smtpPass = trim(process.env.SMTP_PASS);
+  const gmailUser = trim(process.env.GMAIL_USER);
+  const gmailPass = trim(process.env.GMAIL_PASS);
+  const authUser = smtpUser || gmailUser;
+  const authPass = smtpPass || gmailPass;
+
+  if (host && authUser && authPass) {
+    const port = parseInt(String(trim(process.env.SMTP_PORT) || '587'), 10) || 587;
+    const secure = String(trim(process.env.SMTP_SECURE)).toLowerCase() === 'true';
     return nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT) || 587,
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
+      host,
+      port,
+      secure,
+      auth: { user: authUser, pass: authPass },
+      requireTLS: !secure && port === 587,
     });
   }
-  // Gmail shorthand
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_PASS, // App password
-    },
-  });
+
+  if (authUser && authPass) {
+    return nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: authUser, pass: authPass },
+    });
+  }
+
+  logger.warn(
+    'Email is not configured. Set SMTP_HOST + SMTP_USER + SMTP_PASS (and SMTP_FROM), or GMAIL_USER + GMAIL_PASS.'
+  );
+  return null;
 };
 
-const transporter = createTransporter();
+let transporterCache;
+const getTransporter = () => {
+  if (transporterCache !== undefined) return transporterCache;
+  transporterCache = buildTransporter();
+  return transporterCache;
+};
+
+const defaultFrom = () => {
+  const from = trim(process.env.SMTP_FROM) || trim(process.env.SMTP_USER) || trim(process.env.GMAIL_USER);
+  return from || 'noreply@structbay.local';
+};
 
 // ─── Base Sender ─────────────────────────────────────────────────────────────
 const sendEmail = async ({ to, subject, html }) => {
+  const transporter = getTransporter();
+  if (!transporter) {
+    logger.warn(`Email skipped (not configured): would send to ${to} — ${subject}`);
+    return null;
+  }
+
   try {
+    const fromAddr = defaultFrom();
     const info = await transporter.sendMail({
-      from: `"StructBay" <${process.env.SMTP_FROM || process.env.GMAIL_USER}>`,
+      from: `"StructBay" <${fromAddr}>`,
       to,
       subject,
       html,
@@ -80,7 +117,8 @@ const baseTemplate = (content) => `
 
 // ─── Email: Verify Email ──────────────────────────────────────────────────────
 const sendVerificationEmail = async ({ to, name, token }) => {
-  const url = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
+  const base = trim(process.env.FRONTEND_URL) || 'http://localhost:3000';
+  const url = `${base.replace(/\/$/, '')}/verify-email?token=${encodeURIComponent(token)}`;
   return sendEmail({
     to,
     subject: 'Verify your StructBay account',
@@ -96,7 +134,8 @@ const sendVerificationEmail = async ({ to, name, token }) => {
 
 // ─── Email: Forgot Password ───────────────────────────────────────────────────
 const sendPasswordResetEmail = async ({ to, name, token }) => {
-  const url = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+  const base = trim(process.env.FRONTEND_URL) || 'http://localhost:3000';
+  const url = `${base.replace(/\/$/, '')}/reset-password?token=${encodeURIComponent(token)}`;
   return sendEmail({
     to,
     subject: 'Reset your StructBay password',
@@ -127,7 +166,8 @@ const sendVendorApplicationEmail = async ({ to, name, companyName }) => {
 
 // ─── Email: Vendor Approved ───────────────────────────────────────────────────
 const sendVendorApprovedEmail = async ({ to, name, companyName }) => {
-  const loginUrl = `${process.env.FRONTEND_URL}/vendor/login`;
+  const base = trim(process.env.VENDOR_URL) || trim(process.env.FRONTEND_URL) || 'http://localhost:3000';
+  const loginUrl = `${base.replace(/\/$/, '')}/vendor/login`;
   return sendEmail({
     to,
     subject: '🎉 Vendor Account Approved – StructBay',
@@ -156,7 +196,8 @@ const sendVendorRejectedEmail = async ({ to, name, companyName, reason }) => {
 
 // ─── Email: Welcome (Customer) ────────────────────────────────────────────────
 const sendWelcomeEmail = async ({ to, name }) => {
-  const shopUrl = `${process.env.FRONTEND_URL}`;
+  const base = trim(process.env.FRONTEND_URL) || 'http://localhost:3000';
+  const shopUrl = base.replace(/\/$/, '');
   return sendEmail({
     to,
     subject: 'Welcome to StructBay!',

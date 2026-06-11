@@ -11,7 +11,7 @@ export function OrderSuccess() {
       {/* Success animation */}
       <div className="relative mb-8">
         <div style={{ backgroundColor: "var(--sb-green, #16a34a)" }} className="w-24 h-24 rounded-full flex items-center justify-center mx-auto">
-          <CheckCircle2 className="w-14 h-14 text-white" />
+          <CheckCircle2 className="w-14 h-14 text-sb-cream" />
         </div>
         <div className="absolute inset-0 flex items-center justify-center">
           <div style={{ borderColor: "var(--sb-green, #16a34a)" }} className="w-32 h-32 rounded-full border-4 opacity-30 animate-ping" />
@@ -23,15 +23,15 @@ export function OrderSuccess() {
         Your order has been confirmed. You'll receive a confirmation on your registered email and phone number.
       </p>
 
-      <div style={{ backgroundColor: "var(--sb-blue)" }} className="rounded-2xl p-6 text-white mb-4">
-        <p className="text-white/70 text-sm mb-1">Order Number</p>
+      <div style={{ backgroundColor: "var(--sb-blue)" }} className="rounded-2xl p-6 text-sb-cream mb-4">
+        <p className="text-sb-cream/70 text-sm mb-1">Order Number</p>
         <p className="font-bold text-2xl tracking-wide">
           {orderNumber ?? "—"}
         </p>
         {!orderNumber && (
-          <p className="text-white/80 text-sm mt-1">Your StructBay order reference was sent to your registered email and phone.</p>
+          <p className="text-sb-cream/80 text-sm mt-1">Your StructBay order reference was sent to your registered email and phone.</p>
         )}
-        <p className="text-white/70 text-sm mt-2">Expected Delivery: 2–4 Business Days</p>
+        <p className="text-sb-cream/70 text-sm mt-2">Expected Delivery: 2–4 Business Days</p>
       </div>
 
       {/* Delivery charges notice */}
@@ -52,7 +52,7 @@ export function OrderSuccess() {
             <div key={item.step} className="flex items-start gap-3">
               <div
                 style={{ backgroundColor: item.done ? "var(--sb-green, #16a34a)" : "var(--sb-blue)" }}
-                className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 mt-0.5"
+                className="w-6 h-6 rounded-full flex items-center justify-center text-sb-cream text-xs font-bold shrink-0 mt-0.5"
               >
                 {item.step}
               </div>
@@ -72,14 +72,14 @@ export function OrderSuccess() {
         <Link
           to="/track"
           style={{ backgroundColor: "var(--sb-blue)" }}
-          className="flex-1 flex items-center justify-center gap-2 text-white rounded-2xl py-3 text-sm font-semibold hover:opacity-90"
+          className="flex-1 flex items-center justify-center gap-2 text-sb-cream rounded-2xl py-3 text-sm font-semibold hover:opacity-90"
         >
           <Package className="w-4 h-4" /> Track Order
         </Link>
         <Link
           to="/"
           style={{ backgroundColor: "var(--sb-orange)" }}
-          className="flex-1 flex items-center justify-center gap-2 text-white rounded-2xl py-3 text-sm font-semibold hover:opacity-90"
+          className="flex-1 flex items-center justify-center gap-2 text-sb-cream rounded-2xl py-3 text-sm font-semibold hover:opacity-90"
         >
           Continue Shopping <ArrowRight className="w-4 h-4" />
         </Link>

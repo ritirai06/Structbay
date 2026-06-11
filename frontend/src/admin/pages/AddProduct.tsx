@@ -1,22 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams, Link } from "react-router";
-import { ArrowLeft, Plus, Trash2, Loader2, Save, Shield, Zap, TrendingUp, Star } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Loader2, Save, Shield, Zap, TrendingUp, Star, MapPin } from "lucide-react";
 import { adminPath } from "../../lib/portalRoutes";
+import { adminFetch as apiFetch } from "../../lib/adminApi";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
-const getToken = () => localStorage.getItem("adminToken") || "";
-async function apiFetch(path: string, opts: RequestInit = {}) {
-  const res = await fetch(`${API}${path}`, {
-    ...opts,
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}`, ...opts.headers },
-  });
-  const data = await res.json();
-  if (!data.success) throw new Error(data.message || "API Error");
-  return data;
-}
-
-const DEMO_CATS = ["Cement", "Steel", "Concrete", "Bricks", "Paints", "Pipes", "Hardware", "Electricals"];
-const DEMO_BRANDS = ["UltraTech", "TATA Steel", "ACC", "Ambuja", "Asian Paints", "Berger", "Nerolac", "JK Cement"];
 const VARIATION_ATTRS = ["weight", "grade", "size", "color", "finish", "diameter"];
 
 const emptyForm = {
@@ -28,6 +15,7 @@ const emptyForm = {
   seo: { metaTitle: "", metaDescription: "", metaKeywords: [] },
   faqs: [] as { question: string; answer: string }[],
   videos: [] as { title: string; url: string }[],
+  documents: [] as { name: string; url: string }[],
 };
 
 const emptyVariation = { weight: "", grade: "", size: "", color: "", finish: "", diameter: "", sku: "" };
@@ -88,6 +76,49 @@ export function AddProduct() {
   const [loading, setLoading] = useState(isEdit);
   const [newFaq, setNewFaq] = useState({ question: "", answer: "" });
   const [tab, setTab] = useState<"info" | "media" | "variations" | "seo" | "faqs">("info");
+  const [catalogCategories, setCatalogCategories] = useState<{ _id: string; name: string }[]>([]);
+  /** `categoryId` = brand's linked category (Brands admin); null = legacy / any category */
+  const [catalogBrands, setCatalogBrands] = useState<{ _id: string; name: string; categoryId: string | null }[]>([]);
+
+  useEffect(() => {
+    apiFetch("/categories?limit=200&status=ACTIVE")
+      .then(d => setCatalogCategories((d.data || []).map((c: { _id: string; name: string }) => ({ _id: c._id, name: c.name }))))
+      .catch(() => setCatalogCategories([]));
+    apiFetch("/brands?limit=200&status=ACTIVE")
+      .then(d =>
+        setCatalogBrands(
+          (d.data || []).map((b: { _id: string; name: string; category?: { _id: string } | string | null }) => ({
+            _id: b._id,
+            name: b.name,
+            categoryId: b.category && typeof b.category === "object" && "_id" in b.category ? b.category._id : (b.category as string) || null,
+          }))
+        )
+      )
+      .catch(() => setCatalogBrands([]));
+  }, []);
+
+  /** Brands linked to the selected category, plus legacy brands with no category set */
+  const brandsForCategory = useMemo(() => {
+    if (!form.category) return catalogBrands;
+    return catalogBrands.filter(
+      b => !b.categoryId || String(b.categoryId) === String(form.category)
+    );
+  }, [catalogBrands, form.category]);
+
+  const brandSelectOptions = useMemo(() => {
+    const list = [...brandsForCategory].sort((a, b) => a.name.localeCompare(b.name));
+    if (form.brand && !list.some(b => String(b._id) === String(form.brand))) {
+      const current = catalogBrands.find(b => String(b._id) === String(form.brand));
+      if (current) return [current, ...list];
+    }
+    return list;
+  }, [brandsForCategory, form.brand, catalogBrands]);
+
+  useEffect(() => {
+    if (!form.category || !form.brand || catalogBrands.length === 0) return;
+    const allowed = brandsForCategory.some(b => String(b._id) === String(form.brand));
+    if (!allowed) set("brand", "");
+  }, [form.category, form.brand, brandsForCategory, catalogBrands.length]);
 
   useEffect(() => {
     if (!isEdit) return;
@@ -101,7 +132,7 @@ export function AddProduct() {
           status: p.status, isFeatured: p.isFeatured, isTopSelling: p.isTopSelling,
           isAssured: p.isAssured, isExpress: p.isExpress, displayOrder: p.displayOrder,
           seo: p.seo || { metaTitle: "", metaDescription: "", metaKeywords: [] },
-          faqs: p.faqs || [], videos: p.videos || [],
+          faqs: p.faqs || [], videos: p.videos || [], documents: p.documents || [],
         });
         setVariations(p.variations || []);
       })
@@ -115,8 +146,13 @@ export function AddProduct() {
     if (!form.name || !form.sku) return alert("Name and SKU are required.");
     setSaving(true);
     try {
-      if (isEdit) await apiFetch(`/products/${id}`, { method: "PATCH", body: JSON.stringify(form) });
-      else await apiFetch("/products", { method: "POST", body: JSON.stringify(form) });
+      const body = {
+        ...form,
+        documents: form.documents.filter(d => d.name.trim() && d.url.trim()),
+        videos: form.videos.filter(v => v.title.trim() || v.url.trim()),
+      };
+      if (isEdit) await apiFetch(`/products/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+      else await apiFetch("/products", { method: "POST", body: JSON.stringify(body) });
       navigate(adminPath("products"));
     } catch (e: any) { alert(e.message); }
     setSaving(false);
@@ -212,19 +248,39 @@ export function AddProduct() {
                   </select>
                 </Field>
               </div>
+              <p className="text-xs text-[#D4C4A8]/50 -mt-2">List and storefront prices are excluding GST; GST is applied at checkout using this rate.</p>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Category" required>
                   <select className={sel} value={form.category} onChange={e => set("category", e.target.value)}>
                     <option value="">Select category</option>
-                    {DEMO_CATS.map(c => <option key={c} value={c}>{c}</option>)}
+                    {catalogCategories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
                   </select>
                 </Field>
                 <Field label="Brand" required>
-                  <select className={sel} value={form.brand} onChange={e => set("brand", e.target.value)}>
-                    <option value="">Select brand</option>
-                    {DEMO_BRANDS.map(b => <option key={b} value={b}>{b}</option>)}
+                  <select className={sel} value={form.brand} onChange={e => set("brand", e.target.value)} disabled={!form.category}>
+                    <option value="">{form.category ? "Select brand" : "Select category first"}</option>
+                    {brandSelectOptions.map(b => <option key={b._id} value={b._id}>{b.name}</option>)}
                   </select>
                 </Field>
+              </div>
+              <p className="text-xs text-[#D4C4A8]/50 -mt-2">
+                Brands are filtered by the <strong className="text-[#D4C4A8]/70">parent category</strong> set under{" "}
+                <Link to={adminPath("brands")} className="text-[#FE5E00] hover:underline">Brands</Link>
+                {" "}(legacy brands with no category stay available for every category).
+              </p>
+              <div className="rounded-lg border border-[#FE5E00]/25 bg-[#FE5E00]/5 px-4 py-3 flex gap-3 items-start">
+                <MapPin className="w-4 h-4 text-[#FE5E00] shrink-0 mt-0.5" />
+                <div className="text-xs text-[#D4C4A8]/80 leading-relaxed">
+                  <span className="font-semibold text-[#F4E9D8]">City-wise listing on the storefront</span> is not set on this screen.
+                  A product appears for customers in a city only when that city has both{" "}
+                  <strong className="text-[#F4E9D8]/90">visible pricing</strong> and{" "}
+                  <strong className="text-[#F4E9D8]/90">available stock</strong>.
+                  Use{" "}
+                  <Link to={adminPath("pricing")} className="text-[#FE5E00] hover:underline">Pricing</Link>
+                  {" "}and{" "}
+                  <Link to={adminPath("inventory")} className="text-[#FE5E00] hover:underline">Inventory</Link>
+                  {" "}per city (and <Link to={adminPath("cities")} className="text-[#FE5E00] hover:underline">Cities</Link> for serviceable locations).
+                </div>
               </div>
               <Field label="Short Description">
                 <textarea className={`${inp} resize-none`} rows={2} placeholder="Brief description (max 500 chars)" value={form.shortDescription} onChange={e => set("shortDescription", e.target.value)} />
@@ -274,6 +330,27 @@ export function AddProduct() {
                 <button onClick={() => set("videos", [...form.videos, { title: "", url: "" }])}
                   className="flex items-center gap-2 text-sm text-[#FE5E00] hover:text-[#E05200] transition-colors">
                   <Plus className="w-4 h-4" /> Add Video
+                </button>
+              </Field>
+              <Field label="Product documents (PDF / spec sheets)">
+                <p className="text-xs text-[#D4C4A8]/50 mb-2">Add display name and URL (e.g. from CMS upload or Cloudinary).</p>
+                {form.documents.map((doc, i) => (
+                  <div key={i} className="flex gap-2 mb-2">
+                    <input className={`${inp} flex-1`} placeholder="Document name" value={doc.name} onChange={e => {
+                      const next = [...form.documents]; next[i] = { ...next[i], name: e.target.value }; set("documents", next);
+                    }} />
+                    <input className={`${inp} flex-1`} placeholder="https://..." value={doc.url} onChange={e => {
+                      const next = [...form.documents]; next[i] = { ...next[i], url: e.target.value }; set("documents", next);
+                    }} />
+                    <button type="button" onClick={() => set("documents", form.documents.filter((_, j) => j !== i))}
+                      className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+                <button type="button" onClick={() => set("documents", [...form.documents, { name: "", url: "" }])}
+                  className="flex items-center gap-2 text-sm text-[#FE5E00] hover:text-[#E05200] transition-colors">
+                  <Plus className="w-4 h-4" /> Add document
                 </button>
               </Field>
             </Section>

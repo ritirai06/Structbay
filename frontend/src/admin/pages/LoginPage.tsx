@@ -1,7 +1,36 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Lock, Mail, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { Lock, Mail, Eye, EyeOff, ShieldCheck, Loader2 } from "lucide-react";
 import logoImg from "/shared/assets/logos/Structbay-Logo-F-1.png";
+import { getApiV1Base } from "../../lib/apiBase";
+import { clearAdminSession, setAdminSession } from "../../lib/adminApi";
+
+type LoginEnvelope = {
+  success: boolean;
+  message?: string;
+  data?: {
+    user?: { role?: string; name?: string; email?: string };
+    accessToken?: string;
+    refreshToken?: string;
+  };
+};
+
+function formatAuthErrors(json: Record<string, unknown>): string {
+  const msg = typeof json.message === "string" ? json.message : "Request failed";
+  const errs = json.errors;
+  if (!Array.isArray(errs) || errs.length === 0) return msg;
+  const lines = errs
+    .map((x: unknown) => {
+      if (x && typeof x === "object" && "message" in x) {
+        const o = x as { field?: string; message?: string };
+        if (o.field && o.message) return `${o.field}: ${o.message}`;
+        return o.message || "";
+      }
+      return "";
+    })
+    .filter(Boolean);
+  return lines.length ? `${msg}\n${lines.join("\n")}` : msg;
+}
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -9,10 +38,81 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [remember, setRemember] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate("/admin");
+    setError("");
+    setLoading(true);
+    clearAdminSession();
+    const base = getApiV1Base().replace(/\/$/, "");
+    try {
+      const res = await fetch(`${base}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+      const rawText = await res.text();
+      let json: Record<string, unknown> = {};
+      if (rawText) {
+        try {
+          json = JSON.parse(rawText) as Record<string, unknown>;
+        } catch {
+          throw new Error(
+            `Bad response (HTTP ${res.status}). Run the frontend with Vite so /api proxies to the API, or set VITE_API_URL.`
+          );
+        }
+      }
+      if (!res.ok || json.success === false) {
+        setError(formatAuthErrors(json));
+        return;
+      }
+
+      const data = json.data as LoginEnvelope["data"] | undefined;
+      const accessToken = data?.accessToken;
+      const refreshToken = data?.refreshToken;
+      if (!accessToken) {
+        setError("Login succeeded but no access token was returned. Check API configuration.");
+        return;
+      }
+
+      const meRes = await fetch(`${base}/auth/me`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const meText = await meRes.text();
+      let meJson: Record<string, unknown> = {};
+      if (meText) {
+        try {
+          meJson = JSON.parse(meText) as Record<string, unknown>;
+        } catch {
+          setError("Could not read session after login. Try again.");
+          return;
+        }
+      }
+      if (!meRes.ok || meJson.success === false) {
+        setError(formatAuthErrors(meJson) || "Session check failed after login.");
+        return;
+      }
+
+      const u = meJson.data as { role?: string } | undefined;
+      if (u?.role !== "ADMIN") {
+        setError("This portal is for admin accounts only. Use the customer or vendor login for your role.");
+        return;
+      }
+
+      setAdminSession({ accessToken, refreshToken });
+      queueMicrotask(() => navigate("/admin"));
+    } catch (err) {
+      const m = err instanceof Error ? err.message : "Network error";
+      setError(
+        /Vite|proxy|Bad response|JSON|fetch/i.test(m)
+          ? m
+          : `${m} — Start the backend and open the app via the Vite dev server so /api is proxied.`
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -82,6 +182,11 @@ export function LoginPage() {
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
+            {error ? (
+              <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2" role="alert">
+                {error}
+              </p>
+            ) : null}
             {/* Email */}
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-[#D4C4A8]/70 mb-1.5">
@@ -143,9 +248,10 @@ export function LoginPage() {
             {/* Submit */}
             <button
               type="submit"
-              className="w-full bg-[#FE5E00] hover:bg-[#E05200] active:scale-[0.98] text-[#0D0D0D] font-bold py-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-[0_4px_16px_rgba(254,94,0,0.25)] mt-2"
+              disabled={loading}
+              className="w-full bg-[#FE5E00] hover:bg-[#E05200] active:scale-[0.98] text-[#0D0D0D] font-bold py-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-[0_4px_16px_rgba(254,94,0,0.25)] mt-2 disabled:opacity-60 disabled:pointer-events-none"
             >
-              <ShieldCheck className="w-4 h-4" />
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
               Sign In to Admin Panel
             </button>
           </form>

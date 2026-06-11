@@ -1,29 +1,79 @@
 import { useParams, Link } from 'react-router';
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Package, MapPin, Upload, Truck, Download, CheckCircle, Circle, AlertCircle, Phone, User, FileText, Clock } from 'lucide-react';
+import { ArrowLeft, Package, MapPin, Upload, Truck, Download, CheckCircle, Circle, AlertCircle, Phone, User, Clock } from 'lucide-react';
 import { StatusBadge } from '../components/StatusBadge';
 import { api } from '../lib/api';
 import { vendorPath } from '../../lib/portalRoutes';
 
-const STATUS_FLOW_A = [
-  { status: 'new_order_alert',    label: 'New Order Alert' },
-  { status: 'vendor_invoice_sent',label: 'Invoice Sent' },
-  { status: 'ready_for_dispatch', label: 'Ready for Dispatch' },
-  { status: 'dispatched',         label: 'Dispatched' },
-  { status: 'material_delivered', label: 'Material Delivered' },
-  { status: 'delivery_confirmed', label: 'Delivery Confirmed' },
-];
-
-const STATUS_FLOW_B = [
-  { status: 'new_order_alert',    label: 'New Order Alert' },
-  { status: 'vendor_invoice_sent',label: 'Invoice Sent' },
-  { status: 'ready_for_dispatch', label: 'Ready for Dispatch' },
-  { status: 'pickup_scheduled',   label: 'Pickup Scheduled' },
-  { status: 'material_handed_over',label: 'Handed Over' },
-  { status: 'delivery_confirmed', label: 'Delivery Confirmed' },
-];
-
 const SB = { color: 'var(--sb-text-primary)', muted: 'var(--sb-text-muted)', faint: 'var(--sb-text-faint)', orange: 'var(--sb-orange)', card: 'var(--sb-card)', border: 'var(--sb-border)', bg: 'var(--sb-bg-section)' };
+
+/** Backend vendor-order lifecycle (lowercase canonical). */
+const LIFECYCLE = [
+  'assigned',
+  'invoice_uploaded',
+  'ready_for_dispatch',
+  'dispatch_confirmed',
+  'pickup_scheduled',
+  'picked_up',
+  'in_transit',
+  'dispatched',
+  'out_for_delivery',
+  'delivered',
+  'completed',
+] as const;
+
+function norm(s: string) {
+  return String(s ?? '').toLowerCase().replace(/-/g, '_');
+}
+
+function canonicalVendorStatus(raw: string): string {
+  const n = norm(raw);
+  const map: Record<string, string> = {
+    new_order_alert: 'assigned',
+    vendor_invoice_sent: 'invoice_uploaded',
+    material_delivered: 'delivered',
+    delivery_confirmed: 'completed',
+    material_handed_over: 'picked_up',
+  };
+  return map[n] ?? n;
+}
+
+function lifecycleIndex(status: string): number {
+  if (norm(status) === 'cancelled') return -1;
+  const c = canonicalVendorStatus(status);
+  const i = LIFECYCLE.indexOf(c as (typeof LIFECYCLE)[number]);
+  return i >= 0 ? i : 0;
+}
+
+/** Five visual milestones for the progress bar (matches mixed vendor + dispatch statuses). */
+const PROGRESS_STEPS = [
+  { label: 'Assigned' },
+  { label: 'Invoice' },
+  { label: 'Ready' },
+  { label: 'In transit' },
+  { label: 'Delivered' },
+];
+
+function progressVisualIndex(lifeIdx: number): number {
+  if (lifeIdx < 0) return -1;
+  if (lifeIdx <= 0) return 0;
+  if (lifeIdx === 1) return 1;
+  if (lifeIdx <= 3) return 2;
+  if (lifeIdx <= 7) return 3;
+  return 4;
+}
+
+function invoiceNorm(s: string) {
+  return String(s ?? '').toUpperCase();
+}
+
+function formatAddress(addr: Record<string, unknown> | undefined | null): string {
+  if (!addr) return '';
+  const parts = [addr.line1, addr.line2, addr.street, addr.area, addr.city, addr.state, addr.pincode]
+    .map(v => (v != null && v !== '' ? String(v) : ''))
+    .filter(Boolean);
+  return parts.join(', ');
+}
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
@@ -69,11 +119,20 @@ export function OrderDetails() {
     </div>
   );
 
-  const flow = order.deliveryType === 'structbay_delivery' ? STATUS_FLOW_B : STATUS_FLOW_A;
-  const currentIdx = flow.findIndex(s => s.status === order.status);
+  const assignedLines = Array.isArray(order.items) ? order.items : [];
+  const cust = order.customerInfo ?? order.customer ?? {};
+  const inv = invoiceNorm(order.invoiceStatus);
+  const lifeIdx = lifecycleIndex(order.status);
+  const currentIdx = progressVisualIndex(lifeIdx);
+  const flow = PROGRESS_STEPS;
+  const lineProgress = currentIdx < 0 ? 0 : flow.length <= 1 ? 100 : (currentIdx / (flow.length - 1)) * 100;
 
   return (
     <div className="space-y-5">
+      <p className="text-xs rounded-lg px-3 py-2" style={{ background: SB.bg, border: `1px solid ${SB.border}`, color: SB.muted }}>
+        You only see line items assigned to you on this vendor order — not the customer’s full order elsewhere.
+      </p>
+
       {/* Header */}
       <div className="flex items-center gap-3">
         <Link to={vendorPath('orders')} className="p-2 rounded-xl transition-colors" style={{ background: SB.card, border: `1px solid ${SB.border}`, color: SB.muted }}>
@@ -81,7 +140,7 @@ export function OrderDetails() {
         </Link>
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-black" style={{ color: SB.color }}>{order.orderNumber}</h1>
+            <h1 className="text-xl font-semibold" style={{ color: SB.color }}>{order.orderNumber}</h1>
             {order.priority === 'urgent' && (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.25)' }}>URGENT</span>
             )}
@@ -91,7 +150,7 @@ export function OrderDetails() {
           </div>
           <p className="text-sm" style={{ color: SB.muted }}>
             {order.deliveryType === 'structbay_delivery' ? 'StructBay Delivery' : 'Vendor Delivery'} ·{' '}
-            Assigned {new Date(order.assignedAt).toLocaleDateString('en-IN')}
+            Assigned {order.assignedAt ? new Date(order.assignedAt).toLocaleDateString('en-IN') : '—'}
           </p>
         </div>
         <StatusBadge status={order.status} />
@@ -100,48 +159,57 @@ export function OrderDetails() {
       {/* Status Tracker */}
       <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
         <h2 className="text-xs font-bold uppercase tracking-widest mb-5" style={{ color: SB.muted }}>Order Progress</h2>
-        <div className="relative flex items-start justify-between">
-          <div className="absolute top-4 left-0 right-0 h-px" style={{ background: SB.border, zIndex: 0 }} />
-          <div className="absolute top-4 left-0 h-px transition-all duration-500"
-            style={{ background: 'var(--sb-orange)', width: currentIdx >= 0 ? `${(currentIdx / (flow.length - 1)) * 100}%` : '0%', zIndex: 1 }}
-          />
-          {flow.map((step, i) => {
-            const done = i <= currentIdx;
-            const active = i === currentIdx;
-            return (
-              <div key={step.status} className="flex flex-col items-center relative z-10" style={{ minWidth: 72 }}>
-                <div className="w-8 h-8 rounded-full flex items-center justify-center transition-all"
-                  style={{ background: done ? 'var(--sb-orange)' : SB.bg, border: `2px solid ${done ? 'var(--sb-orange)' : SB.border}`, boxShadow: active ? '0 0 0 4px rgba(249,115,22,0.2)' : 'none' }}>
-                  {done ? <CheckCircle className="w-4 h-4 text-white" /> : <Circle className="w-3 h-3" style={{ color: SB.faint }} />}
+        {currentIdx < 0 ? (
+          <p className="text-sm font-medium" style={{ color: SB.muted }}>This order was cancelled.</p>
+        ) : (
+          <div className="relative flex items-start justify-between">
+            <div className="absolute top-4 left-0 right-0 h-px" style={{ background: SB.border, zIndex: 0 }} />
+            <div className="absolute top-4 left-0 h-px transition-all duration-500"
+              style={{ background: 'var(--sb-orange)', width: `${lineProgress}%`, zIndex: 1 }}
+            />
+            {flow.map((step, i) => {
+              const done = i <= currentIdx;
+              const active = i === currentIdx;
+              return (
+                <div key={step.label} className="flex flex-col items-center relative z-10" style={{ minWidth: 72 }}>
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center transition-all"
+                    style={{ background: done ? 'var(--sb-orange)' : SB.bg, border: `2px solid ${done ? 'var(--sb-orange)' : SB.border}`, boxShadow: active ? '0 0 0 4px rgba(249,115,22,0.2)' : 'none' }}>
+                    {done ? <CheckCircle className="w-4 h-4 text-white" /> : <Circle className="w-3 h-3" style={{ color: SB.faint }} />}
+                  </div>
+                  <p className="text-[10px] font-semibold text-center mt-2 max-w-[68px] leading-tight" style={{ color: done ? SB.color : SB.faint }}>
+                    {step.label}
+                  </p>
                 </div>
-                <p className="text-[10px] font-semibold text-center mt-2 max-w-[68px] leading-tight" style={{ color: done ? SB.color : SB.faint }}>
-                  {step.label}
-                </p>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Order Info */}
+        {/* Order Info — API returns only this vendor&apos;s line items */}
         <div className="rounded-2xl p-5 space-y-4" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
           <div className="flex items-center gap-2">
             <Package className="w-4 h-4" style={{ color: SB.orange }} />
             <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: SB.muted }}>Assigned Products</h2>
           </div>
-          {order.assignedProducts?.map((p: any, i: number) => (
-            <div key={i} className="p-3 rounded-xl" style={{ background: SB.bg, border: `1px solid ${SB.border}` }}>
+          {assignedLines.length === 0 && (
+            <p className="text-sm" style={{ color: SB.muted }}>No line items on this vendor order.</p>
+          )}
+          {assignedLines.map((p: any, i: number) => (
+            <div key={p._id ?? i} className="p-3 rounded-xl" style={{ background: SB.bg, border: `1px solid ${SB.border}` }}>
               <div className="grid grid-cols-2 gap-3">
-                <InfoRow label="Product" value={p.productName} />
-                <InfoRow label="Quantity" value={`${p.quantity} ${p.unit ?? ''}`} />
-                <InfoRow label="Unit Price" value={p.price ? `₹${p.price.toLocaleString('en-IN')}` : '—'} />
-                <InfoRow label="Total" value={p.totalAmount ? `₹${p.totalAmount.toLocaleString('en-IN')}` : '—'} />
+                <InfoRow label="Product" value={p.productName ?? p.product?.name ?? '—'} />
+                <InfoRow label="SKU" value={p.sku ?? p.product?.sku ?? '—'} />
+                <InfoRow label="Quantity" value={String(p.quantity ?? '—')} />
+                <InfoRow label="GST %" value={p.gstPercentage != null ? String(p.gstPercentage) : '—'} />
+                <InfoRow label="Unit Price" value={p.unitPrice != null ? `₹${Number(p.unitPrice).toLocaleString('en-IN')}` : '—'} />
+                <InfoRow label="Line Total" value={p.lineTotal != null ? `₹${Number(p.lineTotal).toLocaleString('en-IN')}` : '—'} />
               </div>
             </div>
           ))}
           <div className="grid grid-cols-2 gap-4 pt-2">
-            <InfoRow label="Order Total" value={`₹${order.totalAmount?.toLocaleString('en-IN') ?? '—'}`} />
+            <InfoRow label="Sub-order Total" value={`₹${order.totalAmount?.toLocaleString('en-IN') ?? '—'}`} />
             <InfoRow label="Invoice Status" value={order.invoiceStatus ?? '—'} />
             <InfoRow label="Expected Dispatch" value={order.expectedDispatchDate ? new Date(order.expectedDispatchDate).toLocaleDateString('en-IN') : '—'} />
             <InfoRow label="Expected Delivery" value={order.expectedDeliveryDate ? new Date(order.expectedDeliveryDate).toLocaleDateString('en-IN') : '—'} />
@@ -155,8 +223,8 @@ export function OrderDetails() {
             <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: SB.muted }}>Customer & Delivery</h2>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <InfoRow label="Customer" value={order.customer?.name ?? '—'} />
-            <InfoRow label="Contact" value={order.customer?.phone ?? '—'} />
+            <InfoRow label="Customer" value={cust.name ?? '—'} />
+            <InfoRow label="Contact" value={cust.phone ?? '—'} />
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: SB.faint }}>Delivery Address</p>
@@ -164,7 +232,7 @@ export function OrderDetails() {
               <MapPin className="w-4 h-4 mt-0.5 shrink-0" style={{ color: SB.orange }} />
               <div>
                 <p className="text-sm" style={{ color: SB.color }}>
-                  {[order.deliveryAddress?.street, order.deliveryAddress?.area, order.deliveryAddress?.city, order.deliveryAddress?.state, order.deliveryAddress?.pincode].filter(Boolean).join(', ')}
+                  {formatAddress(order.deliveryAddress) || '—'}
                 </p>
                 {order.deliveryAddress?.contactPerson && (
                   <div className="flex items-center gap-3 mt-2">
@@ -190,6 +258,21 @@ export function OrderDetails() {
         </div>
       </div>
 
+      {order.deliveryType === "structbay_delivery" && (
+        <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
+          <h2 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: SB.muted }}>StructBay pickup & logistics</h2>
+          {order.structbayLogistics?.pickupScheduledText || order.structbayLogistics?.companyName || order.structbayLogistics?.driverContactDetails ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <InfoRow label="Pickup scheduled" value={order.structbayLogistics?.pickupScheduledText} />
+              <InfoRow label="Logistics company" value={order.structbayLogistics?.companyName} />
+              <InfoRow label="Driver / coordinator" value={order.structbayLogistics?.driverContactDetails} />
+            </div>
+          ) : (
+            <p className="text-sm" style={{ color: SB.muted }}>StructBay will add pickup time, logistics partner, and driver contact here after the shipment is booked.</p>
+          )}
+        </div>
+      )}
+
       {/* Dispatch Info */}
       {dispatch && (
         <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
@@ -213,28 +296,28 @@ export function OrderDetails() {
       <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
         <h2 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: SB.muted }}>Actions</h2>
         <div className="flex flex-wrap gap-3">
-          {order.invoiceStatus === 'pending' && (
+          {inv === 'PENDING' && (
             <Link to={vendorPath('orders', orderId!, 'invoice')}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
               style={{ background: 'var(--sb-orange)', color: '#fff' }}>
               <Upload className="w-4 h-4" /> Upload Invoice
             </Link>
           )}
-          {order.invoiceStatus === 'rejected' && (
+          {inv === 'REJECTED' && (
             <Link to={vendorPath('orders', orderId!, 'invoice')}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
               style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.3)' }}>
               <Upload className="w-4 h-4" /> Replace Invoice
             </Link>
           )}
-          {(order.status === 'vendor_invoice_sent' || order.status === 'new_order_alert') && !dispatch && (
+          {(norm(order.status) === 'invoice_uploaded' || norm(order.status) === 'vendor_invoice_sent' || norm(order.status) === 'assigned') && !dispatch && (
             <Link to={vendorPath('orders', orderId!, 'ready-dispatch')}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
               style={{ background: SB.bg, color: SB.color, border: `1px solid ${SB.border}` }}>
               <Truck className="w-4 h-4" /> Mark Ready for Dispatch
             </Link>
           )}
-          {order.deliveryType === 'structbay_delivery' && order.invoiceStatus !== 'pending' && (
+          {order.deliveryType === 'structbay_delivery' && inv !== 'PENDING' && (
             <Link to={vendorPath('orders', orderId!, 'warehouse')}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
               style={{ background: SB.bg, color: SB.color, border: `1px solid ${SB.border}` }}>
@@ -269,10 +352,10 @@ export function OrderDetails() {
                   <div className="flex items-center gap-2">
                     <StatusBadge status={h.status} />
                     <span className="text-xs" style={{ color: SB.faint }}>
-                      {new Date(h.timestamp).toLocaleString('en-IN')}
+                      {h.timestamp ? new Date(h.timestamp).toLocaleString('en-IN') : '—'}
                     </span>
                   </div>
-                  {h.remarks && <p className="text-xs mt-1" style={{ color: SB.muted }}>{h.remarks}</p>}
+                  {(h.note || h.remarks) && <p className="text-xs mt-1" style={{ color: SB.muted }}>{h.note || h.remarks}</p>}
                 </div>
               </div>
             ))}

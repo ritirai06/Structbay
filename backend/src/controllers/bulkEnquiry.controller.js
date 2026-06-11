@@ -40,9 +40,7 @@ const create = asyncHandler(async (req, res) => {
     throw new AppError('Either requirement message or document attachment is required.', 400);
   }
   const enquiryNumber = await genNumber();
-  const payload = { ...req.body, enquiryNumber };
-  // Link customer if authenticated
-  if (req.user?._id) payload.customer = req.user._id;
+  const payload = { ...req.body, enquiryNumber, customer: req.user._id };
   const item = await BulkEnquiry.create(payload);
   return ApiResponse.created(res, 'Bulk enquiry submitted.', item);
 });

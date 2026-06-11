@@ -5,6 +5,7 @@ const ctrl            = require('../controllers/shipment.controller');
 
 const adminOnly = [protect, requireRole('ADMIN')];
 
+router.get   ('/dispatch-board',          ...adminOnly, ctrl.dispatchBoard);
 router.post  ('/',                       ...adminOnly, ctrl.create);
 router.get   ('/',                       ...adminOnly, ctrl.getByOrder);
 router.get   ('/:id',                    ...adminOnly, ctrl.getById);

@@ -4,13 +4,16 @@ const VendorActivityLog = require('../models/VendorActivityLog');
 const ApiResponse = require('../utils/apiResponse');
 const { cloudinary } = require('../config/cloudinary');
 const { generateRefNumber } = require('../services/refNumber.service');
+const { vendorOrderMatch } = require('../utils/vendorOrderAccess');
+const { logAction } = require('../services/auditLog.service');
 
 // @desc    Upload Vendor Invoice
 // @route   POST /api/v1/vendor/invoices
 exports.uploadInvoice = async (req, res) => {
   const { orderId, invoiceNumber, invoiceDate, invoiceAmount, gstAmount, vendorRemarks } = req.body;
 
-  const order = await VendorOrder.findOne({ _id: orderId, vendor: req.user._id });
+  const match = await vendorOrderMatch(req.user);
+  const order = await VendorOrder.findOne({ _id: orderId, ...match });
   if (!order) return ApiResponse.notFound(res, 'Order not found or not assigned to you.');
   if (!req.file) return ApiResponse.badRequest(res, 'Please upload invoice PDF.');
 
@@ -47,6 +50,16 @@ exports.uploadInvoice = async (req, res) => {
     vendor: req.user._id, action: 'invoice_upload',
     description: `Uploaded StructBay invoice ${structbayInvoiceNumber}${invoiceNumber ? ` (vendor ref ${invoiceNumber})` : ''} for order ${order.orderNumber}`,
     relatedOrder: orderId, relatedInvoice: invoice._id, ipAddress: req.ip,
+  });
+
+  await logAction({
+    adminId: req.user._id,
+    action: 'UPLOAD',
+    module: 'VendorInvoice',
+    targetId: invoice._id.toString(),
+    description: `Vendor invoice PDF uploaded for vendor order ${order.orderNumber} (${structbayInvoiceNumber}).`,
+    ipAddress: req.ip,
+    platform: (req.get('user-agent') || 'WEB').slice(0, 200),
   });
 
   return ApiResponse.created(res, 'Invoice uploaded successfully.', invoice);
@@ -103,8 +116,12 @@ exports.replaceInvoice = async (req, res) => {
 // @desc    Get Invoice by Order
 // @route   GET /api/v1/vendor/invoices/order/:orderId
 exports.getInvoiceByOrder = async (req, res) => {
+  const match = await vendorOrderMatch(req.user);
+  const vo = await VendorOrder.findOne({ _id: req.params.orderId, ...match });
+  if (!vo) return ApiResponse.notFound(res, 'Order not found or not assigned to you.');
+
   const invoice = await VendorInvoice.findOne({
-    vendorOrder: req.params.orderId,
+    vendorOrder: vo._id,
     vendor: req.user._id,
     status: { $ne: 'replaced' },
   }).populate('vendorOrder', 'orderNumber');

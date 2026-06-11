@@ -1,21 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Search, RefreshCw, Eye, Loader2, UserCircle } from "lucide-react";
-
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
-const getToken = () => localStorage.getItem("adminToken") || "";
-async function apiFetch(path: string, opts: RequestInit = {}) {
-  const res = await fetch(`${API}${path}`, { ...opts, headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}`, ...opts.headers } });
-  const data = await res.json();
-  if (!data.success) throw new Error(data.message || "API Error");
-  return data;
-}
-
-const DEMO = [
-  { _id: "1", name: "ABC Builders", email: "contact@abcbuilders.com", phone: "+91 98765 43210", status: "ACTIVE", createdAt: "2026-01-15" },
-  { _id: "2", name: "XYZ Construction", email: "info@xyzconstruction.com", phone: "+91 98765 43211", status: "ACTIVE", createdAt: "2026-02-10" },
-  { _id: "3", name: "PQR Developers", email: "hello@pqrdev.com", phone: "+91 98765 43212", status: "ACTIVE", createdAt: "2026-03-05" },
-  { _id: "4", name: "LMN Contractors", email: "lmn@contractors.com", phone: "+91 98765 43213", status: "SUSPENDED", createdAt: "2026-04-20" },
-];
+import { adminFetch as apiFetch } from "../../lib/adminApi";
 
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE: "bg-green-500/15 text-green-400 border-green-500/20",
@@ -38,17 +23,17 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 }
 
 export function CustomerManagement() {
-  const [customers, setCustomers] = useState<any[]>(DEMO);
+  const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<any>(null);
-  const [pagination, setPagination] = useState({ total: DEMO.length, pages: 1, page: 1 });
+  const [pagination, setPagination] = useState({ total: 0, pages: 1, page: 1 });
 
   const load = useCallback(() => {
     setLoading(true);
     apiFetch("/admin/users?role=CUSTOMER&limit=50")
       .then(d => { setCustomers(d.data || []); setPagination(d.pagination || {}); })
-      .catch(() => setCustomers(DEMO))
+      .catch(() => { setCustomers([]); setPagination({ total: 0, pages: 1, page: 1 }); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -61,7 +46,7 @@ export function CustomerManagement() {
 
   const filtered = customers.filter(c => !search || c.name.toLowerCase().includes(search.toLowerCase()) || c.email?.toLowerCase().includes(search.toLowerCase()));
 
-  const totalCustomers = pagination.total || DEMO.length;
+  const totalCustomers = pagination.total || 0;
   const activeCount = customers.filter(c => c.status === "ACTIVE").length;
 
   return (

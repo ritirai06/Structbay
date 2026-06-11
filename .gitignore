@@ -1,2 +1,46 @@
-node_modules
+# Dependencies
+node_modules/
+
+# Environment and secrets (keep committed templates)
+# Covers repo-wide, including frontend/.env and backend/.env
 .env
+.env.*
+!.env.example
+!.env*.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+!frontend/.env*.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+!backend/.env*.example
+
+# DentTrack (local integration, exports, or credentials — not in repo)
+denttrack/
+DentTrack/
+denttrack*.json
+DentTrack*.json
+
+# Keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+id_rsa
+id_rsa.*
+*.keystore
+
+# Common credential filenames
+credentials.json
+secrets.json
+*-credentials.json
+serviceAccount*.json
+firebase-adminsdk*.json
+
+# Logs and OS noise
+*.log
+.DS_Store
+Thumbs.db

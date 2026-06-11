@@ -36,6 +36,7 @@ import { PricingManagement as AdminPricing } from "./admin/pages/PricingManageme
 import { InventoryManagement as AdminInventory } from "./admin/pages/InventoryManagement";
 import { VendorManagement as AdminVendors } from "./admin/pages/VendorManagement";
 import { OrderManagement as AdminOrders } from "./admin/pages/OrderManagement";
+import { OrderChatPage as AdminOrderChat } from "./admin/pages/OrderChatPage";
 import { DispatchManagement as AdminDispatch } from "./admin/pages/DispatchManagement";
 import { InvoiceManagement as AdminInvoices } from "./admin/pages/InvoiceManagement";
 import { RFQManagement as AdminRFQs } from "./admin/pages/RFQManagement";
@@ -123,6 +124,7 @@ const router = createBrowserRouter([
       { path: "vendor-assignment", Component: AdminVendors },
       // Orders & Fulfillment
       { path: "orders", Component: AdminOrders },
+      { path: "orders/:orderId/chat", Component: AdminOrderChat },
       { path: "orders/:id", Component: AdminOrders },
       { path: "dispatch", Component: AdminDispatch },
       // Documents

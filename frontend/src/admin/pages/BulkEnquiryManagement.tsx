@@ -1,20 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Search, RefreshCw, Eye, FileText, Loader2, Briefcase } from "lucide-react";
-
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
-const getToken = () => localStorage.getItem("adminToken") || "";
-async function apiFetch(path: string, opts: RequestInit = {}) {
-  const res = await fetch(`${API}${path}`, { ...opts, headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}`, ...opts.headers } });
-  const data = await res.json();
-  if (!data.success) throw new Error(data.message || "API Error");
-  return data;
-}
-
-const DEMO = [
-  { _id: "1", enquiryNumber: "BLKENQ202606010001", customerName: "Metro Construction Ltd", customerPhone: "+91 98765 43210", customerEmail: "metro@construction.com", city: "Bengaluru", requirement: "Bulk cement and steel supply for metro station construction project — 2000MT cement, 500MT steel", attachments: [{ name: "BOQ.pdf" }, { name: "Drawings.pdf" }, { name: "Specs.pdf" }], assignedTo: null, status: "NEW", createdAt: "2026-06-04" },
-  { _id: "2", enquiryNumber: "BLKENQ202606010002", customerName: "Smart City Developers", customerPhone: "+91 98765 43211", customerEmail: "info@smartcity.com", city: "Hyderabad", requirement: "Complete material supply for 500-unit township project over 24 months", attachments: [{ name: "Project.pdf" }, { name: "BOQ.xlsx" }, { name: "Schedule.pdf" }, { name: "TnC.pdf" }, { name: "Map.pdf" }], assignedTo: { name: "Amit Singh" }, status: "IN_PROGRESS", createdAt: "2026-06-03" },
-  { _id: "3", enquiryNumber: "BLKENQ202606010003", customerName: "Highway Projects Inc", customerPhone: "+91 98765 43212", customerEmail: "hpi@highway.com", city: "Chennai", requirement: "Road construction materials for 12km highway project — aggregate, bitumen, concrete", attachments: [{ name: "RFQ.pdf" }, { name: "DPR.pdf" }], assignedTo: { name: "Priya Sharma" }, status: "QUOTED", createdAt: "2026-06-01" },
-];
+import { adminFetch as apiFetch } from "../../lib/adminApi";
 
 const STATUS_COLORS: Record<string, string> = {
   NEW: "bg-[#FE5E00]/15 text-[#FE5E00] border-[#FE5E00]/25",
@@ -41,19 +27,19 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 }
 
 export function BulkEnquiryManagement() {
-  const [items, setItems] = useState<any[]>(DEMO);
+  const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [selected, setSelected] = useState<any>(null);
-  const [stats, setStats] = useState({ total: 78, new: 15, inProgress: 32, quoted: 12, converted: 31 });
+  const [stats, setStats] = useState({ total: 0, new: 0, inProgress: 0, quoted: 0, converted: 0 });
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
     apiFetch(`/bulk-enquiries?limit=30`)
       .then(d => setItems(d.data || []))
-      .catch(() => setItems(DEMO))
+      .catch(() => setItems([]))
       .finally(() => setLoading(false));
     apiFetch("/bulk-enquiries/stats").then(d => setStats(d.data)).catch(() => {});
   }, []);

@@ -180,7 +180,7 @@ body {
 /* ── Headings ──────────────────────────────────────────────────────────── */
 h1, h2, h3, h4, h5, h6 {
   color: var(--sb-text-primary);
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.25;
   letter-spacing: -0.02em;
 }
@@ -503,6 +503,12 @@ hr { border-color: var(--sb-border); }
 .animate-float         { animation: sb-float 3s ease-in-out infinite; }
 .animate-pulse-orange  { animation: sb-pulse-orange 2s ease-in-out infinite; }
 
+/* ── Typography: single scale (avoid everything at 900 weight) ─────────── */
+.font-black,
+.font-extrabold {
+  font-weight: 600 !important;
+}
+
 .animate-shine {
   background: linear-gradient(90deg, transparent 0%, rgba(254,94,0,0.08) 50%, transparent 100%);
   background-size: 200% auto;
@@ -562,4 +568,23 @@ hr { border-color: var(--sb-border); }
 .hover-orange-border:hover {
   border-color: var(--sb-orange);
   box-shadow: 0 4px 20px rgba(254, 94, 0, 0.15);
+}
+
+/* ── Homepage brand strip (continuous scroll) ───────────────────────────── */
+@keyframes sb-marquee-x {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.sb-marquee {
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+}
+.sb-marquee__track {
+  display: flex;
+  width: max-content;
+  gap: 1rem;
+  animation: sb-marquee-x 45s linear infinite;
+}
+.sb-marquee:hover .sb-marquee__track {
+  animation-play-state: paused;
 }

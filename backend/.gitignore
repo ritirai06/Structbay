@@ -1,8 +1,21 @@
 node_modules/
+# Backend env — commit .env.example only
 .env
+.env.*
+!.env.example
+!.env*.example
+
+
 logs/
 src/uploads/temp/
 *.log
 .DS_Store
 Thumbs.db
-.env.example
+
+# Keys / local secrets
+*.pem
+*.key
+*.p12
+credentials.json
+secrets.json
+serviceAccount*.json

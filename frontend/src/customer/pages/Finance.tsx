@@ -11,11 +11,11 @@ export function Finance() {
     return (
       <div className="max-w-xl mx-auto px-4 py-20 text-center">
         <div style={{ backgroundColor: "var(--sb-green, #16a34a)" }} className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-          <CheckCircle2 className="w-12 h-12 text-white" />
+          <CheckCircle2 className="w-12 h-12 text-sb-cream" />
         </div>
         <h2 className="text-foreground mb-2">Application Submitted!</h2>
         <p className="text-muted-foreground mb-6">Our finance team will review your application and contact you within 24 business hours.</p>
-        <Link to="/" style={{ backgroundColor: "var(--sb-blue)" }} className="inline-flex items-center gap-2 text-white px-6 py-3 rounded-2xl font-semibold">Back to Home</Link>
+        <Link to="/" style={{ backgroundColor: "var(--sb-blue)" }} className="inline-flex items-center gap-2 text-sb-cream px-6 py-3 rounded-2xl font-semibold">Back to Home</Link>
       </div>
     );
   }
@@ -29,19 +29,19 @@ export function Finance() {
       </nav>
 
       {/* Hero */}
-      <div style={{ background: "linear-gradient(135deg, var(--sb-blue-dark, #0f2850) 0%, var(--sb-blue) 100%)" }} className="rounded-3xl p-8 text-white mb-8">
+      <div style={{ background: "linear-gradient(135deg, var(--sb-blue-dark, #0f2850) 0%, var(--sb-blue) 100%)" }} className="rounded-3xl p-8 text-sb-cream mb-8">
         <div className="flex items-center gap-3 mb-4">
           <div style={{ backgroundColor: "var(--sb-yellow)" }} className="w-12 h-12 rounded-2xl flex items-center justify-center">
             <TrendingUp className="w-7 h-7 text-black" />
           </div>
-          <h1 className="text-white">Builder Finance</h1>
+          <h1 className="text-sb-cream">Builder Finance</h1>
         </div>
-        <p className="text-white/80 mb-6">Get construction finance up to ₹5 Crore. Fast approval, competitive rates, and flexible repayment for builders and developers across South India.</p>
+        <p className="text-sb-cream/80 mb-6">Get construction finance up to ₹5 Crore. Fast approval, competitive rates, and flexible repayment for builders and developers across South India.</p>
         <div className="grid grid-cols-3 gap-4">
           {[["Up to ₹5 Cr", "Loan Amount"], ["From 10.5%", "Interest Rate"], ["48 Hours", "Approval Time"]].map(([val, label]) => (
             <div key={label} className="bg-white/10 rounded-2xl p-4 text-center">
               <p style={{ color: "var(--sb-yellow)" }} className="font-bold text-xl">{val}</p>
-              <p className="text-white/60 text-xs mt-1">{label}</p>
+              <p className="text-sb-cream/60 text-xs mt-1">{label}</p>
             </div>
           ))}
         </div>
@@ -56,7 +56,7 @@ export function Finance() {
         ].map(({ icon: Icon, label, desc }) => (
           <div key={label} className="bg-white rounded-2xl border border-border p-4 text-center">
             <div style={{ backgroundColor: "var(--sb-blue)" }} className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-3">
-              <Icon className="w-5 h-5 text-white" />
+              <Icon className="w-5 h-5 text-sb-cream" />
             </div>
             <p className="font-semibold text-sm text-foreground">{label}</p>
             <p className="text-xs text-muted-foreground mt-1">{desc}</p>
@@ -87,7 +87,7 @@ export function Finance() {
             <label className="block text-sm font-medium text-foreground mb-1.5">Email Address *</label>
             <input type="email" value={form.email} onChange={e => update("email", e.target.value)} placeholder="email@company.com" required className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-input-background focus:outline-none" />
           </div>
-          <button type="submit" style={{ backgroundColor: "var(--sb-orange)" }} className="w-full py-3.5 rounded-2xl text-white font-semibold hover:opacity-90 transition-opacity">
+          <button type="submit" style={{ backgroundColor: "var(--sb-orange)" }} className="w-full py-3.5 rounded-2xl text-sb-cream font-semibold hover:opacity-90 transition-opacity">
             Submit Finance Application
           </button>
         </form>

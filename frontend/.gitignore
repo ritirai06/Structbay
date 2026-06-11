@@ -1,0 +1,15 @@
+node_modules/
+
+# Frontend env — commit .env.example only
+.env
+.env.*
+!.env.example
+!.env*.example
+
+# DentTrack (frontend config or cached exports)
+denttrack/
+DentTrack/
+
+*.log
+.DS_Store
+Thumbs.db

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useParams, useNavigate } from "react-router";
 import {
   Star, Shield, Zap, ShoppingCart, ChevronRight, Plus, Minus,
@@ -6,11 +6,12 @@ import {
 } from "lucide-react";
 import { api } from "../lib/api";
 import { useApp } from "../context/AppContext";
+import { DeliveryChargesNotice } from "@shared/components/DeliveryChargesNotice";
 
 export function ProductDetails() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const { addToCart, city } = useApp();
+  const { addToCart, city, cityId } = useApp();
 
   const [product, setProduct]   = useState<any>(null);
   const [loading, setLoading]   = useState(true);
@@ -18,18 +19,19 @@ export function ProductDetails() {
   const [activeImage, setActiveImage] = useState(0);
   const [activeTab, setActiveTab]     = useState("description");
   const [openFaq, setOpenFaq]         = useState<number | null>(null);
+  const [selectedVid, setSelectedVid] = useState<string | null>(null);
 
   useEffect(() => {
     if (!slug) return;
     setLoading(true);
-    api.getProductDetails(slug, city || undefined)
+    api.getProductDetails(slug, cityId || undefined)
       .then((res: any) => {
         if (!res.data) { navigate("/shop", { replace: true }); return; }
         setProduct(res.data);
       })
       .catch(() => navigate("/shop", { replace: true }))
       .finally(() => setLoading(false));
-  }, [slug, city]);
+  }, [slug, cityId, navigate]);
 
   if (loading) return (
     <div className="max-w-7xl mx-auto px-4 py-16 text-center bg-[#0D0D0D] min-h-screen">
@@ -45,20 +47,40 @@ export function ProductDetails() {
   );
 
   const images: string[] = (product.images || []).map((i: any) => i?.url || i).filter(Boolean);
-  const price     = product.pricing?.salePrice || product.pricing?.regularPrice || 0;
-  const mrp       = product.pricing?.regularPrice || price;
-  const discount  = mrp && price < mrp ? Math.round((1 - price / mrp) * 100) : 0;
-  const gst       = product.gstPercentage || 18;
-  const related: any[] = product.related || [];
   const variations: any[] = product.variations || [];
   const faqs: any[] = product.faqs || [];
+  const related: any[] = product.related || [];
   const brandName = product.brand?.name || product.brand || "";
   const categorySlug = product.category?.slug || "";
   const categoryName = product.category?.name || "";
 
+  useEffect(() => {
+    if (!product) return;
+    const vars = product.variations || [];
+    setSelectedVid(vars.length ? String(vars[0]._id) : null);
+  }, [product]);
+
+  const { price, mrp, discount } = useMemo(() => {
+    if (!product) return { price: 0, mrp: 0, discount: 0 };
+    const vp = selectedVid && product.variationPricing?.find((r: any) => String(r.variation) === selectedVid);
+    const p = vp ? Number(vp.salePrice ?? vp.regularPrice ?? 0) : Number(product.pricing?.salePrice || product.pricing?.regularPrice || 0);
+    const m = vp ? Number(vp.regularPrice ?? p) : Number(product.pricing?.regularPrice || p);
+    const d = m && p < m ? Math.round((1 - p / m) * 100) : 0;
+    return { price: p, mrp: m, discount: d };
+  }, [product, selectedVid]);
+
+  const selectedVar = variations.find((v: any) => String(v._id) === selectedVid);
+  const gst = product.gstPercentage || 18;
+
   const handleAddToCart = () => {
+    const slug = product.slug || product._id;
+    const vid = selectedVid || undefined;
+    const cartId = `${slug}::${vid || "base"}`;
     addToCart({
-      id: product.slug || product._id,
+      id: cartId,
+      productSlug: slug,
+      variationId: vid,
+      variationLabel: selectedVar ? Object.values(selectedVar.attributes || {}).filter(Boolean).join(" · ") : undefined,
       name: product.name,
       brand: brandName,
       price,
@@ -142,7 +164,11 @@ export function ProductDetails() {
                   <p className="text-sm text-[#D4C4A8]/60 mt-1">
                     per {product.unit || "unit"}{city ? ` · ` : ""}
                     {city && <span className="flex items-center gap-1 inline-flex"><MapPin className="w-3 h-3" />{city} price</span>}
+                    <span className="block text-[11px] text-[#D4C4A8]/45 mt-1">Prices exclude GST; GST applied at checkout.</span>
                   </p>
+                  <div className="mt-3">
+                    <DeliveryChargesNotice />
+                  </div>
                   <div className="flex gap-4 mt-2 text-sm text-[#D4C4A8]/60">
                     <span>+ GST ({gst}%): ₹{Math.round(price * gst / 100).toLocaleString()}</span>
                     <span className="font-semibold text-[#F4E9D8]">Total: ₹{Math.round(price * (1 + gst / 100)).toLocaleString()}</span>
@@ -173,11 +199,23 @@ export function ProductDetails() {
               <div className="mb-5">
                 <h4 className="font-semibold text-sm text-[#F4E9D8] mb-2">Variants</h4>
                 <div className="flex flex-wrap gap-2">
-                  {variations.map((v: any) => (
-                    <button key={v._id} className="px-3 py-1.5 rounded-lg border border-white/15 text-xs text-[#D4C4A8] hover:border-[#FE5E00] hover:text-[#FE5E00] transition-colors">
-                      {Object.values(v.attributes || {}).join(" · ")}
-                    </button>
-                  ))}
+                  {variations.map((v: any) => {
+                    const active = String(v._id) === selectedVid;
+                    return (
+                      <button
+                        key={v._id}
+                        type="button"
+                        onClick={() => setSelectedVid(String(v._id))}
+                        className={`px-3 py-1.5 rounded-lg border text-xs transition-colors ${
+                          active
+                            ? "border-[#FE5E00] text-[#FE5E00] bg-[#FE5E00]/10"
+                            : "border-white/15 text-[#D4C4A8] hover:border-[#FE5E00]/50"
+                        }`}
+                      >
+                        {Object.values(v.attributes || {}).join(" · ")}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}

@@ -4,6 +4,8 @@ const AppError     = require('../utils/AppError');
 const Order        = require('../models/Order');
 const Notification = require('../models/Notification');
 const Inventory    = require('../models/Inventory');
+const Shipment     = require('../models/Shipment');
+const { CUSTOMER_NON_CANCELLABLE_MASTER_ORDER_STATUSES } = require('../constants/orderCancellation');
 
 // GET /customer/orders
 exports.getMyOrders = asyncHandler(async (req, res) => {
@@ -13,7 +15,7 @@ exports.getMyOrders = asyncHandler(async (req, res) => {
   if (search) filter.orderNumber = { $regex: search, $options: 'i' };
 
   const pageNum  = Math.max(1, parseInt(page));
-  const limitNum = Math.min(50, parseInt(limit));
+  const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
 
   const [orders, total] = await Promise.all([
     Order.find(filter)
@@ -47,9 +49,17 @@ exports.cancelOrder = asyncHandler(async (req, res) => {
   const order = await Order.findOne({ _id: req.params.id, customer: req.user._id });
   if (!order) throw new AppError('Order not found.', 404);
 
-  const nonCancellable = ['DISPATCHED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'];
-  if (nonCancellable.includes(order.status)) {
+  if (CUSTOMER_NON_CANCELLABLE_MASTER_ORDER_STATUSES.includes(order.status)) {
     throw new AppError(`Order cannot be cancelled at status: ${order.status}.`, 422);
+  }
+
+  const shipmentOpen = ['CREATED', 'PICKUP_SCHEDULED', 'PICKED_UP'];
+  const shipmentAdvanced = await Shipment.exists({
+    masterOrder: order._id,
+    status: { $nin: shipmentOpen },
+  });
+  if (shipmentAdvanced) {
+    throw new AppError('Order cannot be cancelled after dispatch or delivery has started.', 422);
   }
 
   const prevStatus = order.status;
@@ -57,8 +67,8 @@ exports.cancelOrder = asyncHandler(async (req, res) => {
   order.statusHistory.push({ status: 'CANCELLED', changedBy: req.user._id, note: req.body.reason || 'Cancelled by customer.' });
   await order.save();
 
-  // Release reserved inventory
-  if (['PENDING', 'CONFIRMED', 'PROCESSING'].includes(prevStatus)) {
+  // Release reserved inventory (pre-dispatch)
+  if (['PENDING', 'PAID', 'VENDOR_ASSIGNMENT_PENDING', 'PROCESSING', 'READY_FOR_DISPATCH'].includes(prevStatus)) {
     for (const item of order.items) {
       const invQ = { product: item.product, city: order.city };
       if (item.variation) invQ.variation = item.variation;

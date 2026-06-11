@@ -2,13 +2,16 @@ const asyncHandler   = require('../utils/asyncHandler');
 const ApiResponse    = require('../utils/apiResponse');
 const AppError       = require('../utils/AppError');
 const Order          = require('../models/Order');
-const VendorOrder    = require('../models/VendorOrder');
 const Shipment       = require('../models/Shipment');
 const OrderDocument  = require('../models/OrderDocument');
 const OrderActivityLog = require('../models/OrderActivityLog');
 const Notification   = require('../models/Notification');
 const Inventory      = require('../models/Inventory');
 const InventoryLog   = require('../models/InventoryLog');
+const VendorOrder    = require('../models/VendorOrder');
+const VendorInvoice  = require('../models/VendorInvoice');
+const { CUSTOMER_NON_CANCELLABLE_MASTER_ORDER_STATUSES } = require('../constants/orderCancellation');
+const { customerOrderProgress } = require('../utils/customerOrderProgress');
 
 // ─── GET /customer/orders ─────────────────────────────────────────────────────
 exports.getMyOrders = asyncHandler(async (req, res) => {
@@ -18,7 +21,7 @@ exports.getMyOrders = asyncHandler(async (req, res) => {
   if (search) filter.orderNumber = { $regex: search, $options: 'i' };
 
   const pageNum  = Math.max(1, parseInt(page));
-  const limitNum = Math.min(50, parseInt(limit));
+  const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
 
   const [orders, total] = await Promise.all([
     Order.find(filter)
@@ -43,13 +46,15 @@ exports.getMyOrderById = asyncHandler(async (req, res) => {
     .populate('items.product', 'name images sku gstPercentage')
     .populate('items.variation', 'attributes sku images');
   if (!order) throw new AppError('Order not found.', 404);
-  return ApiResponse.success(res, 200, 'Order retrieved.', order);
+  const payload = order.toObject();
+  payload.customerProgress = customerOrderProgress(payload);
+  return ApiResponse.success(res, 200, 'Order retrieved.', payload);
 });
 
 // ─── GET /customer/orders/:id/tracking ────────────────────────────────────────
 exports.getTracking = asyncHandler(async (req, res) => {
   const order = await Order.findOne({ _id: req.params.id, customer: req.user._id })
-    .select('orderNumber status statusHistory createdAt city')
+    .select('orderNumber status statusHistory createdAt city deliveryDetails grandTotal paymentStatus gstTotal')
     .populate('city', 'name state');
   if (!order) throw new AppError('Order not found.', 404);
 
@@ -74,8 +79,35 @@ exports.getTracking = asyncHandler(async (req, res) => {
     action: { $in: publicActions },
   }).sort({ createdAt: 1 }).select('action description createdAt');
 
+  const vendorOrders = await VendorOrder.find({ masterOrder: order._id })
+    .select('orderNumber deliveryType status structbayLogistics')
+    .populate('vendor', 'companyName name')
+    .lean();
+
+  const deliveryLines = (vendorOrders || []).map((vo) => ({
+    orderNumber: vo.orderNumber,
+    deliveryType: vo.deliveryType,
+    deliveryTypeLabel:
+      vo.deliveryType === 'structbay_delivery'
+        ? 'Type B — StructBay delivery'
+        : 'Type A — Vendor delivery',
+    vendorLabel: vo.vendor?.companyName || vo.vendor?.name || 'Vendor',
+    status: vo.status,
+    structbayLogistics:
+      vo.deliveryType === 'structbay_delivery' ? vo.structbayLogistics || null : null,
+  }));
+
   return ApiResponse.success(res, 200, 'Tracking retrieved.', {
-    order: { orderNumber: order.orderNumber, status: order.status, createdAt: order.createdAt, statusHistory: order.statusHistory, city: order.city },
+    order: {
+      orderNumber: order.orderNumber,
+      status: order.status,
+      createdAt: order.createdAt,
+      statusHistory: order.statusHistory,
+      city: order.city,
+      deliveryDetails: order.deliveryDetails,
+      customerProgress: customerOrderProgress(order.toObject()),
+    },
+    deliveryLines,
     shipments: publicShipments,
     timeline: activity,
   });
@@ -94,14 +126,77 @@ exports.getDocuments = asyncHandler(async (req, res) => {
   return ApiResponse.success(res, 200, 'Documents retrieved.', docs);
 });
 
+// ─── GET /customer/orders/:id/invoices ─────────────────────────────────────────
+/** PDFs / documents the customer may download (StructBay invoice, e-way, vendor tax invoices). */
+exports.getOrderInvoices = asyncHandler(async (req, res) => {
+  const order = await Order.findOne({ _id: req.params.id, customer: req.user._id })
+    .select('orderNumber structbayInvoiceUrl invoiceUrl ewayBillUrl customerInvoiceNumber ewayBillNumber');
+  if (!order) throw new AppError('Order not found.', 404);
+
+  const files = [];
+  const add = (label, url, kind, reference) => {
+    if (!url || typeof url !== 'string') return;
+    files.push({ label, url, kind, reference: reference || null });
+  };
+
+  add('StructBay tax invoice', order.structbayInvoiceUrl || order.invoiceUrl, 'STRUCTBAY_INVOICE', order.customerInvoiceNumber);
+  add('E-way bill', order.ewayBillUrl, 'EWAY_BILL', order.ewayBillNumber);
+
+  const docs = await OrderDocument.find({
+    masterOrder: order._id,
+    visibleToCustomer: true,
+    documentType: { $in: ['STRUCTBAY_INVOICE', 'TAX_INVOICE', 'EWAY_BILL', 'DELIVERY_CHALLAN', 'SHIPPING_LABEL'] },
+  }).select('documentType label url documentReference').lean();
+
+  for (const d of docs) {
+    add(d.label || d.documentType, d.url, d.documentType, d.documentReference);
+  }
+
+  const subOrders = await VendorOrder.find({ masterOrder: order._id }).select('_id orderNumber').lean();
+  const subIds = subOrders.map((s) => s._id);
+  if (subIds.length) {
+    const invs = await VendorInvoice.find({
+      vendorOrder: { $in: subIds },
+      status: { $ne: 'replaced' },
+    }).select('invoiceNumber invoiceUrl vendorTaxInvoiceNumber vendorOrder').lean();
+
+    for (const inv of invs) {
+      const vo = subOrders.find((x) => String(x._id) === String(inv.vendorOrder));
+      add(
+        `Vendor invoice — ${vo?.orderNumber || 'sub-order'}`,
+        inv.invoiceUrl,
+        'VENDOR_INVOICE',
+        inv.vendorTaxInvoiceNumber || inv.invoiceNumber,
+      );
+    }
+  }
+
+  const seen = new Set();
+  const unique = files.filter((f) => {
+    if (seen.has(f.url)) return false;
+    seen.add(f.url);
+    return true;
+  });
+
+  return ApiResponse.success(res, 200, 'Downloadable invoice files.', unique);
+});
+
 // ─── PATCH /customer/orders/:id/cancel ───────────────────────────────────────
 exports.cancelOrder = asyncHandler(async (req, res) => {
   const order = await Order.findOne({ _id: req.params.id, customer: req.user._id });
   if (!order) throw new AppError('Order not found.', 404);
 
-  const nonCancellable = ['OUT_FOR_DELIVERY', 'DISPATCHED', 'PARTIALLY_DISPATCHED', 'DELIVERED', 'COMPLETED', 'CANCELLED'];
-  if (nonCancellable.includes(order.status)) {
+  if (CUSTOMER_NON_CANCELLABLE_MASTER_ORDER_STATUSES.includes(order.status)) {
     throw new AppError(`Order cannot be cancelled at status: ${order.status}.`, 422);
+  }
+
+  const shipmentOpen = ['CREATED', 'PICKUP_SCHEDULED', 'PICKED_UP'];
+  const shipmentAdvanced = await Shipment.exists({
+    masterOrder: order._id,
+    status: { $nin: shipmentOpen },
+  });
+  if (shipmentAdvanced) {
+    throw new AppError('Order cannot be cancelled after dispatch or delivery has started.', 422);
   }
 
   const prev = order.status;
@@ -109,8 +204,8 @@ exports.cancelOrder = asyncHandler(async (req, res) => {
   order.statusHistory.push({ status: 'CANCELLED', changedBy: req.user._id, note: req.body.reason || 'Cancelled by customer.' });
   await order.save();
 
-  // Release reserved inventory
-  if (['PENDING', 'PAID', 'VENDOR_ASSIGNMENT_PENDING', 'PROCESSING'].includes(prev)) {
+  // Release reserved inventory (any pre-dispatch cancellation)
+  if (['PENDING', 'PAID', 'VENDOR_ASSIGNMENT_PENDING', 'PROCESSING', 'READY_FOR_DISPATCH'].includes(prev)) {
     for (const item of order.items) {
       const q = { product: item.product, city: order.city };
       if (item.variation) q.variation = item.variation;

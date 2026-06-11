@@ -1,42 +1,52 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router";
-import { Search, Plus, MoreVertical, Edit, Trash2, Archive, ToggleRight, ToggleLeft, Loader2, RefreshCw, Shield, Zap, Star, TrendingUp } from "lucide-react";
+import { Search, Plus, MoreVertical, Edit, Trash2, Archive, Loader2, RefreshCw, Shield, Zap, Star, TrendingUp, Copy, Check, Upload } from "lucide-react";
+import { BulkImportCsvModal } from "../components/BulkImportCsvModal";
+import { parseProductBulkCsv, PRODUCT_BULK_TEMPLATE } from "../lib/adminBulkCsvParsers";
 import { adminPath } from "../../lib/portalRoutes";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@shared/components/ui/dropdown-menu";
-
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
-const getToken = () => localStorage.getItem("adminToken") || "";
-
-async function apiFetch(path: string, opts: RequestInit = {}) {
-  const res = await fetch(`${API}${path}`, {
-    ...opts,
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}`, ...opts.headers },
-  });
-  const data = await res.json();
-  if (!data.success) throw new Error(data.message || "API Error");
-  return data;
-}
+import { adminFetch as apiFetch } from "../../lib/adminApi";
 
 const statusBadge = (status: string) =>
   status === "ACTIVE"
     ? "bg-green-500/15 text-green-400 border border-green-500/20"
     : "bg-white/8 text-[#D4C4A8]/60 border border-white/12";
 
-const inventoryColor = (inv: number) =>
-  inv === 0 ? "text-red-400 font-semibold" : inv < 100 ? "text-[#FE5E00] font-semibold" : "text-[#F4E9D8]";
-
 function Spinner() {
   return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-[#FE5E00]" /></div>;
+}
+
+function CopyId({ id }: { id: string }) {
+  const [done, setDone] = useState(false);
+  const copy = () => {
+    void navigator.clipboard.writeText(id).then(() => {
+      setDone(true);
+      setTimeout(() => setDone(false), 1500);
+    });
+  };
+  return (
+    <button
+      type="button"
+      title={`Product id — full value copied on click\n${id}`}
+      onClick={copy}
+      className="inline-flex items-center gap-1 font-mono text-[10px] text-[#D4C4A8]/50 hover:text-[#FE5E00] max-w-[9rem] truncate"
+    >
+      {id.slice(0, 10)}…
+      {done ? <Check className="w-3 h-3 shrink-0 text-green-400" /> : <Copy className="w-3 h-3 shrink-0 opacity-60" />}
+    </button>
+  );
 }
 
 export function ProductList() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [pagination, setPagination] = useState({ total: 0, pages: 1, page: 1 });
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   const load = useCallback((page = 1) => {
     setLoading(true);
@@ -44,17 +54,20 @@ export function ProductList() {
     if (search) params.set("search", search);
     if (statusFilter) params.set("status", statusFilter);
     apiFetch(`/products?${params}`)
-      .then(d => { setProducts(d.data || []); setPagination(d.pagination || {}); })
-      .catch(() => {
-        // fallback to demo data when API not connected
-        setProducts([
-          { _id: "1", images: [{ url: "https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=80&h=80&fit=crop" }], name: "Cement PPC 53 Grade", sku: "CEM-PPC-53-001", category: { name: "Cement" }, brand: { name: "UltraTech" }, status: "ACTIVE", isAssured: true, isExpress: false, isFeatured: true, displayOrder: 1, createdAt: "2026-05-15" },
-          { _id: "2", images: [{ url: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=80&h=80&fit=crop" }], name: "TMT Steel Bars 16mm", sku: "STL-TMT-16-001", category: { name: "Steel" }, brand: { name: "TATA Steel" }, status: "ACTIVE", isAssured: false, isExpress: true, isFeatured: false, displayOrder: 2, createdAt: "2026-05-10" },
-          { _id: "3", images: [{ url: "https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=80&h=80&fit=crop" }], name: "Ready Mix Concrete M30", sku: "RMC-M30-001", category: { name: "Concrete" }, brand: { name: "ACC" }, status: "DRAFT", isAssured: true, isExpress: true, isFeatured: true, displayOrder: 3, createdAt: "2026-05-05" },
-          { _id: "4", images: [{ url: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=80&h=80&fit=crop" }], name: "Red Clay Bricks", sku: "BRK-RCL-001", category: { name: "Bricks" }, brand: { name: "Brickworks" }, status: "ACTIVE", isAssured: false, isExpress: false, isFeatured: false, displayOrder: 4, createdAt: "2026-04-28" },
-          { _id: "5", images: [], name: "Cement OPC 43 Grade", sku: "CEM-OPC-43-001", category: { name: "Cement" }, brand: { name: "Ambuja" }, status: "ARCHIVED", isAssured: false, isExpress: false, isFeatured: false, displayOrder: 5, createdAt: "2026-04-20" },
-        ]);
-        setPagination({ total: 5, pages: 1, page: 1 });
+      .then(d => {
+        setLoadError(null);
+        setProducts(d.data || []);
+        const pg = d.pagination as { total?: number; pages?: number; page?: number } | undefined;
+        setPagination(
+          pg && typeof pg.total === "number"
+            ? { total: pg.total, pages: pg.pages ?? 1, page: pg.page ?? page }
+            : { total: (d.data as unknown[])?.length ?? 0, pages: 1, page: 1 }
+        );
+      })
+      .catch((e: Error) => {
+        setLoadError(e.message || "Could not load products");
+        setProducts([]);
+        setPagination({ total: 0, pages: 1, page: 1 });
       })
       .finally(() => setLoading(false));
   }, [search, statusFilter]);
@@ -63,8 +76,12 @@ export function ProductList() {
 
   const remove = async (id: string, name: string) => {
     if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
-    await apiFetch(`/products/${id}`, { method: "DELETE" }).catch(e => alert(e.message));
-    load();
+    try {
+      await apiFetch(`/products/${id}`, { method: "DELETE" });
+      load(pagination.page);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Delete failed");
+    }
   };
 
   const filtered = products.filter(p => {
@@ -76,18 +93,33 @@ export function ProductList() {
 
   return (
     <div className="p-6 bg-[#0D0D0D] min-h-full">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-black text-[#F4E9D8]">Product Management</h1>
+          <h1 className="text-2xl font-semibold text-[#F4E9D8]">Product Management</h1>
           <p className="text-[#D4C4A8]/60 text-sm mt-0.5">
             {pagination.total || filtered.length} products — Admin-only catalog control
           </p>
         </div>
-        <Link to={adminPath("products", "create")}
-          className="flex items-center gap-2 bg-[#FE5E00] hover:bg-[#E05200] text-[#0D0D0D] font-bold px-4 py-2.5 rounded-lg text-sm transition-colors shadow-[0_4px_12px_rgba(254,94,0,0.2)]">
-          <Plus className="w-4 h-4" /> Add Product
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setBulkOpen(true)}
+            className="flex items-center gap-2 border border-white/15 bg-[#171717] hover:border-[#FE5E00]/40 text-[#F4E9D8] font-medium px-4 py-2.5 rounded-lg text-sm transition-colors"
+          >
+            <Upload className="w-4 h-4 text-[#FE5E00]" /> Bulk upload CSV
+          </button>
+          <Link to={adminPath("products", "create")}
+            className="flex items-center gap-2 bg-[#FE5E00] hover:bg-[#E05200] text-[#0D0D0D] font-medium px-4 py-2.5 rounded-lg text-sm transition-colors shadow-[0_4px_12px_rgba(254,94,0,0.2)]">
+            <Plus className="w-4 h-4" /> Add Product
+          </Link>
+        </div>
       </div>
+
+      {loadError && (
+        <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200/90">
+          {loadError}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="bg-[#222222] border border-white/10 rounded-xl p-4 mb-5 flex flex-col sm:flex-row gap-3">
@@ -121,7 +153,7 @@ export function ProductList() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/8">
-                  {["Product", "SKU", "Category", "Brand", "Badges", "Status", "Order", ""].map(h => (
+                  {["Product", "Product ID", "SKU", "Category", "Brand", "Badges", "Status", "Order", ""].map(h => (
                     <th key={h} className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wider text-[#D4C4A8]/50">{h}</th>
                   ))}
                 </tr>
@@ -137,9 +169,12 @@ export function ProductList() {
                         }
                         <div>
                           <span className="font-medium text-[#F4E9D8] text-sm">{p.name}</span>
-                          {p.isFeatured && <span className="ml-2 text-[10px] font-bold text-[#C9A227] uppercase tracking-wide">Featured</span>}
+                          {p.isFeatured && <span className="ml-2 text-[10px] font-medium text-[#C9A227] uppercase tracking-wide">Featured</span>}
                         </div>
                       </div>
+                    </td>
+                    <td className="py-3.5 px-4 align-top">
+                      <CopyId id={String(p._id)} />
                     </td>
                     <td className="py-3.5 px-4 font-mono text-xs text-[#D4C4A8]/60">{p.sku}</td>
                     <td className="py-3.5 px-4 text-[#D4C4A8]/70">{p.category?.name || "—"}</td>
@@ -147,17 +182,17 @@ export function ProductList() {
                     <td className="py-3.5 px-4">
                       <div className="flex gap-1">
                         {p.isAssured && (
-                          <span title="StructBay Assured" className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/15 text-blue-400 border border-blue-500/20">
+                          <span title="StructBay Assured" className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-500/15 text-blue-400 border border-blue-500/20">
                             <Shield className="w-2.5 h-2.5" /> Assured
                           </span>
                         )}
                         {p.isExpress && (
-                          <span title="StructBay Express" className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FE5E00]/15 text-[#FE5E00] border border-[#FE5E00]/20">
+                          <span title="StructBay Express" className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#FE5E00]/15 text-[#FE5E00] border border-[#FE5E00]/20">
                             <Zap className="w-2.5 h-2.5" /> Express
                           </span>
                         )}
                         {p.isTopSelling && (
-                          <span title="Top Selling" className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#C9A227]/15 text-[#C9A227] border border-[#C9A227]/20">
+                          <span title="Top Selling" className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#C9A227]/15 text-[#C9A227] border border-[#C9A227]/20">
                             <TrendingUp className="w-2.5 h-2.5" /> Top
                           </span>
                         )}
@@ -186,7 +221,13 @@ export function ProductList() {
                           <DropdownMenuItem asChild className="hover:bg-[#2A2A2A] cursor-pointer text-sm gap-2">
                             <Link to={`${adminPath("inventory")}?product=${p._id}`}><Archive className="w-3.5 h-3.5 text-[#D4C4A8]/60" /> Manage Inventory</Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => remove(p._id, p.name)} className="hover:bg-red-500/10 cursor-pointer text-red-400 text-sm gap-2">
+                          <DropdownMenuItem
+                            onSelect={(ev) => {
+                              ev.preventDefault();
+                              void remove(p._id, p.name);
+                            }}
+                            className="hover:bg-red-500/10 cursor-pointer text-red-400 text-sm gap-2"
+                          >
                             <Trash2 className="w-3.5 h-3.5" /> Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -214,6 +255,18 @@ export function ProductList() {
           ))}
         </div>
       )}
+
+      <BulkImportCsvModal
+        open={bulkOpen}
+        onClose={() => setBulkOpen(false)}
+        title="Bulk import products (CSV)"
+        instructions={`Up to 200 rows per upload. Required: name, sku, category (categorySlug or categoryId), brand (brandName or brandId).\nOptional: status (DRAFT|ACTIVE|ARCHIVED), gstPercentage, shortDescription, description, displayOrder, isFeatured, isTopSelling, isAssured, isExpress (true/false).\nSlug is generated from name; images can be added after import.`}
+        templateCsv={PRODUCT_BULK_TEMPLATE}
+        templateFileName="structbay-products-bulk-template.csv"
+        apiPath="/products/bulk-import"
+        parseRows={parseProductBulkCsv}
+        onSuccess={() => load(pagination.page)}
+      />
     </div>
   );
 }

@@ -27,6 +27,10 @@ const cmsSchema = new mongoose.Schema(
       default: 'Start Procuring',
       trim: true,
     },
+    /** Optional: full URL to header / brand logo (admin-managed). */
+    brandLogoUrl: { type: String, default: null, trim: true },
+    /** Optional: hero section background image URL. */
+    heroBackgroundImageUrl: { type: String, default: null, trim: true },
 
     // ─── Homepage Banners ──────────────────────────────
     homepageBanners: [

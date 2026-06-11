@@ -2,9 +2,10 @@ import { Link, useNavigate } from "react-router";
 import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, Tag, ChevronRight } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { useState } from "react";
+import { DeliveryChargesNotice } from "@shared/components/DeliveryChargesNotice";
 
 export function Cart() {
-  const { cart, removeFromCart, updateQty, cartTotal } = useApp();
+  const { cart, removeFromCart, updateQty, cartTotal, isLoggedIn } = useApp();
   const navigate = useNavigate();
   const [coupon, setCoupon] = useState("");
   const [couponApplied, setCouponApplied] = useState(false);
@@ -23,11 +24,11 @@ export function Cart() {
     return (
       <div className="max-w-2xl mx-auto px-4 py-20 text-center">
         <div style={{ backgroundColor: "var(--sb-blue)" }} className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-          <ShoppingBag className="w-10 h-10 text-white" />
+          <ShoppingBag className="w-10 h-10 text-sb-cream" />
         </div>
         <h2 className="text-foreground mb-2">Your cart is empty</h2>
         <p className="text-muted-foreground mb-6">Add construction materials to get started</p>
-        <Link to="/category/cement" style={{ backgroundColor: "var(--sb-blue)" }} className="inline-flex items-center gap-2 text-white px-6 py-3 rounded-2xl font-semibold hover:opacity-90">
+        <Link to="/category/cement" style={{ backgroundColor: "var(--sb-blue)" }} className="inline-flex items-center gap-2 text-sb-cream px-6 py-3 rounded-2xl font-semibold hover:opacity-90">
           Browse Products <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
@@ -41,6 +42,10 @@ export function Cart() {
         <ChevronRight className="w-3 h-3" />
         <span className="text-foreground font-medium">Cart ({cart.length} items)</span>
       </nav>
+
+      <div className="mb-4 max-w-3xl">
+        <DeliveryChargesNotice />
+      </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Cart items */}
@@ -124,7 +129,7 @@ export function Cart() {
                 <button
                   onClick={applyCoupon}
                   style={{ backgroundColor: couponApplied ? "var(--sb-green, #16a34a)" : "var(--sb-blue)" }}
-                  className="px-3 py-2.5 rounded-xl text-white text-sm font-medium"
+                  className="px-3 py-2.5 rounded-xl text-sb-cream text-sm font-medium"
                   disabled={couponApplied}
                 >
                   {couponApplied ? "Applied" : "Apply"}
@@ -133,16 +138,21 @@ export function Cart() {
             </div>
 
             <button
-              onClick={() => navigate("/checkout")}
+              onClick={() => {
+                if (!isLoggedIn) {
+                  navigate("/login", { state: { from: { pathname: "/checkout" } } });
+                  return;
+                }
+                navigate("/checkout");
+              }}
               style={{ backgroundColor: "var(--sb-orange)" }}
-              className="w-full mt-5 py-3.5 rounded-2xl text-white font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+              className="w-full mt-5 py-3.5 rounded-2xl text-sb-cream font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
             >
               Proceed to Checkout <ArrowRight className="w-5 h-5" />
             </button>
 
-            {/* Delivery charges notice */}
-            <div className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-              ⚠️ Additional Delivery Charges Applicable. Charges To Be Paid At Site.
+            <div className="mt-3">
+              <DeliveryChargesNotice />
             </div>
 
             <Link to="/category/cement" className="block text-center mt-3 text-sm text-muted-foreground hover:text-foreground">

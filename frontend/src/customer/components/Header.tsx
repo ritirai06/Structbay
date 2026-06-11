@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { api } from "../lib/api";
+import { clearCustomerSession } from "../lib/authStorage";
 import { CitySelection } from "../pages/CitySelection";
 import { SearchDropdown } from "./SearchDropdown";
 import logoImg from "/shared/assets/logos/Structbay-Logo-F-1.png";
@@ -41,7 +42,7 @@ function AnnouncementSlider() {
 }
 
 export function Header() {
-  const { city, cartCount, isLoggedIn, user, setIsLoggedIn, addRecentSearch } = useApp();
+  const { city, cityId, cartCount, isLoggedIn, user, setIsLoggedIn, setUser, addRecentSearch } = useApp();
   const [searchQuery, setSearchQuery]     = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const [menuOpen, setMenuOpen]           = useState(false);
@@ -54,18 +55,19 @@ export function Header() {
   const catRef    = useRef<HTMLDivElement>(null);
   const userRef   = useRef<HTMLDivElement>(null);
 
-  // Fetch live categories from backend
+  // City-scoped nav (matches customer catalogue: pricing ∩ inventory in that city)
   useEffect(() => {
-    fetch('/api/v1/cms/categories')
-      .then(r => r.json())
-      .then(res => {
-        if (res.data && Array.isArray(res.data)) setCategories(res.data);
+    const params: Record<string, string> = { status: 'ACTIVE', limit: '100' };
+    if (cityId) params.cityId = cityId;
+    api
+      .getCategories(params)
+      .then((res: any) => {
+        const list = res?.data;
+        if (Array.isArray(list)) setCategories(list);
+        else setCategories([]);
       })
-      .catch(() => {
-        // fallback: fetch from customer products API
-        api.getProducts({ limit: 1 }).catch(() => null);
-      });
-  }, []);
+      .catch(() => setCategories([]));
+  }, [cityId]);
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -102,7 +104,9 @@ export function Header() {
             </div>
             <div className="hidden sm:flex gap-4 items-center font-semibold shrink-0">
               <Link to="/blog"    className="hover:opacity-80 transition-opacity">Blog</Link>
+              <Link to="/tools/cement-estimator" className="hover:opacity-80 transition-opacity">Cement calculator</Link>
               <Link to="/rfq"     className="hover:opacity-80 transition-opacity">Get RFQ</Link>
+              <Link to="/bulk-enquiry" className="hover:opacity-80 transition-opacity">Bulk Enquiry</Link>
               <Link to="/finance" className="hover:opacity-80 transition-opacity">Finance</Link>
               <a href="#"         className="hover:opacity-80 transition-opacity">Vendor Portal</a>
               <a href="tel:+918045678900" className="flex items-center gap-1 hover:opacity-80 transition-opacity">
@@ -150,7 +154,7 @@ export function Header() {
               }}
             >
               <MapPin className="w-4 h-4" style={{ color: "var(--sb-orange)" }} />
-              <span className="font-medium max-w-[96px] truncate">{city || "Select City"}</span>
+              <span className="font-medium max-w-[120px] truncate">{city || "All cities"}</span>
               <ChevronDown className="w-3 h-3" style={{ color: "var(--sb-text-muted)" }} />
             </button>
 
@@ -339,7 +343,12 @@ export function Header() {
                         </Link>
                         <hr style={{ borderColor: "var(--sb-border)", margin: "4px 0" }} />
                         <button
-                          onClick={() => { setIsLoggedIn(false); setUserOpen(false); }}
+                          onClick={() => {
+                            clearCustomerSession();
+                            setUser(null);
+                            setIsLoggedIn(false);
+                            setUserOpen(false);
+                          }}
                           className="flex items-center gap-2 w-full px-4 py-2.5 text-sm transition-colors"
                           style={{ color: "#f87171" }}
                           onMouseEnter={e => (e.currentTarget.style.background = "rgba(239,68,68,0.08)")}
@@ -416,7 +425,16 @@ export function Header() {
             {/* Right side quick links */}
             <div className="ml-auto flex items-center gap-1 shrink-0">
               <Link
-                to="/bulk"
+                to="/tools/cement-estimator"
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg my-1.5 font-semibold transition-all duration-200"
+                style={{ color: "var(--sb-text-muted)" }}
+                onMouseEnter={e => (e.currentTarget.style.color = "var(--sb-text-primary)")}
+                onMouseLeave={e => (e.currentTarget.style.color = "var(--sb-text-muted)")}
+              >
+                <Zap className="w-3 h-3" /> Cement calc
+              </Link>
+              <Link
+                to="/bulk-enquiry"
                 className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg my-1.5 font-semibold transition-all duration-200"
                 style={{ background: "rgba(249,115,22,0.1)", color: "var(--sb-orange)", border: "1px solid rgba(249,115,22,0.2)" }}
                 onMouseEnter={e => (e.currentTarget.style.background = "var(--sb-orange)", e.currentTarget.style.color = "#fff")}
@@ -443,7 +461,7 @@ export function Header() {
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center p-4"
           style={{ background: "rgba(15,23,42,0.85)", backdropFilter: "blur(8px)" }}
-          onClick={() => city && setCityModalOpen(false)}
+          onClick={() => setCityModalOpen(false)}
         >
           <div onClick={e => e.stopPropagation()} className="w-full max-w-lg animate-scale-in">
             <CitySelection isModal onClose={() => setCityModalOpen(false)} />
@@ -474,7 +492,7 @@ export function Header() {
               onMouseEnter={e => (e.currentTarget.style.background = "var(--sb-bg-section)")}
               onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
             >
-              <MapPin className="w-4 h-4" style={{ color: "var(--sb-orange)" }} /> {city || "Select City"}
+              <MapPin className="w-4 h-4" style={{ color: "var(--sb-orange)" }} /> {city || "All cities"}
             </button>
 
             <div className="px-4 py-3 flex-1">
@@ -520,7 +538,12 @@ export function Header() {
                     Dashboard
                   </Link>
                   <button
-                    onClick={() => { setIsLoggedIn(false); setMenuOpen(false); }}
+                    onClick={() => {
+                      clearCustomerSession();
+                      setUser(null);
+                      setIsLoggedIn(false);
+                      setMenuOpen(false);
+                    }}
                     className="flex items-center gap-2 text-sm transition-colors"
                     style={{ color: "#f87171" }}
                   >

@@ -20,6 +20,7 @@ const CityPricing   = require('../models/CityPricing');
 const ProductVariation = require('../models/ProductVariation');
 const CategoryFilter   = require('../models/CategoryFilter');
 const Order         = require('../models/Order');
+const marketplaceCity = require('../services/marketplaceCity.service');
 
 const custAuth = [protect, requireRole('CUSTOMER', 'ADMIN')];
 
@@ -74,6 +75,7 @@ router.get   ('/orders',                        ...custAuth, orderCtrl.getMyOrde
 router.get   ('/orders/:id',                    ...custAuth, orderCtrl.getMyOrderById);
 router.get   ('/orders/:id/tracking',           ...custAuth, orderCtrl.getTracking);
 router.get   ('/orders/:id/documents',          ...custAuth, orderCtrl.getDocuments);
+router.get   ('/orders/:id/invoices',           ...custAuth, orderCtrl.getOrderInvoices);
 router.patch ('/orders/:id/cancel',             ...custAuth, orderCtrl.cancelOrder);
 router.patch ('/orders/:id/confirm-delivery',   ...custAuth, orderCtrl.confirmDelivery);
 
@@ -91,6 +93,45 @@ router.get(
       .select('name slug state priority sortOrder')
       .sort({ priority: -1, sortOrder: 1 });
     return ApiResponse.success(res, 200, 'Cities retrieved.', cities);
+  })
+);
+
+// ─── PIN serviceability (public — checkout / city modal) ──────────────────────
+const NOT_SERVICEABLE_PIN_MSG =
+  'StructBay currently operates in selected cities and PIN codes only. This PIN code is not in our active service area yet. Please choose a listed city or a supported PIN, or contact support for bulk and enterprise delivery options—we will be glad to help.';
+
+router.get(
+  '/serviceability/pincode',
+  asyncHandler(async (req, res) => {
+    const digits = String(req.query.code || '').replace(/\D/g, '').slice(0, 6);
+    if (digits.length !== 6) {
+      return ApiResponse.success(res, 200, 'Invalid PIN.', {
+        serviceable: false,
+        message: 'Please enter a valid 6-digit Indian PIN code.',
+      });
+    }
+    const city = await City.findOne({
+      status: 'ACTIVE',
+      isServiceable: true,
+      pincodes: digits,
+    })
+      .select('name state slug')
+      .lean();
+    if (!city) {
+      return ApiResponse.success(res, 200, 'Not serviceable.', {
+        serviceable: false,
+        message: NOT_SERVICEABLE_PIN_MSG,
+      });
+    }
+    return ApiResponse.success(res, 200, 'Serviceable.', {
+      serviceable: true,
+      city: {
+        id: String(city._id),
+        name: city.name,
+        state: city.state,
+        slug: city.slug,
+      },
+    });
   })
 );
 
@@ -112,6 +153,12 @@ router.get(
       { name: { $regex: search, $options: 'i' } },
       { sku: { $regex: search, $options: 'i' } },
     ];
+
+    const cityOid = await marketplaceCity.resolveMarketplaceCityId(cityId);
+    if (cityOid) {
+      const sellable = await marketplaceCity.getSellableProductIdsForCity(cityOid);
+      filter._id = { $in: sellable };
+    }
 
     const pageNum  = Math.max(1, parseInt(page));
     const limitNum = Math.min(100, parseInt(limit));
@@ -165,6 +212,16 @@ router.get(
     if (!product) return ApiResponse.notFound(res, 'Product not found.');
 
     const { cityId } = req.query;
+    const cityOid = await marketplaceCity.resolveMarketplaceCityId(cityId);
+    let sellableForPdp = null;
+    if (cityOid) {
+      sellableForPdp = await marketplaceCity.getSellableProductIdsForCity(cityOid);
+      const allowed = sellableForPdp.some((id) => String(id) === String(product._id));
+      if (!allowed) {
+        return ApiResponse.notFound(res, 'This product is not available in your selected city.');
+      }
+    }
+
     const variations = await ProductVariation.find({ product: product._id, status: 'ACTIVE' })
       .sort({ sortOrder: 1 });
 
@@ -177,12 +234,18 @@ router.get(
         .select('variation regularPrice salePrice wholesaleSlabs').lean();
     }
 
-    // Related products
-    const related = await Product.find({
+    // Related products (same category, city-sellable when city selected)
+    const relatedBase = {
       category: product.category,
       _id: { $ne: product._id },
       status: 'ACTIVE',
-    }).limit(8).populate('brand', 'name slug logo').select('name slug images brand isAssured isExpress');
+    };
+    if (cityOid && sellableForPdp) {
+      const ids = sellableForPdp.filter((id) => String(id) !== String(product._id));
+      relatedBase._id = { $in: ids };
+    }
+    const related = await Product.find(relatedBase)
+      .limit(8).populate('brand', 'name slug logo').select('name slug images brand isAssured isExpress');
 
     return ApiResponse.success(res, 200, 'Product retrieved.', {
       ...product.toJSON(), variations, pricing, variationPricing, related,
@@ -195,7 +258,7 @@ router.get(
   '/category/:slug',
   optionalAuth,
   asyncHandler(async (req, res) => {
-    const { cityId, page = 1, limit = 24, sort = 'default', brand } = req.query;
+    const { cityId, page = 1, limit = 24, sort = 'default', brand, assured, express } = req.query;
 
     const category = await Category.findOne({ slug: req.params.slug, status: 'ACTIVE' });
     if (!category) return ApiResponse.notFound(res, 'Category not found.');
@@ -205,6 +268,20 @@ router.get(
 
     const filter = { status: 'ACTIVE', category: category._id };
     if (brand) filter.brand = brand;
+    if (assured === 'true') filter.isAssured = true;
+    if (express === 'true') filter.isExpress = true;
+
+    const cityOid = await marketplaceCity.resolveMarketplaceCityId(cityId);
+    let sellableInCity = null;
+    if (cityOid) {
+      sellableInCity = await marketplaceCity.getSellableProductIdsForCity(cityOid);
+      filter._id = { $in: sellableInCity };
+    }
+
+    const brandDistinctFilter = { category: category._id, status: 'ACTIVE' };
+    if (sellableInCity) brandDistinctFilter._id = { $in: sellableInCity };
+    if (assured === 'true') brandDistinctFilter.isAssured = true;
+    if (express === 'true') brandDistinctFilter.isExpress = true;
 
     const pageNum  = Math.max(1, parseInt(page));
     const limitNum = Math.min(100, parseInt(limit));
@@ -217,7 +294,7 @@ router.get(
         .skip((pageNum - 1) * limitNum)
         .limit(limitNum),
       Product.countDocuments(filter),
-      Brand.find({ _id: { $in: await Product.distinct('brand', { category: category._id, status: 'ACTIVE' }) } })
+      Brand.find({ _id: { $in: await Product.distinct('brand', brandDistinctFilter) } })
         .select('name slug logo').sort({ sortOrder: 1 }),
     ]);
 
@@ -226,8 +303,12 @@ router.get(
       enriched = await Promise.all(
         products.map(async (p) => {
           const pricing = await CityPricing.findOne({ product: p._id, city: cityId, variation: null, isDeleted: false })
-            .select('regularPrice salePrice').lean();
-          return { ...p.toJSON(), pricing };
+            .select('regularPrice salePrice wholesaleSlabs').lean();
+          const variations = await ProductVariation.find({ product: p._id, status: 'ACTIVE' })
+            .select('attributes sku images sortOrder').lean();
+          const variationPricing = await CityPricing.find({ product: p._id, city: cityId, variation: { $ne: null }, isDeleted: false })
+            .select('variation regularPrice salePrice wholesaleSlabs').lean();
+          return { ...p.toJSON(), pricing, variations, variationPricing };
         })
       );
     }
@@ -244,13 +325,27 @@ router.get(
   '/brand/:slug',
   optionalAuth,
   asyncHandler(async (req, res) => {
-    const { cityId, categoryId, page = 1, limit = 24 } = req.query;
+    const { cityId, categoryId, page = 1, limit = 24, assured, express } = req.query;
 
     const brand = await Brand.findOne({ slug: req.params.slug, status: 'ACTIVE' });
     if (!brand) return ApiResponse.notFound(res, 'Brand not found.');
 
     const filter = { status: 'ACTIVE', brand: brand._id };
     if (categoryId) filter.category = categoryId;
+    if (assured === 'true') filter.isAssured = true;
+    if (express === 'true') filter.isExpress = true;
+
+    const cityOidBrand = await marketplaceCity.resolveMarketplaceCityId(cityId);
+    let sellableForBrand = null;
+    if (cityOidBrand) {
+      sellableForBrand = await marketplaceCity.getSellableProductIdsForCity(cityOidBrand);
+      filter._id = { $in: sellableForBrand };
+    }
+
+    const categoryDistinctFilter = { brand: brand._id, status: 'ACTIVE' };
+    if (sellableForBrand) categoryDistinctFilter._id = { $in: sellableForBrand };
+    if (assured === 'true') categoryDistinctFilter.isAssured = true;
+    if (express === 'true') categoryDistinctFilter.isExpress = true;
 
     const pageNum  = Math.max(1, parseInt(page));
     const limitNum = Math.min(100, parseInt(limit));
@@ -262,7 +357,7 @@ router.get(
         .limit(limitNum),
       Product.countDocuments(filter),
       Category.find({
-        _id: { $in: await Product.distinct('category', { brand: brand._id, status: 'ACTIVE' }) },
+        _id: { $in: await Product.distinct('category', categoryDistinctFilter) },
       }).select('name slug'),
     ]);
 
@@ -271,8 +366,12 @@ router.get(
       enriched = await Promise.all(
         products.map(async (p) => {
           const pricing = await CityPricing.findOne({ product: p._id, city: cityId, variation: null, isDeleted: false })
-            .select('regularPrice salePrice').lean();
-          return { ...p.toJSON(), pricing };
+            .select('regularPrice salePrice wholesaleSlabs').lean();
+          const variations = await ProductVariation.find({ product: p._id, status: 'ACTIVE' })
+            .select('attributes sku images sortOrder').lean();
+          const variationPricing = await CityPricing.find({ product: p._id, city: cityId, variation: { $ne: null }, isDeleted: false })
+            .select('variation regularPrice salePrice wholesaleSlabs').lean();
+          return { ...p.toJSON(), pricing, variations, variationPricing };
         })
       );
     }
@@ -288,11 +387,21 @@ router.get(
 router.get(
   '/categories',
   asyncHandler(async (req, res) => {
-    const { status = 'ACTIVE', limit = 50 } = req.query;
-    const categories = await Category.find({ status })
+    const { status = 'ACTIVE', limit = 50, cityId } = req.query;
+    const lim = Math.min(100, parseInt(limit));
+
+    const cityOid = await marketplaceCity.resolveMarketplaceCityId(cityId);
+    let catFilter = { status };
+    if (cityOid) {
+      const sellable = await marketplaceCity.getSellableProductIdsForCity(cityOid);
+      const catIds = await Product.distinct('category', { status: 'ACTIVE', _id: { $in: sellable } });
+      catFilter._id = { $in: catIds };
+    }
+
+    const categories = await Category.find(catFilter)
       .select('name slug image icon description sortOrder')
       .sort({ sortOrder: 1 })
-      .limit(parseInt(limit));
+      .limit(lim);
     return ApiResponse.success(res, 200, 'Categories retrieved.', categories);
   })
 );
@@ -301,11 +410,22 @@ router.get(
 router.get(
   '/brands',
   asyncHandler(async (req, res) => {
-    const { status = 'ACTIVE', limit = 50 } = req.query;
-    const brands = await Brand.find({ status })
-      .select('name slug logo banner description sortOrder')
+    const { status = 'ACTIVE', limit = 50, cityId } = req.query;
+    const lim = Math.min(100, parseInt(limit));
+
+    const cityOid = await marketplaceCity.resolveMarketplaceCityId(cityId);
+    let brandFilter = { status };
+    if (cityOid) {
+      const sellable = await marketplaceCity.getSellableProductIdsForCity(cityOid);
+      const brandIds = await Product.distinct('brand', { status: 'ACTIVE', _id: { $in: sellable } });
+      brandFilter._id = { $in: brandIds };
+    }
+
+    const brands = await Brand.find(brandFilter)
+      .select('name slug logo banner description sortOrder category')
+      .populate('category', 'name slug')
       .sort({ sortOrder: 1 })
-      .limit(parseInt(limit));
+      .limit(lim);
     return ApiResponse.success(res, 200, 'Brands retrieved.', brands);
   })
 );
@@ -315,13 +435,23 @@ router.get(
   '/search',
   optionalAuth,
   asyncHandler(async (req, res) => {
-    const { q, cityId } = req.query;
+    const { q, cityId, assured, express } = req.query;
     if (!q || q.trim().length < 2) return ApiResponse.badRequest(res, 'Search query must be at least 2 characters.');
 
     const regex = { $regex: q.trim(), $options: 'i' };
 
+    const cityOidSearch = await marketplaceCity.resolveMarketplaceCityId(cityId);
+    const productMatch = { status: 'ACTIVE', $or: [{ name: regex }, { sku: regex }] };
+    if (assured === 'true') productMatch.isAssured = true;
+    if (express === 'true') productMatch.isExpress = true;
+    let sellableSearchList = null;
+    if (cityOidSearch) {
+      sellableSearchList = await marketplaceCity.getSellableProductIdsForCity(cityOidSearch);
+      productMatch._id = { $in: sellableSearchList };
+    }
+
     const [products, categories, brands] = await Promise.all([
-      Product.find({ status: 'ACTIVE', $or: [{ name: regex }, { sku: regex }] })
+      Product.find(productMatch)
         .limit(10)
         .populate('brand', 'name slug logo')
         .populate('category', 'name slug')
@@ -330,19 +460,36 @@ router.get(
       Brand.find({ status: 'ACTIVE', name: regex }).limit(5).select('name slug logo'),
     ]);
 
-    // Attach basic pricing
+    let categoriesOut = categories;
+    let brandsOut = brands;
+    if (sellableSearchList?.length) {
+      const allowedCats = new Set(
+        (await Product.distinct('category', { status: 'ACTIVE', _id: { $in: sellableSearchList } })).map(String)
+      );
+      const allowedBrands = new Set(
+        (await Product.distinct('brand', { status: 'ACTIVE', _id: { $in: sellableSearchList } })).map(String)
+      );
+      categoriesOut = categories.filter((c) => allowedCats.has(String(c._id)));
+      brandsOut = brands.filter((b) => allowedBrands.has(String(b._id)));
+    }
+
+    // Attach pricing + variations (listing pages — PRD variation before PDP)
     let enrichedProducts = products;
     if (cityId) {
       enrichedProducts = await Promise.all(
         products.map(async (p) => {
           const pricing = await CityPricing.findOne({ product: p._id, city: cityId, variation: null, isDeleted: false })
-            .select('regularPrice salePrice').lean();
-          return { ...p.toJSON(), pricing };
+            .select('regularPrice salePrice wholesaleSlabs').lean();
+          const variations = await ProductVariation.find({ product: p._id, status: 'ACTIVE' })
+            .select('attributes sku images sortOrder').lean();
+          const variationPricing = await CityPricing.find({ product: p._id, city: cityId, variation: { $ne: null }, isDeleted: false })
+            .select('variation regularPrice salePrice wholesaleSlabs').lean();
+          return { ...p.toJSON(), pricing, variations, variationPricing };
         })
       );
     }
 
-    return ApiResponse.success(res, 200, 'Search results.', { products: enrichedProducts, categories, brands });
+    return ApiResponse.success(res, 200, 'Search results.', { products: enrichedProducts, categories: categoriesOut, brands: brandsOut });
   })
 );
 

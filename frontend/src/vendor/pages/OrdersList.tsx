@@ -100,8 +100,8 @@ export function OrdersList() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto -mx-0">
+          <table className="w-full text-sm min-w-[1000px]">
             <thead>
               <tr style={{ borderBottom: `1px solid ${SB.border}` }}>
                 {['Order #', 'Product', 'Qty', 'Customer', 'City', 'Assigned', 'Invoice', 'Status', 'Actions'].map(h => (
