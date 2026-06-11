@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const auditLogSchema = new mongoose.Schema(
   {
     adminId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    logNumber: { type: String, unique: true, sparse: true },
     action: { type: String, required: true, trim: true }, // e.g. 'CREATE', 'UPDATE', 'DELETE', 'APPROVE'
     module: { type: String, required: true, trim: true }, // e.g. 'Banner', 'Category', 'Vendor'
     targetId: { type: String, default: null }, // ID of the affected resource

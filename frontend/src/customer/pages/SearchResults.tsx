@@ -1,22 +1,32 @@
 import { Link, useSearchParams } from "react-router";
 import { Search, Star, Shield, Zap, ShoppingCart, ChevronRight } from "lucide-react";
-import { PRODUCTS } from "../data/products";
+import { api } from "../lib/api";
+import { useState, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 
 const SUGGESTIONS = ["Cement bags", "TMT steel bars", "Exterior paint", "CPVC pipes", "Hand tools"];
 
 export function SearchResults() {
+  const [results, setResults] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const [params] = useSearchParams();
   const query = params.get("q") || "";
   const { addToCart } = useApp();
 
-  const results = query
-    ? PRODUCTS.filter(p =>
-        p.name.toLowerCase().includes(query.toLowerCase()) ||
-        p.brand.toLowerCase().includes(query.toLowerCase()) ||
-        p.category.toLowerCase().includes(query.toLowerCase())
-      )
-    : [];
+  
+
+  
+  useEffect(() => {
+    if (query) {
+      setLoading(true);
+      api.globalSearch(query).then(res => {
+        setResults(res.data?.products || []);
+      }).finally(() => setLoading(false));
+    } else {
+      setResults([]);
+    }
+  }, [query]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">

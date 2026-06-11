@@ -10,7 +10,7 @@ const addressCtrl   = require('../controllers/address.controller');
 const checkoutCtrl  = require('../controllers/checkout.controller');
 const notifCtrl     = require('../controllers/notification.controller');
 const dashCtrl      = require('../controllers/customerDashboard.controller');
-const orderCtrl     = require('../controllers/customerOrder.controller');
+const orderCtrl     = require('../controllers/orderTracking.controller');
 
 const Product       = require('../models/Product');
 const Category      = require('../models/Category');
@@ -70,21 +70,12 @@ router.post('/checkout/validate',    ...custAuth, checkoutCtrl.validate);
 router.post('/checkout/place-order', ...custAuth, checkoutCtrl.placeOrder);
 
 // ─── My Orders ───────────────────────────────────────────────────────────────
-router.get   ('/orders',          ...custAuth, orderCtrl.getMyOrders);
-router.get   ('/orders/:id',      ...custAuth, orderCtrl.getMyOrderById);
-router.patch ('/orders/:id/cancel',...custAuth, orderCtrl.cancelOrder);
-
-// ─── Invoice download (proxy order invoiceUrl) ───────────────────────────────
-router.get(
-  '/orders/:id/invoice',
-  ...custAuth,
-  asyncHandler(async (req, res) => {
-    const order = await Order.findOne({ _id: req.params.id, customer: req.user._id }).select('invoiceUrl orderNumber');
-    if (!order) return ApiResponse.notFound(res, 'Order not found.');
-    if (!order.invoiceUrl) return ApiResponse.notFound(res, 'Invoice not yet available for this order.');
-    return ApiResponse.success(res, 200, 'Invoice URL retrieved.', { invoiceUrl: order.invoiceUrl, orderNumber: order.orderNumber });
-  })
-);
+router.get   ('/orders',                        ...custAuth, orderCtrl.getMyOrders);
+router.get   ('/orders/:id',                    ...custAuth, orderCtrl.getMyOrderById);
+router.get   ('/orders/:id/tracking',           ...custAuth, orderCtrl.getTracking);
+router.get   ('/orders/:id/documents',          ...custAuth, orderCtrl.getDocuments);
+router.patch ('/orders/:id/cancel',             ...custAuth, orderCtrl.cancelOrder);
+router.patch ('/orders/:id/confirm-delivery',   ...custAuth, orderCtrl.confirmDelivery);
 
 // ─── Notifications ────────────────────────────────────────────────────────────
 router.get   ('/notifications',              ...custAuth, notifCtrl.getAll);
@@ -108,13 +99,15 @@ router.get(
   '/products',
   optionalAuth,
   asyncHandler(async (req, res) => {
-    const { search, category, brand, cityId, assured, express, page = 1, limit = 24, sort = 'default' } = req.query;
+    const { search, category, brand, cityId, assured, express, isTopSelling, isFeatured, page = 1, limit = 24, sort = 'default' } = req.query;
 
     const filter = { status: 'ACTIVE' };
     if (category) filter.category = category;
     if (brand) filter.brand = brand;
     if (assured === 'true') filter.isAssured = true;
     if (express === 'true') filter.isExpress = true;
+    if (isTopSelling === 'true') filter.isTopSelling = true;
+    if (isFeatured === 'true') filter.isFeatured = true;
     if (search) filter.$or = [
       { name: { $regex: search, $options: 'i' } },
       { sku: { $regex: search, $options: 'i' } },
@@ -288,6 +281,32 @@ router.get(
       brand, products: enriched, categories,
       pagination: { total, page: pageNum, limit: limitNum, pages: Math.ceil(total / limitNum) },
     });
+  })
+);
+
+// ─── Public Categories (for navigation, homepage) ────────────────────────────
+router.get(
+  '/categories',
+  asyncHandler(async (req, res) => {
+    const { status = 'ACTIVE', limit = 50 } = req.query;
+    const categories = await Category.find({ status })
+      .select('name slug image icon description sortOrder')
+      .sort({ sortOrder: 1 })
+      .limit(parseInt(limit));
+    return ApiResponse.success(res, 200, 'Categories retrieved.', categories);
+  })
+);
+
+// ─── Public Brands (for homepage, filters) ─────────────────────────────────────
+router.get(
+  '/brands',
+  asyncHandler(async (req, res) => {
+    const { status = 'ACTIVE', limit = 50 } = req.query;
+    const brands = await Brand.find({ status })
+      .select('name slug logo banner description sortOrder')
+      .sort({ sortOrder: 1 })
+      .limit(parseInt(limit));
+    return ApiResponse.success(res, 200, 'Brands retrieved.', brands);
   })
 );
 

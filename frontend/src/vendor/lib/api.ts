@@ -89,4 +89,11 @@ export const api = {
 
   // ── Activity Logs ────────────────────────────────────────────────────────
   getActivityLogs: (page = 1) => req<any>('GET', `/activity-logs?page=${page}`),
+
+  // ── Support ─────────────────────────────────────────────────────────────
+  submitSupportTicket: (data: { subject: string; priority: string; description: string }) =>
+    req<any>('POST', '/support', data),
+
+  // ── CMS Contact Info ────────────────────────────────────────────────────
+  getContact: () => fetch('/api/v1/cms/contact').then(r => r.json()),
 };

@@ -143,6 +143,42 @@ router.delete('/footer/quick-links/:id', ...adminOnly, asyncHandler(async (req, 
   return ApiResponse.success(res, 200, 'Quick link deleted.', doc.footer.quickLinks);
 }));
 
+// ─── VENDOR FAQS ─────────────────────────────────────────────────────────────
+router.get('/vendor-faqs', asyncHandler(async (req, res) => {
+  const doc = await CMS.getOrCreate();
+  return ApiResponse.success(res, 200, 'Vendor FAQs retrieved.', doc.vendorFaqs.filter(f => f.isActive));
+}));
+
+router.post('/vendor-faqs', ...adminOnly, asyncHandler(async (req, res) => {
+  const { question, answer, sortOrder = 0 } = req.body;
+  if (!question || !answer) return ApiResponse.badRequest(res, 'question and answer are required.');
+  const doc = await CMS.getOrCreate();
+  doc.vendorFaqs.push({ question, answer, sortOrder });
+  doc.vendorFaqs.sort((a, b) => a.sortOrder - b.sortOrder);
+  doc.lastUpdatedBy = req.user._id;
+  await doc.save();
+  return ApiResponse.created(res, 'Vendor FAQ added.', doc.vendorFaqs);
+}));
+
+router.patch('/vendor-faqs/:id', ...adminOnly, asyncHandler(async (req, res) => {
+  const doc = await CMS.getOrCreate();
+  const faq = doc.vendorFaqs.id(req.params.id);
+  if (!faq) return ApiResponse.notFound(res, 'FAQ not found.');
+  ['question', 'answer', 'sortOrder', 'isActive'].forEach(f => { if (req.body[f] !== undefined) faq[f] = req.body[f]; });
+  doc.vendorFaqs.sort((a, b) => a.sortOrder - b.sortOrder);
+  doc.lastUpdatedBy = req.user._id;
+  await doc.save();
+  return ApiResponse.success(res, 200, 'Vendor FAQ updated.', doc.vendorFaqs);
+}));
+
+router.delete('/vendor-faqs/:id', ...adminOnly, asyncHandler(async (req, res) => {
+  const doc = await CMS.getOrCreate();
+  doc.vendorFaqs = doc.vendorFaqs.filter(f => f._id.toString() !== req.params.id);
+  doc.lastUpdatedBy = req.user._id;
+  await doc.save();
+  return ApiResponse.success(res, 200, 'Vendor FAQ deleted.', doc.vendorFaqs);
+}));
+
 // ─── NEWSLETTER ───────────────────────────────────────────────────────────────
 router.post('/newsletter/subscribe', asyncHandler(async (req, res) => {
   const { email } = req.body;

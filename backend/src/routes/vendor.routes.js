@@ -74,6 +74,23 @@ router.put ('/notifications/read-all',      ...vendorGuard, asyncHandler(vendorN
 router.put ('/notifications/:id/read',      ...vendorGuard, asyncHandler(vendorNotifCtrl.markRead));
 router.put ('/notifications/:id/archive',   ...vendorGuard, asyncHandler(vendorNotifCtrl.archiveNotification));
 
+// ─── SUPPORT TICKETS ───────────────────────────────────────────────────────
+router.post('/support', ...vendorGuard, asyncHandler(async (req, res) => {
+  const Notification = require('../models/Notification');
+  const { subject, priority = 'medium', description } = req.body;
+  if (!subject || !description) return ApiResponse.badRequest(res, 'subject and description are required.');
+  // Create an admin notification for the support request
+  await Notification.create({
+    type: 'support_ticket',
+    title: `Vendor Support: ${subject}`,
+    message: description,
+    priority,
+    recipients: [],
+    metadata: { vendorId: req.user._id, vendorName: req.user.companyName || req.user.name },
+  });
+  return ApiResponse.created(res, 'Support ticket submitted. Our team will respond within 24-48 hours.');
+}));
+
 // ─── ACTIVITY LOGS ──────────────────────────────────────────────────────────
 router.get('/activity-logs', ...vendorGuard, asyncHandler(async (req, res) => {
   const VendorActivityLog = require('../models/VendorActivityLog');

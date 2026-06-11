@@ -14,7 +14,7 @@ export function Layout() {
     );
   }
 
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/vendor/login" replace />;
 
   return (
     <div className="flex h-screen" style={{ background: 'var(--sb-bg)' }}>

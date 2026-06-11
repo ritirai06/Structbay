@@ -13,7 +13,7 @@ export function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to="/vendor" replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,7 +21,7 @@ export function Login() {
     setLoading(true);
     try {
       await login(email, password);
-      navigate('/');
+      navigate('/vendor');
     } catch (err: any) {
       setError(err.message ?? 'Login failed. Please try again.');
     } finally {
@@ -140,7 +140,7 @@ export function Login() {
           <div className="mt-6 text-center">
             <p className="text-sm text-[#D4C4A8]/50">
               Need help?{' '}
-              <Link to="/support" className="text-[#FE5E00] hover:text-[#E05200] font-semibold transition-colors">Contact Support</Link>
+              <Link to="/vendor/support" className="text-[#FE5E00] hover:text-[#E05200] font-semibold transition-colors">Contact Support</Link>
             </p>
           </div>
 

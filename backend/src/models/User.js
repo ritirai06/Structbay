@@ -5,6 +5,7 @@ const { ROLES, USER_STATUS, VENDOR_STATUS } = require('../config/constants');
 const userSchema = new mongoose.Schema(
   {
     // ─── Core Identity ──────────────────────────────────────
+    referenceNumber: { type: String, unique: true, sparse: true }, // CUS... or VND...
     name: {
       type: String,
       required: [true, 'Name is required'],

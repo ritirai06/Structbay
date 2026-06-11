@@ -12,7 +12,7 @@ export function LoginPage() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    navigate("/");
+    navigate("/admin");
   };
 
   return (
