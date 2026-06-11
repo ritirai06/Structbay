@@ -156,12 +156,15 @@ const router = createBrowserRouter([
       { index: true, Component: VendorDashboard },
       { path: "dashboard", Component: VendorDashboard },
       { path: "orders", Component: VendorOrders },
-      { path: "orders/:id", Component: VendorOrderDetails },
-      { path: "invoices", Component: VendorUploadInvoice },
-      { path: "warehouse", Component: VendorWarehouse },
+      { path: "orders/:orderId", Component: VendorOrderDetails },
+      { path: "orders/:orderId/invoice", Component: VendorUploadInvoice },
+      { path: "orders/:orderId/warehouse", Component: VendorWarehouse },
+      { path: "orders/:orderId/ready-dispatch", Component: VendorReadyDispatch },
       { path: "dispatch", Component: VendorDispatch },
       { path: "documents", Component: VendorDocuments },
       { path: "notifications", Component: VendorNotifications },
+      { path: "history", Component: VendorOrderHistory },
+      { path: "analytics", Component: VendorAnalytics },
       { path: "profile", Component: VendorProfile },
       { path: "support", Component: VendorSupport },
     ],
@@ -220,6 +223,7 @@ const router = createBrowserRouter([
       { path: "dashboard", element: <Navigate to="/account" replace /> },
       { path: "dashboard/:section", element: <Navigate to="/account" replace /> },
 
+      // Unmatched paths under `/` only (admin/vendor use their own route trees above).
       { path: "*", Component: Homepage },
     ],
   },
@@ -228,7 +232,9 @@ const router = createBrowserRouter([
 export default function App() {
   return (
     <AppProvider>
-      <RouterProvider router={router} />
+      <VendorAuthProvider>
+        <RouterProvider router={router} />
+      </VendorAuthProvider>
     </AppProvider>
   );
 }

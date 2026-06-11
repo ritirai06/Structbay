@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, Package, MapPin, Upload, Truck, Download, CheckCircle, Circle, AlertCircle, Phone, User, FileText, Clock } from 'lucide-react';
 import { StatusBadge } from '../components/StatusBadge';
 import { api } from '../lib/api';
+import { vendorPath } from '../../lib/portalRoutes';
 
 const STATUS_FLOW_A = [
   { status: 'new_order_alert',    label: 'New Order Alert' },
@@ -64,7 +65,7 @@ export function OrderDetails() {
     <div className="flex flex-col items-center py-20">
       <AlertCircle className="w-12 h-12 mb-3" style={{ color: SB.faint }} />
       <p className="font-semibold" style={{ color: SB.muted }}>Order not found</p>
-      <Link to="/orders" className="mt-4 text-sm font-semibold" style={{ color: SB.orange }}>← Back to Orders</Link>
+      <Link to={vendorPath('orders')} className="mt-4 text-sm font-semibold" style={{ color: SB.orange }}>← Back to Orders</Link>
     </div>
   );
 
@@ -75,7 +76,7 @@ export function OrderDetails() {
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Link to="/orders" className="p-2 rounded-xl transition-colors" style={{ background: SB.card, border: `1px solid ${SB.border}`, color: SB.muted }}>
+        <Link to={vendorPath('orders')} className="p-2 rounded-xl transition-colors" style={{ background: SB.card, border: `1px solid ${SB.border}`, color: SB.muted }}>
           <ArrowLeft className="w-4 h-4" />
         </Link>
         <div className="flex-1">
@@ -213,39 +214,39 @@ export function OrderDetails() {
         <h2 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: SB.muted }}>Actions</h2>
         <div className="flex flex-wrap gap-3">
           {order.invoiceStatus === 'pending' && (
-            <Link to={`/orders/${orderId}/invoice`}
+            <Link to={vendorPath('orders', orderId!, 'invoice')}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
               style={{ background: 'var(--sb-orange)', color: '#fff' }}>
               <Upload className="w-4 h-4" /> Upload Invoice
             </Link>
           )}
           {order.invoiceStatus === 'rejected' && (
-            <Link to={`/orders/${orderId}/invoice`}
+            <Link to={vendorPath('orders', orderId!, 'invoice')}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
               style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.3)' }}>
               <Upload className="w-4 h-4" /> Replace Invoice
             </Link>
           )}
           {(order.status === 'vendor_invoice_sent' || order.status === 'new_order_alert') && !dispatch && (
-            <Link to={`/orders/${orderId}/ready-dispatch`}
+            <Link to={vendorPath('orders', orderId!, 'ready-dispatch')}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
               style={{ background: SB.bg, color: SB.color, border: `1px solid ${SB.border}` }}>
               <Truck className="w-4 h-4" /> Mark Ready for Dispatch
             </Link>
           )}
           {order.deliveryType === 'structbay_delivery' && order.invoiceStatus !== 'pending' && (
-            <Link to={`/orders/${orderId}/warehouse`}
+            <Link to={vendorPath('orders', orderId!, 'warehouse')}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
               style={{ background: SB.bg, color: SB.color, border: `1px solid ${SB.border}` }}>
               <MapPin className="w-4 h-4" /> Pickup / Warehouse Details
             </Link>
           )}
-          <Link to="/dispatch"
+          <Link to={vendorPath('dispatch')}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
             style={{ background: SB.bg, color: SB.color, border: `1px solid ${SB.border}` }}>
             <Truck className="w-4 h-4" /> Update Dispatch
           </Link>
-          <Link to="/documents"
+          <Link to={vendorPath('documents')}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
             style={{ background: SB.bg, color: SB.color, border: `1px solid ${SB.border}` }}>
             <Download className="w-4 h-4" /> Download Documents

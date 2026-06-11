@@ -116,6 +116,14 @@ const approveVendor = asyncHandler(async (req, res) => {
   vendor.vendorApprovedBy = req.user._id;
   vendor.vendorApprovedAt = new Date();
   vendor.vendorRejectionReason = null;
+  if (!vendor.referenceNumber) {
+    const { generateRefNumber } = require('../services/refNumber.service');
+    try {
+      vendor.referenceNumber = await generateRefNumber('VENDOR');
+    } catch {
+      /* non-blocking */
+    }
+  }
   await vendor.save({ validateBeforeSave: false });
 
   await sendVendorApprovedEmail({

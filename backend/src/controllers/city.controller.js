@@ -3,6 +3,7 @@ const ApiResponse = require('../utils/apiResponse');
 const AppError = require('../utils/AppError');
 const City = require('../models/City');
 const { logAction } = require('../services/auditLog.service');
+const { generateRefNumber } = require('../services/refNumber.service');
 
 const getAll = asyncHandler(async (req, res) => {
   const { search, status, page = 1, limit = 100 } = req.query;
@@ -28,7 +29,12 @@ const getById = asyncHandler(async (req, res) => {
 
 const create = asyncHandler(async (req, res) => {
   const { name, state, status, isServiceable, priority, sortOrder } = req.body;
-  const city = await City.create({ name, state, status, isServiceable, priority, sortOrder, createdBy: req.user._id });
+  const referenceNumber = await generateRefNumber('CITY');
+  const city = await City.create({
+    name, state, status, isServiceable, priority, sortOrder,
+    referenceNumber,
+    createdBy: req.user._id,
+  });
   await logAction({ adminId: req.user._id, action: 'CREATE', module: 'City', targetId: city._id.toString(),
     description: `Created city: ${city.name}`, ipAddress: req.ip });
   return ApiResponse.created(res, 'City created.', city);

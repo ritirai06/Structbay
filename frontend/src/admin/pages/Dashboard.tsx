@@ -9,6 +9,7 @@ import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
+import { adminPath } from "../../lib/portalRoutes";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
 const getToken = () => localStorage.getItem("adminToken") || "";
@@ -114,25 +115,25 @@ export function Dashboard() {
 
       {/* Primary Stats */}
       <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Total Orders" value={d.orders?.total ?? 0} icon={ShoppingCart} sub={`${d.orders?.pending ?? 0} pending`} subColor="text-[#FE5E00]" to="/orders" />
-        <StatCard title="Total Products" value={d.products?.total ?? 0} icon={Package} sub={`${d.products?.active ?? 0} active`} to="/products" />
-        <StatCard title="Total Customers" value={d.users?.customers ?? 0} icon={Users} sub="Registered customers" to="/customers" />
-        <StatCard title="Total Vendors" value={d.users?.vendors ?? 0} icon={Users} sub={`${d.users?.pendingVendorApprovals ?? 0} pending approval`} subColor={d.users?.pendingVendorApprovals > 0 ? "text-[#FE5E00]" : undefined} to="/vendors" />
+        <StatCard title="Total Orders" value={d.orders?.total ?? 0} icon={ShoppingCart} sub={`${d.orders?.pending ?? 0} pending`} subColor="text-[#FE5E00]" to={adminPath("orders")} />
+        <StatCard title="Total Products" value={d.products?.total ?? 0} icon={Package} sub={`${d.products?.active ?? 0} active`} to={adminPath("products")} />
+        <StatCard title="Total Customers" value={d.users?.customers ?? 0} icon={Users} sub="Registered customers" to={adminPath("customers")} />
+        <StatCard title="Total Vendors" value={d.users?.vendors ?? 0} icon={Users} sub={`${d.users?.pendingVendorApprovals ?? 0} pending approval`} subColor={d.users?.pendingVendorApprovals > 0 ? "text-[#FE5E00]" : undefined} to={adminPath("vendors")} />
       </div>
 
       {/* Catalog Stats */}
       <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Total Brands" value={d.catalog?.brands ?? 0} icon={Award} sub="Active brands" to="/brands" />
-        <StatCard title="Categories" value={d.catalog?.categories ?? 0} icon={FolderTree} sub="Active categories" to="/categories" />
-        <StatCard title="Cities" value={d.catalog?.cities ?? 0} icon={MapPin} sub="Serviceable cities" to="/cities" />
-        <StatCard title="Pending Dispatch" value={d.orders?.pendingDispatch ?? 0} icon={Clock} sub="Need vendor assignment" subColor="text-[#C9A227]" to="/orders" />
+        <StatCard title="Total Brands" value={d.catalog?.brands ?? 0} icon={Award} sub="Active brands" to={adminPath("brands")} />
+        <StatCard title="Categories" value={d.catalog?.categories ?? 0} icon={FolderTree} sub="Active categories" to={adminPath("categories")} />
+        <StatCard title="Cities" value={d.catalog?.cities ?? 0} icon={MapPin} sub="Serviceable cities" to={adminPath("cities")} />
+        <StatCard title="Pending Dispatch" value={d.orders?.pendingDispatch ?? 0} icon={Clock} sub="Need vendor assignment" subColor="text-[#C9A227]" to={adminPath("orders")} />
       </div>
 
       {/* Alert Stats */}
       <div className="mb-5 grid gap-4 sm:grid-cols-3">
-        <StatCard title="Low Stock" value={d.inventory?.lowStock ?? 0} icon={AlertCircle} sub="Products needing restock" subColor="text-[#FE5E00]" to="/inventory" />
-        <StatCard title="Bulk Enquiries" value={d.enquiries?.bulkEnquiries ?? 0} icon={Briefcase} sub="New enquiries" subColor="text-[#FE5E00]" to="/bulk-enquiries" />
-        <StatCard title="Concrete RFQs" value={d.enquiries?.rfqs ?? 0} icon={ClipboardList} sub="Pending quotations" subColor="text-[#FE5E00]" to="/rfqs" />
+        <StatCard title="Low Stock" value={d.inventory?.lowStock ?? 0} icon={AlertCircle} sub="Products needing restock" subColor="text-[#FE5E00]" to={adminPath("inventory")} />
+        <StatCard title="Bulk Enquiries" value={d.enquiries?.bulkEnquiries ?? 0} icon={Briefcase} sub="New enquiries" subColor="text-[#FE5E00]" to={adminPath("bulk-enquiries")} />
+        <StatCard title="Concrete RFQs" value={d.enquiries?.rfqs ?? 0} icon={ClipboardList} sub="Pending quotations" subColor="text-[#FE5E00]" to={adminPath("rfqs")} />
       </div>
 
       {/* Charts */}
@@ -166,7 +167,7 @@ export function Dashboard() {
       {/* Recent Activity + Quick Actions */}
       <div className="grid gap-5 lg:grid-cols-2">
         <Panel title="Recent Activity"
-          action={<Link to="/audit-logs" className="text-xs text-[#FE5E00] hover:underline">View all →</Link>}>
+          action={<Link to={adminPath("audit-logs")} className="text-xs text-[#FE5E00] hover:underline">View all →</Link>}>
           {d.recentActivity?.length > 0 ? (
             <div className="space-y-2.5">
               {d.recentActivity.slice(0, 6).map((log: any) => (
@@ -191,14 +192,14 @@ export function Dashboard() {
         <Panel title="Quick Actions">
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: "Add Product", to: "/products/add", primary: true },
-              { label: "Set Pricing", to: "/pricing" },
-              { label: "Adjust Inventory", to: "/inventory" },
-              { label: "Add Brand", to: "/brands" },
-              { label: "Add Category", to: "/categories" },
-              { label: "Add City", to: "/cities" },
-              { label: "Assign Vendors", to: "/orders" },
-              { label: "View RFQs", to: "/rfqs" },
+              { label: "Add Product", to: adminPath("products", "create"), primary: true },
+              { label: "Set Pricing", to: adminPath("pricing") },
+              { label: "Adjust Inventory", to: adminPath("inventory") },
+              { label: "Add Brand", to: adminPath("brands") },
+              { label: "Add Category", to: adminPath("categories") },
+              { label: "Add City", to: adminPath("cities") },
+              { label: "Assign Vendors", to: adminPath("orders") },
+              { label: "View RFQs", to: adminPath("rfqs") },
             ].map(({ label, to, primary }) => (
               <Link key={label} to={to}
                 className={`flex items-center justify-center py-2.5 px-3 rounded-lg text-sm font-medium transition-all ${primary

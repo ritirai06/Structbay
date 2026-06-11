@@ -1,81 +1,105 @@
+const mongoose = require('mongoose');
 const ReferenceCounter = require('../models/ReferenceCounter');
+const ReferenceAllocation = require('../models/ReferenceAllocation');
 
 /**
- * Module → Prefix map
- * All StructBay reference number formats defined here.
+ * Module → Prefix map (daily sequence per module).
+ * Sub-orders (vendor) use master ORD number + "-NN" — do not use a counter here.
  */
 const MODULE_PREFIXES = {
-  ORDER:          'ORD',
-  VENDOR_ORDER:   'ORD',       // sub-order uses master + suffix
-  BULK_ENQUIRY:   'BULK',
-  CONCRETE_RFQ:   'RFQCON',
-  RFQ:            'RFQ',
+  ORDER:           'ORD',
+  BULK_ENQUIRY:    'BULK',
+  CONCRETE_RFQ:    'RFQCON',
+  RFQ:             'RFQ',
   CUSTOMER_INVOICE:'INV',
-  VENDOR_INVOICE: 'VINV',
-  EWAY_BILL:      'EWB',
-  SHIPMENT:       'SHP',
-  DELIVERY:       'DEL',
-  FINANCE:        'FIN',
-  CUSTOMER:       'CUS',
-  VENDOR:         'VND',
-  PRODUCT:        'PRD',
-  CITY:           'CITY',
-  AUDIT_LOG:      'LOG',
+  VENDOR_INVOICE:  'VINV',
+  EWAY_BILL:       'EWB',
+  SHIPMENT:        'SHP',
+  DELIVERY:        'DEL',
+  FINANCE:         'FIN',
+  CUSTOMER:        'CUS',
+  VENDOR:          'VND',
+  PRODUCT:         'PRD',
+  CITY:            'CITY',
+  AUDIT_LOG:       'LOG',
 };
 
-/**
- * Get today's date string in DDMMYY format
- */
 function getDateKey(date = new Date()) {
-  const d  = String(date.getDate()).padStart(2, '0');
-  const m  = String(date.getMonth() + 1).padStart(2, '0');
-  const y  = String(date.getFullYear()).slice(-2);
+  const d = String(date.getDate()).padStart(2, '0');
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const y = String(date.getFullYear()).slice(-2);
   return `${d}${m}${y}`;
 }
 
 /**
- * Generate next reference number for a module.
- * Uses findOneAndUpdate with $inc for atomic, concurrent-safe increment.
+ * Atomically allocate the next reference for a module (daily reset via date in filter).
+ * Retries on rare upsert duplicate-key races.
  *
- * @param {string} module  - Key from MODULE_PREFIXES
- * @returns {string}       - e.g. "ORD080626001"
+ * @param {string} module - key from MODULE_PREFIXES
+ * @param {object} [options]
+ * @param {import('mongoose').ClientSession} [options.session]
+ * @param {boolean} [options.skipAllocationLog]
+ * @param {string} [options.entityModel]
+ * @param {import('mongoose').Types.ObjectId|string} [options.entityId]
  */
-async function generateRefNumber(module) {
+async function generateRefNumber(module, options = {}) {
   const prefix = MODULE_PREFIXES[module];
-  if (!prefix) throw new Error(`Unknown module: ${module}`);
+  if (!prefix) throw new Error(`Unknown reference module: ${module}`);
 
   const date = getDateKey();
+  const maxRetries = 6;
 
-  const counter = await ReferenceCounter.findOneAndUpdate(
-    { module, date },
-    {
-      $inc: { currentSequence: 1 },
-      $set: { prefix, lastGeneratedAt: new Date() },
-    },
-    { new: true, upsert: true }
-  );
+  for (let attempt = 0; attempt < maxRetries; attempt += 1) {
+    try {
+      const counter = await ReferenceCounter.findOneAndUpdate(
+        { module, date },
+        {
+          $inc: { currentSequence: 1 },
+          $set: {
+            prefix,
+            lastGeneratedAt: new Date(),
+            status: 'ACTIVE',
+          },
+        },
+        { new: true, upsert: true, session: options.session }
+      );
 
-  const seq = String(counter.currentSequence).padStart(3, '0');
-  return `${prefix}${date}${seq}`;
+      const seq = String(counter.currentSequence).padStart(3, '0');
+      const referenceNumber = `${prefix}${date}${seq}`;
+
+      if (!options.skipAllocationLog) {
+        await ReferenceAllocation.create(
+          [{
+            module,
+            referenceNumber,
+            dateKey: date,
+            sequence: counter.currentSequence,
+            entityModel: options.entityModel || null,
+            entityId: options.entityId || null,
+          }],
+          { session: options.session }
+        ).catch(() => {
+          /* allocation log must not block business flow */
+        });
+      }
+
+      return referenceNumber;
+    } catch (err) {
+      if (err && err.code === 11000 && attempt < maxRetries - 1) continue;
+      throw err;
+    }
+  }
+
+  throw new Error(`Failed to allocate reference for module ${module}`);
 }
 
 /**
- * Generate vendor sub-order number from master order number.
- * e.g. masterOrderNumber = "ORD080626001", subIndex = 1 → "ORD080626001-01"
- *
- * @param {string} masterOrderNumber
- * @param {number} subIndex  - 1-based
+ * Vendor sub-order: ORDDDMYY001-01 (2-digit suffix, daily master sequence in prefix).
  */
 function generateSubOrderNumber(masterOrderNumber, subIndex) {
   return `${masterOrderNumber}-${String(subIndex).padStart(2, '0')}`;
 }
 
-/**
- * Get next sub-order index for a master order.
- * Counts existing VendorOrder docs for that master order.
- *
- * @param {string|ObjectId} masterOrderId
- */
 async function getNextSubOrderIndex(masterOrderId) {
   const VendorOrder = require('../models/VendorOrder');
   const count = await VendorOrder.countDocuments({ masterOrder: masterOrderId });

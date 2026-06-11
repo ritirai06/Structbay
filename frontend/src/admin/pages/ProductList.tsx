@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router";
 import { Search, Plus, MoreVertical, Edit, Trash2, Archive, ToggleRight, ToggleLeft, Loader2, RefreshCw, Shield, Zap, Star, TrendingUp } from "lucide-react";
+import { adminPath } from "../../lib/portalRoutes";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@shared/components/ui/dropdown-menu";
@@ -82,7 +83,7 @@ export function ProductList() {
             {pagination.total || filtered.length} products — Admin-only catalog control
           </p>
         </div>
-        <Link to="/products/add"
+        <Link to={adminPath("products", "create")}
           className="flex items-center gap-2 bg-[#FE5E00] hover:bg-[#E05200] text-[#0D0D0D] font-bold px-4 py-2.5 rounded-lg text-sm transition-colors shadow-[0_4px_12px_rgba(254,94,0,0.2)]">
           <Plus className="w-4 h-4" /> Add Product
         </Link>
@@ -177,13 +178,13 @@ export function ProductList() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="bg-[#222222] border border-white/15 text-[#F4E9D8] min-w-[150px]">
                           <DropdownMenuItem asChild className="hover:bg-[#2A2A2A] cursor-pointer text-sm gap-2">
-                            <Link to={`/products/edit/${p._id}`}><Edit className="w-3.5 h-3.5 text-[#D4C4A8]/60" /> Edit Product</Link>
+                            <Link to={adminPath("products", String(p._id), "edit")}><Edit className="w-3.5 h-3.5 text-[#D4C4A8]/60" /> Edit Product</Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild className="hover:bg-[#2A2A2A] cursor-pointer text-sm gap-2">
-                            <Link to={`/pricing?product=${p._id}`}><Star className="w-3.5 h-3.5 text-[#D4C4A8]/60" /> Manage Pricing</Link>
+                            <Link to={`${adminPath("pricing")}?product=${p._id}`}><Star className="w-3.5 h-3.5 text-[#D4C4A8]/60" /> Manage Pricing</Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild className="hover:bg-[#2A2A2A] cursor-pointer text-sm gap-2">
-                            <Link to={`/inventory?product=${p._id}`}><Archive className="w-3.5 h-3.5 text-[#D4C4A8]/60" /> Manage Inventory</Link>
+                            <Link to={`${adminPath("inventory")}?product=${p._id}`}><Archive className="w-3.5 h-3.5 text-[#D4C4A8]/60" /> Manage Inventory</Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => remove(p._id, p.name)} className="hover:bg-red-500/10 cursor-pointer text-red-400 text-sm gap-2">
                             <Trash2 className="w-3.5 h-3.5" /> Delete

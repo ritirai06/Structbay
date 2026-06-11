@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router';
+import { vendorPath } from '../../lib/portalRoutes';
 import { Search, Filter, FileText, Upload, Package, ChevronLeft, ChevronRight } from 'lucide-react';
 import { StatusBadge } from '../components/StatusBadge';
 import { api } from '../lib/api';
@@ -136,11 +137,11 @@ export function OrdersList() {
                   <td className="py-3.5 px-4"><StatusBadge status={o.status} /></td>
                   <td className="py-3.5 px-4">
                     <div className="flex items-center gap-2">
-                      <Link to={`/orders/${o._id}`} className="p-1.5 rounded-lg" title="View Details" style={{ color: SB.orange }}>
+                      <Link to={vendorPath('orders', String(o._id))} className="p-1.5 rounded-lg" title="View Details" style={{ color: SB.orange }}>
                         <FileText className="w-4 h-4" />
                       </Link>
                       {o.invoiceStatus === 'pending' && (
-                        <Link to={`/orders/${o._id}/invoice`} className="p-1.5 rounded-lg" title="Upload Invoice" style={{ color: SB.muted }}>
+                        <Link to={vendorPath('orders', String(o._id), 'invoice')} className="p-1.5 rounded-lg" title="Upload Invoice" style={{ color: SB.muted }}>
                           <Upload className="w-4 h-4" />
                         </Link>
                       )}

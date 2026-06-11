@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router';
 import { ArrowLeft, Upload, Send, AlertCircle, CheckCircle, FileText } from 'lucide-react';
 import { api } from '../lib/api';
+import { vendorPath } from '../../lib/portalRoutes';
 
 const SB = { color: 'var(--sb-text-primary)', muted: 'var(--sb-text-muted)', faint: 'var(--sb-text-faint)', orange: 'var(--sb-orange)', card: 'var(--sb-card)', border: 'var(--sb-border)', bg: 'var(--sb-bg-section)' };
 
@@ -72,7 +73,7 @@ export function UploadInvoice() {
         await api.uploadInvoice(form);
       }
       setSuccess(true);
-      setTimeout(() => navigate(`/orders/${orderId}`), 1500);
+      setTimeout(() => navigate(vendorPath('orders', orderId!)), 1500);
     } catch (err: any) {
       setError(err.message ?? 'Upload failed. Please try again.');
     } finally { setSubmitting(false); }
@@ -89,7 +90,7 @@ export function UploadInvoice() {
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-3">
-        <Link to={`/orders/${orderId}`} className="p-2 rounded-xl" style={{ background: SB.card, border: `1px solid ${SB.border}`, color: SB.muted }}>
+        <Link to={vendorPath('orders', orderId!)} className="p-2 rounded-xl" style={{ background: SB.card, border: `1px solid ${SB.border}`, color: SB.muted }}>
           <ArrowLeft className="w-4 h-4" />
         </Link>
         <div>

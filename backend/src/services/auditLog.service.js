@@ -1,4 +1,5 @@
 const AuditLog = require('../models/AuditLog');
+const { generateRefNumber } = require('./refNumber.service');
 
 /**
  * Log an admin action.
@@ -14,10 +15,29 @@ const AuditLog = require('../models/AuditLog');
  */
 const logAction = async (opts) => {
   try {
-    await AuditLog.create(opts);
+    let logNumber = opts.logNumber;
+    if (!logNumber) {
+      try {
+        logNumber = await generateRefNumber('AUDIT_LOG');
+      } catch {
+        logNumber = null;
+      }
+    }
+    await AuditLog.create({ ...opts, logNumber });
   } catch {
     // Audit logging must never break the main request
   }
+};
+
+/** Lightweight finance audit helper (used by finance.controller). */
+const auditAction = async (adminId, action, details = {}) => {
+  await logAction({
+    adminId,
+    action: action || 'UPDATE',
+    module: 'Finance',
+    targetId: details.leadId ? String(details.leadId) : undefined,
+    description: typeof details === 'string' ? details : JSON.stringify(details),
+  });
 };
 
 /**
@@ -48,4 +68,4 @@ const getLogs = async ({ page = 1, limit = 20, adminId, module: mod, action, sta
   return { logs, total, page: pageNum, limit: limitNum, pages: Math.ceil(total / limitNum) };
 };
 
-module.exports = { logAction, getLogs };
+module.exports = { logAction, getLogs, auditAction };

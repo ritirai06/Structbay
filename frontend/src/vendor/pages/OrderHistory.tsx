@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { History, Download, FileText, Truck, ChevronLeft, ChevronRight, Package } from 'lucide-react';
 import { StatusBadge } from '../components/StatusBadge';
 import { api } from '../lib/api';
+import { vendorPath } from '../../lib/portalRoutes';
 
 const SB = { color: 'var(--sb-text-primary)', muted: 'var(--sb-text-muted)', faint: 'var(--sb-text-faint)', orange: 'var(--sb-orange)', card: 'var(--sb-card)', border: 'var(--sb-border)', bg: 'var(--sb-bg-section)' };
 
@@ -74,7 +75,7 @@ export function OrderHistory() {
                   {orders.map(o => (
                     <tr key={o._id} className="transition-colors hover:bg-white/[0.02]" style={{ borderBottom: '1px solid rgba(55,65,81,0.3)' }}>
                       <td className="py-3.5 px-4 font-bold whitespace-nowrap" style={{ color: SB.orange }}>
-                        <Link to={`/orders/${o._id}`} className="hover:underline">{o.orderNumber}</Link>
+                        <Link to={vendorPath('orders', String(o._id))} className="hover:underline">{o.orderNumber}</Link>
                       </td>
                       <td className="py-3.5 px-4 max-w-[160px]">
                         <p className="font-medium truncate" style={{ color: SB.color }}>{o.assignedProducts?.[0]?.productName ?? '—'}</p>
@@ -91,14 +92,14 @@ export function OrderHistory() {
                       <td className="py-3.5 px-4"><StatusBadge status={o.status} /></td>
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-2">
-                          <Link to={`/orders/${o._id}`} className="p-1.5 rounded-lg" title="View Order" style={{ color: SB.orange, background: 'var(--sb-orange-subtle)' }}>
+                          <Link to={vendorPath('orders', String(o._id))} className="p-1.5 rounded-lg" title="View Order" style={{ color: SB.orange, background: 'var(--sb-orange-subtle)' }}>
                             <FileText className="w-4 h-4" />
                           </Link>
                           <button onClick={() => handleDownloadInvoice(o._id)} className="p-1.5 rounded-lg" title="Download Invoice"
                             style={{ color: SB.muted, background: SB.bg, border: `1px solid ${SB.border}` }}>
                             <Download className="w-4 h-4" />
                           </button>
-                          <Link to={`/dispatch`} className="p-1.5 rounded-lg" title="Dispatch Record"
+                          <Link to={vendorPath('dispatch')} className="p-1.5 rounded-lg" title="Dispatch Record"
                             style={{ color: SB.muted, background: SB.bg, border: `1px solid ${SB.border}` }}>
                             <Truck className="w-4 h-4" />
                           </Link>
