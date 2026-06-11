@@ -3,6 +3,7 @@ const VendorOrder = require('../models/VendorOrder');
 const VendorActivityLog = require('../models/VendorActivityLog');
 const ApiResponse = require('../utils/apiResponse');
 const { cloudinary } = require('../config/cloudinary');
+const { generateRefNumber } = require('../services/refNumber.service');
 
 // @desc    Upload Vendor Invoice
 // @route   POST /api/v1/vendor/invoices
@@ -14,11 +15,13 @@ exports.uploadInvoice = async (req, res) => {
   if (!req.file) return ApiResponse.badRequest(res, 'Please upload invoice PDF.');
 
   const totalAmount = parseFloat(invoiceAmount) + parseFloat(gstAmount);
+  const structbayInvoiceNumber = await generateRefNumber('VENDOR_INVOICE');
 
   const invoice = await VendorInvoice.create({
     vendorOrder: orderId,
     vendor: req.user._id,
-    invoiceNumber,
+    invoiceNumber: structbayInvoiceNumber,
+    vendorTaxInvoiceNumber: invoiceNumber || null,
     invoiceDate,
     invoiceAmount: parseFloat(invoiceAmount),
     gstAmount: parseFloat(gstAmount),
@@ -42,7 +45,7 @@ exports.uploadInvoice = async (req, res) => {
 
   await VendorActivityLog.create({
     vendor: req.user._id, action: 'invoice_upload',
-    description: `Uploaded invoice ${invoiceNumber} for order ${order.orderNumber}`,
+    description: `Uploaded StructBay invoice ${structbayInvoiceNumber}${invoiceNumber ? ` (vendor ref ${invoiceNumber})` : ''} for order ${order.orderNumber}`,
     relatedOrder: orderId, relatedInvoice: invoice._id, ipAddress: req.ip,
   });
 
@@ -66,10 +69,12 @@ exports.replaceInvoice = async (req, res) => {
   await oldInvoice.save();
 
   const totalAmount = parseFloat(invoiceAmount) + parseFloat(gstAmount);
+  const structbayInvoiceNumber = await generateRefNumber('VENDOR_INVOICE');
   const newInvoice = await VendorInvoice.create({
     vendorOrder: oldInvoice.vendorOrder,
     vendor: req.user._id,
-    invoiceNumber,
+    invoiceNumber: structbayInvoiceNumber,
+    vendorTaxInvoiceNumber: invoiceNumber || null,
     invoiceDate,
     invoiceAmount: parseFloat(invoiceAmount),
     gstAmount: parseFloat(gstAmount),
@@ -88,7 +93,7 @@ exports.replaceInvoice = async (req, res) => {
 
   await VendorActivityLog.create({
     vendor: req.user._id, action: 'invoice_replace',
-    description: `Replaced invoice ${oldInvoice.invoiceNumber} with ${invoiceNumber}`,
+    description: `Replaced invoice ${oldInvoice.invoiceNumber} with ${structbayInvoiceNumber}${invoiceNumber ? ` (vendor ref ${invoiceNumber})` : ''}`,
     relatedOrder: oldInvoice.vendorOrder, relatedInvoice: newInvoice._id, ipAddress: req.ip,
   });
 

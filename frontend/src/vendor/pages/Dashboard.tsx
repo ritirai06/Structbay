@@ -5,6 +5,7 @@ import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
+import { vendorPath } from '../../lib/portalRoutes';
 
 const SB = { color: 'var(--sb-text-primary)', muted: 'var(--sb-text-muted)', faint: 'var(--sb-text-faint)', orange: 'var(--sb-orange)', card: 'var(--sb-card)', border: 'var(--sb-border)', bg: 'var(--sb-bg-section)' };
 
@@ -71,10 +72,10 @@ export function Dashboard() {
           <h2 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: SB.muted }}>Quick Actions</h2>
           <div className="grid grid-cols-2 gap-3">
             {[
-              { to: '/orders',       icon: Package,  label: 'View Orders',    sub: 'Assigned to you' },
-              { to: '/orders',       icon: Upload,   label: 'Upload Invoice', sub: 'Pending uploads' },
-              { to: '/dispatch',     icon: Truck,    label: 'Dispatch',       sub: 'Ready orders' },
-              { to: '/documents',    icon: Download, label: 'Documents',      sub: 'Download files' },
+              { to: vendorPath('orders'),       icon: Package,  label: 'View Orders',    sub: 'Assigned to you' },
+              { to: vendorPath('orders'),       icon: Upload,   label: 'Upload Invoice', sub: 'Pending uploads' },
+              { to: vendorPath('dispatch'),     icon: Truck,    label: 'Dispatch',       sub: 'Ready orders' },
+              { to: vendorPath('documents'),    icon: Download, label: 'Documents',      sub: 'Download files' },
             ].map(({ to, icon: Icon, label, sub }) => (
               <Link
                 key={label} to={to}
@@ -163,7 +164,7 @@ export function Dashboard() {
             <Package className="w-4 h-4" style={{ color: 'var(--sb-orange)' }} />
             <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: SB.muted }}>Recent Assigned Orders</h2>
           </div>
-          <Link to="/orders" className="flex items-center gap-1 text-xs font-semibold" style={{ color: 'var(--sb-orange)' }}>
+          <Link to={vendorPath('orders')} className="flex items-center gap-1 text-xs font-semibold" style={{ color: 'var(--sb-orange)' }}>
             View All <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
@@ -200,7 +201,7 @@ export function Dashboard() {
                     </td>
                     <td className="py-3.5 px-4"><StatusBadge status={o.status as any} /></td>
                     <td className="py-3.5 px-4">
-                      <Link to={`/orders/${o._id}`} className="text-xs font-bold" style={{ color: 'var(--sb-orange)' }}>View →</Link>
+                      <Link to={vendorPath('orders', String(o._id))} className="text-xs font-bold" style={{ color: 'var(--sb-orange)' }}>View →</Link>
                     </td>
                   </tr>
                 ))}

@@ -1,29 +1,16 @@
-const Order              = require('../models/Order');
-const VendorOrder        = require('../models/VendorOrder');
 const Notification       = require('../models/Notification');
 const OrderActivityLog   = require('../models/OrderActivityLog');
 const Inventory          = require('../models/Inventory');
 const InventoryLog       = require('../models/InventoryLog');
 const { sendEmail }      = require('./email.service');
+const {
+  generateRefNumber,
+  generateSubOrderNumber,
+  getNextSubOrderIndex,
+} = require('./refNumber.service');
 
-// ─── Order Number Generation ──────────────────────────────────────────────────
-const pad4 = (n) => String(n).padStart(4, '0');
-
-const generateMasterOrderNumber = async () => {
-  const d = new Date();
-  const yy = String(d.getFullYear()).slice(2);
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  const prefix = `${yy}${mm}${dd}`;
-
-  // Count orders created today to determine sequence
-  const startOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const count = await Order.countDocuments({ createdAt: { $gte: startOfDay } });
-  return `${prefix}${pad4(count + 1)}`;
-};
-
-const generateSubOrderNumber = (masterOrderNumber, index) =>
-  `${masterOrderNumber}-${index}`;
+/** Master order: ORDDDMYY001 (centralized atomic counter). */
+const generateMasterOrderNumber = () => generateRefNumber('ORDER');
 
 // ─── Activity Log ─────────────────────────────────────────────────────────────
 const logOrderActivity = async ({

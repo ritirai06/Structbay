@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router';
 import { ArrowLeft, Send, AlertCircle, CheckCircle, MapPin } from 'lucide-react';
 import { api } from '../lib/api';
+import { vendorPath } from '../../lib/portalRoutes';
 
 const SB = { color: 'var(--sb-text-primary)', muted: 'var(--sb-text-muted)', faint: 'var(--sb-text-faint)', orange: 'var(--sb-orange)', card: 'var(--sb-card)', border: 'var(--sb-border)', bg: 'var(--sb-bg-section)' };
 const inputCls = 'w-full px-3 py-2.5 rounded-xl text-sm transition-all';
@@ -80,7 +81,7 @@ export function WarehouseDetails() {
         });
       }
       setMsg({ type: 'success', text: 'Pickup details submitted! StructBay will schedule collection shortly.' });
-      setTimeout(() => navigate(`/orders/${orderId}`), 1800);
+      setTimeout(() => navigate(vendorPath('orders', orderId!)), 1800);
     } catch (err: any) {
       setMsg({ type: 'error', text: err.message ?? 'Submission failed.' });
     } finally { setSubmitting(false); }
@@ -96,14 +97,14 @@ export function WarehouseDetails() {
     <div className="flex flex-col items-center py-20">
       <AlertCircle className="w-12 h-12 mb-3" style={{ color: SB.faint }} />
       <p style={{ color: SB.muted }}>Order not found</p>
-      <Link to="/orders" className="mt-4 text-sm font-semibold" style={{ color: SB.orange }}>← Back</Link>
+      <Link to={vendorPath('orders')} className="mt-4 text-sm font-semibold" style={{ color: SB.orange }}>← Back</Link>
     </div>
   );
 
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-3">
-        <Link to={`/orders/${orderId}`} className="p-2 rounded-xl" style={{ background: SB.card, border: `1px solid ${SB.border}`, color: SB.muted }}>
+        <Link to={vendorPath('orders', orderId!)} className="p-2 rounded-xl" style={{ background: SB.card, border: `1px solid ${SB.border}`, color: SB.muted }}>
           <ArrowLeft className="w-4 h-4" />
         </Link>
         <div>

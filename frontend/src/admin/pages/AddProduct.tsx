@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate, useParams, Link } from "react-router";
 import { ArrowLeft, Plus, Trash2, Loader2, Save, Shield, Zap, TrendingUp, Star } from "lucide-react";
+import { adminPath } from "../../lib/portalRoutes";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
 const getToken = () => localStorage.getItem("adminToken") || "";
@@ -116,7 +117,7 @@ export function AddProduct() {
     try {
       if (isEdit) await apiFetch(`/products/${id}`, { method: "PATCH", body: JSON.stringify(form) });
       else await apiFetch("/products", { method: "POST", body: JSON.stringify(form) });
-      navigate("/products");
+      navigate(adminPath("products"));
     } catch (e: any) { alert(e.message); }
     setSaving(false);
   };
@@ -159,7 +160,7 @@ export function AddProduct() {
     <div className="p-6 bg-[#0D0D0D] min-h-full">
       {/* Header */}
       <div className="mb-6">
-        <button onClick={() => navigate("/products")}
+        <button onClick={() => navigate(adminPath("products"))}
           className="flex items-center gap-2 text-sm text-[#D4C4A8]/60 hover:text-[#F4E9D8] mb-4 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to Products
         </button>
@@ -252,7 +253,7 @@ export function AddProduct() {
               <Field label="Product Images">
                 <div className="border-2 border-dashed border-white/15 rounded-lg p-8 text-center hover:border-[#FE5E00]/40 transition-colors">
                   <p className="text-sm text-[#D4C4A8]/60 mb-3">Use the Upload endpoint to get Cloudinary URLs, then attach them to the product</p>
-                  <a href="/upload" className="text-[#FE5E00] text-sm hover:underline">Go to Media Upload →</a>
+                  <Link to={adminPath("cms")} className="text-[#FE5E00] text-sm hover:underline">Open CMS / media →</Link>
                 </div>
               </Field>
               <Field label="Product Videos">
@@ -397,7 +398,7 @@ export function AddProduct() {
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               {isEdit ? "Update Product" : "Publish Product"}
             </button>
-            <button onClick={() => navigate("/products")}
+            <button onClick={() => navigate(adminPath("products"))}
               className="w-full py-2.5 border border-white/15 rounded-lg text-sm text-[#D4C4A8] hover:border-white/30 transition-colors">
               Cancel
             </button>
@@ -407,10 +408,10 @@ export function AddProduct() {
             <h3 className="font-semibold text-[#F4E9D8] text-sm mb-3">Quick Links</h3>
             <div className="space-y-2">
               {isEdit && [
-                { label: "→ Manage Pricing", href: `/pricing?product=${id}` },
-                { label: "→ Manage Inventory", href: `/inventory?product=${id}` },
+                { label: "→ Manage Pricing", to: `${adminPath("pricing")}?product=${id}` },
+                { label: "→ Manage Inventory", to: `${adminPath("inventory")}?product=${id}` },
               ].map(l => (
-                <a key={l.label} href={l.href} className="block text-sm text-[#FE5E00] hover:underline">{l.label}</a>
+                <Link key={l.label} to={l.to} className="block text-sm text-[#FE5E00] hover:underline">{l.label}</Link>
               ))}
               {!isEdit && <p className="text-xs text-[#D4C4A8]/40">Save product first to manage pricing & inventory</p>}
             </div>

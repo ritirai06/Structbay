@@ -21,6 +21,9 @@ const orderDocumentSchema = new mongoose.Schema(
       required: true,
     },
 
+    /** StructBay document reference (INV… / EWB… / DEL…), shown on portals & PDFs */
+    documentReference: { type: String, default: null, index: true },
+
     label:        String,
     url:          { type: String, required: true },
     cloudinaryId: String,

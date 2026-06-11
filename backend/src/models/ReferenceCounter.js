@@ -2,11 +2,12 @@ const mongoose = require('mongoose');
 
 const referenceCounterSchema = new mongoose.Schema(
   {
-    module:          { type: String, required: true },   // e.g. 'ORDER', 'VENDOR_ORDER'
+    module:          { type: String, required: true },   // e.g. 'ORDER', 'BULK_ENQUIRY'
     prefix:          { type: String, required: true },   // e.g. 'ORD'
     date:            { type: String, required: true },   // DDMMYY e.g. '080626'
     currentSequence: { type: Number, default: 0 },
     lastGeneratedAt: { type: Date, default: null },
+    status:          { type: String, enum: ['ACTIVE', 'ARCHIVED'], default: 'ACTIVE' },
   },
   { timestamps: true }
 );

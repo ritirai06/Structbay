@@ -3,16 +3,9 @@ const ApiResponse = require('../utils/apiResponse');
 const AppError = require('../utils/AppError');
 const ConcreteRFQ = require('../models/ConcreteRFQ');
 const { logAction } = require('../services/auditLog.service');
+const { generateRefNumber } = require('../services/refNumber.service');
 
-const pad = (n) => String(n).padStart(4, '0');
-const genNumber = async () => {
-  const count = await ConcreteRFQ.countDocuments();
-  const d = new Date();
-  const yy = String(d.getFullYear()).slice(2);
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `RFQCON${yy}${mm}${dd}${pad(count + 1)}`;
-};
+const genNumber = () => generateRefNumber('CONCRETE_RFQ');
 
 const getAll = asyncHandler(async (req, res) => {
   const { status, city, page = 1, limit = 20 } = req.query;

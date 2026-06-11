@@ -4,8 +4,9 @@ const vendorInvoiceSchema = new mongoose.Schema({
   vendorOrder: { type: mongoose.Schema.Types.ObjectId, ref: 'VendorOrder', required: true },
   vendor: { type: mongoose.Schema.Types.ObjectId, ref: 'Vendor', required: true },
   
-  // Invoice Details
+  // StructBay vendor invoice ref (VINV…); vendor's tax invoice serial optional
   invoiceNumber: { type: String, required: true },
+  vendorTaxInvoiceNumber: { type: String, default: null },
   invoiceDate: { type: Date, required: true },
   
   // Amounts

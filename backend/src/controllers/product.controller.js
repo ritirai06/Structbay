@@ -5,6 +5,7 @@ const Product = require('../models/Product');
 const ProductVariation = require('../models/ProductVariation');
 const { deleteFile } = require('../config/cloudinary');
 const { logAction } = require('../services/auditLog.service');
+const { generateRefNumber } = require('../services/refNumber.service');
 
 // ─── Products ──────────────────────────────────────────────────────────────
 
@@ -60,10 +61,13 @@ const create = asyncHandler(async (req, res) => {
     displayOrder, seo, faqs,
   } = req.body;
 
+  const referenceNumber = await generateRefNumber('PRODUCT');
+
   const product = await Product.create({
     name, sku, category, brand, shortDescription, description,
     gstPercentage, status, isFeatured, isTopSelling, isAssured, isExpress,
     displayOrder, seo, faqs,
+    referenceNumber,
     createdBy: req.user._id,
   });
 

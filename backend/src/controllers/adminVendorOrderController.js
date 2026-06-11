@@ -6,12 +6,17 @@ const Order = require('../models/Order');
 const User = require('../models/User');
 const { notifyVendor } = require('../services/vendorNotification.service');
 const { PAGINATION } = require('../config/constants');
+const { generateSubOrderNumber } = require('../services/refNumber.service');
 
-// ─── Generate vendor order number ─────────────────────────────────────────────
-async function genVendorOrderNumber() {
-  const count = await VendorOrder.countDocuments();
-  const ts = Date.now().toString().slice(-5);
-  return `VO-${ts}-${String(count + 1).padStart(4, '0')}`;
+// ─── Generate vendor sub-order number from master ORD number ─────────────────
+async function genVendorOrderNumber(masterOrderId) {
+  const master = await Order.findById(masterOrderId).select('orderNumber');
+  if (!master?.orderNumber) {
+    const { generateRefNumber } = require('../services/refNumber.service');
+    return generateRefNumber('ORDER');
+  }
+  const nextIdx = (await VendorOrder.countDocuments({ masterOrder: masterOrderId })) + 1;
+  return generateSubOrderNumber(master.orderNumber, nextIdx);
 }
 
 // ─── POST /api/v1/admin/vendor-orders  ────────────────────────────────────────
@@ -33,7 +38,7 @@ const assignOrderToVendor = asyncHandler(async (req, res) => {
   if (!vendor) throw new AppError('Vendor not found or not approved.', 404);
   if (!assignedProducts?.length) throw new AppError('assignedProducts is required.', 400);
 
-  const orderNumber = await genVendorOrderNumber();
+  const orderNumber = await genVendorOrderNumber(masterOrderId);
 
   const vendorOrder = await VendorOrder.create({
     masterOrder: masterOrderId,

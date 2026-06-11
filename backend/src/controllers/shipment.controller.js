@@ -5,6 +5,7 @@ const Shipment       = require('../models/Shipment');
 const VendorOrder    = require('../models/VendorOrder');
 const Order          = require('../models/Order');
 const { logOrderActivity, notifyCustomer } = require('../services/order.service');
+const { generateRefNumber } = require('../services/refNumber.service');
 
 // ─── POST /shipments ──────────────────────────────────────────────────────────
 exports.create = asyncHandler(async (req, res) => {
@@ -21,7 +22,10 @@ exports.create = asyncHandler(async (req, res) => {
   const vendorOrder = await VendorOrder.findById(vendorOrderId);
   if (!vendorOrder) throw new AppError('Vendor order not found.', 404);
 
+  const shipmentNumber = await generateRefNumber('SHIPMENT');
+
   const shipment = await Shipment.create({
+    shipmentNumber,
     masterOrder: masterOrderId,
     vendorOrder:  vendorOrderId,
     logisticsPartner, customPartnerName,
@@ -29,19 +33,19 @@ exports.create = asyncHandler(async (req, res) => {
     trackingNumber, trackingUrl, estimatedDelivery,
     status: 'CREATED',
     createdBy: req.user._id,
-    timeline: [{ status: 'CREATED', description: 'Shipment created.', timestamp: new Date(), updatedBy: req.user._id }],
+    timeline: [{ status: 'CREATED', description: `Shipment ${shipmentNumber} created.`, timestamp: new Date(), updatedBy: req.user._id }],
   });
 
   // Update vendor order status
   await VendorOrder.findByIdAndUpdate(vendorOrderId, {
     status: 'DISPATCH_CONFIRMED',
     actualDispatchDate: new Date(),
-    $push: { statusHistory: { status: 'DISPATCH_CONFIRMED', updatedBy: req.user._id, model: 'User', note: `Shipment ${shipment._id} created.` } },
+    $push: { statusHistory: { status: 'DISPATCH_CONFIRMED', updatedBy: req.user._id, model: 'User', note: `Shipment ${shipmentNumber} created.` } },
   });
 
   await logOrderActivity({ masterOrder: masterOrderId, vendorOrder: vendorOrderId,
     actorType: 'ADMIN', actor: req.user._id,
-    action: 'DISPATCH_CONFIRMED', description: `Shipment created. Logistics: ${logisticsPartner}` });
+    action: 'DISPATCH_CONFIRMED', description: `Shipment ${shipmentNumber} created. Logistics: ${logisticsPartner}` });
 
   return ApiResponse.created(res, 'Shipment created.', shipment);
 });

@@ -80,9 +80,12 @@ const orderSchema = new mongoose.Schema(
     // Multi-vendor sub-orders
     vendorOrders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'VendorOrder' }],
 
-    // Documents
+    // Documents (URLs) + StructBay reference numbers (user-facing; never expose raw Mongo ids in UI)
     structbayInvoiceUrl: { type: String, default: null },
+    customerInvoiceNumber: { type: String, default: null, sparse: true },
     ewayBillUrl:         { type: String, default: null },
+    ewayBillNumber:      { type: String, default: null, sparse: true },
+    deliveryChallanNumber:{ type: String, default: null, sparse: true },
     invoiceUrl:          { type: String, default: null }, // backward compat
 
     notes:      { type: String, default: null },

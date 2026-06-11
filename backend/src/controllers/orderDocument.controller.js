@@ -7,6 +7,17 @@ const VendorOrder     = require('../models/VendorOrder');
 const VendorInvoice   = require('../models/VendorInvoice');
 const { logAction }   = require('../services/auditLog.service');
 const { logOrderActivity, notifyCustomer } = require('../services/order.service');
+const { generateRefNumber } = require('../services/refNumber.service');
+
+async function allocateDocumentReference(documentType) {
+  if (documentType === 'STRUCTBAY_INVOICE' || documentType === 'TAX_INVOICE') {
+    return generateRefNumber('CUSTOMER_INVOICE');
+  }
+  if (documentType === 'EWAY_BILL') return generateRefNumber('EWAY_BILL');
+  if (documentType === 'DELIVERY_CHALLAN') return generateRefNumber('DELIVERY');
+  if (documentType === 'VENDOR_INVOICE') return generateRefNumber('VENDOR_INVOICE');
+  return null;
+}
 
 // ─── POST /order-documents ─────────────────────────────────────────────────────
 exports.upload = asyncHandler(async (req, res) => {
@@ -20,35 +31,48 @@ exports.upload = asyncHandler(async (req, res) => {
     throw new AppError('masterOrderId, documentType, url are required.', 400);
   }
 
+  const documentReference = await allocateDocumentReference(documentType);
+
   const doc = await OrderDocument.create({
     masterOrder: masterOrderId,
     vendorOrder:  vendorOrderId || null,
     documentType, label, url, cloudinaryId,
     mimeType, fileSize,
+    documentReference,
     visibleToCustomer: visibleToCustomer || false,
     visibleToVendor:   visibleToVendor   || false,
     uploadedBy:      req.user._id,
     uploadedByModel: 'User',
   });
 
+  const orderRefUpdates = {};
   // Sync invoice URL on master order
-  if (documentType === 'STRUCTBAY_INVOICE') {
-    await Order.findByIdAndUpdate(masterOrderId, { structbayInvoiceUrl: url, invoiceUrl: url });
+  if (documentType === 'STRUCTBAY_INVOICE' || documentType === 'TAX_INVOICE') {
+    orderRefUpdates.structbayInvoiceUrl = url;
+    orderRefUpdates.invoiceUrl = url;
+    if (documentReference) orderRefUpdates.customerInvoiceNumber = documentReference;
   }
   if (documentType === 'EWAY_BILL') {
-    await Order.findByIdAndUpdate(masterOrderId, { ewayBillUrl: url });
+    orderRefUpdates.ewayBillUrl = url;
+    if (documentReference) orderRefUpdates.ewayBillNumber = documentReference;
+  }
+  if (documentType === 'DELIVERY_CHALLAN' && documentReference) {
+    orderRefUpdates.deliveryChallanNumber = documentReference;
+  }
+  if (Object.keys(orderRefUpdates).length) {
+    await Order.findByIdAndUpdate(masterOrderId, orderRefUpdates);
   }
 
   // Sync vendor order invoice status
   if (documentType === 'VENDOR_INVOICE' && vendorOrderId) {
     await VendorOrder.findByIdAndUpdate(vendorOrderId, { invoiceStatus: 'UPLOADED' });
-    // Create vendor invoice record
     const vo = await VendorOrder.findById(vendorOrderId);
-    if (vo) {
+    if (vo && documentReference) {
       await VendorInvoice.create({
         vendorOrder:   vendorOrderId,
         vendor:        vo.vendor,
-        invoiceNumber: req.body.invoiceNumber || `INV-${Date.now()}`,
+        invoiceNumber: documentReference,
+        vendorTaxInvoiceNumber: req.body.invoiceNumber || null,
         invoiceDate:   req.body.invoiceDate   || new Date(),
         invoiceAmount: req.body.invoiceAmount || 0,
         gstAmount:     req.body.gstAmount     || 0,
@@ -65,14 +89,17 @@ exports.upload = asyncHandler(async (req, res) => {
   const masterOrder = await Order.findById(masterOrderId).select('customer orderNumber');
 
   if (documentType === 'STRUCTBAY_INVOICE' || documentType === 'TAX_INVOICE') {
+    const invMsg = documentReference
+      ? `Invoice ${documentReference} is now available for your order ${masterOrder?.orderNumber}.`
+      : `An invoice is now available for your order ${masterOrder?.orderNumber}.`;
     await notifyCustomer({ customerId: masterOrder?.customer,
       title: 'Invoice Available', type: 'INVOICE', refId: masterOrder?.orderNumber,
-      message: `Invoice is now available for your order ${masterOrder?.orderNumber}. Download from My Orders.` });
+      message: `${invMsg} Download from My Orders.` });
   }
 
   await logOrderActivity({ masterOrder: masterOrderId, vendorOrder: vendorOrderId,
     actorType: 'ADMIN', actor: req.user._id, action: 'DOCUMENT_UPLOADED',
-    description: `${documentType} uploaded.` });
+    description: `${documentType} uploaded${documentReference ? ` (${documentReference})` : ''}.` });
   await logAction({ adminId: req.user._id, action: 'CREATE', module: 'OrderDocument',
     targetId: doc._id.toString(), description: `${documentType} uploaded for order.`, ipAddress: req.ip });
 
@@ -103,7 +130,10 @@ exports.verify = asyncHandler(async (req, res) => {
 
   if (doc.documentType === 'VENDOR_INVOICE' && doc.vendorOrder) {
     await VendorOrder.findByIdAndUpdate(doc.vendorOrder, { invoiceStatus: 'VERIFIED' });
-    await VendorInvoice.findOneAndUpdate({ vendorOrder: doc.vendorOrder, invoiceUrl: doc.url },
+    const invQuery = doc.documentReference
+      ? { vendorOrder: doc.vendorOrder, invoiceNumber: doc.documentReference }
+      : { vendorOrder: doc.vendorOrder, invoiceUrl: doc.url };
+    await VendorInvoice.findOneAndUpdate(invQuery,
       { status: 'verified', verifiedBy: req.user._id, verifiedAt: new Date() });
   }
 
@@ -126,7 +156,10 @@ exports.reject = asyncHandler(async (req, res) => {
 
   if (doc.documentType === 'VENDOR_INVOICE' && doc.vendorOrder) {
     await VendorOrder.findByIdAndUpdate(doc.vendorOrder, { invoiceStatus: 'REJECTED' });
-    await VendorInvoice.findOneAndUpdate({ vendorOrder: doc.vendorOrder, invoiceUrl: doc.url },
+    const invQuery = doc.documentReference
+      ? { vendorOrder: doc.vendorOrder, invoiceNumber: doc.documentReference }
+      : { vendorOrder: doc.vendorOrder, invoiceUrl: doc.url };
+    await VendorInvoice.findOneAndUpdate(invQuery,
       { status: 'rejected', rejectionReason: reason });
   }
 

@@ -16,6 +16,7 @@ const {
   sendWelcomeEmail,
 } = require('./email.service');
 const { USER_STATUS, VENDOR_STATUS, ROLES } = require('../config/constants');
+const { generateRefNumber } = require('./refNumber.service');
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -64,6 +65,8 @@ const registerCustomer = async ({ name, email, phone, password }, req) => {
   const existing = await User.findOne({ email });
   if (existing) throw new AppError('An account with this email already exists.', 409);
 
+  const referenceNumber = await generateRefNumber('CUSTOMER');
+
   const user = await User.create({
     name,
     email,
@@ -72,6 +75,7 @@ const registerCustomer = async ({ name, email, phone, password }, req) => {
     role: ROLES.CUSTOMER,
     status: USER_STATUS.PENDING,
     isEmailVerified: false,
+    referenceNumber,
   });
 
   // Email verification token
@@ -89,6 +93,8 @@ const registerVendor = async (
   const existing = await User.findOne({ email });
   if (existing) throw new AppError('An account with this email already exists.', 409);
 
+  const referenceNumber = await generateRefNumber('VENDOR');
+
   const user = await User.create({
     name,
     email,
@@ -102,6 +108,7 @@ const registerVendor = async (
     contactPerson,
     gstNumber,
     businessRegNumber,
+    referenceNumber,
   });
 
   // Verification email

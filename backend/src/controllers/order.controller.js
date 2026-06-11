@@ -3,13 +3,9 @@ const ApiResponse = require('../utils/apiResponse');
 const AppError = require('../utils/AppError');
 const Order = require('../models/Order');
 const { logAction } = require('../services/auditLog.service');
+const { generateRefNumber } = require('../services/refNumber.service');
 
-const pad = (n, len = 6) => String(n).padStart(len, '0');
-const generateOrderNumber = async () => {
-  const count = await Order.countDocuments();
-  const date = new Date();
-  return `ORD${date.getFullYear()}${pad(date.getMonth() + 1, 2)}${pad(date.getDate(), 2)}${pad(count + 1)}`;
-};
+const generateOrderNumber = () => generateRefNumber('ORDER');
 
 const getAll = asyncHandler(async (req, res) => {
   const { status, city, vendor, customer, search, page = 1, limit = 20 } = req.query;

@@ -1,9 +1,11 @@
-import { Link } from "react-router";
-import { CheckCircle2, Download, Package, ArrowRight, Share2 } from "lucide-react";
-
-const ORDER_ID = `SB-${Date.now().toString().slice(-8)}`;
+import { Link, useLocation } from "react-router";
+import { CheckCircle2, Download, Package, ArrowRight } from "lucide-react";
 
 export function OrderSuccess() {
+  const location = useLocation();
+  const state = location.state as { order?: { orderNumber?: string }; orderNumber?: string } | undefined;
+  const orderNumber = state?.order?.orderNumber ?? state?.orderNumber ?? null;
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-16 text-center">
       {/* Success animation */}
@@ -23,7 +25,12 @@ export function OrderSuccess() {
 
       <div style={{ backgroundColor: "var(--sb-blue)" }} className="rounded-2xl p-6 text-white mb-4">
         <p className="text-white/70 text-sm mb-1">Order Number</p>
-        <p className="font-bold text-2xl tracking-wide">{ORDER_ID}</p>
+        <p className="font-bold text-2xl tracking-wide">
+          {orderNumber ?? "—"}
+        </p>
+        {!orderNumber && (
+          <p className="text-white/80 text-sm mt-1">Your StructBay order reference was sent to your registered email and phone.</p>
+        )}
         <p className="text-white/70 text-sm mt-2">Expected Delivery: 2–4 Business Days</p>
       </div>
 

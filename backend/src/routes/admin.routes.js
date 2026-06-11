@@ -13,6 +13,9 @@ const asyncHandler = require('../utils/asyncHandler');
 
 const adminOnly = [protect, requireRole('ADMIN')];
 
+const referenceSearchCtrl = require('../controllers/referenceSearch.controller');
+router.get('/reference-search', ...adminOnly, asyncHandler(referenceSearchCtrl.searchReferences));
+
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 router.get('/dashboard', ...adminOnly, getDashboard);
 

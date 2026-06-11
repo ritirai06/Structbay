@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { Truck, Calendar, User, Phone, Upload, CheckCircle, AlertCircle, FileText, RefreshCw } from 'lucide-react';
 import { StatusBadge } from '../components/StatusBadge';
 import { api } from '../lib/api';
+import { vendorPath } from '../../lib/portalRoutes';
 
 const SB = { color: 'var(--sb-text-primary)', muted: 'var(--sb-text-muted)', faint: 'var(--sb-text-faint)', orange: 'var(--sb-orange)', card: 'var(--sb-card)', border: 'var(--sb-border)', bg: 'var(--sb-bg-section)' };
 const inputCls = 'w-full px-3 py-2.5 rounded-xl text-sm transition-all';
@@ -228,7 +229,7 @@ export function DispatchManagement() {
               <div className="rounded-2xl p-4" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-xs font-bold uppercase tracking-widest" style={{ color: SB.muted }}>Selected Order</h3>
-                  <Link to={`/orders/${selectedOrder._id}`} className="text-xs font-bold" style={{ color: SB.orange }}>View Full →</Link>
+                  <Link to={vendorPath('orders', String(selectedOrder._id))} className="text-xs font-bold" style={{ color: SB.orange }}>View Full →</Link>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                   {[

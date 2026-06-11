@@ -6,6 +6,7 @@ const { uploadDocument } = require('../middleware/upload.middleware');
 const { UPLOAD_FOLDERS } = require('../config/constants');
 const communicationSvc  = require('../services/communication.service');
 const { auditAction }   = require('../services/auditLog.service');
+const { generateRefNumber } = require('../services/refNumber.service');
 const AppError          = require('../utils/AppError');
 
 const PAGE  = (q) => Math.max(1, parseInt(q.page)  || 1);
@@ -19,7 +20,10 @@ exports.submitApplication = asyncHandler(async (req, res) => {
     loanAmountRequired, purposeOfLoan, monthlyTurnover, remarks,
   } = req.body;
 
+  const financeNumber = await generateRefNumber('FINANCE');
+
   const lead = await FinanceLead.create({
+    financeNumber,
     name, companyName, mobile, email, gstNumber,
     businessType, projectType, projectLocation,
     loanAmountRequired, purposeOfLoan, monthlyTurnover, remarks,
@@ -32,12 +36,19 @@ exports.submitApplication = asyncHandler(async (req, res) => {
   if (email || mobile) {
     communicationSvc.notifyFinanceApp({
       to: { email, phone: mobile },
-      vars: { customerName: name, applicationId: lead._id.toString() },
+      vars: {
+        customerName: name,
+        applicationId: financeNumber,
+        financeNumber,
+      },
       recipientRef: lead._id,
     }).catch(() => {});
   }
 
-  return ApiResponse.created(res, 'Finance application submitted successfully.', { id: lead._id });
+  return ApiResponse.created(res, 'Finance application submitted successfully.', {
+    financeNumber: lead.financeNumber,
+    applicationReference: lead.financeNumber,
+  });
 });
 
 // ─── Upload Documents (multi-file) ───────────────────────────────────────────
@@ -75,11 +86,15 @@ exports.getLeads = asyncHandler(async (req, res) => {
   const filter = {};
   if (status)     filter.status = status;
   if (assignedTo) filter.assignedTo = assignedTo;
-  if (search)     filter.$or = [
-    { name:        { $regex: search, $options: 'i' } },
-    { companyName: { $regex: search, $options: 'i' } },
-    { mobile:      { $regex: search, $options: 'i' } },
-  ];
+  if (search) {
+    const rx = { $regex: search, $options: 'i' };
+    filter.$or = [
+      { financeNumber: rx },
+      { name: rx },
+      { companyName: rx },
+      { mobile: rx },
+    ];
+  }
 
   const [leads, total] = await Promise.all([
     FinanceLead.find(filter)
@@ -203,9 +218,9 @@ exports.exportLeads = asyncHandler(async (req, res) => {
     .populate('assignedTo', 'name email')
     .lean();
 
-  const header = 'ID,Name,Company,Mobile,Email,GST,Business,Project,Location,LoanAmount,Status,CreatedAt\n';
+  const header = 'FinanceNumber,Name,Company,Mobile,Email,GST,Business,Project,Location,LoanAmount,Status,CreatedAt\n';
   const rows   = leads.map((l) => [
-    l._id, l.name, l.companyName || '', l.mobile, l.email || '',
+    l.financeNumber || '', l.name, l.companyName || '', l.mobile, l.email || '',
     l.gstNumber || '', l.businessType || '', l.projectType || '',
     l.projectLocation || '', l.loanAmountRequired || 0, l.status,
     new Date(l.createdAt).toISOString(),
