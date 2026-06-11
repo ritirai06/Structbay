@@ -12,6 +12,7 @@ router.get('/',        ctrl.getAll);
 router.get('/:slug',   ctrl.getBySlug);
 
 // Admin
+router.post('/bulk-import', ...adminOnly, ctrl.bulkImport);
 router.post('/',             ...adminOnly, categoryCreateValidator, validate, ctrl.create);
 router.patch('/:id',         ...adminOnly, ctrl.update);
 router.patch('/:id/image',   ...adminOnly, ctrl.updateImage);

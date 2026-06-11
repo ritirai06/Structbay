@@ -3,9 +3,9 @@ const ApiResponse = require('../utils/apiResponse');
 const AppError = require('../utils/AppError');
 const Order = require('../models/Order');
 const { logAction } = require('../services/auditLog.service');
-const { generateRefNumber } = require('../services/refNumber.service');
+const { generateMasterOrderNumber } = require('../services/order.service');
 
-const generateOrderNumber = () => generateRefNumber('ORDER');
+const generateOrderNumber = () => generateMasterOrderNumber();
 
 const getAll = asyncHandler(async (req, res) => {
   const { status, city, vendor, customer, search, page = 1, limit = 20 } = req.query;
@@ -39,7 +39,8 @@ const getById = asyncHandler(async (req, res) => {
     .populate('city', 'name state')
     .populate('assignedVendor', 'name companyName')
     .populate('items.product', 'name sku images')
-    .populate('items.variation', 'attributes sku');
+    .populate('items.variation', 'attributes sku')
+    .populate({ path: 'vendorOrders', select: 'orderNumber deliveryType status invoiceStatus structbayLogistics vendor totalAmount' });
   if (!order) throw new AppError('Order not found.', 404);
   return ApiResponse.success(res, 200, 'Order retrieved.', order);
 });
@@ -76,6 +77,19 @@ const assignVendor = asyncHandler(async (req, res) => {
   return ApiResponse.success(res, 200, 'Vendor assigned.', order);
 });
 
+const patchOrderDetails = asyncHandler(async (req, res) => {
+  const allowed = ['deliveryDetails', 'adminNotes', 'notes', 'shippingAddress'];
+  const order = await Order.findById(req.params.id);
+  if (!order) throw new AppError('Order not found.', 404);
+  allowed.forEach((f) => {
+    if (req.body[f] !== undefined) order[f] = req.body[f];
+  });
+  await order.save();
+  await logAction({ adminId: req.user._id, action: 'UPDATE', module: 'Order', targetId: order._id.toString(),
+    description: 'Order details / delivery notes updated.', ipAddress: req.ip });
+  return ApiResponse.success(res, 200, 'Order updated.', order);
+});
+
 const uploadDocs = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id);
   if (!order) throw new AppError('Order not found.', 404);
@@ -97,4 +111,100 @@ const getStats = asyncHandler(async (req, res) => {
   return ApiResponse.success(res, 200, 'Order stats.', { total, pending, processing, dispatched, delivered, cancelled });
 });
 
-module.exports = { getAll, getById, create, updateStatus, assignVendor, uploadDocs, getStats };
+const invoiceListFilter = () => ({
+  status: { $nin: ['CANCELLED', 'RETURNED'] },
+  $or: [
+    { paymentStatus: 'PAID' },
+    { structbayInvoiceUrl: { $nin: [null, ''] } },
+    { invoiceUrl: { $nin: [null, ''] } },
+    { customerInvoiceNumber: { $nin: [null, ''] } },
+  ],
+});
+
+const listInvoices = asyncHandler(async (req, res) => {
+  const pageNum = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limitNum = Math.min(100, parseInt(req.query.limit, 10) || 25);
+  const filter = invoiceListFilter();
+
+  const [orders, total] = await Promise.all([
+    Order.find(filter)
+      .populate('customer', 'name email phone')
+      .sort({ updatedAt: -1 })
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum)
+      .lean(),
+    Order.countDocuments(filter),
+  ]);
+
+  const rows = orders.map((o) => {
+    const pdfUrl = o.structbayInvoiceUrl || o.invoiceUrl || null;
+    const hasPdf = !!(pdfUrl && String(pdfUrl).trim());
+    let displayStatus = 'Pending';
+    if (hasPdf) displayStatus = 'Issued';
+    else if (o.paymentStatus === 'PAID') displayStatus = 'Paid';
+    else if (o.paymentStatus === 'PENDING') displayStatus = 'Payment pending';
+
+    return {
+      _id: o._id,
+      invoiceLabel: o.customerInvoiceNumber || o.orderNumber,
+      orderNumber: o.orderNumber,
+      customerName: o.customer?.name || '—',
+      subtotal: o.subtotal,
+      gstTotal: o.gstTotal,
+      grandTotal: o.grandTotal,
+      paymentStatus: o.paymentStatus,
+      displayStatus,
+      pdfUrl,
+      updatedAt: o.updatedAt,
+    };
+  });
+
+  return ApiResponse.success(res, 200, 'Invoices retrieved.', rows, {
+    total,
+    page: pageNum,
+    limit: limitNum,
+    pages: Math.ceil(total / limitNum) || 1,
+  });
+});
+
+const invoiceSummary = asyncHandler(async (req, res) => {
+  const base = { status: { $nin: ['CANCELLED', 'RETURNED'] } };
+  const [totalRows, paidAgg, pendingAgg, withPdf] = await Promise.all([
+    Order.countDocuments(invoiceListFilter()),
+    Order.aggregate([
+      { $match: { ...base, paymentStatus: 'PAID' } },
+      { $group: { _id: null, total: { $sum: '$grandTotal' } } },
+    ]),
+    Order.aggregate([
+      { $match: { ...base, paymentStatus: 'PENDING' } },
+      { $group: { _id: null, total: { $sum: '$grandTotal' } } },
+    ]),
+    Order.countDocuments({
+      ...base,
+      $or: [
+        { structbayInvoiceUrl: { $nin: [null, ''] } },
+        { invoiceUrl: { $nin: [null, ''] } },
+      ],
+    }),
+  ]);
+
+  return ApiResponse.success(res, 200, 'Invoice summary.', {
+    totalRows,
+    ordersWithPdf: withPdf,
+    pendingPaymentAmount: pendingAgg[0]?.total || 0,
+    totalCollectedAmount: paidAgg[0]?.total || 0,
+  });
+});
+
+module.exports = {
+  getAll,
+  getById,
+  create,
+  updateStatus,
+  assignVendor,
+  uploadDocs,
+  getStats,
+  patchOrderDetails,
+  listInvoices,
+  invoiceSummary,
+};

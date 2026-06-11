@@ -7,23 +7,13 @@ import { Badge } from "@shared/components/ui/badge";
 import { Input } from "@shared/components/ui/input";
 import { Loader2, RefreshCw, Search } from "lucide-react";
 import { Button } from "@shared/components/ui/button";
-
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
-const getToken = () => localStorage.getItem("adminToken") || "";
-
-async function apiFetch(path: string) {
-  const res = await fetch(`${API}${path}`, {
-    headers: { Authorization: `Bearer ${getToken()}` },
-  });
-  const data = await res.json();
-  if (!data.success) throw new Error(data.message || "API Error");
-  return data;
-}
+import { adminFetch as apiFetch } from "../../lib/adminApi";
 
 const actionColors: Record<string, string> = {
   CREATE: "bg-green-500/15 text-green-400 border-green-500/25",
   UPDATE: "bg-blue-500/15 text-blue-400 border-blue-500/25",
   DELETE: "bg-red-500/15 text-red-400 border-red-500/25",
+  UPLOAD: "bg-cyan-500/15 text-cyan-400 border-cyan-500/25",
   APPROVE: "bg-[#FE5E00]/15 text-[#FE5E00] border-[#FE5E00]/25",
   REJECT: "bg-yellow-500/15 text-yellow-400 border-yellow-500/25",
   PUBLISH: "bg-purple-500/15 text-purple-400 border-purple-500/25",
@@ -49,8 +39,8 @@ export function AuditLogs() {
 
   useEffect(() => { load(); }, [load]);
 
-  const MODULES = ["Banner", "Category", "Blog", "Testimonial", "Announcement", "Advertisement", "SEO", "Contact", "Footer", "Vendor", "User", "Homepage"];
-  const ACTIONS = ["CREATE", "UPDATE", "DELETE", "APPROVE", "REJECT", "PUBLISH", "TOGGLE"];
+  const MODULES = ["Banner", "Category", "Blog", "Testimonial", "Announcement", "Advertisement", "SEO", "Contact", "Footer", "Vendor", "User", "Homepage", "Order", "MasterOrder", "VendorOrder", "VendorInvoice", "OrderDocument", "Shipment"];
+  const ACTIONS = ["CREATE", "UPDATE", "DELETE", "UPLOAD", "APPROVE", "REJECT", "PUBLISH", "TOGGLE"];
 
   return (
     <div className="p-6 bg-[#0D0D0D] min-h-full">
@@ -93,6 +83,7 @@ export function AuditLogs() {
                     <TableHead className="text-[#D4C4A8]/60">Module</TableHead>
                     <TableHead className="text-[#D4C4A8]/60">Description</TableHead>
                     <TableHead className="text-[#D4C4A8]/60">IP</TableHead>
+                    <TableHead className="text-[#D4C4A8]/60">Platform</TableHead>
                     <TableHead className="text-[#D4C4A8]/60">Timestamp</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -116,6 +107,9 @@ export function AuditLogs() {
                       </TableCell>
                       <TableCell className="text-xs font-mono text-[#D4C4A8]/50">
                         {log.ipAddress || "—"}
+                      </TableCell>
+                      <TableCell className="text-xs text-[#D4C4A8]/60 max-w-[140px] truncate" title={log.platform || ""}>
+                        {log.platform || "—"}
                       </TableCell>
                       <TableCell className="text-xs font-mono text-[#D4C4A8]/50">
                         {new Date(log.createdAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}

@@ -1,21 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { Search, RefreshCw, Eye, CheckCircle, XCircle, PauseCircle, Loader2, Users, Star } from "lucide-react";
-
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
-const getToken = () => localStorage.getItem("adminToken") || "";
-async function apiFetch(path: string, opts: RequestInit = {}) {
-  const res = await fetch(`${API}${path}`, { ...opts, headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}`, ...opts.headers } });
-  const data = await res.json();
-  if (!data.success) throw new Error(data.message || "API Error");
-  return data;
-}
-
-const DEMO = [
-  { _id: "1", name: "ABC Suppliers Pvt Ltd", email: "abc@suppliers.com", phone: "+91 98765 43210", companyName: "ABC Suppliers Pvt Ltd", gstNumber: "29ABCDE1234F1Z5", city: "Bengaluru", vendorStatus: "APPROVED", status: "ACTIVE", createdAt: "2026-04-10" },
-  { _id: "2", name: "XYZ Distributors", email: "xyz@dist.com", phone: "+91 98765 43211", companyName: "XYZ Distributors", gstNumber: "36XYZDE1234F1Z5", city: "Hyderabad", vendorStatus: "APPROVED", status: "ACTIVE", createdAt: "2026-04-15" },
-  { _id: "3", name: "PQR Materials Ltd", email: "pqr@materials.com", phone: "+91 98765 43212", companyName: "PQR Materials Ltd", gstNumber: "33PQRDE1234F1Z5", city: "Chennai", vendorStatus: "PENDING_APPROVAL", status: "PENDING", createdAt: "2026-06-01" },
-  { _id: "4", name: "LMN Enterprises", email: "lmn@ent.com", phone: "+91 98765 43213", companyName: "LMN Enterprises", gstNumber: "29LMNDE1234F1Z5", city: "Bengaluru", vendorStatus: "REJECTED", status: "REJECTED", createdAt: "2026-05-20" },
-];
+import { Search, RefreshCw, Eye, CheckCircle, XCircle, Loader2, Users, Plus } from "lucide-react";
+import { adminFetch as apiFetch } from "../../lib/adminApi";
 
 const VS_COLORS: Record<string, string> = {
   PENDING_APPROVAL: "bg-[#FE5E00]/15 text-[#FE5E00] border-[#FE5E00]/25",
@@ -38,13 +23,29 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   );
 }
 
+const emptyVendorForm = {
+  name: "",
+  email: "",
+  phone: "",
+  password: "",
+  companyName: "",
+  contactPerson: "",
+  gstNumber: "",
+  businessRegNumber: "",
+};
+
+const inp = "w-full bg-[#0D0D0D] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#F4E9D8] placeholder:text-[#D4C4A8]/30 focus:outline-none focus:border-[#FE5E00]";
+
 export function VendorManagement() {
-  const [vendors, setVendors] = useState<any[]>(DEMO);
+  const [vendors, setVendors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [selected, setSelected] = useState<any>(null);
-  const [pagination, setPagination] = useState({ total: DEMO.length, pages: 1, page: 1 });
+  const [pagination, setPagination] = useState({ total: 0, pages: 1, page: 1 });
+  const [addOpen, setAddOpen] = useState(false);
+  const [addForm, setAddForm] = useState(emptyVendorForm);
+  const [addSaving, setAddSaving] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -52,7 +53,7 @@ export function VendorManagement() {
     if (statusFilter) params.set("vendorStatus", statusFilter);
     apiFetch(`/admin/vendors?${params}`)
       .then(d => { setVendors(d.data || []); setPagination(d.pagination || {}); })
-      .catch(() => { setVendors(DEMO); })
+      .catch(() => { setVendors([]); setPagination({ total: 0, pages: 1, page: 1 }); })
       .finally(() => setLoading(false));
   }, [statusFilter]);
 
@@ -70,20 +71,57 @@ export function VendorManagement() {
     load(); setSelected(null);
   };
 
+  const submitAddVendor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddSaving(true);
+    const payload: Record<string, string> = {
+      name: addForm.name.trim(),
+      email: addForm.email.trim(),
+      phone: addForm.phone.replace(/\D/g, "").slice(0, 10),
+      password: addForm.password,
+      companyName: addForm.companyName.trim(),
+    };
+    const cp = addForm.contactPerson.trim();
+    if (cp) payload.contactPerson = cp;
+    const gst = addForm.gstNumber.replace(/\s/g, "").toUpperCase();
+    if (gst) payload.gstNumber = gst;
+    const br = addForm.businessRegNumber.trim();
+    if (br) payload.businessRegNumber = br;
+    try {
+      await apiFetch("/admin/vendors", { method: "POST", body: JSON.stringify(payload) });
+      setAddOpen(false);
+      setAddForm(emptyVendorForm);
+      load();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to create vendor");
+    } finally {
+      setAddSaving(false);
+    }
+  };
+
   const filtered = vendors.filter(v => {
     if (search && !v.name.toLowerCase().includes(search.toLowerCase()) && !v.companyName?.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
-  const totalVendors = pagination.total || DEMO.length;
+  const totalVendors = pagination.total || 0;
   const approvedCount = vendors.filter(v => v.vendorStatus === "APPROVED").length;
   const pendingCount = vendors.filter(v => v.vendorStatus === "PENDING_APPROVAL").length;
 
   return (
     <div className="p-6 bg-[#0D0D0D] min-h-full">
-      <div className="mb-6">
-        <h1 className="text-2xl font-black text-[#F4E9D8]">Vendor Management</h1>
-        <p className="text-[#D4C4A8]/60 text-sm mt-1">Approve, manage and monitor all vendor partners</p>
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black text-[#F4E9D8]">Vendor Management</h1>
+          <p className="text-[#D4C4A8]/60 text-sm mt-1">Onboard vendors here; public self-registration is off unless the server enables it.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => { setAddForm(emptyVendorForm); setAddOpen(true); }}
+          className="inline-flex items-center justify-center gap-2 shrink-0 px-4 py-2.5 rounded-lg bg-[#FE5E00] hover:bg-[#E05200] text-[#0D0D0D] font-bold text-sm"
+        >
+          <Plus className="w-4 h-4" /> Add vendor
+        </button>
       </div>
 
       {/* Stats */}
@@ -188,6 +226,57 @@ export function VendorManagement() {
             </div>
           )}
         </div>
+      )}
+
+      {addOpen && (
+        <Modal title="Add vendor" onClose={() => !addSaving && setAddOpen(false)}>
+          <form onSubmit={submitAddVendor} className="space-y-3">
+            <p className="text-xs text-[#D4C4A8]/60">
+              Creates an approved vendor who can log in immediately. Password must meet platform rules (upper, lower, number, special, 8+ chars).
+            </p>
+            <div>
+              <label className="text-xs text-[#D4C4A8]/60 mb-1 block">Contact name *</label>
+              <input className={inp} value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))} required />
+            </div>
+            <div>
+              <label className="text-xs text-[#D4C4A8]/60 mb-1 block">Email *</label>
+              <input className={inp} type="email" value={addForm.email} onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))} required />
+            </div>
+            <div>
+              <label className="text-xs text-[#D4C4A8]/60 mb-1 block">Phone (10 digit) *</label>
+              <input className={inp} value={addForm.phone} onChange={e => setAddForm(f => ({ ...f, phone: e.target.value }))} placeholder="9876543210" required />
+            </div>
+            <div>
+              <label className="text-xs text-[#D4C4A8]/60 mb-1 block">Company *</label>
+              <input className={inp} value={addForm.companyName} onChange={e => setAddForm(f => ({ ...f, companyName: e.target.value }))} required />
+            </div>
+            <div>
+              <label className="text-xs text-[#D4C4A8]/60 mb-1 block">Contact person (optional)</label>
+              <input className={inp} value={addForm.contactPerson} onChange={e => setAddForm(f => ({ ...f, contactPerson: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-xs text-[#D4C4A8]/60 mb-1 block">GST (optional)</label>
+              <input className={inp} value={addForm.gstNumber} onChange={e => setAddForm(f => ({ ...f, gstNumber: e.target.value }))} placeholder="22AAAAA0000A1Z5" />
+            </div>
+            <div>
+              <label className="text-xs text-[#D4C4A8]/60 mb-1 block">Business reg. no. (optional)</label>
+              <input className={inp} value={addForm.businessRegNumber} onChange={e => setAddForm(f => ({ ...f, businessRegNumber: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-xs text-[#D4C4A8]/60 mb-1 block">Initial password *</label>
+              <input className={inp} type="password" value={addForm.password} onChange={e => setAddForm(f => ({ ...f, password: e.target.value }))} required />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button type="submit" disabled={addSaving} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-[#FE5E00] text-[#0D0D0D] font-bold text-sm disabled:opacity-50">
+                {addSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                Create vendor
+              </button>
+              <button type="button" disabled={addSaving} onClick={() => setAddOpen(false)} className="px-4 py-2.5 rounded-lg border border-white/15 text-[#D4C4A8] text-sm">
+                Cancel
+              </button>
+            </div>
+          </form>
+        </Modal>
       )}
 
       {selected && (

@@ -1,35 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Edit, Trash2, ToggleLeft, ToggleRight, MapPin, Loader2, Save, RefreshCw, Search } from "lucide-react";
+import { Plus, Edit, Trash2, ToggleLeft, ToggleRight, MapPin, Loader2, Save, RefreshCw, Search, Copy, Check, Upload } from "lucide-react";
+import { BulkImportCsvModal } from "../components/BulkImportCsvModal";
+import { CITY_BULK_TEMPLATE, parseCityBulkCsv } from "../lib/adminBulkCsvParsers";
+import { adminFetch as apiFetch } from "../../lib/adminApi";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
-const getToken = () => localStorage.getItem("adminToken") || "";
-
-async function apiFetch(path: string, opts: RequestInit = {}) {
-  const res = await fetch(`${API}${path}`, {
-    ...opts,
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}`, ...opts.headers },
-  });
-  const data = await res.json();
-  if (!data.success) throw new Error(data.message || "API Error");
-  return data;
-}
-
-const DEMO_CITIES = [
-  { _id: "1", name: "Bengaluru", state: "Karnataka", status: "ACTIVE", isServiceable: true, priority: 1, sortOrder: 1 },
-  { _id: "2", name: "Hyderabad", state: "Telangana", status: "ACTIVE", isServiceable: true, priority: 2, sortOrder: 2 },
-  { _id: "3", name: "Chennai", state: "Tamil Nadu", status: "ACTIVE", isServiceable: true, priority: 3, sortOrder: 3 },
-  { _id: "4", name: "Mumbai", state: "Maharashtra", status: "INACTIVE", isServiceable: false, priority: 4, sortOrder: 4 },
-  { _id: "5", name: "Pune", state: "Maharashtra", status: "ACTIVE", isServiceable: true, priority: 5, sortOrder: 5 },
-];
-
-const emptyForm = { name: "", state: "", status: "ACTIVE", isServiceable: true, priority: 0, sortOrder: 0 };
+const emptyForm = { name: "", state: "", status: "ACTIVE", isServiceable: true, priority: 0, sortOrder: 0, pincodes: "" };
 
 const inp = "w-full bg-[#0D0D0D] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#F4E9D8] placeholder:text-[#D4C4A8]/30 focus:outline-none focus:border-[#FE5E00] transition-colors";
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-      <div className="bg-[#1A1A1A] border border-white/10 rounded-xl w-full max-w-md">
+      <div className="bg-[#1A1A1A] border border-white/10 rounded-xl w-full max-w-lg">
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
           <h3 className="font-bold text-[#F4E9D8]">{title}</h3>
           <button onClick={onClose} className="text-[#D4C4A8]/60 hover:text-[#F4E9D8] text-xl">×</button>
@@ -40,20 +22,42 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   );
 }
 
+function CopyCityId({ id }: { id: string }) {
+  const [done, setDone] = useState(false);
+  const copy = () => {
+    void navigator.clipboard.writeText(id).then(() => {
+      setDone(true);
+      setTimeout(() => setDone(false), 1500);
+    });
+  };
+  return (
+    <button
+      type="button"
+      title={`City MongoDB id — click to copy full value\n${id}`}
+      onClick={copy}
+      className="inline-flex items-center gap-1 font-mono text-[10px] text-[#D4C4A8]/50 hover:text-[#FE5E00] max-w-[9rem] truncate"
+    >
+      {id.slice(0, 10)}…
+      {done ? <Check className="w-3 h-3 shrink-0 text-green-400" /> : <Copy className="w-3 h-3 shrink-0 opacity-60" />}
+    </button>
+  );
+}
+
 export function CityManagement() {
-  const [cities, setCities] = useState<any[]>(DEMO_CITIES);
+  const [cities, setCities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<{ open: boolean; data: any }>({ open: false, data: null });
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [pagination, setPagination] = useState({ total: 0, pages: 1, page: 1 });
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
     apiFetch(`/cities?limit=200`)
       .then(d => { setCities(d.data || []); setPagination(d.pagination || {}); })
-      .catch(() => { setCities(DEMO_CITIES); setPagination({ total: DEMO_CITIES.length, pages: 1, page: 1 }); })
+      .catch(() => { setCities([]); setPagination({ total: 0, pages: 1, page: 1 }); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -61,7 +65,8 @@ export function CityManagement() {
 
   const openCreate = () => { setForm(emptyForm); setModal({ open: true, data: null }); };
   const openEdit = (c: any) => {
-    setForm({ name: c.name, state: c.state, status: c.status, isServiceable: c.isServiceable, priority: c.priority, sortOrder: c.sortOrder });
+    const pins = Array.isArray(c.pincodes) ? c.pincodes.join(", ") : "";
+    setForm({ name: c.name, state: c.state, status: c.status, isServiceable: c.isServiceable, priority: c.priority, sortOrder: c.sortOrder, pincodes: pins });
     setModal({ open: true, data: c });
   };
 
@@ -97,9 +102,18 @@ export function CityManagement() {
           <h1 className="text-2xl font-black text-[#F4E9D8]">City Management</h1>
           <p className="text-[#D4C4A8]/60 text-sm mt-1">{active} active / {filtered.length} total cities</p>
         </div>
-        <button onClick={openCreate} className="flex items-center gap-2 bg-[#FE5E00] hover:bg-[#E05200] text-[#0D0D0D] font-bold px-4 py-2.5 rounded-lg text-sm transition-colors">
-          <Plus className="w-4 h-4" /> Add City
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setBulkOpen(true)}
+            className="flex items-center gap-2 border border-white/15 bg-[#1A1A1A] hover:border-[#FE5E00]/40 text-[#F4E9D8] font-bold px-4 py-2.5 rounded-lg text-sm transition-colors"
+          >
+            <Upload className="w-4 h-4 text-[#FE5E00]" /> Bulk CSV
+          </button>
+          <button onClick={openCreate} className="flex items-center gap-2 bg-[#FE5E00] hover:bg-[#E05200] text-[#0D0D0D] font-bold px-4 py-2.5 rounded-lg text-sm transition-colors">
+            <Plus className="w-4 h-4" /> Add City
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -135,7 +149,7 @@ export function CityManagement() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-white/8">
-                {["City", "State", "Priority", "Sort", "Serviceable", "Status", ""].map(h => (
+                {["City", "City ID", "State", "PINs", "Priority", "Sort", "Serviceable", "Status", ""].map(h => (
                   <th key={h} className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wider text-[#D4C4A8]/50">{h}</th>
                 ))}
               </tr>
@@ -149,7 +163,13 @@ export function CityManagement() {
                       <span className="font-semibold text-[#F4E9D8]">{c.name}</span>
                     </div>
                   </td>
+                  <td className="py-3.5 px-4 align-top">
+                    <CopyCityId id={String(c._id)} />
+                  </td>
                   <td className="py-3.5 px-4 text-[#D4C4A8]/70">{c.state}</td>
+                  <td className="py-3.5 px-4 text-[#D4C4A8]/70 tabular-nums">
+                    {Array.isArray(c.pincodes) && c.pincodes.length > 0 ? `${c.pincodes.length} PIN${c.pincodes.length === 1 ? "" : "s"}` : "—"}
+                  </td>
                   <td className="py-3.5 px-4 text-[#D4C4A8]/70">{c.priority}</td>
                   <td className="py-3.5 px-4 text-[#D4C4A8]/70">{c.sortOrder}</td>
                   <td className="py-3.5 px-4">
@@ -190,9 +210,29 @@ export function CityManagement() {
         </div>
       )}
 
+      <BulkImportCsvModal
+        open={bulkOpen}
+        onClose={() => setBulkOpen(false)}
+        title="Bulk import cities (CSV)"
+        instructions={`Up to 200 rows. Required: name (or city), state.\nOptional: pincodes (comma or newline, 6-digit), status, isServiceable (true/false), priority, sortOrder.\nPINs must be unique across cities — duplicates will fail for that row.`}
+        templateCsv={CITY_BULK_TEMPLATE}
+        templateFileName="structbay-cities-bulk-template.csv"
+        apiPath="/cities/bulk-import"
+        parseRows={parseCityBulkCsv}
+        onSuccess={() => load()}
+      />
+
       {modal.open && (
         <Modal title={modal.data ? `Edit — ${modal.data.name}` : "Add City"} onClose={() => setModal({ open: false, data: null })}>
           <div className="space-y-3">
+            {modal.data && (
+              <div className="rounded-lg border border-white/8 bg-[#0D0D0D] px-3 py-2">
+                <p className="text-[10px] text-[#D4C4A8]/50 uppercase tracking-wider mb-1">
+                  City ID (use in Pricing / Inventory APIs)
+                </p>
+                <p className="font-mono text-xs text-[#FE5E00]/90 break-all">{modal.data._id}</p>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-[#D4C4A8]/60 mb-1 block">City Name *</label>
@@ -202,6 +242,18 @@ export function CityManagement() {
                 <label className="text-xs text-[#D4C4A8]/60 mb-1 block">State *</label>
                 <input className={inp} value={form.state} onChange={e => setForm(f => ({ ...f, state: e.target.value }))} placeholder="e.g. Karnataka" />
               </div>
+            </div>
+            <div>
+              <label className="text-xs text-[#D4C4A8]/60 mb-1 block">Service PIN codes (6-digit)</label>
+              <textarea
+                className={`${inp} min-h-[88px] resize-y`}
+                value={form.pincodes}
+                onChange={e => setForm(f => ({ ...f, pincodes: e.target.value }))}
+                placeholder={"560001, 560002\nOne per line or comma-separated. Only these PINs are treated as in-service for this city."}
+              />
+              <p className="text-[10px] text-[#D4C4A8]/40 mt-1 leading-relaxed">
+                Leave empty if you only use the city list without PIN-level delivery. Customers outside these PINs see a polite “not in service area” message.
+              </p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

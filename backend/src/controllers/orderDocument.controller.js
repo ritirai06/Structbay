@@ -101,7 +101,8 @@ exports.upload = asyncHandler(async (req, res) => {
     actorType: 'ADMIN', actor: req.user._id, action: 'DOCUMENT_UPLOADED',
     description: `${documentType} uploaded${documentReference ? ` (${documentReference})` : ''}.` });
   await logAction({ adminId: req.user._id, action: 'CREATE', module: 'OrderDocument',
-    targetId: doc._id.toString(), description: `${documentType} uploaded for order.`, ipAddress: req.ip });
+    targetId: doc._id.toString(), description: `${documentType} uploaded for order.`, ipAddress: req.ip,
+    platform: (req.get('user-agent') || 'WEB').slice(0, 200) });
 
   return ApiResponse.created(res, 'Document uploaded.', doc);
 });

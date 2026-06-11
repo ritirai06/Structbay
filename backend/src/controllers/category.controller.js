@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const asyncHandler = require('../utils/asyncHandler');
 const ApiResponse = require('../utils/apiResponse');
 const AppError = require('../utils/AppError');
@@ -38,11 +39,20 @@ const getBySlug = asyncHandler(async (req, res) => {
 
 // ─── POST /api/v1/categories ──────────────────────────────────────────────────
 const create = asyncHandler(async (req, res) => {
-  const { name, description, icon, sortOrder, status } = req.body;
-  const category = await Category.create({
-    name, description, icon, sortOrder, status,
+  const { name, description, icon, sortOrder, status, image } = req.body;
+  const payload = {
+    name,
+    description,
+    icon,
+    sortOrder,
+    status,
     createdBy: req.user._id,
-  });
+  };
+  if (image && image.url) {
+    payload.image = { url: image.url, publicId: image.publicId || null };
+  }
+
+  const category = await Category.create(payload);
 
   await logAction({
     adminId: req.user._id,
@@ -65,6 +75,20 @@ const update = asyncHandler(async (req, res) => {
   const oldData = { name: category.name, status: category.status };
   const allowed = ['name', 'description', 'icon', 'sortOrder', 'status'];
   allowed.forEach(f => { if (req.body[f] !== undefined) category[f] = req.body[f]; });
+
+  if (req.body.image !== undefined) {
+    const img = req.body.image;
+    if (!img || !img.url) {
+      if (category.image?.publicId) await deleteFile(category.image.publicId).catch(() => {});
+      category.image = { url: null, publicId: null };
+    } else {
+      if (category.image?.publicId && category.image.publicId !== img.publicId) {
+        await deleteFile(category.image.publicId).catch(() => {});
+      }
+      category.image = { url: img.url, publicId: img.publicId || null };
+    }
+  }
+
   await category.save();
 
   await logAction({
@@ -127,4 +151,72 @@ const toggle = asyncHandler(async (req, res) => {
   return ApiResponse.success(res, 200, `Category ${category.status.toLowerCase()}.`, category);
 });
 
-module.exports = { getAll, getBySlug, create, update, updateImage, remove, toggle };
+const BULK_MAX_ROWS = 200;
+
+function bulkRowError(e) {
+  if (e instanceof AppError) return e.message;
+  if (e?.code === 11000) return 'Duplicate name or slug.';
+  return e?.message || String(e);
+}
+
+const bulkImport = asyncHandler(async (req, res) => {
+  const { rows } = req.body;
+  if (!Array.isArray(rows)) throw new AppError('rows must be an array.', 400);
+  if (!rows.length) throw new AppError('rows cannot be empty.', 400);
+  if (rows.length > BULK_MAX_ROWS) {
+    throw new AppError(`Too many rows (max ${BULK_MAX_ROWS}). Split into multiple uploads.`, 400);
+  }
+
+  const batchId = new mongoose.Types.ObjectId().toString();
+  const errors = [];
+  let ok = 0;
+
+  for (let i = 0; i < rows.length; i += 1) {
+    const row = rows[i];
+    try {
+      const r = typeof row === 'object' && row !== null ? row : {};
+      const name = String(r.name || '').trim();
+      if (!name) throw new AppError('name is required.', 400);
+      const description = r.description != null ? String(r.description).trim() : null;
+      const icon = r.icon != null ? String(r.icon).trim() : null;
+      const sortOrder =
+        r.sortOrder !== undefined && r.sortOrder !== '' && Number.isFinite(Number(r.sortOrder))
+          ? Number(r.sortOrder)
+          : 0;
+      const status = ['ACTIVE', 'INACTIVE'].includes(String(r.status || 'ACTIVE').toUpperCase())
+        ? String(r.status || 'ACTIVE').toUpperCase()
+        : 'ACTIVE';
+
+      await Category.create({
+        name,
+        description: description || null,
+        icon: icon || null,
+        sortOrder,
+        status,
+        createdBy: req.user._id,
+      });
+      ok += 1;
+    } catch (e) {
+      errors.push({ row: i + 1, message: bulkRowError(e) });
+    }
+  }
+
+  await logAction({
+    adminId: req.user._id,
+    action: 'CREATE',
+    module: 'Category',
+    targetId: batchId,
+    description: `Bulk category import: ${ok} succeeded, ${errors.length} failed (${rows.length} rows)`,
+    ipAddress: req.ip,
+  });
+
+  return ApiResponse.success(res, 200, 'Bulk import completed.', {
+    batchId,
+    total: rows.length,
+    succeeded: ok,
+    failed: errors.length,
+    errors,
+  });
+});
+
+module.exports = { getAll, getBySlug, create, update, updateImage, remove, toggle, bulkImport };

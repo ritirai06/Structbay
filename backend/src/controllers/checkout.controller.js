@@ -8,7 +8,9 @@ const Inventory     = require('../models/Inventory');
 const City          = require('../models/City');
 const Notification  = require('../models/Notification');
 const { sendEmail } = require('../services/email.service');
+const { resolveUnitPriceFromCityPricing } = require('../services/checkoutPricing.service');
 const { generateMasterOrderNumber, logOrderActivity } = require('../services/order.service');
+const { deliveryCityMatchesSelected } = require('../utils/cityNameMatch');
 
 const genOrderNumber = generateMasterOrderNumber;
 
@@ -29,9 +31,10 @@ exports.validate = asyncHandler(async (req, res) => {
     throw new AppError('StructBay is not currently serviceable in the selected city.', 422);
   }
 
-  // City match check
-  if (addressCity && city.name.toLowerCase() !== addressCity.toLowerCase()) {
-    return ApiResponse.error(res, 422, `Delivery city (${addressCity}) does not match selected city (${city.name}). Please update your delivery address.`);
+  // City match check (aliases, e.g. Bangalore / Bengaluru)
+  if (addressCity && !deliveryCityMatchesSelected(city.name, addressCity)) {
+    return ApiResponse.error(res, 422,
+      `Delivery city (${addressCity}) is not serviceable for your selected shopping city (${city.name}). Update the delivery city or go back to City Selection and choose where you are ordering for.`);
   }
 
   const activeItems = cart.items.filter(i => !i.savedForLater);
@@ -65,7 +68,7 @@ exports.validate = asyncHandler(async (req, res) => {
       continue;
     }
 
-    const unitPrice = pricing.salePrice ?? pricing.regularPrice;
+    const unitPrice = resolveUnitPriceFromCityPricing(pricing, item.quantity);
     const lineTotal = unitPrice * item.quantity;
     const gstAmt    = (lineTotal * (item.product.gstPercentage || 18)) / 100;
 
@@ -105,6 +108,13 @@ exports.placeOrder = asyncHandler(async (req, res) => {
   const city = await City.findById(cityId);
   if (!city || !city.isServiceable) throw new AppError('City not serviceable.', 422);
 
+  if (shippingAddress?.city && !deliveryCityMatchesSelected(city.name, shippingAddress.city)) {
+    throw new AppError(
+      `Checkout blocked: delivery address is in "${shippingAddress.city}" but your cart is priced for "${city.name}". Select the same city or change your delivery address.`,
+      422
+    );
+  }
+
   const cart = await Cart.findOne({ customer: req.user._id })
     .populate('items.product', 'name sku status gstPercentage')
     .populate('items.variation', 'attributes sku');
@@ -122,7 +132,7 @@ exports.placeOrder = asyncHandler(async (req, res) => {
     const pricing = await CityPricing.findOne(pq).lean();
     if (!pricing) throw new AppError(`Pricing missing for ${item.product.name}.`, 422);
 
-    const unitPrice = pricing.salePrice ?? pricing.regularPrice;
+    const unitPrice = resolveUnitPriceFromCityPricing(pricing, item.quantity);
     const lineTotal = unitPrice * item.quantity;
     const gstAmt    = (lineTotal * (item.product.gstPercentage || 18)) / 100;
     subtotal += lineTotal;
@@ -172,11 +182,11 @@ exports.placeOrder = asyncHandler(async (req, res) => {
     { $pull: { items: { savedForLater: false } } }
   );
 
-  // Create notification
+  // Create notification (in-app dashboard; confirmation email sent below)
   await Notification.create({
     customer: req.user._id,
-    title: 'Order Placed Successfully',
-    message: `Your order ${orderNumber} has been placed. Total: ₹${grandTotal.toLocaleString()}.`,
+    title: 'Order confirmed',
+    message: `Your order ${orderNumber} has been placed. Total: ₹${grandTotal.toLocaleString('en-IN')}. You will receive email and dashboard updates as it progresses.`,
     type: 'ORDER',
     refId: orderNumber,
   });

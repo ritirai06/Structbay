@@ -129,7 +129,7 @@ exports.updateStatus = asyncHandler(async (req, res) => {
 
 // ─── PATCH /orders/:id/edit ───────────────────────────────────────────────────
 exports.editOrder = asyncHandler(async (req, res) => {
-  const allowed = ['adminNotes', 'notes', 'shippingAddress', 'paymentMethod'];
+  const allowed = ['adminNotes', 'notes', 'shippingAddress', 'paymentMethod', 'deliveryDetails'];
   const updates = {};
   allowed.forEach((f) => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });
 

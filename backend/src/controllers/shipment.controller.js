@@ -7,6 +7,76 @@ const Order          = require('../models/Order');
 const { logOrderActivity, notifyCustomer } = require('../services/order.service');
 const { generateRefNumber } = require('../services/refNumber.service');
 
+const ACTIVE_SHIPMENT_STATUSES = ['PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'];
+
+// ─── GET /shipments/dispatch-board ───────────────────────────────────────────
+exports.dispatchBoard = asyncHandler(async (req, res) => {
+  const pageNum = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limitNum = Math.min(100, parseInt(req.query.limit, 10) || 50);
+  const skip = (pageNum - 1) * limitNum;
+  const statusFilter = req.query.status;
+  const filter = {};
+  if (statusFilter) filter.status = statusFilter;
+
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const [
+    shipments,
+    totalShipments,
+    readyForDispatch,
+    outForDelivery,
+    deliveredToday,
+    activeDriverNames,
+  ] = await Promise.all([
+    Shipment.find(filter)
+      .populate({
+        path: 'masterOrder',
+        select: 'orderNumber status grandTotal paymentStatus',
+        populate: { path: 'customer', select: 'name email phone' },
+      })
+      .populate('vendorOrder', 'orderNumber status')
+      .sort({ updatedAt: -1 })
+      .skip(skip)
+      .limit(limitNum)
+      .lean(),
+    Shipment.countDocuments(filter),
+    Order.countDocuments({ status: 'READY_FOR_DISPATCH' }),
+    Shipment.countDocuments({ status: { $in: ACTIVE_SHIPMENT_STATUSES } }),
+    Shipment.countDocuments({
+      status: 'DELIVERED',
+      actualDelivery: { $gte: startOfDay },
+    }),
+    Shipment.distinct('driverName', {
+      status: { $in: ACTIVE_SHIPMENT_STATUSES },
+      driverName: { $nin: [null, '', undefined] },
+    }),
+  ]);
+
+  const activeDrivers = (activeDriverNames || []).filter(Boolean).length;
+
+  return ApiResponse.success(
+    res,
+    200,
+    'Dispatch board.',
+    {
+      stats: {
+        readyForDispatch,
+        outForDelivery,
+        deliveredToday,
+        activeDrivers,
+      },
+      shipments,
+    },
+    {
+      total: totalShipments,
+      page: pageNum,
+      limit: limitNum,
+      pages: Math.ceil(totalShipments / limitNum) || 1,
+    }
+  );
+});
+
 // ─── POST /shipments ──────────────────────────────────────────────────────────
 exports.create = asyncHandler(async (req, res) => {
   const {
@@ -66,7 +136,17 @@ exports.getByOrder = asyncHandler(async (req, res) => {
   const filter = {};
   if (masterOrderId) filter.masterOrder = masterOrderId;
   if (vendorOrderId) filter.vendorOrder = vendorOrderId;
-  const shipments = await Shipment.find(filter).sort({ createdAt: -1 });
+  let q = Shipment.find(filter).sort({ createdAt: -1 });
+  if (!masterOrderId && !vendorOrderId) {
+    q = q
+      .populate({
+        path: 'masterOrder',
+        select: 'orderNumber status',
+        populate: { path: 'customer', select: 'name' },
+      })
+      .populate('vendorOrder', 'orderNumber');
+  }
+  const shipments = await q.limit(200);
   return ApiResponse.success(res, 200, 'Shipments retrieved.', shipments);
 });
 

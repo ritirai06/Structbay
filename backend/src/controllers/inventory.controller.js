@@ -1,9 +1,143 @@
+const mongoose = require('mongoose');
 const asyncHandler = require('../utils/asyncHandler');
 const ApiResponse = require('../utils/apiResponse');
 const AppError = require('../utils/AppError');
 const Inventory = require('../models/Inventory');
 const InventoryLog = require('../models/InventoryLog');
+const Product = require('../models/Product');
+const City = require('../models/City');
 const { logAction } = require('../services/auditLog.service');
+
+const OID_RE = /^[a-f0-9]{24}$/i;
+
+function escapeRegex(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Core inventory change used by single adjust and bulk import.
+ * @param {object} opts
+ * @param {boolean} [opts.auditLog=true] — set false for bulk rows (one summary log is written separately).
+ */
+async function executeAdjustment({
+  userId,
+  ip,
+  product,
+  variation,
+  city,
+  type,
+  quantity,
+  reason,
+  referenceId,
+  lowStockThreshold,
+  auditLog = true,
+}) {
+  if (!product || !city || !type || quantity === undefined) {
+    throw new AppError('product, city, type and quantity are required.', 400);
+  }
+  if (!['ADD', 'DEDUCT', 'ADJUST'].includes(type)) throw new AppError('Invalid type.', 400);
+
+  const q = Number(quantity);
+  if (!Number.isFinite(q) || q < 0) throw new AppError('Invalid quantity.', 400);
+  if (type !== 'ADJUST' && q <= 0) throw new AppError('quantity must be > 0 for ADD/DEDUCT.', 400);
+
+  const query = { product, city };
+  if (variation) query.variation = variation;
+
+  let inv = await Inventory.findOne(query);
+  if (!inv) {
+    inv = await Inventory.create({
+      product,
+      variation: variation || null,
+      city,
+      quantity: 0,
+      updatedBy: userId,
+    });
+  }
+
+  const before = inv.quantity;
+  if (type === 'ADD') inv.quantity += q;
+  else if (type === 'DEDUCT') inv.quantity = Math.max(0, inv.quantity - q);
+  else inv.quantity = q;
+  if (lowStockThreshold !== undefined && Number.isFinite(Number(lowStockThreshold))) {
+    inv.lowStockThreshold = Number(lowStockThreshold);
+  }
+  inv.updatedBy = userId;
+  await inv.save();
+
+  await InventoryLog.create({
+    inventory: inv._id,
+    product,
+    city,
+    type,
+    quantity: q,
+    quantityBefore: before,
+    quantityAfter: inv.quantity,
+    reason,
+    referenceId,
+    performedBy: userId,
+  });
+
+  if (auditLog) {
+    await logAction({
+      adminId: userId,
+      action: 'UPDATE',
+      module: 'Inventory',
+      targetId: inv._id.toString(),
+      description: `${type} ${q} units. Before: ${before}, After: ${inv.quantity}`,
+      ipAddress: ip,
+      oldData: { quantity: before },
+      newData: { quantity: inv.quantity },
+    });
+  }
+
+  return Inventory.findById(inv._id)
+    .populate('product', 'name sku')
+    .populate('city', 'name state');
+}
+
+async function resolveProductId(row) {
+  const pidRaw = row.productId || row.product_id;
+  const pid = pidRaw != null ? String(pidRaw).trim() : '';
+  if (pid && OID_RE.test(pid)) {
+    const p = await Product.findById(pid).select('_id sku').lean();
+    if (!p) throw new AppError(`Unknown product id: ${pid}`, 400);
+    return String(p._id);
+  }
+  const prodField = row.product != null ? String(row.product).trim() : '';
+  if (prodField && OID_RE.test(prodField)) {
+    const p = await Product.findById(prodField).select('_id sku').lean();
+    if (!p) throw new AppError(`Unknown product id: ${prodField}`, 400);
+    return String(p._id);
+  }
+  const skuRaw = row.sku ?? row.SKU ?? row.productSku;
+  const sku = skuRaw != null ? String(skuRaw).trim().toUpperCase() : '';
+  if (!sku) throw new AppError('Each row needs sku or productId', 400);
+  const p = await Product.findOne({ sku }).select('_id').lean();
+  if (!p) throw new AppError(`Unknown SKU: ${sku}`, 400);
+  return String(p._id);
+}
+
+async function resolveCityId(row) {
+  const cidRaw = row.cityId || row.city_id;
+  const cid = cidRaw != null ? String(cidRaw).trim() : '';
+  if (cid && OID_RE.test(cid)) {
+    const c = await City.findById(cid).select('_id').lean();
+    if (!c) throw new AppError(`Unknown city id: ${cid}`, 400);
+    return String(c._id);
+  }
+  const nameRaw = row.city ?? row.City ?? row.cityName;
+  const name = nameRaw != null ? String(nameRaw).trim() : '';
+  if (!name) throw new AppError('Each row needs city or cityId', 400);
+  if (OID_RE.test(name)) {
+    const c = await City.findById(name).select('_id').lean();
+    if (!c) throw new AppError(`Unknown city id: ${name}`, 400);
+    return String(c._id);
+  }
+  const c = await City.findOne({ name: new RegExp(`^${escapeRegex(name)}$`, 'i') }).select('_id').lean();
+  if (!c) throw new AppError(`Unknown city name: ${name}`, 400);
+  return String(c._id);
+}
 
 const getAll = asyncHandler(async (req, res) => {
   const { product, city, lowStock, outOfStock, page = 1, limit = 50 } = req.query;
@@ -32,41 +166,94 @@ const getAll = asyncHandler(async (req, res) => {
 
 const adjust = asyncHandler(async (req, res) => {
   const { product, variation, city, type, quantity, reason, referenceId, lowStockThreshold } = req.body;
-  if (!product || !city || !type || quantity === undefined) {
-    throw new AppError('product, city, type and quantity are required.', 400);
+  const populated = await executeAdjustment({
+    userId: req.user._id,
+    ip: req.ip,
+    product,
+    variation,
+    city,
+    type,
+    quantity,
+    reason,
+    referenceId,
+    lowStockThreshold,
+    auditLog: true,
+  });
+  return ApiResponse.success(res, 200, 'Inventory adjusted.', populated);
+});
+
+const BULK_MAX_ROWS = 500;
+
+const bulkImport = asyncHandler(async (req, res) => {
+  const { rows } = req.body;
+  if (!Array.isArray(rows)) throw new AppError('rows must be an array.', 400);
+  if (rows.length === 0) throw new AppError('rows cannot be empty.', 400);
+  if (rows.length > BULK_MAX_ROWS) {
+    throw new AppError(`Too many rows (max ${BULK_MAX_ROWS}). Split into multiple uploads.`, 400);
   }
-  if (!['ADD', 'DEDUCT', 'ADJUST'].includes(type)) throw new AppError('Invalid type.', 400);
 
-  const query = { product, city };
-  if (variation) query.variation = variation;
+  const batchId = new mongoose.Types.ObjectId().toString();
+  const errors = [];
+  let ok = 0;
 
-  let inv = await Inventory.findOne(query);
-  if (!inv) {
-    inv = await Inventory.create({ product, variation: variation || null, city, quantity: 0, updatedBy: req.user._id });
+  for (let i = 0; i < rows.length; i += 1) {
+    const row = rows[i];
+    try {
+      const r = typeof row === 'object' && row !== null ? row : {};
+      const product = await resolveProductId(r);
+      const city = await resolveCityId(r);
+      const typeRaw = String(r.type || 'ADD').trim().toUpperCase();
+      if (!['ADD', 'DEDUCT', 'ADJUST'].includes(typeRaw)) {
+        throw new AppError(`Invalid type: ${typeRaw}`, 400);
+      }
+      const qty = r.quantity !== undefined ? r.quantity : r.qty;
+      if (qty === undefined || qty === '') throw new AppError('quantity is required', 400);
+      const variation = r.variation || undefined;
+      let lowStockThreshold;
+      if (r.lowStockThreshold !== undefined && r.lowStockThreshold !== '') {
+        lowStockThreshold = Number(r.lowStockThreshold);
+      }
+      const reason =
+        (r.reason != null && String(r.reason).trim()) ||
+        `Bulk import row ${i + 1}`;
+      const referenceId = `bulk:${batchId}:${i + 1}`;
+
+      await executeAdjustment({
+        userId: req.user._id,
+        ip: req.ip,
+        product,
+        variation,
+        city,
+        type: typeRaw,
+        quantity: Number(qty),
+        reason,
+        referenceId,
+        lowStockThreshold,
+        auditLog: false,
+      });
+      ok += 1;
+    } catch (e) {
+      const message = e instanceof AppError ? e.message : (e && e.message) || String(e);
+      errors.push({ row: i + 1, message });
+    }
   }
 
-  const before = inv.quantity;
-  if (type === 'ADD') inv.quantity += Number(quantity);
-  else if (type === 'DEDUCT') inv.quantity = Math.max(0, inv.quantity - Number(quantity));
-  else inv.quantity = Number(quantity); // ADJUST
-  if (lowStockThreshold !== undefined) inv.lowStockThreshold = lowStockThreshold;
-  inv.updatedBy = req.user._id;
-  await inv.save();
-
-  await InventoryLog.create({
-    inventory: inv._id, product, city,
-    type, quantity: Number(quantity),
-    quantityBefore: before, quantityAfter: inv.quantity,
-    reason, referenceId, performedBy: req.user._id,
+  await logAction({
+    adminId: req.user._id,
+    action: 'UPDATE',
+    module: 'Inventory',
+    targetId: batchId,
+    description: `Bulk inventory import (${rows.length} rows): ${ok} succeeded, ${errors.length} failed`,
+    ipAddress: req.ip,
   });
 
-  await logAction({ adminId: req.user._id, action: 'UPDATE', module: 'Inventory',
-    targetId: inv._id.toString(), description: `${type} ${quantity} units. Before: ${before}, After: ${inv.quantity}`,
-    ipAddress: req.ip, oldData: { quantity: before }, newData: { quantity: inv.quantity } });
-
-  const populated = await Inventory.findById(inv._id)
-    .populate('product', 'name sku').populate('city', 'name state');
-  return ApiResponse.success(res, 200, 'Inventory adjusted.', populated);
+  return ApiResponse.success(res, 200, 'Bulk import completed.', {
+    batchId,
+    total: rows.length,
+    succeeded: ok,
+    failed: errors.length,
+    errors,
+  });
 });
 
 const getLogs = asyncHandler(async (req, res) => {
@@ -100,4 +287,4 @@ const getStats = asyncHandler(async (req, res) => {
   return ApiResponse.success(res, 200, 'Inventory stats.', { total, lowStock, outOfStock });
 });
 
-module.exports = { getAll, adjust, getLogs, getStats };
+module.exports = { getAll, adjust, bulkImport, getLogs, getStats };

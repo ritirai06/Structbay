@@ -63,7 +63,7 @@ export function OrderHistory() {
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm min-w-[900px]">
                 <thead>
                   <tr style={{ borderBottom: `1px solid ${SB.border}` }}>
                     {['Order #', 'Product', 'Customer', 'City', 'Delivered', 'Total', 'Status', 'Actions'].map(h => (

@@ -2,7 +2,7 @@ const router = require('express').Router();
 const { protect } = require('../middleware/auth.middleware');
 const { requireRole } = require('../middleware/role.middleware');
 const { validate } = require('../middleware/validate.middleware');
-const { updateUserStatusValidator } = require('../validators/auth.validator');
+const { updateUserStatusValidator, adminCreateVendorValidator } = require('../validators/auth.validator');
 const { rejectVendorValidator } = require('../validators/user.validator');
 const adminUserController = require('../controllers/adminUser.controller');
 const adminSessionController = require('../controllers/adminSession.controller');
@@ -38,6 +38,7 @@ router.delete('/users/:id',     ...adminOnly, adminUserController.deleteUser);
 
 // ─── Vendor Management ────────────────────────────────────────────────────────
 router.get('/vendors',                  ...adminOnly, adminUserController.getAllVendors);
+router.post('/vendors',                 ...adminOnly, adminCreateVendorValidator, validate, adminUserController.createVendor);
 router.put('/vendors/:id/approve',      ...adminOnly, adminUserController.approveVendor);
 router.put('/vendors/:id/reject',       ...adminOnly, rejectVendorValidator, validate, adminUserController.rejectVendor);
 

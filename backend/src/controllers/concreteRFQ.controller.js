@@ -3,9 +3,9 @@ const ApiResponse = require('../utils/apiResponse');
 const AppError = require('../utils/AppError');
 const ConcreteRFQ = require('../models/ConcreteRFQ');
 const { logAction } = require('../services/auditLog.service');
-const { generateRefNumber } = require('../services/refNumber.service');
+const { generateConcreteRfqNumber } = require('../services/refNumber.service');
 
-const genNumber = () => generateRefNumber('CONCRETE_RFQ');
+const genNumber = () => generateConcreteRfqNumber();
 
 const getAll = asyncHandler(async (req, res) => {
   const { status, city, page = 1, limit = 20 } = req.query;
@@ -38,8 +38,10 @@ const getById = asyncHandler(async (req, res) => {
 
 const create = asyncHandler(async (req, res) => {
   const rfqNumber = await genNumber();
-  const payload = { ...req.body, rfqNumber };
-  if (req.user?._id) payload.customer = req.user._id;
+  const body = { ...req.body };
+  delete body.customer;
+  if (body.siteAddress && !body.location) body.location = body.siteAddress;
+  const payload = { ...body, rfqNumber, customer: req.user._id };
   const item = await ConcreteRFQ.create(payload);
   return ApiResponse.created(res, 'RFQ submitted.', item);
 });

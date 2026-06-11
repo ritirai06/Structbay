@@ -7,6 +7,7 @@ const adminOnly = [protect, requireRole('ADMIN')];
 
 router.get('/',        ...adminOnly, ctrl.getAll);
 router.post('/',       ...adminOnly, ctrl.upsert);
+router.post('/bulk-import', ...adminOnly, ctrl.bulkImport);
 router.delete('/:id',  ...adminOnly, ctrl.remove);
 
 module.exports = router;

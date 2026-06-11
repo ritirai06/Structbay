@@ -2,6 +2,7 @@ const VendorDispatch = require('../models/VendorDispatch');
 const VendorOrder = require('../models/VendorOrder');
 const VendorActivityLog = require('../models/VendorActivityLog');
 const ApiResponse = require('../utils/apiResponse');
+const { vendorOrderMatch } = require('../utils/vendorOrderAccess');
 
 // @desc    Create Dispatch Entry
 // @route   POST /api/v1/vendor/dispatch
@@ -13,7 +14,8 @@ exports.createDispatch = async (req, res) => {
     dispatchDate, expectedDeliveryDate, dispatchRemarks,
   } = req.body;
 
-  const order = await VendorOrder.findOne({ _id: orderId, vendor: req.user._id });
+  const match = await vendorOrderMatch(req.user);
+  const order = await VendorOrder.findOne({ _id: orderId, ...match });
   if (!order) return ApiResponse.notFound(res, 'Order not found.');
 
   const data = {
@@ -145,8 +147,12 @@ exports.uploadDeliveryProof = async (req, res) => {
 // @desc    Get Dispatch by Order
 // @route   GET /api/v1/vendor/dispatch/order/:orderId
 exports.getDispatchByOrder = async (req, res) => {
+  const match = await vendorOrderMatch(req.user);
+  const vo = await VendorOrder.findOne({ _id: req.params.orderId, ...match });
+  if (!vo) return ApiResponse.notFound(res, 'Order not found or not assigned to you.');
+
   const dispatch = await VendorDispatch.findOne({
-    vendorOrder: req.params.orderId, vendor: req.user._id,
+    vendorOrder: vo._id, vendor: req.user._id,
   }).populate('vendorOrder', 'orderNumber customer deliveryAddress');
 
   if (!dispatch) return ApiResponse.notFound(res, 'No dispatch found for this order.');

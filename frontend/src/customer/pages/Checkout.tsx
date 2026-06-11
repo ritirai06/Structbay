@@ -1,13 +1,65 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router";
-import { ChevronRight, MapPin, Building2, CreditCard, Shield, AlertCircle } from "lucide-react";
+import { ChevronRight, MapPin, Building2, CreditCard, Shield, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useApp } from "../context/AppContext";
-
-const CITIES = ["Bengaluru", "Hyderabad", "Chennai"];
+import { api } from "../lib/api";
+import { DeliveryChargesNotice } from "@shared/components/DeliveryChargesNotice";
+import { deliveryCityMatchesSelected } from "../../lib/cityNameMatch";
 
 export function Checkout() {
   const { cart, cartTotal, city, isLoggedIn } = useApp();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      navigate("/login", { state: { from: { pathname: "/checkout" } }, replace: true });
+    }
+  }, [isLoggedIn, navigate]);
+
+  useEffect(() => {
+    if (city) {
+      setForm(f => ({ ...f, deliveryCity: f.deliveryCity || city }));
+    }
+  }, [city]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("sb_customer_profile");
+      if (!raw) return;
+      const p = JSON.parse(raw) as Record<string, string>;
+      setForm(f => ({
+        ...f,
+        companyName: f.companyName || p.company || "",
+        gstNumber: f.gstNumber || p.gst || "",
+        contactName: f.contactName || p.name || "",
+        phone: f.phone || p.mobile || "",
+        email: f.email || p.email || "",
+        address: f.address || p.billingAddress || "",
+      }));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("sb_checkout_prefill");
+      if (!raw) return;
+      const p = JSON.parse(raw) as Record<string, string>;
+      sessionStorage.removeItem("sb_checkout_prefill");
+      setForm(f => ({
+        ...f,
+        contactName: f.contactName || p.name || "",
+        phone: f.phone || p.phone || "",
+        address: f.address || [p.line1, p.city, p.state, p.pincode].filter(Boolean).join(", ") || f.address,
+        deliveryCity: f.deliveryCity || p.city || f.deliveryCity,
+        pincode: f.pincode || p.pincode || f.pincode,
+      }));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     companyName: "",
@@ -21,20 +73,97 @@ export function Checkout() {
     paymentMethod: "online",
   });
   const [cityError, setCityError] = useState(false);
+  const [deliveryCityNames, setDeliveryCityNames] = useState<string[]>([]);
+  const [pincodeCheck, setPincodeCheck] = useState<{ ok: boolean; message: string } | null>(null);
+  const [pincodeChecking, setPincodeChecking] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/v1/customer/cities")
+      .then((r) => r.json())
+      .then((res) => {
+        const names = (res.data || []).map((c: { name: string }) => c.name).filter(Boolean);
+        setDeliveryCityNames(names);
+      })
+      .catch(() => setDeliveryCityNames([]));
+  }, []);
 
   const gst = Math.round(cartTotal * 0.18);
   const delivery = cartTotal >= 10000 ? 0 : 350;
   const total = cartTotal + gst + delivery;
 
-  const update = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
+  const update = (k: string, v: string) => {
+    if (k === "pincode") setPincodeCheck(null);
+    setForm((f) => ({ ...f, [k]: v }));
+  };
 
-  const handlePlaceOrder = () => {
-    if (form.deliveryCity && city && form.deliveryCity !== city) {
+  const verifyDeliveryPincode = async () => {
+    const digits = form.pincode.replace(/\D/g, "");
+    if (digits.length !== 6) {
+      setPincodeCheck(null);
+      return;
+    }
+    setPincodeChecking(true);
+    try {
+      const d = await api.validatePincode(digits);
+      if (d.serviceable && d.city) {
+        setPincodeCheck({
+          ok: true,
+          message: `This PIN is in our service area for ${d.city.name}.`,
+        });
+      } else {
+        setPincodeCheck({
+          ok: false,
+          message: d.message || "This PIN code is not in our active service area.",
+        });
+      }
+    } catch {
+      setPincodeCheck({
+        ok: false,
+        message: "We could not verify this PIN. Please try again in a moment.",
+      });
+    } finally {
+      setPincodeChecking(false);
+    }
+  };
+
+  const handlePlaceOrder = async () => {
+    if (form.deliveryCity && city && !deliveryCityMatchesSelected(city, form.deliveryCity)) {
       setCityError(true);
       return;
     }
+    const digits = form.pincode.replace(/\D/g, "");
+    if (digits.length === 6) {
+      try {
+        const d = await api.validatePincode(digits);
+        if (!d.serviceable) {
+          setPincodeCheck({
+            ok: false,
+            message: d.message || "This PIN code is not in our active service area.",
+          });
+          return;
+        }
+        setPincodeCheck({
+          ok: true,
+          message: d.city ? `Delivery available for ${d.city.name}.` : "This PIN is in our service area.",
+        });
+      } catch {
+        setPincodeCheck({
+          ok: false,
+          message: "We could not verify this PIN. Please try again.",
+        });
+        return;
+      }
+    }
     navigate("/order-success");
   };
+
+  if (!isLoggedIn) {
+    return (
+      <div className="max-w-xl mx-auto px-4 py-16 text-center text-muted-foreground">
+        Sign in is required to checkout. Redirecting…
+      </div>
+    );
+  }
 
   if (cart.length === 0) {
     return (
@@ -47,6 +176,9 @@ export function Checkout() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="mb-4 max-w-3xl">
+        <DeliveryChargesNotice />
+      </div>
       <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
         <Link to="/" className="hover:text-foreground">Home</Link>
         <ChevronRight className="w-3 h-3" />
@@ -61,7 +193,7 @@ export function Checkout() {
           <div key={n} className="flex items-center gap-2">
             <div
               style={{ backgroundColor: step >= n ? "var(--sb-blue)" : undefined }}
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step >= n ? "text-white" : "bg-muted text-muted-foreground"}`}
+              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step >= n ? "text-sb-cream" : "bg-muted text-muted-foreground"}`}
             >
               {n}
             </div>
@@ -129,12 +261,16 @@ export function Checkout() {
                       className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-input-background focus:outline-none"
                     >
                       <option value="">Select city</option>
-                      {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
+                      {[...new Set([...(city && !deliveryCityNames.includes(city) ? [city] : []), ...deliveryCityNames])].map(
+                        (n) => (
+                          <option key={n} value={n}>{n}</option>
+                        )
+                      )}
                     </select>
                     {cityError && (
                       <div className="flex items-center gap-1.5 mt-2 text-xs text-red-600">
                         <AlertCircle className="w-3.5 h-3.5" />
-                        Currently StructBay is not serving this location. Please select {city}.
+                        Checkout blocked: delivery city must match your selected shopping city ({city}). Pricing and stock are city-specific — go to City Selection if you need a different location.
                       </div>
                     )}
                   </div>
@@ -142,11 +278,26 @@ export function Checkout() {
                     <label className="block text-sm font-medium text-foreground mb-1.5">Pincode</label>
                     <input
                       type="text"
+                      inputMode="numeric"
                       value={form.pincode}
                       onChange={e => update("pincode", e.target.value)}
+                      onBlur={() => void verifyDeliveryPincode()}
                       placeholder="560001"
                       className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-input-background focus:outline-none"
                     />
+                    {pincodeChecking && (
+                      <p className="text-xs text-muted-foreground mt-2">Checking PIN…</p>
+                    )}
+                    {pincodeCheck && !pincodeChecking && (
+                      <div className={`flex items-start gap-1.5 mt-2 text-xs leading-relaxed ${pincodeCheck.ok ? "text-green-700" : "text-amber-800"}`}>
+                        {pincodeCheck.ok ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-green-600" />
+                        ) : (
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-700" />
+                        )}
+                        {pincodeCheck.message}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -186,6 +337,9 @@ export function Checkout() {
                 <Shield className="w-4 h-4 shrink-0" style={{ color: "var(--sb-blue)" }} />
                 Your payment is secured by 256-bit SSL encryption. We never store card details.
               </div>
+              <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
+                Checkout collects the <strong className="text-foreground">full order value in one payment</strong> via Zoho Payments when you pay online (no partial payments). Status will appear as Pending until the gateway confirms Paid or Failed.
+              </p>
             </div>
           )}
         </div>
@@ -220,7 +374,7 @@ export function Checkout() {
             <button
               onClick={handlePlaceOrder}
               style={{ backgroundColor: "var(--sb-orange)" }}
-              className="w-full mt-5 py-3.5 rounded-2xl text-white font-semibold hover:opacity-90 transition-opacity"
+              className="w-full mt-5 py-3.5 rounded-2xl text-sb-cream font-semibold hover:opacity-90 transition-opacity"
             >
               Place Order ₹{total.toLocaleString()}
             </button>

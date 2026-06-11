@@ -78,12 +78,16 @@ const allowedOrigins = [
   process.env.VENDOR_URL,
 ].filter(Boolean);
 
+/** In development, allow any localhost / 127.0.0.1 origin (admin on :3001, customer on :3000, etc.). */
+const isDev = (process.env.NODE_ENV || 'development') !== 'production';
+const localhostOrigin = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i;
+
 app.use(
   cors({
     origin: (origin, cb) => {
-      // Allow server-to-server (no origin) or known origins
       if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-      cb(new Error(`CORS blocked: ${origin}`));
+      if (isDev && localhostOrigin.test(origin)) return cb(null, true);
+      return cb(null, false);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -92,26 +96,41 @@ app.use(
 );
 
 // ─── Rate Limiting ────────────────────────────────────────────────────────────
+// Default 100/15min is too low for SPAs (many parallel GETs per page). Tune via env.
+const rateWindowMs = parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000;
+const rateMaxFromEnv = parseInt(process.env.RATE_LIMIT_MAX, 10);
+const globalMax =
+  Number.isFinite(rateMaxFromEnv) && rateMaxFromEnv > 0
+    ? rateMaxFromEnv
+    : isDev
+      ? 5000
+      : 1200;
+
 const globalLimiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 min
-  max: parseInt(process.env.RATE_LIMIT_MAX) || 100,
+  windowMs: rateWindowMs,
+  max: globalMax,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many requests. Please try again later.' },
+  // Local dev: SPA + HMR easily exceeds low caps; skip unless explicitly enabled.
+  skip: () =>
+    process.env.DISABLE_RATE_LIMIT === 'true' ||
+    (isDev && process.env.ENABLE_RATE_LIMIT_IN_DEV !== 'true'),
 });
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
   message: { success: false, message: 'Too many auth attempts. Please try again in 15 minutes.' },
+  skip: () => process.env.DISABLE_RATE_LIMIT === 'true' || (isDev && process.env.ENABLE_RATE_LIMIT_IN_DEV !== 'true'),
 });
 
 app.use('/api', globalLimiter);
 app.use('/api/v1/auth', authLimiter);
 
 // ─── Body Parsers ─────────────────────────────────────────────────────────────
-app.use(express.json({ limit: '10kb' }));
-app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+app.use(express.json({ limit: '256kb' }));
+app.use(express.urlencoded({ extended: true, limit: '256kb' }));
 
 // ─── Data Sanitization ────────────────────────────────────────────────────────
 app.use(mongoSanitize()); // NoSQL injection

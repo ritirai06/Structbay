@@ -31,6 +31,7 @@ const updateHomepage = asyncHandler(async (req, res) => {
   const cms = await CMS.getOrCreate();
   const allowed = [
     'heroTitle', 'heroSubtitle', 'heroCtaText',
+    'brandLogoUrl', 'heroBackgroundImageUrl',
     'contact', 'footer', 'featuredCategories',
   ];
   allowed.forEach(f => { if (req.body[f] !== undefined) cms[f] = req.body[f]; });
@@ -64,7 +65,13 @@ const getBanners = asyncHandler(async (req, res) => {
 });
 
 const createBanner = asyncHandler(async (req, res) => {
-  const banner = await Banner.create({ ...req.body, createdBy: req.user._id });
+  const payload = { ...req.body };
+  if (req.body.imageUrl) {
+    payload.image = { url: req.body.imageUrl, publicId: req.body.imagePublicId || null };
+    delete payload.imageUrl;
+    delete payload.imagePublicId;
+  }
+  const banner = await Banner.create({ ...payload, createdBy: req.user._id });
   await logAction({
     adminId: req.user._id, action: 'CREATE', module: 'Banner',
     targetId: banner._id.toString(), description: `Created banner: ${banner.title}`, ipAddress: req.ip,

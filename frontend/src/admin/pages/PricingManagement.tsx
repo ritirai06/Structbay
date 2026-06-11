@@ -1,24 +1,8 @@
-import { useState } from "react";
-import { Plus, Edit, Trash2, Loader2, Save, DollarSign, Search } from "lucide-react";
-
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
-const getToken = () => localStorage.getItem("adminToken") || "";
-
-async function apiFetch(path: string, opts: RequestInit = {}) {
-  const res = await fetch(`${API}${path}`, {
-    ...opts,
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}`, ...opts.headers },
-  });
-  const data = await res.json();
-  if (!data.success) throw new Error(data.message || "API Error");
-  return data;
-}
-
-const DEMO = [
-  { _id: "1", product: { name: "Cement PPC 53 Grade", sku: "CEM-PPC-53" }, city: { name: "Bengaluru" }, regularPrice: 450, salePrice: 420, isVisible: true, wholesaleSlabs: [{ minQty: 10, maxQty: 49, price: 410 }, { minQty: 50, maxQty: 99, price: 395 }, { minQty: 100, price: 380 }] },
-  { _id: "2", product: { name: "TMT Steel Bars 16mm", sku: "STL-TMT-16" }, city: { name: "Bengaluru" }, regularPrice: 65, salePrice: 62, isVisible: true, wholesaleSlabs: [{ minQty: 100, maxQty: 499, price: 60 }, { minQty: 500, price: 58 }] },
-  { _id: "3", product: { name: "Ready Mix Concrete M30", sku: "RMC-M30" }, city: { name: "Hyderabad" }, regularPrice: 5500, salePrice: 5200, isVisible: true, wholesaleSlabs: [{ minQty: 10, maxQty: 24, price: 5100 }, { minQty: 25, price: 5000 }] },
-];
+import { useState, useEffect, useCallback } from "react";
+import { Plus, Edit, Trash2, Loader2, Save, DollarSign, Search, Upload } from "lucide-react";
+import { adminFetch as apiFetch } from "../../lib/adminApi";
+import { BulkImportCsvModal } from "../components/BulkImportCsvModal";
+import { CITY_PRICING_BULK_TEMPLATE, parseCityPricingBulkCsv } from "../lib/adminBulkCsvParsers";
 
 const EMPTY_SLAB = { minQty: 0, maxQty: null as null | number, price: 0 };
 const emptyForm = { product: "", variation: "", city: "", regularPrice: 0, salePrice: null as null | number, wholesaleSlabs: [] as any[], isVisible: true };
@@ -40,12 +24,24 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 }
 
 export function PricingManagement() {
-  const [items, setItems] = useState<any[]>(DEMO);
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState<any>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    apiFetch("/pricing?limit=100")
+      .then(d => setItems(d.data || []))
+      .catch(() => setItems([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   const openCreate = () => { setForm(emptyForm); setEditId(null); setModal(true); };
   const openEdit = (item: any) => {
@@ -67,7 +63,7 @@ export function PricingManagement() {
     try {
       await apiFetch("/pricing", { method: "POST", body: JSON.stringify(form) });
       setModal(false);
-      // reload data
+      load();
     } catch (e: any) { alert(e.message); }
     setSaving(false);
   };
@@ -87,10 +83,30 @@ export function PricingManagement() {
           <h1 className="text-2xl font-black text-[#F4E9D8]">Pricing Engine</h1>
           <p className="text-[#D4C4A8]/60 text-sm mt-1">City-wise pricing with up to 5 wholesale slabs per product</p>
         </div>
-        <button onClick={openCreate} className="flex items-center gap-2 bg-[#FE5E00] hover:bg-[#E05200] text-[#0D0D0D] font-bold px-4 py-2.5 rounded-lg text-sm transition-colors">
-          <Plus className="w-4 h-4" /> Set Pricing
-        </button>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={load} className="flex items-center gap-2 border border-white/15 rounded-lg px-3 py-2 text-sm text-[#D4C4A8] hover:border-white/30 transition-colors">
+            <Loader2 className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} /> Refresh
+          </button>
+          <button type="button" onClick={() => setBulkOpen(true)} className="flex items-center gap-2 border border-white/15 rounded-lg px-3 py-2.5 text-sm text-[#F4E9D8] hover:border-[#FE5E00]/40 transition-colors">
+            <Upload className="w-4 h-4 text-[#FE5E00]" /> Bulk CSV
+          </button>
+          <button onClick={openCreate} className="flex items-center gap-2 bg-[#FE5E00] hover:bg-[#E05200] text-[#0D0D0D] font-bold px-4 py-2.5 rounded-lg text-sm transition-colors">
+            <Plus className="w-4 h-4" /> Set Pricing
+          </button>
+        </div>
       </div>
+
+      <BulkImportCsvModal
+        open={bulkOpen}
+        onClose={() => setBulkOpen(false)}
+        title="Bulk import city pricing (CSV)"
+        instructions={`Up to 500 rows. Each row upserts one price row (same as Set Pricing).\nRequired: sku OR productId; citySlug OR cityId OR cityName; regularPrice.\nOptional: salePrice (omit column to leave existing sale price unchanged on update), isVisible (omit to leave unchanged), variationSku OR variationId for variant-level pricing (omit for base product).\nOptional wholesaleSlabs — either compact tiers: 50:400|100:395 (min:price per segment; max qty auto-fills as next tier−1), or min:max:price per segment, OR a JSON array: [{"minQty":10,"maxQty":99,"price":380}] (max 5 slabs). Omit the column to keep existing slabs; include the column empty to clear slabs.`}
+        templateCsv={CITY_PRICING_BULK_TEMPLATE}
+        templateFileName="structbay-city-pricing-bulk-template.csv"
+        apiPath="/pricing/bulk-import"
+        parseRows={parseCityPricingBulkCsv}
+        onSuccess={() => load()}
+      />
 
       {/* Search */}
       <div className="flex gap-3 mb-5">

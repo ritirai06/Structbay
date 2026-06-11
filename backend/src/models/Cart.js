@@ -23,6 +23,6 @@ const cartSchema = new mongoose.Schema(
   }
 );
 
-cartSchema.index({ customer: 1 });
+// customer: unique index from field definition (one cart per user)
 
 module.exports = mongoose.model('Cart', cartSchema);

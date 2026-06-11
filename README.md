@@ -28,6 +28,11 @@ B2B construction marketplace monorepo: **Express + MongoDB** API and a **React (
 
 Admin, customer, and vendor UIs live under `frontend/src/`, not as separate top-level folders.
 
+### Requirements vs implementation
+
+- **`Project requirement Document .pdf`** — client PRD (repo root).
+- **`docs/MVP_SCOPE.md`** — Phase 2 vs MVP, and PRD-alignment implementation notes.
+
 ---
 
 ## Quick start (two terminals)

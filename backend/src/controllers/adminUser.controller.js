@@ -10,6 +10,8 @@ const {
   sendVendorRejectedEmail,
 } = require('../services/email.service');
 
+const authService = require('../services/auth.service');
+
 // ─── GET /api/v1/admin/users ──────────────────────────────────────────────────
 const getAllUsers = asyncHandler(async (req, res) => {
   const {
@@ -202,6 +204,24 @@ const getAllVendors = asyncHandler(async (req, res) => {
   });
 });
 
+// ─── POST /api/v1/admin/vendors ───────────────────────────────────────────────
+const createVendor = asyncHandler(async (req, res) => {
+  const user = await authService.createVendorByAdmin(req.body, req.user);
+  return ApiResponse.created(
+    res,
+    'Vendor account created. They can sign in with the password you set.',
+    {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      vendorStatus: user.vendorStatus,
+      status: user.status,
+      companyName: user.companyName,
+    }
+  );
+});
+
 module.exports = {
   getAllUsers,
   getUserById,
@@ -210,4 +230,5 @@ module.exports = {
   approveVendor,
   rejectVendor,
   getAllVendors,
+  createVendor,
 };

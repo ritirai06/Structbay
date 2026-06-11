@@ -9,6 +9,8 @@ const auditLogSchema = new mongoose.Schema(
     targetId: { type: String, default: null }, // ID of the affected resource
     description: { type: String, trim: true },
     ipAddress: { type: String, default: null },
+    /** Client hint, e.g. WEB, MOBILE (from User-Agent or app). */
+    platform: { type: String, default: null, trim: true },
     oldData: { type: mongoose.Schema.Types.Mixed, default: null },
     newData: { type: mongoose.Schema.Types.Mixed, default: null },
   },

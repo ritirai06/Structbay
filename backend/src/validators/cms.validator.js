@@ -5,6 +5,8 @@ const bannerCreateValidator = [
   body('title').notEmpty().withMessage('Title is required').trim(),
   body('status').optional().isIn(['ACTIVE', 'INACTIVE']).withMessage('Invalid status'),
   body('displayOrder').optional().isInt({ min: 0 }).withMessage('displayOrder must be a non-negative integer'),
+  body('imageUrl').optional().isString().trim(),
+  body('imagePublicId').optional().isString().trim(),
   body('startDate').optional().isISO8601().withMessage('startDate must be a valid date'),
   body('endDate').optional().isISO8601().withMessage('endDate must be a valid date'),
 ];
@@ -56,6 +58,14 @@ const categoryCreateValidator = [
   body('sortOrder').optional().isInt({ min: 0 }).withMessage('sortOrder must be a non-negative integer'),
 ];
 
+const brandCreateValidator = [
+  body('name').notEmpty().withMessage('Brand name is required').trim(),
+  body('category').notEmpty().withMessage('Category is required').isMongoId().withMessage('Invalid category'),
+  body('status').optional().isIn(['ACTIVE', 'INACTIVE']).withMessage('Invalid status'),
+  body('sortOrder').optional().isInt({ min: 0 }).withMessage('sortOrder must be a non-negative integer'),
+  body('description').optional().trim(),
+];
+
 module.exports = {
   bannerCreateValidator,
   serviceCreateValidator,
@@ -65,4 +75,5 @@ module.exports = {
   adCreateValidator,
   seoValidator,
   categoryCreateValidator,
+  brandCreateValidator,
 };

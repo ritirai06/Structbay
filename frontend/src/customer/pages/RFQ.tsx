@@ -2,8 +2,8 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { ChevronRight, FileText, CheckCircle2, AlertCircle, Phone, Building2, MapPin } from "lucide-react";
 import { useApp } from "../context/AppContext";
-
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
+import { getApiV1Base } from "../../lib/apiBase";
+import { getCustomerAccessToken } from "../lib/authStorage";
 
 const GRADES = ["M20", "M25", "M30", "M35", "M40", "M45", "M50"];
 const FLOORS = ["Ground Floor", "1st Floor", "2nd Floor", "3rd Floor", "4th Floor", "5th Floor", "Above 5th Floor"];
@@ -48,17 +48,21 @@ export function RFQ() {
         floorLevel:    form.floorLevel || undefined,
         pumpRequired:  form.pumpRequired,
         location:      form.address,
+        siteAddress:   form.address,
         city:          form.city,
         deliveryDate:  form.deliveryDate || undefined,
         notes:         form.notes || undefined,
       };
 
-      const token = localStorage.getItem("sb_token");
-      const res = await fetch(`${API}/concrete-rfqs`, {
+      const token = getCustomerAccessToken();
+      if (!token) {
+        throw new Error("Please sign in with a valid StructBay customer account (session required for concrete RFQ).");
+      }
+      const res = await fetch(`${getApiV1Base()}/concrete-rfqs`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });
@@ -67,14 +71,8 @@ export function RFQ() {
       if (!res.ok) throw new Error(data.message || "Submission failed");
       setRefNumber(data.data?.rfqNumber || "");
       setSubmitted(true);
-    } catch {
-      // Demo fallback
-      const d = new Date();
-      const yy = String(d.getFullYear()).slice(2);
-      const mm = String(d.getMonth() + 1).padStart(2, "0");
-      const dd = String(d.getDate()).padStart(2, "0");
-      setRefNumber(`RFQCON${yy}${mm}${dd}0001`);
-      setSubmitted(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Submission failed");
     } finally {
       setLoading(false);
     }
@@ -84,7 +82,7 @@ export function RFQ() {
     return (
       <div className="max-w-xl mx-auto px-4 py-20 text-center">
         <div className="w-20 h-20 rounded-full bg-green-500 flex items-center justify-center mx-auto mb-6">
-          <CheckCircle2 className="w-12 h-12 text-white" />
+          <CheckCircle2 className="w-12 h-12 text-sb-cream" />
         </div>
         <h2 className="text-foreground mb-2">RFQ Submitted Successfully!</h2>
         <p className="text-muted-foreground mb-4">
@@ -98,7 +96,7 @@ export function RFQ() {
           </div>
         )}
         <div className="flex gap-3 justify-center flex-wrap">
-          <Link to="/" style={{ backgroundColor: "var(--sb-blue)" }} className="inline-flex items-center gap-2 text-white px-6 py-3 rounded-2xl font-semibold">
+          <Link to="/" style={{ backgroundColor: "var(--sb-blue)" }} className="inline-flex items-center gap-2 text-sb-cream px-6 py-3 rounded-2xl font-semibold">
             Back to Home
           </Link>
           <button
@@ -112,6 +110,25 @@ export function RFQ() {
     );
   }
 
+  if (!isLoggedIn) {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-16 text-center">
+        <h2 className="text-foreground font-semibold mb-2">Sign in required</h2>
+        <p className="text-muted-foreground text-sm mb-6">
+          Concrete RFQ submissions require a StructBay customer account and an active session (same as bulk enquiry).
+        </p>
+        <Link
+          to="/login"
+          state={{ from: { pathname: "/rfq" } }}
+          style={{ backgroundColor: "var(--sb-blue)" }}
+          className="inline-flex items-center gap-2 text-sb-cream px-6 py-3 rounded-2xl font-semibold"
+        >
+          Sign in to continue
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
@@ -120,13 +137,13 @@ export function RFQ() {
         <span className="text-foreground font-medium">Concrete RFQ</span>
       </nav>
 
-      <div style={{ background: "linear-gradient(135deg, var(--sb-blue) 0%, #2d5fa3 100%)" }} className="rounded-2xl p-6 text-white mb-6">
+      <div style={{ background: "linear-gradient(135deg, var(--sb-blue) 0%, #2d5fa3 100%)" }} className="rounded-2xl p-6 text-sb-cream mb-6">
         <div className="flex items-center gap-3 mb-2">
           <FileText className="w-6 h-6" />
-          <h1 className="text-white">Ready Mix Concrete RFQ</h1>
+          <h1 className="text-sb-cream">Ready Mix Concrete RFQ</h1>
         </div>
-        <p className="text-white/70">Get instant competitive quotes for Ready Mix Concrete from top suppliers in your city.</p>
-        <div className="flex gap-4 mt-3 text-sm text-white/70">
+        <p className="text-sb-cream/70">Get instant competitive quotes for Ready Mix Concrete from top suppliers in your city.</p>
+        <div className="flex gap-4 mt-3 text-sm text-sb-cream/70">
           <span>✓ Multiple Supplier Quotes</span>
           <span>✓ Best Price Guarantee</span>
           <span>✓ IS Code Certified</span>
@@ -219,13 +236,13 @@ export function RFQ() {
             type="submit"
             disabled={loading}
             style={{ backgroundColor: "var(--sb-orange)" }}
-            className="w-full py-3.5 rounded-2xl text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-60"
+            className="w-full py-3.5 rounded-2xl text-sb-cream font-semibold hover:opacity-90 transition-opacity disabled:opacity-60"
           >
             {loading ? "Submitting..." : "Submit RFQ — Get Free Quote →"}
           </button>
 
           <p className="text-xs text-center text-muted-foreground">
-            A reference number (RFQCON...) will be generated. Response within 2 business hours.
+            You will receive a reference such as <strong className="text-foreground">RFQCON2606120001</strong> (RFQCON + date + sequence). Our team responds within 2 business hours.
           </p>
         </form>
       </div>

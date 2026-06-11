@@ -1,10 +1,14 @@
+import { useNavigate } from "react-router";
 import { Bell, Search } from "lucide-react";
+import { clearAdminSession } from "../../lib/adminApi";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@shared/components/ui/dropdown-menu";
 
 export function Header() {
+  const navigate = useNavigate();
+
   return (
     <header className="flex h-16 items-center justify-between border-b border-white/8 bg-[#0D0D0D] px-6 shrink-0">
       <div className="flex flex-1 items-center gap-4">
@@ -59,7 +63,15 @@ export function Header() {
             <DropdownMenuItem className="hover:bg-[#2A2A2A] cursor-pointer text-[#F4E9D8]">Profile</DropdownMenuItem>
             <DropdownMenuItem className="hover:bg-[#2A2A2A] cursor-pointer text-[#F4E9D8]">Settings</DropdownMenuItem>
             <DropdownMenuSeparator className="bg-white/8" />
-            <DropdownMenuItem className="text-red-400 hover:bg-red-500/10 cursor-pointer">Logout</DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-red-400 hover:bg-red-500/10 cursor-pointer"
+              onSelect={() => {
+                clearAdminSession();
+                navigate("/admin/login");
+              }}
+            >
+              Logout
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

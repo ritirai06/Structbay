@@ -1,167 +1,120 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@shared/components/ui/table";
-import { Badge } from "@shared/components/ui/badge";
-import { Button } from "@shared/components/ui/button";
-import { Plus, Edit, Shield } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { Loader2, RefreshCw, Shield } from "lucide-react";
+import { adminFetch as apiFetch } from "../../lib/adminApi";
 
-const adminUsers = [
-  {
-    id: 1,
-    name: "Admin User",
-    email: "admin@structbay.com",
-    role: "Super Admin",
-    status: "Active",
-    lastLogin: "2026-06-04 14:30",
-  },
-  {
-    id: 2,
-    name: "Rajesh Kumar",
-    email: "rajesh@structbay.com",
-    role: "Operations Manager",
-    status: "Active",
-    lastLogin: "2026-06-04 12:15",
-  },
-  {
-    id: 3,
-    name: "Priya Sharma",
-    email: "priya@structbay.com",
-    role: "Sales Manager",
-    status: "Active",
-    lastLogin: "2026-06-04 09:45",
-  },
-  {
-    id: 4,
-    name: "Amit Singh",
-    email: "amit@structbay.com",
-    role: "Inventory Manager",
-    status: "Active",
-    lastLogin: "2026-06-03 18:20",
-  },
-];
-
-const roles = [
-  {
-    name: "Super Admin",
-    permissions: "Full system access",
-    users: 1,
-  },
-  {
-    name: "Operations Manager",
-    permissions: "Orders, Vendors, Dispatch",
-    users: 3,
-  },
-  {
-    name: "Inventory Manager",
-    permissions: "Inventory, Pricing",
-    users: 2,
-  },
-  {
-    name: "Sales Manager",
-    permissions: "Orders, Customers, RFQs",
-    users: 4,
-  },
-];
+type AdminRow = {
+  _id: string;
+  name?: string;
+  email?: string;
+  role?: string;
+  status?: string;
+  lastLogin?: string;
+};
 
 export function AdminUsers() {
+  const [users, setUsers] = useState<AdminRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    apiFetch("/admin/users?role=ADMIN&limit=100")
+      .then((res) => {
+        const list = (res.data || []) as AdminRow[];
+        setUsers(list);
+      })
+      .catch((e: Error) => {
+        setUsers([]);
+        setError(e.message || "Could not load admin users");
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-black text-[#F4E9D8]">Admin User Management</h1>
-        <p className="text-[#D4C4A8]/60">Manage admin users and permissions</p>
+    <div className="p-6 bg-[#0D0D0D] min-h-full">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black text-[#F4E9D8]">Admin users</h1>
+          <p className="text-[#D4C4A8]/60 text-sm mt-1">
+            Accounts with role <span className="text-[#FE5E00]">ADMIN</span> from the database (not
+            demo data).
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={load}
+          className="flex items-center gap-2 px-3 py-2 border border-white/10 rounded-lg text-sm text-[#D4C4A8]/70 hover:border-white/20 hover:text-[#F4E9D8] transition-colors"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+          Refresh
+        </button>
       </div>
 
-      <div className="space-y-6">
-        {/* Users Table */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Admin Users</CardTitle>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Add User
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Last Login</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {adminUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.name}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{user.role}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="default">{user.status}</Badge>
-                    </TableCell>
-                    <TableCell className="text-sm">{user.lastLogin}</TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
+      {error && (
+        <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+          {error}
+          <span className="block text-xs text-amber-200/70 mt-1">
+            If you are not logged in as admin, open <strong>Settings → log out</strong> and sign in again.
+          </span>
+        </div>
+      )}
+
+      <div className="rounded-xl border border-white/10 bg-[#1A1A1A] overflow-hidden">
+        <div className="px-5 py-4 border-b border-white/8 flex items-center gap-2">
+          <Shield className="w-4 h-4 text-[#FE5E00]" />
+          <h2 className="font-semibold text-[#F4E9D8] text-sm">ADMIN accounts</h2>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-16">
+            <Loader2 className="h-6 w-6 animate-spin text-[#FE5E00]" />
+          </div>
+        ) : users.length === 0 ? (
+          <div className="py-14 text-center text-[#D4C4A8]/50 text-sm px-4">
+            No active ADMIN users found. Run <code className="text-[#FE5E00]/90">npm run seed:admin</code>{" "}
+            once if you have not created an admin yet.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/8">
+                  {["Name", "Email", "Status", "Last login"].map((h) => (
+                    <th
+                      key={h}
+                      className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wider text-[#D4C4A8]/50"
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((u) => (
+                  <tr key={u._id} className="border-b border-white/5 hover:bg-white/[0.02]">
+                    <td className="py-3 px-4 font-medium text-[#F4E9D8]">{u.name || "—"}</td>
+                    <td className="py-3 px-4 text-[#D4C4A8]/80">{u.email || "—"}</td>
+                    <td className="py-3 px-4 text-[#D4C4A8]/70">{u.status || "—"}</td>
+                    <td className="py-3 px-4 text-[#D4C4A8]/50 text-xs">
+                      {u.lastLogin ? new Date(u.lastLogin).toLocaleString() : "—"}
+                    </td>
+                  </tr>
                 ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
-        {/* Roles & Permissions */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Roles & Permissions</CardTitle>
-              <Button variant="outline">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Role
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2">
-              {roles.map((role, index) => (
-                <Card key={index}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Shield className="h-5 w-5 text-[#F97316]" />
-                        <CardTitle className="text-base">{role.name}</CardTitle>
-                      </div>
-                      <Badge variant="secondary">{role.users} users</Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-[#D4C4A8]/60 mb-3">{role.permissions}</p>
-                    <Button variant="outline" size="sm">
-                      <Edit className="mr-2 h-4 w-4" />
-                      Edit Permissions
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
+
+      <p className="text-xs text-[#D4C4A8]/40 mt-4 max-w-2xl leading-relaxed">
+        Fine-grained roles (Operations / Sales) are not stored separately yet — only the{" "}
+        <code className="text-[#FE5E00]/80">ADMIN</code> role is enforced in the API.
+      </p>
     </div>
   );
 }

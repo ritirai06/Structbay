@@ -5,21 +5,11 @@ import { Input } from "@shared/components/ui/input";
 import { Textarea } from "@shared/components/ui/textarea";
 import {
   Plus, Edit, Trash2, ToggleLeft, ToggleRight,
-  FolderTree, Loader2, Save, RefreshCw, Search
+  FolderTree, Loader2, Save, RefreshCw, Search, Upload,
 } from "lucide-react";
-
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
-const getToken = () => localStorage.getItem("adminToken") || "";
-
-async function apiFetch(path: string, opts: RequestInit = {}) {
-  const res = await fetch(`${API}${path}`, {
-    ...opts,
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}`, ...opts.headers },
-  });
-  const data = await res.json();
-  if (!data.success) throw new Error(data.message || "API Error");
-  return data;
-}
+import { BulkImportCsvModal } from "../components/BulkImportCsvModal";
+import { CATEGORY_BULK_TEMPLATE, parseCategoryBulkCsv } from "../lib/adminBulkCsvParsers";
+import { adminFetch as apiFetch, adminUploadImage } from "../../lib/adminApi";
 
 function Spinner() {
   return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-[#FE5E00]" /></div>;
@@ -28,7 +18,7 @@ function Spinner() {
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-      <div className="bg-[#1A1A1A] border border-white/10 rounded-xl w-full max-w-md">
+      <div className="bg-[#1A1A1A] border border-white/10 rounded-xl w-full max-w-lg">
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
           <h3 className="font-bold text-[#F4E9D8]">{title}</h3>
           <button onClick={onClose} className="text-[#D4C4A8]/60 hover:text-[#F4E9D8] text-xl leading-none">×</button>
@@ -39,7 +29,14 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   );
 }
 
-const emptyForm = { name: "", description: "", icon: "", sortOrder: 0, status: "ACTIVE" };
+const emptyForm = {
+  name: "",
+  description: "",
+  icon: "",
+  sortOrder: 0,
+  status: "ACTIVE",
+  image: null as null | { url: string; publicId: string },
+};
 
 export function CategoryManagement() {
   const [categories, setCategories] = useState<any[]>([]);
@@ -49,7 +46,9 @@ export function CategoryManagement() {
   const [modal, setModal] = useState<{ open: boolean; data: any }>({ open: false, data: null });
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [pagination, setPagination] = useState({ total: 0, pages: 1, page: 1 });
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   const load = useCallback((page = 1) => {
     setLoading(true);
@@ -58,6 +57,7 @@ export function CategoryManagement() {
     if (statusFilter) params.set("status", statusFilter);
     apiFetch(`/categories?${params}`)
       .then(d => { setCategories(d.data || []); setPagination(d.pagination || {}); })
+      .catch(() => { setCategories([]); setPagination({ total: 0, pages: 1, page: 1 }); })
       .finally(() => setLoading(false));
   }, [search, statusFilter]);
 
@@ -65,18 +65,42 @@ export function CategoryManagement() {
 
   const openCreate = () => { setForm(emptyForm); setModal({ open: true, data: null }); };
   const openEdit = (c: any) => {
-    setForm({ name: c.name, description: c.description || "", icon: c.icon || "", sortOrder: c.sortOrder, status: c.status });
+    setForm({
+      name: c.name,
+      description: c.description || "",
+      icon: c.icon || "",
+      sortOrder: c.sortOrder,
+      status: c.status,
+      image: c.image?.url ? { url: c.image.url, publicId: c.image.publicId || "" } : null,
+    });
     setModal({ open: true, data: c });
   };
 
   const save = async () => {
     setSaving(true);
     try {
-      if (modal.data) await apiFetch(`/categories/${modal.data._id}`, { method: "PATCH", body: JSON.stringify(form) });
-      else await apiFetch("/categories", { method: "POST", body: JSON.stringify(form) });
+      const body: Record<string, unknown> = { ...form };
+      if (!form.image?.url) body.image = null;
+      if (modal.data) await apiFetch(`/categories/${modal.data._id}`, { method: "PATCH", body: JSON.stringify(body) });
+      else await apiFetch("/categories", { method: "POST", body: JSON.stringify(body) });
       setModal({ open: false, data: null }); load();
     } catch (e: any) { alert(e.message); }
     setSaving(false);
+  };
+
+  const onPickCategoryImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploadingImage(true);
+    try {
+      const { url, publicId } = await adminUploadImage("/upload/category-image", file);
+      setForm(f => ({ ...f, image: { url, publicId } }));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const toggle = async (id: string) => {
@@ -99,9 +123,14 @@ export function CategoryManagement() {
             Changes reflect in Customer Panel, Vendor Panel, RFQ Forms, Search Filters & Homepage.
           </p>
         </div>
-        <Button onClick={openCreate} className="bg-[#FE5E00] hover:bg-[#E05200] text-black shrink-0">
-          <Plus className="h-4 w-4 mr-2" /> Add Category
-        </Button>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <Button type="button" variant="outline" onClick={() => setBulkOpen(true)} className="border-white/20">
+            <Upload className="h-4 w-4 mr-2" /> Bulk CSV
+          </Button>
+          <Button onClick={openCreate} className="bg-[#FE5E00] hover:bg-[#E05200] text-black">
+            <Plus className="h-4 w-4 mr-2" /> Add Category
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -139,8 +168,8 @@ export function CategoryManagement() {
             <div key={c._id} className="bg-[#1A1A1A] border border-white/10 rounded-xl p-4 hover:border-white/20 transition-colors">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                  {c.icon ? (
-                    <span className="text-2xl shrink-0">{c.icon}</span>
+                  {c.image?.url ? (
+                    <img src={c.image.url} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0 border border-white/10" />
                   ) : (
                     <div className="w-9 h-9 rounded-lg bg-[#FE5E00]/15 flex items-center justify-center shrink-0">
                       <FolderTree className="h-4 w-4 text-[#FE5E00]" />
@@ -197,6 +226,18 @@ export function CategoryManagement() {
       )}
 
       {/* Modal */}
+      <BulkImportCsvModal
+        open={bulkOpen}
+        onClose={() => setBulkOpen(false)}
+        title="Bulk import categories (CSV)"
+        instructions={`Up to 200 rows. Required column: name.\nOptional: description, icon, sortOrder, status (ACTIVE|INACTIVE).\nCustomer-facing images are not in CSV — add them via Edit after import.`}
+        templateCsv={CATEGORY_BULK_TEMPLATE}
+        templateFileName="structbay-categories-bulk-template.csv"
+        apiPath="/categories/bulk-import"
+        parseRows={parseCategoryBulkCsv}
+        onSuccess={() => load(pagination.page)}
+      />
+
       {modal.open && (
         <Modal title={modal.data ? `Edit — ${modal.data.name}` : "Create Category"} onClose={() => setModal({ open: false, data: null })}>
           <div className="space-y-3">
@@ -209,9 +250,28 @@ export function CategoryManagement() {
               <Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} />
             </div>
             <div>
-              <label className="text-xs text-[#D4C4A8]/60 mb-1 block">Icon (emoji or CSS class)</label>
-              <Input value={form.icon} onChange={e => setForm(f => ({ ...f, icon: e.target.value }))} placeholder="🏗️" />
-              {form.icon && <span className="text-3xl mt-1 block">{form.icon}</span>}
+              <label className="text-xs text-[#D4C4A8]/60 mb-1 block">Customer-facing image</label>
+              <p className="text-[10px] text-[#D4C4A8]/40 mb-2">Shown on category tiles and listings (JPEG/PNG/WebP, max 5MB).</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-white/15 bg-[#0D0D0D] text-xs text-[#F4E9D8] hover:border-[#FE5E00]/50">
+                  <input type="file" accept="image/jpeg,image/png,image/webp,image/jpg" className="hidden" onChange={onPickCategoryImage} disabled={uploadingImage} />
+                  {uploadingImage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                  {uploadingImage ? "Uploading…" : "Choose image"}
+                </label>
+                {form.image?.url && (
+                  <>
+                    <img src={form.image.url} alt="" className="h-14 w-14 rounded-lg object-cover border border-white/10" />
+                    <button type="button" className="text-xs text-red-400 hover:underline" onClick={() => setForm(f => ({ ...f, image: null }))}>
+                      Remove image
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-[#D4C4A8]/60 mb-1 block">Icon (legacy, optional)</label>
+              <p className="text-[10px] text-[#D4C4A8]/40 mb-1">Not shown on the storefront; use customer-facing image above.</p>
+              <Input value={form.icon} onChange={e => setForm(f => ({ ...f, icon: e.target.value }))} placeholder="Optional internal note" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

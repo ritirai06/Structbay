@@ -10,6 +10,7 @@
     "test:watch": "jest --watch --runInBand",
     "test:coverage": "jest --coverage --runInBand --forceExit",
     "seed:roles": "node src/seeders/seed-roles.js",
+    "seed:admin": "node src/seeders/create-admin.js",
     "pm2:start": "pm2 start ecosystem.config.js",
     "pm2:stop": "pm2 stop structbay-backend",
     "pm2:restart": "pm2 restart structbay-backend",

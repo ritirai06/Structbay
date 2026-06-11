@@ -11,6 +11,7 @@ const vendorNotificationSchema = new mongoose.Schema({
       'order_assigned',
       'invoice_requested',
       'dispatch_requested',
+      'dispatch_confirmation',
       'delivery_update',
       'order_status_change',
       'admin_announcement',

@@ -10,32 +10,10 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { adminPath } from "../../lib/portalRoutes";
+import { adminFetch as apiFetch } from "../../lib/adminApi";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
-const getToken = () => localStorage.getItem("adminToken") || "";
-
-async function apiFetch(path: string) {
-  const res = await fetch(`${API}${path}`, {
-    headers: { Authorization: `Bearer ${getToken()}` },
-  });
-  const data = await res.json();
-  if (!data.success) throw new Error(data.message);
-  return data;
-}
-
-const revenueData = [
-  { month: "Jan", revenue: 45000 }, { month: "Feb", revenue: 52000 },
-  { month: "Mar", revenue: 48000 }, { month: "Apr", revenue: 61000 },
-  { month: "May", revenue: 55000 }, { month: "Jun", revenue: 67000 },
-];
-
-const categoryData = [
-  { name: "Cement", value: 35, color: "#FE5E00" },
-  { name: "Steel", value: 25, color: "#C9A227" },
-  { name: "Concrete", value: 20, color: "#EADCC6" },
-  { name: "Bricks", value: 12, color: "#E05200" },
-  { name: "Others", value: 8, color: "#D4C4A8" },
-];
+const CHART_COLORS = ["#FE5E00", "#C9A227", "#EADCC6", "#E05200", "#D4C4A8", "#22C55E", "#3B82F6", "#A855F7"];
+const MONTH_NAMES = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function StatCard({ title, value, icon: Icon, sub, subColor = "text-[#D4C4A8]/50", to }: {
   title: string; value: string | number; icon: any; sub: string; subColor?: string; to?: string;
@@ -70,23 +48,52 @@ function Panel({ title, children, action }: { title: string; children: React.Rea
 export function Dashboard() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [revenueSeries, setRevenueSeries] = useState<{ month: string; revenue: number }[]>([]);
+  const [categorySeries, setCategorySeries] = useState<{ name: string; value: number; color: string }[]>([]);
 
   const load = () => {
     setLoading(true);
-    apiFetch("/admin/dashboard")
-      .then(d => setData(d.data))
-      .catch(() => {
-        // Fallback demo data
-        setData({
-          users: { customers: 248, vendors: 38, pendingVendorApprovals: 3 },
-          products: { total: 450, active: 320 },
-          catalog: { brands: 24, categories: 12, cities: 5 },
-          orders: { total: 180, pending: 23, pendingDispatch: 45, cancelled: 8 },
-          inventory: { lowStock: 12, outOfStock: 3 },
-          enquiries: { bulkEnquiries: 15, rfqs: 23 },
-          cms: { activeBanners: 6, publishedBlogs: 14 },
-          recentActivity: [],
-        });
+    setLoadError(null);
+    Promise.all([
+      apiFetch("/admin/dashboard"),
+      apiFetch("/analytics/sales/trend?period=monthly").catch(() => ({ data: [] as unknown[] })),
+      apiFetch("/analytics/categories?limit=8").catch(() => ({ data: [] as unknown[] })),
+    ])
+      .then(([dash, trendRes, catRes]) => {
+        setData(dash.data);
+        const trendRows = (trendRes as { data?: unknown[] }).data || [];
+        if (Array.isArray(trendRows) && trendRows.length > 0) {
+          setRevenueSeries(
+            trendRows.map((r: any) => {
+              const m = r._id?.month;
+              const y = r._id?.year;
+              const label = m && y ? `${MONTH_NAMES[Number(m)] || m} ${y}` : "—";
+              return { month: label, revenue: Math.round(r.revenue || 0) };
+            })
+          );
+        } else {
+          setRevenueSeries([]);
+        }
+        const catRows = (catRes as { data?: unknown[] }).data || [];
+        if (Array.isArray(catRows) && catRows.length > 0) {
+          const total = catRows.reduce((s: number, r: any) => s + (Number(r.revenue) || 0), 0) || 1;
+          setCategorySeries(
+            catRows.map((r: any, i: number) => ({
+              name: r.category?.name || "Uncategorized",
+              value: Math.max(1, Math.round(((Number(r.revenue) || 0) / total) * 100)),
+              color: CHART_COLORS[i % CHART_COLORS.length],
+            }))
+          );
+        } else {
+          setCategorySeries([]);
+        }
+      })
+      .catch((e: Error) => {
+        setData(null);
+        setRevenueSeries([]);
+        setCategorySeries([]);
+        setLoadError(e.message || "Could not load dashboard");
       })
       .finally(() => setLoading(false));
   };
@@ -107,6 +114,7 @@ export function Dashboard() {
         <div>
           <h1 className="text-2xl font-black text-[#F4E9D8]">Admin Dashboard</h1>
           <p className="text-[#D4C4A8]/60 text-sm mt-1">StructBay Control Center — Master System</p>
+          {loadError && <p className="text-amber-400/90 text-xs mt-2">{loadError}</p>}
         </div>
         <button onClick={load} className="flex items-center gap-2 px-3 py-2 border border-white/10 rounded-lg text-sm text-[#D4C4A8]/70 hover:border-white/20 hover:text-[#F4E9D8] transition-colors">
           <RefreshCw className="w-4 h-4" /> Refresh
@@ -138,9 +146,12 @@ export function Dashboard() {
 
       {/* Charts */}
       <div className="mb-5 grid gap-5 lg:grid-cols-2">
-        <Panel title="Revenue Trend (2026)">
+        <Panel title="Revenue trend (paid orders, monthly)">
+          {revenueSeries.length === 0 ? (
+            <p className="text-[#D4C4A8]/40 text-sm text-center py-16">No paid order revenue in range yet.</p>
+          ) : (
           <ResponsiveContainer width="100%" height={240}>
-            <LineChart data={revenueData}>
+            <LineChart data={revenueSeries}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(244,233,216,0.06)" />
               <XAxis dataKey="month" stroke="#D4C4A8" tick={{ fill: "#D4C4A8", fontSize: 11 }} />
               <YAxis stroke="#D4C4A8" tick={{ fill: "#D4C4A8", fontSize: 11 }} />
@@ -148,19 +159,24 @@ export function Dashboard() {
               <Line type="monotone" dataKey="revenue" stroke="#FE5E00" strokeWidth={2.5} dot={{ fill: "#FE5E00", r: 4 }} />
             </LineChart>
           </ResponsiveContainer>
+          )}
         </Panel>
 
-        <Panel title="Top Categories">
+        <Panel title="Sales by category (% of top categories)">
+          {categorySeries.length === 0 ? (
+            <p className="text-[#D4C4A8]/40 text-sm text-center py-16">No category sales in range yet.</p>
+          ) : (
           <ResponsiveContainer width="100%" height={240}>
             <PieChart>
-              <Pie data={categoryData} cx="50%" cy="50%" labelLine={false}
+              <Pie data={categorySeries} cx="50%" cy="50%" labelLine={false}
                 label={({ name, value }) => `${name}: ${value}%`}
                 outerRadius={90} dataKey="value">
-                {categoryData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                {categorySeries.map((entry, i) => <Cell key={i} fill={entry.color} />)}
               </Pie>
               <Tooltip contentStyle={{ background: "#222222", border: "1px solid rgba(244,233,216,0.15)", borderRadius: "8px", color: "#F4E9D8" }} />
             </PieChart>
           </ResponsiveContainer>
+          )}
         </Panel>
       </div>
 

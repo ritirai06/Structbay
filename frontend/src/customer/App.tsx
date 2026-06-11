@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, useLocation } from "react-router";
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router";
 import { AppProvider } from "./context/AppContext";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
@@ -21,6 +21,7 @@ import { BlogListing, BlogDetails } from "./pages/Blog";
 import { SearchResults } from "./pages/SearchResults";
 import { BrandLanding } from "./pages/BrandLanding";
 import { Shop } from "./pages/Shop";
+import { ToolsQuantityEstimator } from "./pages/ToolsQuantityEstimator";
 
 /* Pages that use full-screen layouts (no shared header/footer) */
 const FULLSCREEN_ROUTES = ["/splash", "/city", "/login", "/register", "/dashboard"];
@@ -53,13 +54,16 @@ function AppRoutes() {
         <Route path="/cart" element={<Cart />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/order-success" element={<OrderSuccess />} />
-        <Route path="/track" element={<OrderTracking />} />
+        <Route path="/track" element={<Navigate to="/dashboard/orders" replace />} />
+        <Route path="/orders/:orderId" element={<OrderTracking />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/dashboard/:section" element={<Dashboard />} />
         <Route path="/rfq" element={<RFQ />} />
         <Route path="/bulk" element={<BulkEnquiry />} />
+        <Route path="/bulk-enquiry" element={<BulkEnquiry />} />
+        <Route path="/tools/cement-estimator" element={<ToolsQuantityEstimator />} />
         <Route path="/finance" element={<Finance />} />
         <Route path="/blog" element={<BlogListing />} />
         <Route path="/blog/:id" element={<BlogDetails />} />

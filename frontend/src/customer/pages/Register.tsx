@@ -12,9 +12,22 @@ export function Register() {
 
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
+    try {
+      const profile = {
+        name: form.name,
+        company: form.company,
+        mobile: form.mobile,
+        email: form.email,
+        gst: form.gst,
+        billingAddress: form.billingAddress,
+      };
+      localStorage.setItem("sb_customer_profile", JSON.stringify(profile));
+    } catch {
+      /* ignore quota / private mode */
+    }
     setIsLoggedIn(true);
     setUser({ name: form.name, company: form.company, email: form.email });
-    navigate("/dashboard");
+    navigate("/account");
   };
 
   const fields = [
@@ -30,7 +43,7 @@ export function Register() {
       <div className="w-full max-w-xl bg-background rounded-3xl shadow-2xl p-8">
         <div className="flex items-center justify-center gap-2 mb-6">
           <div style={{ backgroundColor: "var(--sb-blue)" }} className="w-9 h-9 rounded-xl flex items-center justify-center">
-            <Package className="w-5 h-5 text-white" />
+            <Package className="w-5 h-5 text-sb-cream" />
           </div>
           <span style={{ color: "var(--sb-blue)" }} className="font-bold text-xl">Struct<span style={{ color: "var(--sb-orange)" }}>Bay</span></span>
         </div>
@@ -96,7 +109,7 @@ export function Register() {
           <button
             type="submit"
             style={{ backgroundColor: "var(--sb-orange)" }}
-            className="w-full py-3.5 rounded-2xl text-white font-semibold hover:opacity-90 transition-opacity"
+            className="w-full py-3.5 rounded-2xl text-sb-cream font-semibold hover:opacity-90 transition-opacity"
           >
             Create Account
           </button>

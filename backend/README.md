@@ -51,6 +51,8 @@ Fill in all values in `.env`:
 | `PORT` | Server port (default: 5000) |
 | `NODE_ENV` | `development` or `production` |
 | `MONGODB_URI` | MongoDB Atlas connection string |
+| `MONGODB_URI_DIRECT` | Optional non-SRV `mongodb://...` fallback if `querySrv` fails |
+| `MONGODB_DNS_SERVERS` | Optional DNS for Node, e.g. `8.8.8.8,8.8.4.4` (before connect) |
 | `JWT_ACCESS_SECRET` | Secret for access tokens |
 | `JWT_REFRESH_SECRET` | Secret for refresh tokens |
 | `JWT_ACCESS_EXPIRES_IN` | Access token expiry (e.g. `15m`) |
@@ -61,6 +63,12 @@ Fill in all values in `.env`:
 | `FRONTEND_URL` | Customer frontend origin |
 | `ADMIN_URL` | Admin panel origin |
 | `VENDOR_URL` | Vendor panel origin |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE` | Outbound mail (e.g. Gmail: `smtp.gmail.com`, `587`, `false`) |
+| `SMTP_USER`, `SMTP_PASS` | SMTP auth (Gmail: use an **App Password**, not your normal password) |
+| `SMTP_FROM` | From address (defaults to `SMTP_USER` or `GMAIL_USER` if unset) |
+| `GMAIL_USER`, `GMAIL_PASS` | Optional fallback if `SMTP_USER` / `SMTP_PASS` are empty |
+| `RATE_LIMIT_MAX` | Max API requests per IP per window (default higher in prod; see `.env.example`) |
+| `ENABLE_RATE_LIMIT_IN_DEV` | Set to `true` to enforce limits in `development` (off by default so local SPA is not throttled) |
 
 ---
 
@@ -69,7 +77,62 @@ Fill in all values in `.env`:
 1. Create a free cluster at [MongoDB Atlas](https://cloud.mongodb.com)
 2. Create a database user with read/write access
 3. Whitelist your IP (or `0.0.0.0/0` for development)
-4. Copy the connection string into `MONGODB_URI`
+4. Copy the connection string into `MONGODB_URI` in `backend/.env`
+
+**If `querySrv ECONNREFUSED` appears (common on some networks):** in Atlas **Connect → Drivers**, copy the **standard** `mongodb://host1:27017,host2:27017,...` string (not `mongodb+srv`) into `MONGODB_URI_DIRECT`. The server tries `MONGODB_URI` first, then `MONGODB_URI_DIRECT`.
+
+### Outbound email (verification, password reset, vendor notices)
+
+Set `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, and `SMTP_FROM` in `backend/.env` (see `src/services/email.service.js`). Values are trimmed automatically. For **Gmail**, use an [App Password](https://support.google.com/accounts/answer/185833), not your normal account password. `GMAIL_USER` / `GMAIL_PASS` are used as fallbacks if SMTP user/pass are empty. Ensure `FRONTEND_URL` matches your customer site so email links work. If email is not configured or sending fails, check Winston logs under `backend/logs/` — API flows (e.g. register) still complete.
+
+### Admin login (`/admin/login`)
+
+The admin UI calls `POST /api/v1/auth/login`. There is **no default admin account** in the database. If you see **"Invalid email or password"**, either no user exists for that email or the password is wrong.
+
+**Create or reset an admin user** (from `backend/`):
+
+1. In `.env`, set (one-time):
+
+   ```env
+   SEED_ADMIN_EMAIL=you@example.com
+   SEED_ADMIN_PASSWORD=YourSecurePass1
+   ```
+
+   Password must be **at least 8 characters** (User model). Use a strong password in production.
+
+2. Run:
+
+   ```bash
+   npm run seed:admin
+   ```
+
+3. Sign in at `/admin/login` with that email and password. The account is created with `role: ADMIN`, `status: ACTIVE`, and `isEmailVerified: true`.
+
+If the email already exists as `ADMIN`, the script **updates the password** and ensures ACTIVE + verified.
+
+**Only one `ADMIN` user** is allowed in the database (enforced on save). The seed script refuses to create a second admin; use `SEED_ADMIN_EMAIL` matching the existing admin to reset their password.
+
+### Admin inventory bulk upload
+
+`POST /api/v1/inventory/bulk-import` (admin JWT, JSON body) accepts `{ "rows": [ ... ] }` with up to **500** objects per request. Each row supports **`sku`** or **`productId`**, **`city`** (name, case-insensitive) or **`cityId`**, **`quantity`** (or `qty`), optional **`type`** (`ADD` | `DEDUCT` | `ADJUST`, default `ADD`), optional **`reason`**, optional **`variation`**, optional **`lowStockThreshold`**. Behaviour matches `POST /api/v1/inventory/adjust` (creates product+city inventory row if missing, writes `InventoryLog` per row, one summary admin audit entry). The admin **Inventory** page includes a CSV bulk upload that calls this endpoint.
+
+### Admin city pricing bulk upload
+
+`POST /api/v1/pricing/bulk-import` (admin JWT, JSON body) accepts `{ "rows": [ ... ] }` with up to **500** rows. Each row upserts **`CityPricing`** (same keys as `POST /api/v1/pricing`): resolve **`sku`** or **`productId`**, **`citySlug`** or **`cityId`** or **`cityName`**, **`regularPrice`**; optional **`salePrice`**, **`isVisible`**, **`variationSku`** / **`variationId`**, **`wholesaleSlabs`** as a **JSON array** string or **compact tiers** like `50:400|100:395` (min:price per `|` segment; max qty is inferred up to the next tier). Omitted optional fields are left unchanged on update. The admin **Pricing Engine** page includes a CSV upload and downloadable template.
+
+### Customers vs vendors
+
+- **Customers** can self-register via `POST /api/v1/auth/register/customer` (many accounts).
+- **Vendors** are created by the administrator by default: `POST /api/v1/admin/vendors` (admin JWT). The admin UI **Vendors → Add vendor** calls this API. New vendors are **APPROVED** and **ACTIVE** so they can log in with the password you set.
+- **Public vendor signup** (`POST /api/v1/auth/register/vendor`) is **disabled** unless you set `ALLOW_PUBLIC_VENDOR_REGISTRATION=true` in `.env` (legacy / open marketplace mode).
+
+**Ban / suspend:** `PUT /api/v1/admin/users/:id/status` with `SUSPENDED` or `DELETED` (admin only) revokes refresh tokens for that user.
+
+### City-scoped catalogue (customer)
+
+Public customer routes accept an optional query **`cityId`** (Mongo ObjectId of an **ACTIVE**, **serviceable** city). When present, **products**, **category/brand pages**, **PDP**, **related products**, **categories** and **brands** lists, and **global search** are constrained to products that have **visible `CityPricing`** in that city **and** **positive available inventory** (`quantity - reserved > 0`) in that city. Omitting `cityId` keeps the previous behaviour (no city filter).
+
+Vendor users may later use **`serviceCityIds`** on the User document (empty = treat as all cities for legacy data).
 
 ---
 

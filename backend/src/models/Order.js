@@ -90,6 +90,8 @@ const orderSchema = new mongoose.Schema(
 
     notes:      { type: String, default: null },
     adminNotes: { type: String, default: null },
+    /** Customer-visible delivery narrative (admin); separate from internal adminNotes. */
+    deliveryDetails: { type: String, default: null },
 
     statusHistory:  [statusHistoryEntry],
     isSplit:        { type: Boolean, default: false },
@@ -107,7 +109,7 @@ const orderSchema = new mongoose.Schema(
 );
 
 orderSchema.pre(/^find/, function (next) { this.where({ isDeleted: false }); next(); });
-orderSchema.index({ orderNumber: 1 });
+// orderNumber: unique index from field definition
 orderSchema.index({ customer: 1, status: 1 });
 orderSchema.index({ status: 1, createdAt: -1 });
 orderSchema.index({ city: 1, status: 1 });

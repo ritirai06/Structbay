@@ -79,7 +79,7 @@ const vendorSchema = new mongoose.Schema({
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });
 
-vendorSchema.index({ email: 1 });
+// email: unique index from field definition
 vendorSchema.index({ gstNumber: 1 });
 vendorSchema.index({ status: 1 });
 

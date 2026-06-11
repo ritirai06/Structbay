@@ -30,7 +30,7 @@ const orderChatSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-orderChatSchema.index({ masterOrder: 1 });
+// masterOrder: unique index from field definition (one chat thread per order)
 orderChatSchema.index({ customer: 1 });
 
 module.exports = mongoose.model('OrderChat', orderChatSchema);

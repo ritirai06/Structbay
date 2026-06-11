@@ -90,6 +90,16 @@ const registerVendor = async (
   { name, email, phone, password, companyName, contactPerson, gstNumber, businessRegNumber },
   req
 ) => {
+  const allowPublic = String(process.env.ALLOW_PUBLIC_VENDOR_REGISTRATION || '')
+    .toLowerCase()
+    .trim() === 'true';
+  if (!allowPublic) {
+    throw new AppError(
+      'Vendor self-registration is disabled. New vendor accounts are created by the administrator.',
+      403
+    );
+  }
+
   const existing = await User.findOne({ email });
   if (existing) throw new AppError('An account with this email already exists.', 409);
 
@@ -116,6 +126,41 @@ const registerVendor = async (
   await sendVerificationEmail({ to: user.email, name: user.name, token: verToken.token });
   await sendVendorApplicationEmail({ to: user.email, name: user.name, companyName });
 
+  return user;
+};
+
+/**
+ * Admin-only vendor onboarding: ACTIVE + APPROVED, email treated as verified.
+ * Does not send vendor application email (account is trusted).
+ */
+const createVendorByAdmin = async (
+  { name, email, phone, password, companyName, contactPerson, gstNumber, businessRegNumber },
+  adminUser
+) => {
+  const existing = await User.findOne({ email: String(email).trim().toLowerCase() });
+  if (existing) throw new AppError('An account with this email already exists.', 409);
+
+  const referenceNumber = await generateRefNumber('VENDOR');
+
+  const doc = {
+    name,
+    email,
+    phone,
+    password,
+    role: ROLES.VENDOR,
+    status: USER_STATUS.ACTIVE,
+    isEmailVerified: true,
+    vendorStatus: VENDOR_STATUS.APPROVED,
+    companyName,
+    contactPerson: contactPerson || name,
+    businessRegNumber: businessRegNumber || undefined,
+    referenceNumber,
+    vendorApprovedBy: adminUser._id,
+    vendorApprovedAt: new Date(),
+  };
+  if (gstNumber && String(gstNumber).trim()) doc.gstNumber = String(gstNumber).trim().toUpperCase();
+
+  const user = await User.create(doc);
   return user;
 };
 
@@ -319,6 +364,7 @@ const changePassword = async (userId, currentPassword, newPassword) => {
 module.exports = {
   registerCustomer,
   registerVendor,
+  createVendorByAdmin,
   login,
   refreshAccessToken,
   logout,

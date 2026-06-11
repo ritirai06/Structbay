@@ -6,8 +6,10 @@ import {
   Building2, MapPin, MessageSquare,
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
+import { getApiV1Base } from "../../lib/apiBase";
+import { getCustomerAccessToken } from "../lib/authStorage";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
+const API = getApiV1Base();
 
 export function BulkEnquiry() {
   const { user, isLoggedIn } = useApp();
@@ -55,6 +57,12 @@ export function BulkEnquiry() {
 
     setLoading(true);
     try {
+      const token = getCustomerAccessToken();
+      if (!token) {
+        setError("Your session has no login token. Please use Logout, then sign in again with your email and password.");
+        return;
+      }
+
       // In production: upload files to backend first via /upload, then POST enquiry
       const payload = {
         customerName:    form.name,
@@ -67,12 +75,11 @@ export function BulkEnquiry() {
         remarks:         form.remarks || undefined,
       };
 
-      const token = localStorage.getItem("sb_token");
       const res = await fetch(`${API}/bulk-enquiries`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });
@@ -81,24 +88,37 @@ export function BulkEnquiry() {
       if (!res.ok) throw new Error(data.message || "Submission failed");
       setRefNumber(data.data?.enquiryNumber || "");
       setSubmitted(true);
-    } catch (err: any) {
-      // Fallback for demo — show success with mock ref number
-      const d = new Date();
-      const yy = String(d.getFullYear()).slice(2);
-      const mm = String(d.getMonth() + 1).padStart(2, "0");
-      const dd = String(d.getDate()).padStart(2, "0");
-      setRefNumber(`BULK${yy}${mm}${dd}0001`);
-      setSubmitted(true);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Submission failed");
     } finally {
       setLoading(false);
     }
   };
 
+  if (!isLoggedIn) {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-16 text-center">
+        <h2 className="text-foreground font-semibold mb-2">Sign in required</h2>
+        <p className="text-muted-foreground text-sm mb-6">
+          Bulk enquiries require a StructBay customer account (per project requirements).
+        </p>
+        <Link
+          to="/login"
+          state={{ from: { pathname: "/bulk-enquiry" } }}
+          style={{ backgroundColor: "var(--sb-blue)" }}
+          className="inline-flex items-center gap-2 text-sb-cream px-6 py-3 rounded-2xl font-semibold"
+        >
+          Sign in to continue
+        </Link>
+      </div>
+    );
+  }
+
   if (submitted) {
     return (
       <div className="max-w-xl mx-auto px-4 py-20 text-center">
         <div className="w-20 h-20 rounded-full bg-green-500 flex items-center justify-center mx-auto mb-6">
-          <CheckCircle2 className="w-12 h-12 text-white" />
+          <CheckCircle2 className="w-12 h-12 text-sb-cream" />
         </div>
         <h2 className="text-foreground mb-2">Bulk Enquiry Submitted!</h2>
         <p className="text-muted-foreground mb-4">
@@ -112,7 +132,7 @@ export function BulkEnquiry() {
           </div>
         )}
         <div className="flex gap-3 justify-center">
-          <Link to="/" style={{ backgroundColor: "var(--sb-blue)" }} className="inline-flex items-center gap-2 text-white px-6 py-3 rounded-2xl font-semibold">Back to Home</Link>
+          <Link to="/" style={{ backgroundColor: "var(--sb-blue)" }} className="inline-flex items-center gap-2 text-sb-cream px-6 py-3 rounded-2xl font-semibold">Back to Home</Link>
           <button
             onClick={() => { setSubmitted(false); setFiles([]); setRefNumber(""); setForm({ name: form.name, company: form.company, email: form.email, mobile: "", address: "", city: "", requirement: "", remarks: "" }); }}
             className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl font-semibold border border-border text-foreground hover:bg-muted"
@@ -132,10 +152,10 @@ export function BulkEnquiry() {
         <span className="text-foreground font-medium">Bulk Enquiry</span>
       </nav>
 
-      <div style={{ background: "linear-gradient(135deg, var(--sb-orange) 0%, #f97316 100%)" }} className="rounded-2xl p-6 text-white mb-6">
-        <h1 className="text-white mb-2">Bulk Order Enquiry</h1>
-        <p className="text-white/80">For orders above 100 MT or ₹5 Lakh. Get dedicated account management and exclusive B2B pricing.</p>
-        <div className="flex gap-4 mt-4 text-sm text-white/80">
+      <div style={{ background: "linear-gradient(135deg, var(--sb-orange) 0%, #f97316 100%)" }} className="rounded-2xl p-6 text-sb-cream mb-6">
+        <h1 className="text-sb-cream mb-2">Bulk Order Enquiry</h1>
+        <p className="text-sb-cream/80">For orders above 100 MT or ₹5 Lakh. Get dedicated account management and exclusive B2B pricing.</p>
+        <div className="flex gap-4 mt-4 text-sm text-sb-cream/80">
           <span>✓ Dedicated Account Manager</span>
           <span>✓ Best Bulk Pricing</span>
           <span>✓ Credit Terms Available</span>
@@ -248,7 +268,7 @@ export function BulkEnquiry() {
             type="submit"
             disabled={loading}
             style={{ backgroundColor: "var(--sb-blue)" }}
-            className="w-full py-3.5 rounded-2xl text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-60"
+            className="w-full py-3.5 rounded-2xl text-sb-cream font-semibold hover:opacity-90 transition-opacity disabled:opacity-60"
           >
             {loading ? "Submitting..." : "Submit Bulk Enquiry →"}
           </button>

@@ -7,26 +7,10 @@ import { Textarea } from "@shared/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@shared/components/ui/tabs";
 import {
   Plus, Edit, Trash2, ToggleLeft, ToggleRight, Eye,
-  Megaphone, Image, FileText, Globe, Mail, MapPin,
+  Megaphone, Image, Upload, FileText, Globe, Mail, MapPin,
   BarChart3, Loader2, RefreshCw, Save
 } from "lucide-react";
-
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
-const getToken = () => localStorage.getItem("adminToken") || "";
-
-async function apiFetch(path: string, opts: RequestInit = {}) {
-  const res = await fetch(`${API}${path}`, {
-    ...opts,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getToken()}`,
-      ...opts.headers,
-    },
-  });
-  const data = await res.json();
-  if (!data.success) throw new Error(data.message || "API Error");
-  return data;
-}
+import { adminFetch as apiFetch, adminUploadImage } from "../../lib/adminApi";
 
 // ─── Shared Components ────────────────────────────────────────────────────────
 function SectionHeader({ title, onAdd, addLabel = "Add" }: { title: string; onAdd?: () => void; addLabel?: string }) {
@@ -80,7 +64,13 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 
 // ─── Homepage Tab ─────────────────────────────────────────────────────────────
 function HomepageTab() {
-  const [form, setForm] = useState({ heroTitle: "", heroSubtitle: "", heroCtaText: "" });
+  const [form, setForm] = useState({
+    heroTitle: "",
+    heroSubtitle: "",
+    heroCtaText: "",
+    brandLogoUrl: "",
+    heroBackgroundImageUrl: "",
+  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
@@ -91,6 +81,8 @@ function HomepageTab() {
         heroTitle: d.data.heroTitle || "",
         heroSubtitle: d.data.heroSubtitle || "",
         heroCtaText: d.data.heroCtaText || "",
+        brandLogoUrl: d.data.brandLogoUrl || "",
+        heroBackgroundImageUrl: d.data.heroBackgroundImageUrl || "",
       }))
       .finally(() => setLoading(false));
   }, []);
@@ -125,6 +117,17 @@ function HomepageTab() {
           <Input value={form.heroCtaText} onChange={e => setForm(f => ({ ...f, heroCtaText: e.target.value }))}
             placeholder="Start Procuring" />
         </div>
+        <div>
+          <label className="text-xs text-[#D4C4A8]/60 mb-1 block">Brand logo URL</label>
+          <Input value={form.brandLogoUrl} onChange={e => setForm(f => ({ ...f, brandLogoUrl: e.target.value }))}
+            placeholder="https://… (PNG/SVG recommended)" />
+          <p className="text-[10px] text-[#D4C4A8]/40 mt-1">Used where the storefront reads CMS brand assets (customer header / marketing).</p>
+        </div>
+        <div>
+          <label className="text-xs text-[#D4C4A8]/60 mb-1 block">Hero background image URL</label>
+          <Input value={form.heroBackgroundImageUrl} onChange={e => setForm(f => ({ ...f, heroBackgroundImageUrl: e.target.value }))}
+            placeholder="Optional full-width hero image" />
+        </div>
       </div>
       <div className="flex items-center gap-3 pt-2">
         <Button onClick={save} disabled={saving} className="bg-[#FE5E00] hover:bg-[#E05200] text-black">
@@ -145,8 +148,18 @@ function BannersTab() {
   const [banners, setBanners] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<{ open: boolean; data: any }>({ open: false, data: null });
-  const [form, setForm] = useState({ title: "", subtitle: "", buttonText: "", buttonLink: "#", displayOrder: 0, status: "ACTIVE" });
+  const [form, setForm] = useState({
+    title: "",
+    subtitle: "",
+    buttonText: "",
+    buttonLink: "#",
+    displayOrder: 0,
+    status: "ACTIVE",
+    imageUrl: "",
+    imagePublicId: "",
+  });
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -155,8 +168,23 @@ function BannersTab() {
 
   useEffect(() => { load(); }, [load]);
 
-  const openCreate = () => { setForm({ title: "", subtitle: "", buttonText: "", buttonLink: "#", displayOrder: 0, status: "ACTIVE" }); setModal({ open: true, data: null }); };
-  const openEdit = (b: any) => { setForm({ title: b.title, subtitle: b.subtitle || "", buttonText: b.buttonText || "", buttonLink: b.buttonLink || "#", displayOrder: b.displayOrder, status: b.status }); setModal({ open: true, data: b }); };
+  const openCreate = () => {
+    setForm({ title: "", subtitle: "", buttonText: "", buttonLink: "#", displayOrder: 0, status: "ACTIVE", imageUrl: "", imagePublicId: "" });
+    setModal({ open: true, data: null });
+  };
+  const openEdit = (b: any) => {
+    setForm({
+      title: b.title,
+      subtitle: b.subtitle || "",
+      buttonText: b.buttonText || "",
+      buttonLink: b.buttonLink || "#",
+      displayOrder: b.displayOrder,
+      status: b.status,
+      imageUrl: b.image?.url || "",
+      imagePublicId: b.image?.publicId || "",
+    });
+    setModal({ open: true, data: b });
+  };
 
   const save = async () => {
     setSaving(true);
@@ -177,6 +205,21 @@ function BannersTab() {
     if (!confirm("Delete this banner?")) return;
     await apiFetch(`/cms/banners/${id}`, { method: "DELETE" }).catch(e => alert(e.message));
     load();
+  };
+
+  const onBannerImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploadingImage(true);
+    try {
+      const up = await adminUploadImage("/upload/banner", file);
+      setForm(f => ({ ...f, imageUrl: up.url, imagePublicId: up.publicId || f.imagePublicId }));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   return (
@@ -219,6 +262,32 @@ function BannersTab() {
               <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} /></div>
             <div><label className="text-xs text-[#D4C4A8]/60 mb-1 block">Subtitle</label>
               <Input value={form.subtitle} onChange={e => setForm(f => ({ ...f, subtitle: e.target.value }))} /></div>
+            <div>
+              <label className="text-xs text-[#D4C4A8]/60 mb-1 block">Banner image</label>
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <label className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-white/15 bg-[#0D0D0D] text-sm text-[#F4E9D8] cursor-pointer hover:border-[#FE5E00]/50 transition-colors">
+                  <Upload className="h-4 w-4 text-[#FE5E00]" />
+                  {uploadingImage ? "Uploading…" : "Upload image"}
+                  <input type="file" accept="image/*" className="hidden" disabled={uploadingImage} onChange={onBannerImagePick} />
+                </label>
+                {form.imageUrl && (
+                  <span className="text-[10px] text-green-400/90">Image ready — save to apply on storefront.</span>
+                )}
+              </div>
+              {form.imageUrl && (
+                <img src={form.imageUrl} alt="" className="w-full max-h-36 object-cover rounded-lg mb-2 border border-white/10 bg-[#111]" />
+              )}
+              <Input
+                value={form.imageUrl}
+                onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))}
+                placeholder="Or paste image URL (https://…)"
+              />
+              <p className="text-[10px] text-[#D4C4A8]/40 mt-1">Upload stores the image on Cloudinary. URL field is optional if you uploaded.</p>
+            </div>
+            <div>
+              <label className="text-xs text-[#D4C4A8]/60 mb-1 block">Image public ID (optional)</label>
+              <Input value={form.imagePublicId} onChange={e => setForm(f => ({ ...f, imagePublicId: e.target.value }))} placeholder="Filled automatically on upload" />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div><label className="text-xs text-[#D4C4A8]/60 mb-1 block">Button Text</label>
                 <Input value={form.buttonText} onChange={e => setForm(f => ({ ...f, buttonText: e.target.value }))} /></div>
@@ -799,54 +868,26 @@ export function CMSManagement() {
 
 // ─── Marketplace Config Tab ───────────────────────────────────────────────────
 function MarketplaceTab() {
-  const [msg, setMsg] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const save = () => {
-    setSaving(true);
-    setMsg("");
-    setTimeout(() => {
-      setMsg("✓ Marketplace configuration saved to frontend state.");
-      setSaving(false);
-    }, 500);
-  };
-
   return (
-    <div className="max-w-xl">
-      <SectionHeader title="Marketplace Configuration" />
-      <p className="text-xs text-[#D4C4A8]/60 mb-6">Manage global marketplace settings like City visibility and Trust Badges. (Currently mocked using localStorage for frontend.)</p>
-      
-      <div className="space-y-4">
-        <div className="bg-[#1A1A1A] border border-white/10 rounded-xl p-4">
-           <h3 className="text-sm font-semibold text-[#F4E9D8] mb-2">City Priority (Selection Modal)</h3>
-           <p className="text-xs text-[#D4C4A8]/40 mb-3">Reorder cities shown in the popular section.</p>
-           <div className="flex gap-2 flex-wrap">
-             {["Bengaluru", "Delhi NCR", "Mumbai", "Hyderabad", "Pune", "Chennai"].map(c => (
-               <span key={c} className="px-2.5 py-1 rounded bg-[#222222] border border-white/10 text-[#D4C4A8] text-xs font-medium cursor-move hover:border-[#FE5E00]/50 transition-colors">
-                 {c}
-               </span>
-             ))}
-           </div>
-        </div>
+    <div className="max-w-xl space-y-4">
+      <SectionHeader title="Marketplace configuration" />
+      <p className="text-xs text-[#D4C4A8]/60 leading-relaxed">
+        Service cities and PINs are managed in <strong className="text-[#F4E9D8]">City Management</strong>. Hero slides, ads, and logos are managed in the{" "}
+        <strong className="text-[#F4E9D8]">Banners</strong>, <strong className="text-[#F4E9D8]">Ads</strong>, and <strong className="text-[#F4E9D8]">Homepage</strong> tabs.
+      </p>
 
-        <div className="bg-[#1A1A1A] border border-white/10 rounded-xl p-4">
-           <h3 className="text-sm font-semibold text-[#F4E9D8] mb-2">Trust Badges Visibility</h3>
-           <div className="space-y-2.5">
-             {["StructBay Assured", "Express Delivery", "GST Billing", "Verified Vendors", "Bulk Available"].map(b => (
-               <label key={b} className="flex items-center gap-2.5 text-sm text-[#D4C4A8]/80 cursor-pointer hover:text-[#F4E9D8] transition-colors">
-                 <input type="checkbox" defaultChecked className="w-4 h-4 rounded accent-[#FE5E00]" /> {b}
-               </label>
-             ))}
-           </div>
-        </div>
+      <div className="bg-[#1A1A1A] border border-white/10 rounded-xl p-4">
+        <h3 className="text-sm font-semibold text-[#F4E9D8] mb-2">City &amp; PIN coverage</h3>
+        <p className="text-xs text-[#D4C4A8]/50 leading-relaxed">
+          Add active serviceable cities and PIN lists under <span className="text-[#FE5E00]">Cities</span> in the sidebar. Customer PIN checks use that data only.
+        </p>
       </div>
 
-      <div className="flex items-center gap-3 pt-4">
-        <Button onClick={save} disabled={saving} className="bg-[#FE5E00] hover:bg-[#E05200] text-black">
-          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-          Save Config
-        </Button>
-        {msg && <span className="text-sm text-green-400">{msg}</span>}
+      <div className="bg-[#1A1A1A] border border-white/10 rounded-xl p-4">
+        <h3 className="text-sm font-semibold text-[#F4E9D8] mb-2">Trust &amp; marketing visuals</h3>
+        <p className="text-xs text-[#D4C4A8]/50 leading-relaxed mb-3">
+          Use Banners and Ads for promotional images; use Homepage for hero copy and optional brand logo / hero background URLs.
+        </p>
       </div>
     </div>
   );

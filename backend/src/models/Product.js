@@ -55,6 +55,6 @@ productSchema.pre('save', function (next) {
 });
 productSchema.pre(/^find/, function (next) { this.where({ isDeleted: false }); next(); });
 productSchema.index({ category: 1, brand: 1, status: 1, isDeleted: 1 });
-productSchema.index({ sku: 1 });
+// sku: index already created by field `unique: true`
 
 module.exports = mongoose.model('Product', productSchema);

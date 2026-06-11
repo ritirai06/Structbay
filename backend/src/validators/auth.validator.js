@@ -86,6 +86,47 @@ const registerVendorValidator = [
     }),
 ];
 
+// ─── Admin: create vendor (no self-service confirm password) ─────────────────
+const adminCreateVendorValidator = [
+  body('name')
+    .trim()
+    .notEmpty().withMessage('Contact name is required')
+    .isLength({ min: 2, max: 100 }).withMessage('Name must be 2–100 characters'),
+
+  body('email')
+    .trim()
+    .notEmpty().withMessage('Email is required')
+    .isEmail().withMessage('Please enter a valid email')
+    .normalizeEmail(),
+
+  body('phone')
+    .notEmpty().withMessage('Phone number is required')
+    .matches(/^[6-9]\d{9}$/).withMessage('Enter a valid 10-digit Indian phone number'),
+
+  body('companyName')
+    .trim()
+    .notEmpty().withMessage('Company name is required')
+    .isLength({ min: 2, max: 200 }).withMessage('Company name must be 2–200 characters'),
+
+  body('contactPerson')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 100 }).withMessage('Contact person name must be 2–100 characters'),
+
+  body('gstNumber')
+    .optional({ nullable: true })
+    .trim()
+    .matches(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/)
+    .withMessage('Please enter a valid GST number'),
+
+  body('businessRegNumber')
+    .optional()
+    .trim()
+    .notEmpty().withMessage('Business registration number cannot be empty if provided'),
+
+  strongPassword('password'),
+];
+
 // ─── Login ────────────────────────────────────────────────────────────────────
 const loginValidator = [
   body('email')
@@ -146,6 +187,7 @@ const refreshTokenValidator = [
 module.exports = {
   registerCustomerValidator,
   registerVendorValidator,
+  adminCreateVendorValidator,
   loginValidator,
   forgotPasswordValidator,
   resetPasswordValidator,

@@ -1,11 +1,33 @@
 const asyncHandler = require('../utils/asyncHandler');
 const ApiResponse = require('../utils/apiResponse');
 const AppError = require('../utils/AppError');
+const mongoose = require('mongoose');
 const Product = require('../models/Product');
 const ProductVariation = require('../models/ProductVariation');
+const Brand = require('../models/Brand');
 const { deleteFile } = require('../config/cloudinary');
 const { logAction } = require('../services/auditLog.service');
 const { generateRefNumber } = require('../services/refNumber.service');
+const { resolveCategoryFromRow, escRx } = require('../utils/resolveCategoryFromRow');
+
+async function resolveBrandForProductRow(r) {
+  const byId = String(r.brandId || r.brand_id || '').trim();
+  if (byId && mongoose.Types.ObjectId.isValid(byId)) {
+    const b = await Brand.findById(byId).select('_id').lean();
+    if (!b) throw new AppError('Brand not found.', 404);
+    return b._id;
+  }
+  const name = String(r.brandName || r.brand_name || r.brand || '').trim();
+  if (!name) throw new AppError('brandId or brandName is required.', 400);
+  if (mongoose.Types.ObjectId.isValid(name)) {
+    const b = await Brand.findById(name).select('_id').lean();
+    if (!b) throw new AppError('Brand not found.', 404);
+    return b._id;
+  }
+  const b = await Brand.findOne({ name: new RegExp(`^${escRx(name)}$`, 'i') }).select('_id').lean();
+  if (!b) throw new AppError(`Brand name not found: ${name}`, 404);
+  return b._id;
+}
 
 // ─── Products ──────────────────────────────────────────────────────────────
 
@@ -58,7 +80,7 @@ const create = asyncHandler(async (req, res) => {
   const {
     name, sku, category, brand, shortDescription, description,
     gstPercentage, status, isFeatured, isTopSelling, isAssured, isExpress,
-    displayOrder, seo, faqs,
+    displayOrder, seo, faqs, videos, documents,
   } = req.body;
 
   const referenceNumber = await generateRefNumber('PRODUCT');
@@ -66,7 +88,7 @@ const create = asyncHandler(async (req, res) => {
   const product = await Product.create({
     name, sku, category, brand, shortDescription, description,
     gstPercentage, status, isFeatured, isTopSelling, isAssured, isExpress,
-    displayOrder, seo, faqs,
+    displayOrder, seo, faqs, videos, documents,
     referenceNumber,
     createdBy: req.user._id,
   });
@@ -84,7 +106,7 @@ const update = asyncHandler(async (req, res) => {
   const allowed = [
     'name', 'sku', 'category', 'brand', 'shortDescription', 'description',
     'gstPercentage', 'status', 'isFeatured', 'isTopSelling', 'isAssured', 'isExpress',
-    'displayOrder', 'seo', 'faqs', 'videos',
+    'displayOrder', 'seo', 'faqs', 'videos', 'documents',
   ];
   allowed.forEach(f => { if (req.body[f] !== undefined) product[f] = req.body[f]; });
   await product.save();
@@ -155,7 +177,103 @@ const deleteVariation = asyncHandler(async (req, res) => {
   return ApiResponse.success(res, 200, 'Variation deleted.');
 });
 
+const BULK_MAX_ROWS = 200;
+
+function bulkProductRowError(e) {
+  if (e instanceof AppError) return e.message;
+  if (e?.code === 11000) return 'Duplicate SKU or slug.';
+  return e?.message || String(e);
+}
+
+const bulkImport = asyncHandler(async (req, res) => {
+  const { rows } = req.body;
+  if (!Array.isArray(rows)) throw new AppError('rows must be an array.', 400);
+  if (!rows.length) throw new AppError('rows cannot be empty.', 400);
+  if (rows.length > BULK_MAX_ROWS) {
+    throw new AppError(`Too many rows (max ${BULK_MAX_ROWS}).`, 400);
+  }
+
+  const batchId = new mongoose.Types.ObjectId().toString();
+  const errors = [];
+  let ok = 0;
+  const stats = { categoriesCreated: 0 };
+  const autoCreateCategories = req.body.autoCreateCategories === true;
+
+  const boolField = (v, def = false) => {
+    if (v === undefined || v === null || v === '') return def;
+    return !['false', '0', 'no', 'n'].includes(String(v).toLowerCase().trim());
+  };
+
+  for (let i = 0; i < rows.length; i += 1) {
+    const row = rows[i];
+    try {
+      const r = typeof row === 'object' && row !== null ? row : {};
+      const name = String(r.name || '').trim();
+      const sku = String(r.sku || '').trim().toUpperCase();
+      if (!name) throw new AppError('name is required.', 400);
+      if (!sku) throw new AppError('sku is required.', 400);
+
+      const category = await resolveCategoryFromRow(r, {
+        autoCreate: autoCreateCategories,
+        userId: req.user._id,
+        stats,
+      });
+      const brand = await resolveBrandForProductRow(r);
+
+      const gstRaw = r.gstPercentage ?? r.gst ?? 18;
+      const gst = [0, 5, 12, 18, 28].includes(Number(gstRaw)) ? Number(gstRaw) : 18;
+      const statusRaw = String(r.status || 'DRAFT').toUpperCase();
+      const status = ['DRAFT', 'ACTIVE', 'ARCHIVED'].includes(statusRaw) ? statusRaw : 'DRAFT';
+
+      const referenceNumber = await generateRefNumber('PRODUCT');
+
+      await Product.create({
+        name,
+        sku,
+        category,
+        brand,
+        shortDescription: r.shortDescription != null ? String(r.shortDescription).trim() : null,
+        description: r.description != null ? String(r.description).trim() : null,
+        gstPercentage: gst,
+        status,
+        isFeatured: boolField(r.isFeatured, false),
+        isTopSelling: boolField(r.isTopSelling, false),
+        isAssured: boolField(r.isAssured, false),
+        isExpress: boolField(r.isExpress, false),
+        displayOrder:
+          r.displayOrder !== undefined && r.displayOrder !== '' && Number.isFinite(Number(r.displayOrder))
+            ? Number(r.displayOrder)
+            : 0,
+        referenceNumber,
+        createdBy: req.user._id,
+      });
+      ok += 1;
+    } catch (e) {
+      errors.push({ row: i + 1, message: bulkProductRowError(e) });
+    }
+  }
+
+  await logAction({
+    adminId: req.user._id,
+    action: 'CREATE',
+    module: 'Product',
+    targetId: batchId,
+    description: `Bulk product import: ${ok} succeeded, ${errors.length} failed (${rows.length} rows)`,
+    ipAddress: req.ip,
+  });
+
+  return ApiResponse.success(res, 200, 'Bulk import completed.', {
+    batchId,
+    total: rows.length,
+    succeeded: ok,
+    failed: errors.length,
+    errors,
+    categoriesCreated: stats.categoriesCreated || 0,
+    autoCreateCategories,
+  });
+});
+
 module.exports = {
-  getAll, getById, getBySlug, create, update, addImages, removeImage, remove,
+  getAll, getById, getBySlug, create, update, addImages, removeImage, remove, bulkImport,
   getVariations, createVariation, updateVariation, deleteVariation,
 };
