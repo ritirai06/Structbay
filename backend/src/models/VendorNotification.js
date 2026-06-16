@@ -18,7 +18,16 @@ const vendorNotificationSchema = new mongoose.Schema({
       'system_alert',
       'document_verified',
       'document_rejected',
-      'performance_alert'
+      'performance_alert',
+      'wf_order_rejected',
+      'wf_ready_for_dispatch',
+      'wf_dispatch_approved',
+      'wf_changes_requested',
+      'wf_vendor_invoice_submitted',
+      'wf_sb_invoice_sent',
+      'wf_order_dispatched',
+      'wf_order_delivered',
+      'wf_delivery_confirmed',
     ]
   },
   

@@ -1,9 +1,14 @@
 import { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router";
-import { Package, Eye, EyeOff, Phone, Mail, Lock, ArrowRight, CheckCircle, Loader2 } from "lucide-react";
+import { Link, useNavigate, useSearchParams, useLocation } from "react-router";
+import { Mail, Eye, EyeOff, Phone, Lock, ArrowRight, Loader2 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { getApiV1Base } from "../../lib/apiBase";
 import { clearCustomerSession, setCustomerSession } from "../lib/authStorage";
+import { CustomerAuthLayout } from "../components/CustomerAuthLayout";
+import { Button } from "@shared/components/ui/button";
+import { Input } from "@shared/components/ui/input";
+import { Label } from "@shared/components/ui/label";
+import { cn } from "@shared/components/ui/utils";
 
 type LoginEnvelope = {
   success: boolean;
@@ -32,11 +37,23 @@ function formatAuthErrors(json: Record<string, unknown>): string {
   return lines.length ? `${msg}\n${lines.join("\n")}` : msg;
 }
 
+type AuthPath = "login" | "forgot" | "reset";
+
+function useAuthPath(): AuthPath {
+  const { pathname } = useLocation();
+  if (pathname.includes("forgot-password")) return "forgot";
+  if (pathname.includes("reset-password")) return "reset";
+  return "login";
+}
+
 export function Login() {
+  const authPath = useAuthPath();
   const { setIsLoggedIn, setUser } = useApp();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const nextPath = searchParams.get("next")?.trim() || "";
+  const resetToken = searchParams.get("token")?.trim() || "";
+
   const [mode, setMode] = useState<"email" | "otp">("email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -46,10 +63,62 @@ export function Login() {
   const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loginError, setLoginError] = useState("");
+  const [verifyResendLoading, setVerifyResendLoading] = useState(false);
+  const [verifyResendMsg, setVerifyResendMsg] = useState("");
+
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotDone, setForgotDone] = useState(false);
+
+  const [newPass, setNewPass] = useState("");
+  const [confirmPass, setConfirmPass] = useState("");
+
+  const base = getApiV1Base().replace(/\/$/, "");
+
+  const isUnverifiedCustomerError = (msg: string) => /verify your email/i.test(msg);
+
+  const handleResendVerification = async () => {
+    setVerifyResendMsg("");
+    if (!email.trim()) {
+      setVerifyResendMsg("Enter your email above, then tap Resend again.");
+      return;
+    }
+    setVerifyResendLoading(true);
+    try {
+      const res = await fetch(`${base}/auth/resend-verification`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+      const raw = await res.text();
+      let json: Record<string, unknown> = {};
+      if (raw) {
+        try {
+          json = JSON.parse(raw) as Record<string, unknown>;
+        } catch {
+          setVerifyResendMsg("Unexpected response from server.");
+          return;
+        }
+      }
+      if (!res.ok || json.success === false) {
+        setVerifyResendMsg(formatAuthErrors(json));
+        return;
+      }
+      setVerifyResendMsg(
+        typeof json.message === "string"
+          ? json.message
+          : "If this account exists and is not verified yet, a new link was sent. Check Spam / Promotions."
+      );
+    } catch {
+      setVerifyResendMsg("Network error. Try again.");
+    } finally {
+      setVerifyResendLoading(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError("");
+    setVerifyResendMsg("");
 
     if (mode === "otp") {
       setLoginError("Phone OTP sign-in is not available yet. Please use email and password.");
@@ -63,8 +132,6 @@ export function Login() {
 
     setLoading(true);
     clearCustomerSession();
-
-    const base = getApiV1Base().replace(/\/$/, "");
 
     try {
       const res = await fetch(`${base}/auth/login`, {
@@ -97,7 +164,6 @@ export function Login() {
         return;
       }
 
-      // Confirm role from API (avoids relying on nested login payload shape).
       const meRes = await fetch(`${base}/auth/me`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
@@ -149,174 +215,397 @@ export function Login() {
     }
   };
 
+  const handleForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError("");
+    if (!forgotEmail.trim()) {
+      setLoginError("Enter your email address.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`${base}/auth/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotEmail.trim() }),
+      });
+      const raw = await res.text();
+      let json: Record<string, unknown> = {};
+      if (raw) {
+        try {
+          json = JSON.parse(raw) as Record<string, unknown>;
+        } catch {
+          setLoginError("Unexpected response from server.");
+          return;
+        }
+      }
+      if (!res.ok || json.success === false) {
+        setLoginError(formatAuthErrors(json));
+        return;
+      }
+      setForgotDone(true);
+    } catch (err) {
+      setLoginError(err instanceof Error ? err.message : "Request failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError("");
+    if (!resetToken) {
+      setLoginError("Reset link is invalid or expired. Request a new link from Forgot password.");
+      return;
+    }
+    if (!newPass || !confirmPass) {
+      setLoginError("Enter and confirm your new password.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`${base}/auth/reset-password`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: resetToken, password: newPass, confirmPassword: confirmPass }),
+      });
+      const raw = await res.text();
+      let json: Record<string, unknown> = {};
+      if (raw) {
+        try {
+          json = JSON.parse(raw) as Record<string, unknown>;
+        } catch {
+          setLoginError("Unexpected response from server.");
+          return;
+        }
+      }
+      if (!res.ok || json.success === false) {
+        setLoginError(formatAuthErrors(json));
+        return;
+      }
+      navigate("/login", { replace: true });
+    } catch (err) {
+      setLoginError(err instanceof Error ? err.message : "Request failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const title =
+    authPath === "forgot"
+      ? "Forgot password"
+      : authPath === "reset"
+        ? "Set new password"
+        : "Sign in";
+
+  const subtitle =
+    authPath === "forgot"
+      ? "We will email you a reset link if an account exists for that address."
+      : authPath === "reset"
+        ? "Choose a strong password for your StructBay account."
+        : "Customer portal — use your business email.";
+
   return (
-    <div className="min-h-screen flex bg-sb-page">
-      {/* Left branding panel */}
-      <div className="hidden lg:flex flex-col justify-between flex-1 bg-sb-surface border-r border-sb-ink/10 p-12 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-[0.03]"
-          style={{ backgroundImage: "radial-gradient(circle at 2px 2px, #F4E9D8 1px, transparent 0)", backgroundSize: "40px 40px" }} />
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#FE5E00]/5 rounded-full blur-3xl" />
-
-        {/* Logo */}
-        <div className="flex items-center gap-3 relative z-10">
-          <div className="w-10 h-10 rounded-xl bg-[#FE5E00] flex items-center justify-center">
-            <Package className="w-5 h-5 text-sb-on-orange" />
-          </div>
-          <span className="font-black text-xl text-sb-ink">Struct<span className="text-[#FE5E00]">Bay</span></span>
-        </div>
-
-        {/* Central content */}
-        <div className="relative z-10 space-y-8">
-          <div>
-            <h2 className="text-4xl font-black text-sb-ink leading-tight mb-3">
-              Welcome back to<br />
-              <span className="text-[#FE5E00]">StructBay</span>
-            </h2>
-            <p className="text-sb-ink-muted/60 text-base leading-relaxed max-w-xs">
-              India's premier B2B construction marketplace. Sign in to manage orders, invoices, and procurement.
-            </p>
-          </div>
-          <div className="space-y-3">
-            {[
-              "Track 100+ orders at once",
-              "Download GST-compliant invoices instantly",
-              "Get exclusive bulk pricing",
-              "Express delivery across South India",
-            ].map(feat => (
-              <div key={feat} className="flex items-center gap-3">
-                <CheckCircle className="w-4 h-4 text-[#FE5E00] shrink-0" />
-                <span className="text-sb-ink-muted/70 text-sm">{feat}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Bottom badge */}
-        <div className="relative z-10 flex items-center gap-3 bg-sb-surface-2 border border-sb-ink/10 rounded-xl px-4 py-3">
-          <div className="w-8 h-8 rounded-full bg-[#FE5E00] flex items-center justify-center text-sb-on-orange font-black text-xs shrink-0">R</div>
-          <div>
-            <p className="text-xs font-semibold text-sb-ink">"StructBay saved us 15% on material costs"</p>
-            <p className="text-[10px] text-sb-ink-muted/50 mt-0.5">Rajesh Kumar · Kumar Constructions, Bengaluru</p>
-          </div>
-        </div>
+    <CustomerAuthLayout visualVariant="login">
+      <div className="space-y-1 mb-6">
+        <h2 className="text-xl font-semibold tracking-tight text-[#222222]">{title}</h2>
+        <p className="text-sm text-[#222222]/60">{subtitle}</p>
       </div>
 
-      {/* Right form panel */}
-      <div className="flex-1 flex items-center justify-center p-6 bg-sb-page">
-        <div className="w-full max-w-sm">
-          {/* Mobile logo */}
-          <div className="lg:hidden flex items-center justify-center gap-2 mb-8">
-            <div className="w-9 h-9 rounded-xl bg-[#FE5E00] flex items-center justify-center">
-              <Package className="w-5 h-5 text-sb-on-orange" />
+      {authPath === "forgot" && (
+        <form onSubmit={handleForgot} className="space-y-4">
+          {loginError && (
+            <div className="rounded-lg border border-[#222222]/15 bg-[#FAF3E1] px-3 py-2 text-sm text-[#222222]/85">
+              {loginError}
             </div>
-            <span className="font-black text-xl text-sb-ink">Struct<span className="text-[#FE5E00]">Bay</span></span>
-          </div>
-
-          <div className="mb-6">
-            <h2 className="text-2xl font-black text-sb-ink mb-1">Sign in to your account</h2>
-            <p className="text-sb-ink-muted/60 text-sm">
-              Don't have an account?{" "}
-              <Link to="/register" className="text-[#FE5E00] hover:text-[#E05200] font-semibold transition-colors">Register here</Link>
+          )}
+          {forgotDone ? (
+            <p className="text-sm text-[#222222]/75 leading-relaxed">
+              If an account exists with that email, a reset link has been sent. Check your inbox and spam folder.
             </p>
-          </div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="forgot-email" className="text-xs font-semibold uppercase tracking-wider text-[#222222]/55">
+                  Email
+                </Label>
+                <div className="relative">
+                  <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#222222]/40" />
+                  <Input
+                    id="forgot-email"
+                    type="email"
+                    autoComplete="email"
+                    value={forgotEmail}
+                    onChange={e => setForgotEmail(e.target.value)}
+                    placeholder="you@company.com"
+                    className="h-11 border-[#222222]/12 bg-[#FAF3E1] pl-10 text-[#222222] placeholder:text-[#222222]/40 focus-visible:border-[#FE5E00] focus-visible:ring-[#FE5E00]/25"
+                  />
+                </div>
+              </div>
+              <Button type="submit" disabled={loading} className="h-11 w-full gap-2 text-base font-semibold shadow-md">
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {loading ? "Sending…" : "Send reset link"}
+              </Button>
+            </>
+          )}
+          <p className="text-center text-sm text-[#222222]/55">
+            <Link to="/login" className="font-semibold text-[#FE5E00] hover:text-[#E05200]">
+              Back to sign in
+            </Link>
+          </p>
+        </form>
+      )}
 
-          {/* Mode toggle */}
-          <div className="flex bg-sb-surface-2 border border-sb-ink/12 rounded-xl p-1 mb-6">
+      {authPath === "reset" && (
+        <form onSubmit={handleReset} className="space-y-4">
+          {loginError && (
+            <div className="rounded-lg border border-[#222222]/15 bg-[#FAF3E1] px-3 py-2 text-sm text-[#222222]/85">
+              {loginError}
+            </div>
+          )}
+          {!resetToken && (
+            <p className="text-sm text-[#222222]/70">
+              Open the reset link from your email, or{" "}
+              <Link to="/forgot-password" className="font-semibold text-[#FE5E00] hover:underline">
+                request a new link
+              </Link>
+              .
+            </p>
+          )}
+          {!!resetToken && (
+            <>
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-[#222222]/55">New password</Label>
+                <div className="relative">
+                  <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#222222]/40" />
+                  <Input
+                    type={showPass ? "text" : "password"}
+                    autoComplete="new-password"
+                    value={newPass}
+                    onChange={e => setNewPass(e.target.value)}
+                    placeholder="Min. 8 characters, mixed case, number, symbol"
+                    className="h-11 border-[#222222]/12 bg-[#FAF3E1] pl-10 pr-10 text-[#222222] placeholder:text-[#222222]/35 focus-visible:border-[#FE5E00] focus-visible:ring-[#FE5E00]/25"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPass(!showPass)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#222222]/45 hover:text-[#222222]"
+                  >
+                    {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-[#222222]/55">Confirm password</Label>
+                <div className="relative">
+                  <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#222222]/40" />
+                  <Input
+                    type={showPass ? "text" : "password"}
+                    autoComplete="new-password"
+                    value={confirmPass}
+                    onChange={e => setConfirmPass(e.target.value)}
+                    placeholder="Repeat password"
+                    className="h-11 border-[#222222]/12 bg-[#FAF3E1] pl-10 text-[#222222] placeholder:text-[#222222]/35 focus-visible:border-[#FE5E00] focus-visible:ring-[#FE5E00]/25"
+                  />
+                </div>
+              </div>
+              <Button type="submit" disabled={loading} className="h-11 w-full gap-2 text-base font-semibold shadow-md">
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {loading ? "Updating…" : "Update password"}
+              </Button>
+            </>
+          )}
+          <p className="text-center text-sm text-[#222222]/55">
+            <Link to="/login" className="font-semibold text-[#FE5E00] hover:text-[#E05200]">
+              Back to sign in
+            </Link>
+          </p>
+        </form>
+      )}
+
+      {authPath === "login" && (
+        <>
+          <p className="text-sm text-[#222222]/65 mb-5">
+            Don&apos;t have an account?{" "}
+            <Link to="/register" className="font-semibold text-[#FE5E00] hover:text-[#E05200]">
+              Register
+            </Link>
+          </p>
+
+          <div className="mb-6 flex rounded-xl border border-[#222222]/10 bg-[#FAF3E1] p-1">
             {(["email", "otp"] as const).map(m => (
               <button
                 key={m}
                 type="button"
-                onClick={() => { setMode(m); setLoginError(""); }}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${
+                onClick={() => {
+                  setMode(m);
+                  setLoginError("");
+                  setVerifyResendMsg("");
+                }}
+                className={cn(
+                  "flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all",
                   mode === m
-                    ? "bg-[#FE5E00] text-sb-on-orange shadow"
-                    : "text-sb-ink-muted/60 hover:text-sb-ink"
-                }`}
+                    ? "bg-[#FE5E00] text-white shadow-sm"
+                    : "text-[#222222]/55 hover:text-[#222222]"
+                )}
               >
-                {m === "email" ? <><Mail className="w-3.5 h-3.5" /> Email</> : <><Phone className="w-3.5 h-3.5" /> OTP</>}
+                {m === "email" ? (
+                  <>
+                    <Mail className="h-3.5 w-3.5" /> Email
+                  </>
+                ) : (
+                  <>
+                    <Phone className="h-3.5 w-3.5" /> OTP
+                  </>
+                )}
               </button>
             ))}
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
             {loginError && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+              <div className="rounded-lg border border-[#222222]/15 bg-[#FAF3E1] px-3 py-2 text-sm text-[#222222]/85">
                 {loginError}
               </div>
             )}
 
             {mode === "email" ? (
               <>
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-sb-ink-muted/70 mb-1.5">Email Address</label>
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-xs font-semibold uppercase tracking-wider text-[#222222]/55">
+                    Email
+                  </Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sb-ink-muted/40" />
-                    <input
-                      type="email" value={email} onChange={e => setEmail(e.target.value)}
-                      placeholder="email@company.com" autoComplete="email"
-                      className="w-full pl-10 pr-4 py-2.5 bg-sb-surface-2 border border-white/12 rounded-lg text-sm text-sb-ink placeholder:text-sb-ink-muted/35 focus:outline-none focus:border-[#FE5E00] focus:ring-2 focus:ring-[#FE5E00]/15 transition-colors"
+                    <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#222222]/40" />
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      placeholder="you@company.com"
+                      autoComplete="email"
+                      className="h-11 border-[#222222]/12 bg-[#FAF3E1] pl-10 text-[#222222] placeholder:text-[#222222]/40 focus-visible:border-[#FE5E00] focus-visible:ring-[#FE5E00]/25"
                     />
                   </div>
                 </div>
-                <div>
-                  <div className="flex justify-between items-center mb-1.5">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-sb-ink-muted/70">Password</label>
-                    <a href="#" className="text-xs text-[#FE5E00] hover:text-[#E05200] transition-colors">Forgot password?</a>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password" className="text-xs font-semibold uppercase tracking-wider text-[#222222]/55">
+                      Password
+                    </Label>
+                    <Link to="/forgot-password" className="text-xs font-semibold text-[#FE5E00] hover:text-[#E05200]">
+                      Forgot password?
+                    </Link>
                   </div>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sb-ink-muted/40" />
-                    <input
-                      type={showPass ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)}
-                      placeholder="Enter your password" autoComplete="current-password"
-                      className="w-full pl-10 pr-10 py-2.5 bg-sb-surface-2 border border-white/12 rounded-lg text-sm text-sb-ink placeholder:text-sb-ink-muted/35 focus:outline-none focus:border-[#FE5E00] focus:ring-2 focus:ring-[#FE5E00]/15 transition-colors"
+                    <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#222222]/40" />
+                    <Input
+                      id="password"
+                      type={showPass ? "text" : "password"}
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      placeholder="Enter password"
+                      autoComplete="current-password"
+                      className="h-11 border-[#222222]/12 bg-[#FAF3E1] pl-10 pr-10 text-[#222222] placeholder:text-[#222222]/40 focus-visible:border-[#FE5E00] focus-visible:ring-[#FE5E00]/25"
                     />
-                    <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-sb-ink-muted/40 hover:text-sb-ink-muted transition-colors">
-                      {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    <button
+                      type="button"
+                      onClick={() => setShowPass(!showPass)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#222222]/45 hover:text-[#222222]"
+                    >
+                      {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
                 </div>
+
+                {isUnverifiedCustomerError(loginError) && (
+                  <div className="rounded-lg border border-[#FE5E00]/25 bg-[#FFF7ED] px-3 py-3 text-sm text-[#222222]/90 space-y-2">
+                    <p className="leading-relaxed text-[#222222]/85">
+                      ईमेल में लिंक नहीं मिला? Spam देखें, या नीचे Resend दबाएँ।
+                    </p>
+                    {verifyResendMsg ? (
+                      <p className="text-xs whitespace-pre-line text-[#222222]/80">{verifyResendMsg}</p>
+                    ) : null}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={verifyResendLoading}
+                      className="w-full h-10 border-[#222222]/20 text-[#222222]"
+                      onClick={() => void handleResendVerification()}
+                    >
+                      {verifyResendLoading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin mr-2 inline" />
+                          Sending…
+                        </>
+                      ) : (
+                        "Resend verification email"
+                      )}
+                    </Button>
+                  </div>
+                )}
               </>
             ) : (
               <>
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-sb-ink-muted/70 mb-1.5">Mobile Number</label>
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-[#222222]/55">Mobile</Label>
                   <div className="flex gap-2">
                     <div className="relative flex-1">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sb-ink-muted/40" />
-                      <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 98765 43210"
-                        className="w-full pl-10 pr-4 py-2.5 bg-sb-surface-2 border border-white/12 rounded-lg text-sm text-sb-ink placeholder:text-sb-ink-muted/35 focus:outline-none focus:border-[#FE5E00] transition-colors" />
+                      <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#222222]/40" />
+                      <Input
+                        type="tel"
+                        value={phone}
+                        onChange={e => setPhone(e.target.value)}
+                        placeholder="+91 98765 43210"
+                        className="h-11 border-[#222222]/12 bg-[#FAF3E1] pl-10 text-[#222222] placeholder:text-[#222222]/40 focus-visible:border-[#FE5E00] focus-visible:ring-[#FE5E00]/25"
+                      />
                     </div>
-                    <button type="button" onClick={() => setOtpSent(true)}
-                      className="px-3 py-2.5 bg-[#FE5E00] hover:bg-[#E05200] text-sb-on-orange text-xs font-bold rounded-lg shrink-0 transition-colors">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="h-11 shrink-0 px-4 font-semibold"
+                      onClick={() => setOtpSent(true)}
+                    >
                       {otpSent ? "Resend" : "Send OTP"}
-                    </button>
+                    </Button>
                   </div>
                 </div>
                 {otpSent && (
-                  <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-sb-ink-muted/70 mb-1.5">Enter OTP</label>
-                    <input type="text" value={otp} onChange={e => setOtp(e.target.value)} placeholder="6-digit OTP" maxLength={6}
-                      className="w-full px-4 py-2.5 bg-sb-surface-2 border border-white/12 rounded-lg text-sm text-sb-ink placeholder:text-sb-ink-muted/35 focus:outline-none focus:border-[#FE5E00] tracking-widest text-center transition-colors" />
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-[#222222]/55">OTP</Label>
+                    <Input
+                      type="text"
+                      value={otp}
+                      onChange={e => setOtp(e.target.value)}
+                      placeholder="6-digit code"
+                      maxLength={6}
+                      className="h-11 border-[#222222]/12 bg-[#FAF3E1] text-center tracking-[0.35em] text-[#222222] focus-visible:border-[#FE5E00] focus-visible:ring-[#FE5E00]/25"
+                    />
                   </div>
                 )}
               </>
             )}
 
-            <button type="submit" disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-[#FE5E00] hover:bg-[#E05200] active:scale-[0.98] text-sb-on-orange font-bold py-3 rounded-lg transition-all duration-200 shadow-[0_4px_16px_rgba(254,94,0,0.25)] mt-2 disabled:opacity-60 disabled:pointer-events-none">
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              {loading ? "Signing in…" : mode === "otp" && !otpSent ? "Send OTP" : "Sign In"}
-              {!loading ? <ArrowRight className="w-4 h-4" /> : null}
-            </button>
+            <Button type="submit" disabled={loading} className="mt-2 h-11 w-full gap-2 text-base font-semibold shadow-md">
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {loading ? "Signing in…" : mode === "otp" && !otpSent ? "Send OTP" : "Sign in"}
+              {!loading ? <ArrowRight className="h-4 w-4" /> : null}
+            </Button>
           </form>
 
-          <p className="text-center text-xs text-sb-ink-muted/30 mt-8">
-            By signing in, you agree to our{" "}
-            <a href="#" className="text-sb-ink-muted/50 hover:text-[#FE5E00] underline transition-colors">Terms</a> and{" "}
-            <a href="#" className="text-sb-ink-muted/50 hover:text-[#FE5E00] underline transition-colors">Privacy Policy</a>
+          <p className="mt-8 text-center text-xs text-[#222222]/45">
+            By signing in you agree to our{" "}
+            <a href="/blogs" className="font-medium text-[#222222]/55 underline-offset-2 hover:text-[#FE5E00] hover:underline">
+              Terms
+            </a>{" "}
+            and{" "}
+            <a href="/blogs" className="font-medium text-[#222222]/55 underline-offset-2 hover:text-[#FE5E00] hover:underline">
+              Privacy
+            </a>
+            .
           </p>
-        </div>
-      </div>
-    </div>
+        </>
+      )}
+    </CustomerAuthLayout>
   );
 }

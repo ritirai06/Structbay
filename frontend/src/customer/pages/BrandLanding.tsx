@@ -70,7 +70,7 @@ export function BrandLanding() {
           ? <img src={brand.banner.url} alt={brand.name} className="w-full h-full object-cover" />
           : <div className="w-full h-full bg-sb-surface" />
         }
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0D0D0D] via-[#0D0D0D]/80 to-[#0D0D0D]/40" />
+        <div className="absolute inset-0 bg-gradient-to-r from-sb-ink via-sb-ink/85 to-sb-ink/40" />
         <div className="absolute inset-0 flex items-center">
           <div className="max-w-7xl mx-auto px-4 w-full">
             <nav className="flex items-center gap-2 text-sm text-sb-cream/60 mb-4">
@@ -188,7 +188,18 @@ export function BrandLanding() {
                     }
                     {price > 0 && (
                       <button
-                        onClick={() => addToCart({ id: slug, name: p.name, brand: brandName, price, qty: 1, unit: p.unit || "unit", image: img })}
+                        onClick={() =>
+                          addToCart({
+                            id: slug,
+                            productSlug: String(slug),
+                            name: p.name,
+                            brand: brandName,
+                            price,
+                            qty: 1,
+                            unit: p.unit || "unit",
+                            image: img,
+                          })
+                        }
                         className="w-full mt-3 py-2 rounded-xl bg-[#FE5E00] hover:bg-[#E05200] text-sb-on-orange text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"
                       >
                         <ShoppingCart className="w-3.5 h-3.5" /> Add to Cart

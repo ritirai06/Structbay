@@ -134,6 +134,8 @@ const remove = asyncHandler(async (req, res) => {
 });
 
 const BULK_MAX_ROWS = 200;
+const BULK_PIN_IMPORT_MAX = 8000;
+const CITY_PIN_MAX_TOTAL = 20000;
 
 function bulkCityRowError(e) {
   if (e instanceof AppError) return e.message;
@@ -212,4 +214,60 @@ const bulkImport = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { getAll, getById, create, update, toggle, remove, bulkImport };
+/**
+ * POST /cities/:id/pins/bulk-import
+ * Body: { raw?: string, pincodes?: string|string[], mode?: 'append' | 'replace' }
+ */
+const bulkImportPincodes = asyncHandler(async (req, res) => {
+  const city = await City.findById(req.params.id);
+  if (!city) throw new AppError('City not found.', 404);
+
+  const mode = String(req.body.mode || 'append').toLowerCase() === 'replace' ? 'replace' : 'append';
+  const raw = req.body.raw ?? req.body.pincodes ?? req.body.pins ?? '';
+  const incoming = normalizePincodes(raw);
+  if (!incoming.length) {
+    throw new AppError(
+      'No valid 6-digit PINs found. Paste comma- or newline-separated PINs, or upload a single-column CSV/TXT.',
+      400
+    );
+  }
+  if (incoming.length > BULK_PIN_IMPORT_MAX) {
+    throw new AppError(`Too many PINs in one request (max ${BULK_PIN_IMPORT_MAX}). Split into multiple imports.`, 400);
+  }
+
+  const existing = normalizePincodes(city.pincodes || []);
+  let next;
+  if (mode === 'replace') {
+    next = incoming;
+  } else {
+    const seen = new Set(existing);
+    for (const p of incoming) seen.add(p);
+    next = Array.from(seen).sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
+  }
+
+  if (next.length > CITY_PIN_MAX_TOTAL) {
+    throw new AppError(`This city cannot hold more than ${CITY_PIN_MAX_TOTAL} PIN codes.`, 400);
+  }
+
+  await assertPincodesUnique(next, city._id);
+  city.pincodes = next;
+  await city.save();
+
+  await logAction({
+    adminId: req.user._id,
+    action: 'UPDATE',
+    module: 'City',
+    targetId: city._id.toString(),
+    description: `Bulk PIN import for ${city.name}: mode=${mode}, parsed ${incoming.length} PINs, total ${next.length} on city`,
+    ipAddress: req.ip,
+  });
+
+  return ApiResponse.success(res, 200, 'PIN codes updated.', {
+    city,
+    mode,
+    parsedIncoming: incoming.length,
+    totalPincodes: next.length,
+  });
+});
+
+module.exports = { getAll, getById, create, update, toggle, remove, bulkImport, bulkImportPincodes };

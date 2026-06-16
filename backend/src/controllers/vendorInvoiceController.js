@@ -6,6 +6,13 @@ const { cloudinary } = require('../config/cloudinary');
 const { generateRefNumber } = require('../services/refNumber.service');
 const { vendorOrderMatch } = require('../utils/vendorOrderAccess');
 const { logAction } = require('../services/auditLog.service');
+const {
+  isWorkflowVendorOrder,
+  canTransition,
+  appendAudit,
+  pushEmbeddedHistory,
+} = require('../services/vendorOrderWorkflow.service');
+const { notifyAllAdmins } = require('../services/staffNotification.service');
 
 // @desc    Upload Vendor Invoice
 // @route   POST /api/v1/vendor/invoices
@@ -16,6 +23,18 @@ exports.uploadInvoice = async (req, res) => {
   const order = await VendorOrder.findOne({ _id: orderId, ...match });
   if (!order) return ApiResponse.notFound(res, 'Order not found or not assigned to you.');
   if (!req.file) return ApiResponse.badRequest(res, 'Please upload invoice PDF.');
+
+  if (isWorkflowVendorOrder(order)) {
+    if (order.status !== 'DISPATCH_APPROVED') {
+      return ApiResponse.badRequest(
+        res,
+        'Final vendor invoice can only be uploaded after StructBay has approved dispatch (status DISPATCH_APPROVED).'
+      );
+    }
+    if (!canTransition(order.status, 'VENDOR_INVOICE_SUBMITTED')) {
+      return ApiResponse.badRequest(res, 'Invalid workflow state for invoice upload.');
+    }
+  }
 
   const totalAmount = parseFloat(invoiceAmount) + parseFloat(gstAmount);
   const structbayInvoiceNumber = await generateRefNumber('VENDOR_INVOICE');
@@ -37,13 +56,37 @@ exports.uploadInvoice = async (req, res) => {
     uploadedBy: req.user._id,
   });
 
-  order.invoiceStatus = 'uploaded';
-  order.status = 'vendor_invoice_sent';
-  order.statusHistory.push({
-    status: 'vendor_invoice_sent',
-    updatedBy: req.user._id, updatedByModel: 'User',
-    remarks: 'Vendor invoice uploaded', timestamp: new Date(),
-  });
+  order.invoiceStatus = 'UPLOADED';
+
+  if (isWorkflowVendorOrder(order)) {
+    if (order.status !== 'DISPATCH_APPROVED') {
+      return ApiResponse.badRequest(
+        res,
+        'Final vendor invoice can only be uploaded after StructBay has approved dispatch (status DISPATCH_APPROVED).'
+      );
+    }
+    if (!canTransition(order.status, 'VENDOR_INVOICE_SUBMITTED')) {
+      return ApiResponse.badRequest(res, 'Invalid workflow state for invoice upload.');
+    }
+    order.status = 'VENDOR_INVOICE_SUBMITTED';
+    pushEmbeddedHistory(order, 'VENDOR_INVOICE_SUBMITTED', req.user._id, 'User', 'Vendor submitted final tax invoice.');
+    await appendAudit(order._id, 'VENDOR_INVOICE_SUBMITTED', 'Vendor invoice PDF submitted', req.user._id, 'User');
+    notifyAllAdmins({
+      type: 'VENDOR_INVOICE_SUBMITTED',
+      title: 'Vendor invoice received',
+      message: `Vendor submitted invoice for sub-order ${order.orderNumber}.`,
+      relatedVendorOrder: order._id,
+    }).catch(() => {});
+  } else {
+    order.status = 'INVOICE_UPLOADED';
+    order.statusHistory.push({
+      status: 'INVOICE_UPLOADED',
+      updatedBy: req.user._id,
+      model: 'User',
+      note: 'Vendor invoice uploaded',
+      timestamp: new Date(),
+    });
+  }
   await order.save();
 
   await VendorActivityLog.create({

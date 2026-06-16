@@ -55,7 +55,7 @@ router.post(
   protect, requireRole('ADMIN'),
   ...uploadImage(UPLOAD_FOLDERS.BLOG).single('image'),
   handleUploadError,
-  (req, res) => res.status(501).json({ success: false, message: 'Not implemented yet.' })
+  uploadCtrl.imageUploadResult
 );
 
 // Customer — BOQ / drawing / PDF
@@ -64,16 +64,16 @@ router.post(
   protect, requireRole('CUSTOMER'),
   ...uploadDocument(UPLOAD_FOLDERS.CUSTOMER_DOCS).single('document'),
   handleUploadError,
-  (req, res) => res.status(501).json({ success: false, message: 'Not implemented yet.' })
+  uploadCtrl.documentUploadResult
 );
 
-// Vendor — certificate / portfolio
+// Vendor — certificate / portfolio (generic upload; vendor app also uses POST /vendor/documents)
 router.post(
   '/vendor/document',
   protect, requireRole('VENDOR'),
   ...uploadDocument(UPLOAD_FOLDERS.VENDOR_DOCS).single('document'),
   handleUploadError,
-  (req, res) => res.status(501).json({ success: false, message: 'Not implemented yet.' })
+  uploadCtrl.documentUploadResult
 );
 
 // All authenticated — profile image
@@ -82,7 +82,7 @@ router.post(
   protect,
   ...uploadImage(UPLOAD_FOLDERS.PROFILE).single('image'),
   handleUploadError,
-  (req, res) => res.status(501).json({ success: false, message: 'Not implemented yet.' })
+  uploadCtrl.imageUploadResult
 );
 
 module.exports = router;

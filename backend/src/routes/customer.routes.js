@@ -1,4 +1,5 @@
 const router = require('express').Router();
+const mongoose = require('mongoose');
 const { protect, optionalAuth } = require('../middleware/auth.middleware');
 const { requireRole }           = require('../middleware/role.middleware');
 const asyncHandler              = require('../utils/asyncHandler');
@@ -21,6 +22,13 @@ const ProductVariation = require('../models/ProductVariation');
 const CategoryFilter   = require('../models/CategoryFilter');
 const Order         = require('../models/Order');
 const marketplaceCity = require('../services/marketplaceCity.service');
+const catalogBrowse = require('../services/catalogBrowse.service');
+const {
+  pinMatchesKarnatakaState,
+  pinMatchesTelanganaState,
+  regionLooksKarnatakaForPin,
+  regionLooksTelanganaForPin,
+} = require('../utils/indiaPostalRegions');
 
 const custAuth = [protect, requireRole('CUSTOMER', 'ADMIN')];
 
@@ -76,6 +84,7 @@ router.get   ('/orders/:id',                    ...custAuth, orderCtrl.getMyOrde
 router.get   ('/orders/:id/tracking',           ...custAuth, orderCtrl.getTracking);
 router.get   ('/orders/:id/documents',          ...custAuth, orderCtrl.getDocuments);
 router.get   ('/orders/:id/invoices',           ...custAuth, orderCtrl.getOrderInvoices);
+router.get   ('/orders/:id/invoice-summary',    ...custAuth, orderCtrl.downloadInvoiceSummary);
 router.patch ('/orders/:id/cancel',             ...custAuth, orderCtrl.cancelOrder);
 router.patch ('/orders/:id/confirm-delivery',   ...custAuth, orderCtrl.confirmDelivery);
 
@@ -100,6 +109,26 @@ router.get(
 const NOT_SERVICEABLE_PIN_MSG =
   'StructBay currently operates in selected cities and PIN codes only. This PIN code is not in our active service area yet. Please choose a listed city or a supported PIN, or contact support for bulk and enterprise delivery options—we will be glad to help.';
 
+function normalizeSixDigitPins(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .map((p) => String(p ?? '').replace(/\D/g, '').slice(0, 6))
+    .filter((p) => p.length === 6);
+}
+
+function pinSortPrefix(pin6) {
+  return pin6.length >= 3 ? pin6.slice(0, 3) : pin6;
+}
+
+function cityPayload(city) {
+  return {
+    id: String(city._id),
+    name: city.name,
+    state: city.state,
+    slug: city.slug,
+  };
+}
+
 router.get(
   '/serviceability/pincode',
   asyncHandler(async (req, res) => {
@@ -110,27 +139,140 @@ router.get(
         message: 'Please enter a valid 6-digit Indian PIN code.',
       });
     }
+
+    // 1) Exact match on any active serviceable city (admin whitelist)
     const city = await City.findOne({
       status: 'ACTIVE',
       isServiceable: true,
       pincodes: digits,
     })
-      .select('name state slug')
+      .select('name state slug pincodes priority')
       .lean();
-    if (!city) {
-      return ApiResponse.success(res, 200, 'Not serviceable.', {
-        serviceable: false,
-        message: NOT_SERVICEABLE_PIN_MSG,
+    if (city) {
+      return ApiResponse.success(res, 200, 'Serviceable.', {
+        serviceable: true,
+        city: cityPayload(city),
+        matchKind: 'EXACT',
       });
     }
-    return ApiResponse.success(res, 200, 'Serviceable.', {
-      serviceable: true,
-      city: {
-        id: String(city._id),
-        name: city.name,
-        state: city.state,
-        slug: city.slug,
-      },
+
+    const cityId = String(req.query.cityId || '').trim();
+
+    // 2) Optional: shopper already chose a warehouse city — relax rules for that city only
+    if (cityId && mongoose.Types.ObjectId.isValid(cityId)) {
+      const sel = await City.findOne({
+        _id: cityId,
+        status: 'ACTIVE',
+        isServiceable: true,
+      })
+        .select('name state slug pincodes')
+        .lean();
+      if (sel) {
+        const pins = normalizeSixDigitPins(sel.pincodes || []);
+        if (pins.length === 0) {
+          return ApiResponse.success(res, 200, 'Serviceable (city has no PIN list yet).', {
+            serviceable: true,
+            city: cityPayload(sel),
+            matchKind: 'CITY_OPEN',
+          });
+        }
+        const want = pinSortPrefix(digits);
+        const sameDistrict = pins.some((p) => pinSortPrefix(p) === want);
+        if (sameDistrict) {
+          return ApiResponse.success(res, 200, 'Serviceable (same postal sorting district as configured PINs).', {
+            serviceable: true,
+            city: cityPayload(sel),
+            matchKind: 'DISTRICT_PREFIX',
+          });
+        }
+        // 2b) Selected warehouse city is in Karnataka or Telangana — allow typical in-state PINs
+        if (regionLooksKarnatakaForPin(sel) && pinMatchesKarnatakaState(digits)) {
+          return ApiResponse.success(res, 200, 'Serviceable (Karnataka PIN range).', {
+            serviceable: true,
+            city: cityPayload(sel),
+            matchKind: 'STATE_REGION_SELECTED',
+          });
+        }
+        if (regionLooksTelanganaForPin(sel) && pinMatchesTelanganaState(digits)) {
+          return ApiResponse.success(res, 200, 'Serviceable (Telangana PIN range).', {
+            serviceable: true,
+            city: cityPayload(sel),
+            matchKind: 'STATE_REGION_SELECTED',
+          });
+        }
+      }
+    }
+
+    // 3) Infer city from any serviceable city that lists a PIN in the same first-3-digit district (e.g. 560001 vs 560097)
+    const prefix = digits.slice(0, 3);
+    const prefixRe = new RegExp(`^${prefix}`);
+    const inferred = await City.find({
+      status: 'ACTIVE',
+      isServiceable: true,
+      pincodes: prefixRe,
+    })
+      .select('name state slug pincodes priority')
+      .sort({ priority: -1, sortOrder: 1 })
+      .limit(1)
+      .lean();
+
+    if (inferred.length) {
+      return ApiResponse.success(res, 200, 'Serviceable (matched postal district).', {
+        serviceable: true,
+        city: cityPayload(inferred[0]),
+        matchKind: 'DISTRICT_INFERRED',
+      });
+    }
+
+    // 4) Karnataka (incl. Bengaluru) & Telangana — match PIN to a serviceable hub city in that state
+    if (pinMatchesKarnatakaState(digits)) {
+      const hub = await City.findOne({
+        status: 'ACTIVE',
+        isServiceable: true,
+        $or: [
+          { state: /karnataka/i },
+          { state: /^ka$/i },
+          { name: /bengaluru|bangalore|bengalore/i },
+          { slug: /bengaluru|bangalore/i },
+        ],
+      })
+        .select('name state slug priority')
+        .sort({ priority: -1, sortOrder: 1 })
+        .lean();
+      if (hub) {
+        return ApiResponse.success(res, 200, 'Serviceable (Karnataka region).', {
+          serviceable: true,
+          city: cityPayload(hub),
+          matchKind: 'STATE_REGION_INFERRED',
+        });
+      }
+    }
+    if (pinMatchesTelanganaState(digits)) {
+      const hub = await City.findOne({
+        status: 'ACTIVE',
+        isServiceable: true,
+        $or: [
+          { state: /(telangana|telengana)/i },
+          { state: /^ts$/i },
+          { name: /hyderabad|secunderabad/i },
+          { slug: /hyderabad/i },
+        ],
+      })
+        .select('name state slug priority')
+        .sort({ priority: -1, sortOrder: 1 })
+        .lean();
+      if (hub) {
+        return ApiResponse.success(res, 200, 'Serviceable (Telangana region).', {
+          serviceable: true,
+          city: cityPayload(hub),
+          matchKind: 'STATE_REGION_INFERRED',
+        });
+      }
+    }
+
+    return ApiResponse.success(res, 200, 'Not serviceable.', {
+      serviceable: false,
+      message: NOT_SERVICEABLE_PIN_MSG,
     });
   })
 );
@@ -140,24 +282,30 @@ router.get(
   '/products',
   optionalAuth,
   asyncHandler(async (req, res) => {
-    const { search, category, brand, cityId, assured, express, isTopSelling, isFeatured, page = 1, limit = 24, sort = 'default' } = req.query;
+    const {
+      search, category, brand, cityId, assured, express,
+      structbayAssured, structbayDelivery,
+      isTopSelling, isFeatured, page = 1, limit = 24, sort = 'default',
+    } = req.query;
 
     const filter = { status: 'ACTIVE' };
     if (category) filter.category = category;
     if (brand) filter.brand = brand;
-    if (assured === 'true') filter.isAssured = true;
-    if (express === 'true') filter.isExpress = true;
+    catalogBrowse.applyLegacyAndStructBayBadgeFilters(filter, {
+      assured, express, structbayAssured, structbayDelivery,
+    });
+
+    if (search) {
+      const searchOr = await catalogBrowse.buildProductSearchOr(search);
+      if (searchOr) filter.$or = searchOr.$or;
+    }
     if (isTopSelling === 'true') filter.isTopSelling = true;
     if (isFeatured === 'true') filter.isFeatured = true;
-    if (search) filter.$or = [
-      { name: { $regex: search, $options: 'i' } },
-      { sku: { $regex: search, $options: 'i' } },
-    ];
 
     const cityOid = await marketplaceCity.resolveMarketplaceCityId(cityId);
     if (cityOid) {
-      const sellable = await marketplaceCity.getSellableProductIdsForCity(cityOid);
-      filter._id = { $in: sellable };
+      const subset = await catalogBrowse.computeCityScopedProductIdSubset(req.query, cityOid);
+      filter._id = { $in: subset };
     }
 
     const pageNum  = Math.max(1, parseInt(page));
@@ -189,7 +337,7 @@ router.get(
           const pricing = await CityPricing.findOne({ product: p._id, city: cityId, variation: null, isDeleted: false })
             .select('regularPrice salePrice wholesaleSlabs').lean();
           const variations = await ProductVariation.find({ product: p._id, status: 'ACTIVE' })
-            .select('attributes sku images sortOrder').lean();
+            .select('attributes sku images sortOrder mrp moq leadTimeDays vendorSku weightKg').lean();
           return { ...p.toJSON(), pricing, variations };
         })
       );
@@ -223,7 +371,8 @@ router.get(
     }
 
     const variations = await ProductVariation.find({ product: product._id, status: 'ACTIVE' })
-      .sort({ sortOrder: 1 });
+      .sort({ sortOrder: 1 })
+      .select('attributes sku images sortOrder mrp moq leadTimeDays vendorSku vendorPrice weightKg searchText');
 
     let pricing = null;
     let variationPricing = [];
@@ -245,10 +394,18 @@ router.get(
       relatedBase._id = { $in: ids };
     }
     const related = await Product.find(relatedBase)
-      .limit(8).populate('brand', 'name slug logo').select('name slug images brand isAssured isExpress');
+      .limit(8).populate('brand', 'name slug logo').select('name slug images brand isAssured isExpress isStructbayAssured isStructbayDelivery');
+
+    const catId = product.category?._id || product.category;
+    const categoryFilterDoc = await CategoryFilter.findOne({ category: catId }).lean();
 
     return ApiResponse.success(res, 200, 'Product retrieved.', {
-      ...product.toJSON(), variations, pricing, variationPricing, related,
+      ...product.toJSON(),
+      variations,
+      pricing,
+      variationPricing,
+      related,
+      categoryFilters: categoryFilterDoc?.filters || [],
     });
   })
 );
@@ -258,30 +415,55 @@ router.get(
   '/category/:slug',
   optionalAuth,
   asyncHandler(async (req, res) => {
-    const { cityId, page = 1, limit = 24, sort = 'default', brand, assured, express } = req.query;
+    const { cityId, page = 1, limit = 24, sort = 'default', brand, brands, search } = req.query;
 
     const category = await Category.findOne({ slug: req.params.slug, status: 'ACTIVE' });
     if (!category) return ApiResponse.notFound(res, 'Category not found.');
 
-    const filters = await CategoryFilter.findOne({ category: category._id })
-      .populate({ path: 'filters', select: 'label key type options sortOrder isActive' });
+    const categoryFilterDoc = await CategoryFilter.findOne({ category: category._id }).lean();
+    const filterDefinitions = categoryFilterDoc?.filters || [];
 
     const filter = { status: 'ACTIVE', category: category._id };
-    if (brand) filter.brand = brand;
-    if (assured === 'true') filter.isAssured = true;
-    if (express === 'true') filter.isExpress = true;
+    const brandTokens = catalogBrowse
+      .parseCommaList(brands || brand)
+      .filter((t) => mongoose.Types.ObjectId.isValid(String(t)));
+    if (brandTokens.length === 1) filter.brand = brandTokens[0];
+    else if (brandTokens.length > 1) filter.brand = { $in: brandTokens };
 
-    const cityOid = await marketplaceCity.resolveMarketplaceCityId(cityId);
-    let sellableInCity = null;
-    if (cityOid) {
-      sellableInCity = await marketplaceCity.getSellableProductIdsForCity(cityOid);
-      filter._id = { $in: sellableInCity };
+    catalogBrowse.applyLegacyAndStructBayBadgeFilters(filter, req.query);
+    if (search) {
+      const searchOr = await catalogBrowse.buildProductSearchOr(search);
+      if (searchOr) filter.$or = searchOr.$or;
     }
 
-    const brandDistinctFilter = { category: category._id, status: 'ACTIVE' };
-    if (sellableInCity) brandDistinctFilter._id = { $in: sellableInCity };
-    if (assured === 'true') brandDistinctFilter.isAssured = true;
-    if (express === 'true') brandDistinctFilter.isExpress = true;
+    const cityOid = await marketplaceCity.resolveMarketplaceCityId(cityId);
+    const attrProductIds = await catalogBrowse.narrowProductsByCategoryAttributeFilters(
+      category._id,
+      req.query,
+      categoryFilterDoc
+    );
+
+    if (cityOid) {
+      const subset = await catalogBrowse.computeCityScopedProductIdSubset(req.query, cityOid);
+      const ids = attrProductIds !== null ? catalogBrowse.intersectIdLists(subset, attrProductIds) : subset;
+      filter._id = { $in: ids };
+    } else if (attrProductIds !== null) {
+      filter._id = { $in: attrProductIds };
+    }
+
+    const brandDistinctFilter = { status: 'ACTIVE', category: category._id };
+    catalogBrowse.applyLegacyAndStructBayBadgeFilters(brandDistinctFilter, req.query);
+    if (search) {
+      const searchOr = await catalogBrowse.buildProductSearchOr(search);
+      if (searchOr) brandDistinctFilter.$or = searchOr.$or;
+    }
+    if (cityOid) {
+      const subsetBrands = await catalogBrowse.computeCityScopedProductIdSubset(req.query, cityOid);
+      const bIds = attrProductIds !== null ? catalogBrowse.intersectIdLists(subsetBrands, attrProductIds) : subsetBrands;
+      brandDistinctFilter._id = { $in: bIds };
+    } else if (attrProductIds !== null) {
+      brandDistinctFilter._id = { $in: attrProductIds };
+    }
 
     const pageNum  = Math.max(1, parseInt(page));
     const limitNum = Math.min(100, parseInt(limit));
@@ -305,16 +487,27 @@ router.get(
           const pricing = await CityPricing.findOne({ product: p._id, city: cityId, variation: null, isDeleted: false })
             .select('regularPrice salePrice wholesaleSlabs').lean();
           const variations = await ProductVariation.find({ product: p._id, status: 'ACTIVE' })
-            .select('attributes sku images sortOrder').lean();
+            .select('attributes sku images sortOrder mrp moq leadTimeDays vendorSku weightKg').lean();
           const variationPricing = await CityPricing.find({ product: p._id, city: cityId, variation: { $ne: null }, isDeleted: false })
             .select('variation regularPrice salePrice wholesaleSlabs').lean();
           return { ...p.toJSON(), pricing, variations, variationPricing };
         })
       );
+    } else {
+      enriched = await Promise.all(
+        products.map(async (p) => {
+          const variations = await ProductVariation.find({ product: p._id, status: 'ACTIVE' })
+            .select('attributes sku images sortOrder mrp moq leadTimeDays vendorSku weightKg').lean();
+          return { ...p.toJSON(), pricing: null, variations, variationPricing: [] };
+        })
+      );
     }
 
     return ApiResponse.success(res, 200, 'Category page retrieved.', {
-      category, products: enriched, brands, filters: filters?.filters || [],
+      category,
+      products: enriched,
+      brands,
+      filters: filterDefinitions,
       pagination: { total, page: pageNum, limit: limitNum, pages: Math.ceil(total / limitNum) },
     });
   })
@@ -325,27 +518,35 @@ router.get(
   '/brand/:slug',
   optionalAuth,
   asyncHandler(async (req, res) => {
-    const { cityId, categoryId, page = 1, limit = 24, assured, express } = req.query;
+    const { cityId, categoryId, page = 1, limit = 24, search } = req.query;
 
     const brand = await Brand.findOne({ slug: req.params.slug, status: 'ACTIVE' });
     if (!brand) return ApiResponse.notFound(res, 'Brand not found.');
 
     const filter = { status: 'ACTIVE', brand: brand._id };
     if (categoryId) filter.category = categoryId;
-    if (assured === 'true') filter.isAssured = true;
-    if (express === 'true') filter.isExpress = true;
-
-    const cityOidBrand = await marketplaceCity.resolveMarketplaceCityId(cityId);
-    let sellableForBrand = null;
-    if (cityOidBrand) {
-      sellableForBrand = await marketplaceCity.getSellableProductIdsForCity(cityOidBrand);
-      filter._id = { $in: sellableForBrand };
+    catalogBrowse.applyLegacyAndStructBayBadgeFilters(filter, req.query);
+    if (search) {
+      const searchOr = await catalogBrowse.buildProductSearchOr(search);
+      if (searchOr) filter.$or = searchOr.$or;
     }
 
-    const categoryDistinctFilter = { brand: brand._id, status: 'ACTIVE' };
-    if (sellableForBrand) categoryDistinctFilter._id = { $in: sellableForBrand };
-    if (assured === 'true') categoryDistinctFilter.isAssured = true;
-    if (express === 'true') categoryDistinctFilter.isExpress = true;
+    const cityOidBrand = await marketplaceCity.resolveMarketplaceCityId(cityId);
+    if (cityOidBrand) {
+      const subset = await catalogBrowse.computeCityScopedProductIdSubset(req.query, cityOidBrand);
+      filter._id = { $in: subset };
+    }
+
+    const categoryDistinctFilter = { status: 'ACTIVE', brand: brand._id };
+    catalogBrowse.applyLegacyAndStructBayBadgeFilters(categoryDistinctFilter, req.query);
+    if (search) {
+      const searchOr = await catalogBrowse.buildProductSearchOr(search);
+      if (searchOr) categoryDistinctFilter.$or = searchOr.$or;
+    }
+    if (cityOidBrand) {
+      const subsetCat = await catalogBrowse.computeCityScopedProductIdSubset(req.query, cityOidBrand);
+      categoryDistinctFilter._id = { $in: subsetCat };
+    }
 
     const pageNum  = Math.max(1, parseInt(page));
     const limitNum = Math.min(100, parseInt(limit));
@@ -368,7 +569,7 @@ router.get(
           const pricing = await CityPricing.findOne({ product: p._id, city: cityId, variation: null, isDeleted: false })
             .select('regularPrice salePrice wholesaleSlabs').lean();
           const variations = await ProductVariation.find({ product: p._id, status: 'ACTIVE' })
-            .select('attributes sku images sortOrder').lean();
+            .select('attributes sku images sortOrder mrp moq leadTimeDays vendorSku weightKg').lean();
           const variationPricing = await CityPricing.find({ product: p._id, city: cityId, variation: { $ne: null }, isDeleted: false })
             .select('variation regularPrice salePrice wholesaleSlabs').lean();
           return { ...p.toJSON(), pricing, variations, variationPricing };
@@ -401,8 +602,29 @@ router.get(
     const categories = await Category.find(catFilter)
       .select('name slug image icon description sortOrder')
       .sort({ sortOrder: 1 })
-      .limit(lim);
-    return ApiResponse.success(res, 200, 'Categories retrieved.', categories);
+      .limit(lim)
+      .lean();
+
+    const catIds = categories.map((c) => c._id);
+    let countMatch = { status: 'ACTIVE', category: { $in: catIds } };
+    if (cityOid) {
+      const sellable = await marketplaceCity.getSellableProductIdsForCity(cityOid);
+      countMatch._id = { $in: sellable };
+    }
+    const countRows =
+      catIds.length === 0
+        ? []
+        : await Product.aggregate([
+            { $match: countMatch },
+            { $group: { _id: '$category', productCount: { $sum: 1 } } },
+          ]);
+    const countMap = new Map(countRows.map((r) => [String(r._id), r.productCount]));
+    const categoriesWithCounts = categories.map((c) => ({
+      ...c,
+      productCount: countMap.get(String(c._id)) || 0,
+    }));
+
+    return ApiResponse.success(res, 200, 'Categories retrieved.', categoriesWithCounts);
   })
 );
 
@@ -435,30 +657,34 @@ router.get(
   '/search',
   optionalAuth,
   asyncHandler(async (req, res) => {
-    const { q, cityId, assured, express } = req.query;
+    const { q, cityId } = req.query;
     if (!q || q.trim().length < 2) return ApiResponse.badRequest(res, 'Search query must be at least 2 characters.');
 
-    const regex = { $regex: q.trim(), $options: 'i' };
-
     const cityOidSearch = await marketplaceCity.resolveMarketplaceCityId(cityId);
-    const productMatch = { status: 'ACTIVE', $or: [{ name: regex }, { sku: regex }] };
-    if (assured === 'true') productMatch.isAssured = true;
-    if (express === 'true') productMatch.isExpress = true;
-    let sellableSearchList = null;
+    const productMatch = { status: 'ACTIVE' };
+    catalogBrowse.applyLegacyAndStructBayBadgeFilters(productMatch, req.query);
+    const searchOr = await catalogBrowse.buildProductSearchOr(q.trim());
+    if (searchOr) productMatch.$or = searchOr.$or;
     if (cityOidSearch) {
-      sellableSearchList = await marketplaceCity.getSellableProductIdsForCity(cityOidSearch);
-      productMatch._id = { $in: sellableSearchList };
+      const subset = await catalogBrowse.computeCityScopedProductIdSubset(req.query, cityOidSearch);
+      productMatch._id = { $in: subset };
     }
+
+    const regex = { $regex: q.trim(), $options: 'i' };
 
     const [products, categories, brands] = await Promise.all([
       Product.find(productMatch)
         .limit(10)
         .populate('brand', 'name slug logo')
         .populate('category', 'name slug')
-        .select('name slug sku images isAssured isExpress brand category'),
+        .select('name slug sku images isAssured isExpress isStructbayAssured isStructbayDelivery brand category'),
       Category.find({ status: 'ACTIVE', name: regex }).limit(5).select('name slug image'),
       Brand.find({ status: 'ACTIVE', name: regex }).limit(5).select('name slug logo'),
     ]);
+
+    const sellableSearchList = cityOidSearch
+      ? await marketplaceCity.getSellableProductIdsForCity(cityOidSearch)
+      : null;
 
     let categoriesOut = categories;
     let brandsOut = brands;
@@ -481,7 +707,7 @@ router.get(
           const pricing = await CityPricing.findOne({ product: p._id, city: cityId, variation: null, isDeleted: false })
             .select('regularPrice salePrice wholesaleSlabs').lean();
           const variations = await ProductVariation.find({ product: p._id, status: 'ACTIVE' })
-            .select('attributes sku images sortOrder').lean();
+            .select('attributes sku images sortOrder mrp moq leadTimeDays vendorSku weightKg').lean();
           const variationPricing = await CityPricing.find({ product: p._id, city: cityId, variation: { $ne: null }, isDeleted: false })
             .select('variation regularPrice salePrice wholesaleSlabs').lean();
           return { ...p.toJSON(), pricing, variations, variationPricing };

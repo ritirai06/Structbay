@@ -23,6 +23,13 @@ const buildTransporter = () => {
   if (host && authUser && authPass) {
     const port = parseInt(String(trim(process.env.SMTP_PORT) || '587'), 10) || 587;
     const secure = String(trim(process.env.SMTP_SECURE)).toLowerCase() === 'true';
+    // Gmail SMTP only accepts Google-hosted addresses; Zoho/custom domains need their provider's host.
+    if (/gmail\.com/i.test(host) && !/@(gmail\.com|googlemail\.com)$/i.test(authUser)) {
+      logger.warn(
+        `SMTP_HOST looks like Gmail (${host}) but SMTP_USER is ${authUser}. ` +
+          'Use your mail provider SMTP (e.g. smtp.zoho.in for Zoho Mail India), not smtp.gmail.com, or verification emails will never send.'
+      );
+    }
     return nodemailer.createTransport({
       host,
       port,
@@ -45,12 +52,8 @@ const buildTransporter = () => {
   return null;
 };
 
-let transporterCache;
-const getTransporter = () => {
-  if (transporterCache !== undefined) return transporterCache;
-  transporterCache = buildTransporter();
-  return transporterCache;
-};
+/** Fresh transporter each send — avoids stale SMTP after .env changes without server restart. */
+const getTransporter = () => buildTransporter();
 
 const defaultFrom = () => {
   const from = trim(process.env.SMTP_FROM) || trim(process.env.SMTP_USER) || trim(process.env.GMAIL_USER);
@@ -58,7 +61,7 @@ const defaultFrom = () => {
 };
 
 // ─── Base Sender ─────────────────────────────────────────────────────────────
-const sendEmail = async ({ to, subject, html }) => {
+const sendEmail = async ({ to, subject, html, text }) => {
   const transporter = getTransporter();
   if (!transporter) {
     logger.warn(`Email skipped (not configured): would send to ${to} — ${subject}`);
@@ -67,16 +70,19 @@ const sendEmail = async ({ to, subject, html }) => {
 
   try {
     const fromAddr = defaultFrom();
-    const info = await transporter.sendMail({
+    const mail = {
       from: `"StructBay" <${fromAddr}>`,
       to,
       subject,
       html,
-    });
+    };
+    if (text) mail.text = text;
+    const info = await transporter.sendMail(mail);
     logger.info(`Email sent to ${to}: ${info.messageId}`);
     return info;
   } catch (err) {
-    logger.error(`Email send failed to ${to}: ${err.message}`);
+    const extra = err.responseCode ? ` SMTP ${err.responseCode}` : '';
+    logger.error(`Email send failed to ${to}: ${err.message}${extra}`);
     // Do NOT throw — email failure should not crash auth flow
     return null;
   }
@@ -119,9 +125,10 @@ const baseTemplate = (content) => `
 const sendVerificationEmail = async ({ to, name, token }) => {
   const base = trim(process.env.FRONTEND_URL) || 'http://localhost:3000';
   const url = `${base.replace(/\/$/, '')}/verify-email?token=${encodeURIComponent(token)}`;
-  return sendEmail({
+  const info = await sendEmail({
     to,
     subject: 'Verify your StructBay account',
+    text: `Hi ${name},\n\nVerify your StructBay account (link expires in 24 hours):\n${url}\n\nIf you did not register, ignore this email.`,
     html: baseTemplate(`
       <p>Hi <strong>${name}</strong>,</p>
       <p>Welcome to StructBay! Please verify your email address to activate your account.</p>
@@ -130,6 +137,12 @@ const sendVerificationEmail = async ({ to, name, token }) => {
       <p>If you didn't create an account, please ignore this email.</p>
     `),
   });
+  if (!info) {
+    logger.warn(
+      `Verification email was NOT delivered (SMTP misconfigured or provider rejected). Check server logs for "Email send failed". Recipient: ${to}`
+    );
+  }
+  return info;
 };
 
 // ─── Email: Forgot Password ───────────────────────────────────────────────────
@@ -139,6 +152,7 @@ const sendPasswordResetEmail = async ({ to, name, token }) => {
   return sendEmail({
     to,
     subject: 'Reset your StructBay password',
+    text: `Hi ${name},\n\nReset your StructBay password (link expires in 1 hour):\n${url}\n\nIf you did not request this, ignore this email.`,
     html: baseTemplate(`
       <p>Hi <strong>${name}</strong>,</p>
       <p>You requested to reset your password. Click the button below to set a new password.</p>

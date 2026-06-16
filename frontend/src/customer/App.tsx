@@ -65,9 +65,11 @@ function AppRoutes() {
         <Route path="/bulk-enquiry" element={<BulkEnquiry />} />
         <Route path="/tools/cement-estimator" element={<ToolsQuantityEstimator />} />
         <Route path="/finance" element={<Finance />} />
+        {/* Blog: plural routes match links across the site; singular kept for old bookmarks */}
+        <Route path="/blogs" element={<BlogListing />} />
+        <Route path="/blogs/:slug" element={<BlogDetails />} />
         <Route path="/blog" element={<BlogListing />} />
-        <Route path="/blog/:id" element={<BlogDetails />} />
-        <Route path="/blog/article" element={<BlogDetails />} />
+        <Route path="/blog/:slug" element={<BlogDetails />} />
         <Route path="/search" element={<SearchResults />} />
         <Route path="/brand/:brand" element={<BrandLanding />} />
         <Route path="/shop" element={<Shop />} />

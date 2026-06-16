@@ -2,6 +2,7 @@ import { useParams, Link } from 'react-router';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Package, MapPin, Upload, Truck, Download, CheckCircle, Circle, AlertCircle, Phone, User, Clock } from 'lucide-react';
 import { StatusBadge } from '../components/StatusBadge';
+import { VendorWorkflowPanel } from '../components/VendorWorkflowPanel';
 import { api } from '../lib/api';
 import { vendorPath } from '../../lib/portalRoutes';
 
@@ -105,6 +106,15 @@ export function OrderDetails() {
     load();
   }, [orderId]);
 
+  const reload = async () => {
+    const [oRes, dRes] = await Promise.allSettled([
+      api.getOrder(orderId!),
+      api.getDispatchByOrder(orderId!),
+    ]);
+    if (oRes.status === 'fulfilled') setOrder(oRes.value.data);
+    if (dRes.status === 'fulfilled') setDispatch(dRes.value.data);
+  };
+
   if (loading) return (
     <div className="flex items-center justify-center py-20">
       <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--sb-orange)', borderTopColor: 'transparent' }} />
@@ -156,7 +166,8 @@ export function OrderDetails() {
         <StatusBadge status={order.status} />
       </div>
 
-      {/* Status Tracker */}
+      {/* Status Tracker — legacy orders (workflow v1) */}
+      {Number(order.workflowVersion) !== 2 && (
       <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
         <h2 className="text-xs font-bold uppercase tracking-widest mb-5" style={{ color: SB.muted }}>Order Progress</h2>
         {currentIdx < 0 ? (
@@ -185,6 +196,11 @@ export function OrderDetails() {
           </div>
         )}
       </div>
+      )}
+
+      {Number(order.workflowVersion) === 2 && orderId && (
+        <VendorWorkflowPanel order={order} orderId={orderId} onUpdated={reload} />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Order Info — API returns only this vendor&apos;s line items */}
@@ -296,6 +312,8 @@ export function OrderDetails() {
       <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
         <h2 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: SB.muted }}>Actions</h2>
         <div className="flex flex-wrap gap-3">
+          {Number(order.workflowVersion) !== 2 ? (
+          <>
           {inv === 'PENDING' && (
             <Link to={vendorPath('orders', orderId!, 'invoice')}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
@@ -329,6 +347,10 @@ export function OrderDetails() {
             style={{ background: SB.bg, color: SB.color, border: `1px solid ${SB.border}` }}>
             <Truck className="w-4 h-4" /> Update Dispatch
           </Link>
+          </>
+          ) : (
+            <p className="text-sm w-full" style={{ color: SB.muted }}>Use the StructBay workflow card above for accept/reject, ready-for-dispatch, dispatch, and delivery steps.</p>
+          )}
           <Link to={vendorPath('documents')}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
             style={{ background: SB.bg, color: SB.color, border: `1px solid ${SB.border}` }}>

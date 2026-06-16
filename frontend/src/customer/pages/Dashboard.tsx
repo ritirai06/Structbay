@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard, Package, FileText, MapPin, Bell, User as UserIcon,
   ChevronRight, ArrowRight, Download, RefreshCcw, TrendingUp, Clock,
   Truck, LogOut, Menu, X, Plus, Trash2, CheckCheck, Star,
   ShoppingBag, MessageSquare, ClipboardList, Zap, Home, Building2, MessageCircle,
+  CreditCard, PackageCheck, ClipboardPen, Megaphone, Phone,
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { api } from "../lib/api";
@@ -86,8 +88,15 @@ function mapApiNotif(n: any): CustomerUiNotif {
   };
 }
 
-const notifIcon: Record<string, string> = {
-  ORDER: "🛍️", PAYMENT: "💳", DISPATCH: "🚚", DELIVERY: "✅", INVOICE: "🧾", ENQUIRY: "📋", RFQ: "📝", ANNOUNCEMENT: "📢",
+const NOTIFICATION_ICONS: Record<string, LucideIcon> = {
+  ORDER: ShoppingBag,
+  PAYMENT: CreditCard,
+  DISPATCH: Truck,
+  DELIVERY: PackageCheck,
+  INVOICE: FileText,
+  ENQUIRY: ClipboardList,
+  RFQ: ClipboardPen,
+  ANNOUNCEMENT: Megaphone,
 };
 
 /* ─── Sidebar ───────────────────────────────────────────── */
@@ -169,7 +178,7 @@ function DashboardHome({ user, setActive, orders, savedAddrCount }: { user: any;
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-lg font-bold text-sb-ink">Good day, {user?.name?.split(" ")[0]}! 👋</p>
+        <p className="text-lg font-semibold text-sb-ink">Good day, {user?.name?.split(" ")[0]}!</p>
         <p className="text-sb-ink-muted/60 text-sm mt-0.5">Here's your procurement activity at a glance.</p>
       </div>
 
@@ -517,7 +526,10 @@ function AddressesSection({ onCountChange }: { onCountChange?: (n: number) => vo
                 <p className="font-semibold text-sm text-sb-ink">{addr.name}</p>
                 <p className="text-xs text-sb-ink-muted/60">{addr.line1}</p>
                 <p className="text-xs text-sb-ink-muted/60">{addr.city}, {addr.state} – {addr.pincode}</p>
-                <p className="text-xs text-sb-ink-muted/40 mt-1">📞 {addr.phone}</p>
+                <p className="text-xs text-sb-ink-muted/40 mt-1 flex items-center gap-1.5">
+                  <Phone className="w-3 h-3 shrink-0 opacity-70" aria-hidden />
+                  {addr.phone}
+                </p>
               </div>
             </div>
             <button
@@ -632,13 +644,15 @@ function NotificationsSection({ onUnreadChange }: { onUnreadChange?: (n: number)
           <p>No notifications</p>
         </div>
       )}
-      {!loading && notifs.map(n => (
+      {!loading && notifs.map(n => {
+        const NotifIcon = NOTIFICATION_ICONS[n.type] || Bell;
+        return (
         <div
           key={n.id}
           className={`bg-sb-surface-2 rounded-xl border p-4 transition-colors ${n.isRead ? "border-sb-ink/10" : "border-[#FE5E00]/30"}`}
         >
           <div className="flex items-start gap-3">
-            <span className="text-xl shrink-0">{notifIcon[n.type] || "🔔"}</span>
+            <NotifIcon className="w-5 h-5 shrink-0 text-sb-ink-muted/55" aria-hidden />
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
                 <p className={`text-sm font-semibold ${n.isRead ? "text-sb-ink-muted/80" : "text-sb-ink"}`}>{n.title}</p>
@@ -659,7 +673,8 @@ function NotificationsSection({ onUnreadChange }: { onUnreadChange?: (n: number)
             </div>
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

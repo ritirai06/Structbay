@@ -20,6 +20,8 @@ const { generateRefNumber } = require('./refNumber.service');
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
+
 const getClientMeta = (req) => ({
   ipAddress: req.ip || req.connection?.remoteAddress || null,
   userAgent: req.headers['user-agent'] || null,
@@ -62,6 +64,7 @@ const issueTokenPair = async (user, req) => {
 
 // ─── Register Customer ────────────────────────────────────────────────────────
 const registerCustomer = async ({ name, email, phone, password }, req) => {
+  email = normalizeEmail(email);
   const existing = await User.findOne({ email });
   if (existing) throw new AppError('An account with this email already exists.', 409);
 
@@ -100,14 +103,15 @@ const registerVendor = async (
     );
   }
 
-  const existing = await User.findOne({ email });
+  const emailNorm = normalizeEmail(email);
+  const existing = await User.findOne({ email: emailNorm });
   if (existing) throw new AppError('An account with this email already exists.', 409);
 
   const referenceNumber = await generateRefNumber('VENDOR');
 
   const user = await User.create({
     name,
-    email,
+    email: emailNorm,
     phone,
     password,
     role: ROLES.VENDOR,
@@ -137,14 +141,15 @@ const createVendorByAdmin = async (
   { name, email, phone, password, companyName, contactPerson, gstNumber, businessRegNumber },
   adminUser
 ) => {
-  const existing = await User.findOne({ email: String(email).trim().toLowerCase() });
+  const emailNorm = normalizeEmail(email);
+  const existing = await User.findOne({ email: emailNorm });
   if (existing) throw new AppError('An account with this email already exists.', 409);
 
   const referenceNumber = await generateRefNumber('VENDOR');
 
   const doc = {
     name,
-    email,
+    email: emailNorm,
     phone,
     password,
     role: ROLES.VENDOR,
@@ -166,6 +171,7 @@ const createVendorByAdmin = async (
 
 // ─── Login ────────────────────────────────────────────────────────────────────
 const login = async ({ email, password }, req) => {
+  email = normalizeEmail(email);
   // Fetch user with password + security fields
   const user = await User.findOne({ email }).select(
     '+password +failedLoginAttempts +lockUntil +lastLoginIP'
@@ -204,6 +210,16 @@ const login = async ({ email, password }, req) => {
       [VENDOR_STATUS.SUSPENDED]: 'Your vendor account has been suspended.',
     };
     throw new AppError(messages[user.vendorStatus] || 'Vendor access denied.', 403);
+  }
+
+  // Customer storefront: require verified email (registration flow sends the link)
+  const allowUnverifiedCustomerLogin =
+    (process.env.NODE_ENV || 'development') !== 'production' &&
+    String(process.env.ALLOW_UNVERIFIED_CUSTOMER_LOGIN || '')
+      .trim()
+      .toLowerCase() === 'true';
+  if (user.role === ROLES.CUSTOMER && !user.isEmailVerified && !allowUnverifiedCustomerLogin) {
+    throw new AppError('Please verify your email to sign in.', 403);
   }
 
   // Activate account on first successful login if email verified
@@ -303,7 +319,9 @@ const verifyEmail = async (token) => {
 
 // ─── Resend Verification Email ────────────────────────────────────────────────
 const resendVerification = async (email) => {
-  const user = await User.findOne({ email });
+  const e = normalizeEmail(email);
+  if (!e) throw new AppError('Email is required.', 400);
+  const user = await User.findOne({ email: e });
   if (!user) throw new AppError('No account found with that email.', 404);
   if (user.isEmailVerified) throw new AppError('Email is already verified.', 400);
 
@@ -313,7 +331,8 @@ const resendVerification = async (email) => {
 
 // ─── Forgot Password ──────────────────────────────────────────────────────────
 const forgotPassword = async (email) => {
-  const user = await User.findOne({ email });
+  const e = normalizeEmail(email);
+  const user = await User.findOne({ email: e });
   // Always respond success to prevent email enumeration
   if (!user) return;
 

@@ -4,6 +4,8 @@ const cartItemSchema = new mongoose.Schema(
   {
     product:   { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
     variation: { type: mongoose.Schema.Types.ObjectId, ref: 'ProductVariation', default: null },
+    /** Preferred vendor user (role VENDOR) when multi-vendor pricing is used. */
+    vendorUser: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     quantity:  { type: Number, required: true, min: 1, default: 1 },
     savedForLater: { type: Boolean, default: false },
   },

@@ -8,7 +8,9 @@ const adminOnly = [protect, requireRole('ADMIN')];
 // Products
 router.get('/',                          ctrl.getAll);
 router.get('/slug/:slug',                ctrl.getBySlug);
+router.get('/bulk-import-template',      ...adminOnly, ctrl.getBulkImportTemplate);
 router.post('/bulk-import',              ...adminOnly, ctrl.bulkImport);
+router.post('/bulk-import-variants',    ...adminOnly, ctrl.bulkImportVariants);
 router.get('/:id',                       ctrl.getById);
 router.post('/',                         ...adminOnly, ctrl.create);
 router.patch('/:id',                     ...adminOnly, ctrl.update);

@@ -4,11 +4,11 @@ import { Header } from "./Header";
 
 export function DashboardLayout() {
   return (
-    <div className="flex h-screen overflow-hidden bg-[#0D0D0D]">
+    <div className="flex h-screen overflow-hidden bg-sb-cream">
       <Sidebar />
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-hidden bg-sb-cream">
         <Header />
-        <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden bg-[#0D0D0D]">
+        <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden bg-sb-cream text-sb-ink">
           <Outlet />
         </main>
       </div>

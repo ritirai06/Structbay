@@ -9,6 +9,11 @@ const announcementSchema = new mongoose.Schema(
     startDate: { type: Date, default: null },
     endDate: { type: Date, default: null },
     status: { type: String, enum: ['ACTIVE', 'INACTIVE'], default: 'ACTIVE' },
+    /** Optional hero image for the customer homepage announcement popup */
+    image: {
+      url: { type: String, default: null },
+      publicId: { type: String, default: null },
+    },
     // Target audience — if empty, show to all
     audience: [{
       type: String,

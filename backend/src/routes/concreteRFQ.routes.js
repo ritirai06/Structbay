@@ -8,9 +8,11 @@ const customerOnly = [protect, requireRole('CUSTOMER')];
 
 // Register `/stats` before `/:id` so "stats" is never captured as an ObjectId param.
 router.get('/stats',   ...adminOnly, ctrl.getStats);
+router.post('/bulk-delete', ...adminOnly, ctrl.bulkRemove);
 router.get('/',        ...adminOnly, ctrl.getAll);
 router.get('/:id',     ...adminOnly, ctrl.getById);
 router.post('/',       ...customerOnly, ctrl.create);
 router.patch('/:id',   ...adminOnly, ctrl.update);
+router.delete('/:id', ...adminOnly, ctrl.remove);
 
 module.exports = router;

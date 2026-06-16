@@ -6,11 +6,14 @@ const Product      = require('../models/Product');
 const ProductVariation = require('../models/ProductVariation');
 const CityPricing  = require('../models/CityPricing');
 const Inventory    = require('../models/Inventory');
+const User         = require('../models/User');
+const { ROLES, VENDOR_STATUS } = require('../config/constants');
 
 const populateCart = (query) =>
   query
-    .populate({ path: 'items.product', select: 'name sku images isAssured isExpress gstPercentage status' })
-    .populate({ path: 'items.variation', select: 'attributes sku images' })
+    .populate({ path: 'items.product', select: 'name sku images isAssured isExpress isStructbayAssured isStructbayDelivery gstPercentage status' })
+    .populate({ path: 'items.variation', select: 'attributes sku images mrp moq leadTimeDays vendorSku weightKg' })
+    .populate({ path: 'items.vendorUser', select: 'name email companyName' })
     .populate('city', 'name slug');
 
 // Compute line pricing from CityPricing engine
@@ -35,7 +38,11 @@ exports.getCart = asyncHandler(async (req, res) => {
         ? await getPricing(item.product?._id, item.variation?._id, cityId)
         : null;
       const inv = cityId
-        ? await Inventory.findOne({ product: item.product?._id, city: cityId }).lean()
+        ? await Inventory.findOne({
+          product: item.product?._id,
+          city: cityId,
+          variation: item.variation?._id || null,
+        }).lean()
         : null;
       return {
         ...item.toJSON(),
@@ -48,9 +55,9 @@ exports.getCart = asyncHandler(async (req, res) => {
   return ApiResponse.success(res, 200, 'Cart retrieved.', { ...cart.toJSON(), items: enriched });
 });
 
-// POST /customer/cart/items  { productId, variationId?, quantity, cityId? }
+// POST /customer/cart/items  { productId, variationId?, quantity, cityId?, vendorUserId? }
 exports.addItem = asyncHandler(async (req, res) => {
-  const { productId, variationId, quantity = 1, cityId } = req.body;
+  const { productId, variationId, quantity = 1, cityId, vendorUserId } = req.body;
   if (!productId) throw new AppError('productId is required.', 400);
 
   const product = await Product.findById(productId);
@@ -61,22 +68,39 @@ exports.addItem = asyncHandler(async (req, res) => {
     if (!v || v.status !== 'ACTIVE') throw new AppError('Variation not available.', 404);
   }
 
+  let vendorUser = null;
+  if (vendorUserId) {
+    vendorUser = await User.findOne({
+      _id: vendorUserId,
+      role: ROLES.VENDOR,
+      vendorStatus: VENDOR_STATUS.APPROVED,
+    }).select('_id');
+    if (!vendorUser) throw new AppError('Invalid or unapproved vendor user.', 400);
+  }
+
   let cart = await Cart.findOne({ customer: req.user._id });
   if (!cart) cart = new Cart({ customer: req.user._id, items: [] });
 
   if (cityId) cart.city = cityId;
 
+  const vUserId = vendorUser ? String(vendorUser._id) : '';
   const existingIdx = cart.items.findIndex(
     (i) =>
       i.product.toString() === productId &&
       (variationId ? i.variation?.toString() === variationId : !i.variation) &&
+      (vendorUserId ? (i.vendorUser && i.vendorUser.toString() === vUserId) : !i.vendorUser) &&
       !i.savedForLater
   );
 
   if (existingIdx >= 0) {
     cart.items[existingIdx].quantity += Number(quantity);
   } else {
-    cart.items.push({ product: productId, variation: variationId || null, quantity: Number(quantity) });
+    cart.items.push({
+      product: productId,
+      variation: variationId || null,
+      vendorUser: vendorUser ? vendorUser._id : null,
+      quantity: Number(quantity),
+    });
   }
 
   await cart.save();

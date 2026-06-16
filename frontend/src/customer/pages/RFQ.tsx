@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { ChevronRight, FileText, CheckCircle2, AlertCircle, Phone, Building2, MapPin } from "lucide-react";
+import { ChevronRight, FileText, CheckCircle2, AlertCircle, Phone, Building2, MapPin, Check } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { getApiV1Base } from "../../lib/apiBase";
 import { getCustomerAccessToken } from "../lib/authStorage";
@@ -143,10 +143,13 @@ export function RFQ() {
           <h1 className="text-sb-cream">Ready Mix Concrete RFQ</h1>
         </div>
         <p className="text-sb-cream/70">Get instant competitive quotes for Ready Mix Concrete from top suppliers in your city.</p>
-        <div className="flex gap-4 mt-3 text-sm text-sb-cream/70">
-          <span>✓ Multiple Supplier Quotes</span>
-          <span>✓ Best Price Guarantee</span>
-          <span>✓ IS Code Certified</span>
+        <div className="flex flex-wrap gap-x-6 gap-y-2 mt-3 text-sm text-sb-cream/70">
+          {["Multiple supplier quotes", "Best price guarantee", "IS code certified"].map((label) => (
+            <span key={label} className="inline-flex items-center gap-1.5">
+              <Check className="w-3.5 h-3.5 shrink-0 opacity-90" aria-hidden />
+              {label}
+            </span>
+          ))}
         </div>
       </div>
 

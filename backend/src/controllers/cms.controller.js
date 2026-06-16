@@ -33,6 +33,7 @@ const updateHomepage = asyncHandler(async (req, res) => {
     'heroTitle', 'heroSubtitle', 'heroCtaText',
     'brandLogoUrl', 'heroBackgroundImageUrl',
     'contact', 'footer', 'featuredCategories',
+    'announcements', 'storefrontPromo',
   ];
   allowed.forEach(f => { if (req.body[f] !== undefined) cms[f] = req.body[f]; });
   cms.lastUpdatedBy = req.user._id;
@@ -71,6 +72,15 @@ const createBanner = asyncHandler(async (req, res) => {
     delete payload.imageUrl;
     delete payload.imagePublicId;
   }
+  ['titleColor', 'subtitleColor', 'backgroundColor'].forEach((k) => {
+    if (payload[k] !== undefined && payload[k] !== null && String(payload[k]).trim() === '') delete payload[k];
+  });
+  if (payload.overlayOpacity !== undefined && payload.overlayOpacity !== null && payload.overlayOpacity !== '') {
+    const n = parseInt(payload.overlayOpacity, 10);
+    payload.overlayOpacity = Number.isNaN(n) ? undefined : n;
+  } else {
+    delete payload.overlayOpacity;
+  }
   const banner = await Banner.create({ ...payload, createdBy: req.user._id });
   await logAction({
     adminId: req.user._id, action: 'CREATE', module: 'Banner',
@@ -84,8 +94,25 @@ const updateBanner = asyncHandler(async (req, res) => {
   if (!banner) throw new AppError('Banner not found.', 404);
 
   const oldData = { title: banner.title, status: banner.status };
-  const allowed = ['title', 'subtitle', 'description', 'buttonText', 'buttonLink', 'displayOrder', 'status', 'startDate', 'endDate'];
-  allowed.forEach(f => { if (req.body[f] !== undefined) banner[f] = req.body[f]; });
+  const allowed = [
+    'title', 'subtitle', 'description', 'buttonText', 'buttonLink',
+    'displayOrder', 'status', 'startDate', 'endDate',
+    'titleColor', 'subtitleColor', 'backgroundColor', 'overlayOpacity',
+  ];
+  allowed.forEach((f) => {
+    if (req.body[f] === undefined) return;
+    let v = req.body[f];
+    if (['titleColor', 'subtitleColor', 'backgroundColor'].includes(f) && (v === '' || v === null)) {
+      v = null;
+    } else if (f === 'overlayOpacity') {
+      if (v === '' || v === null) v = null;
+      else {
+        const n = parseInt(v, 10);
+        v = Number.isNaN(n) ? null : Math.min(100, Math.max(0, n));
+      }
+    }
+    banner[f] = v;
+  });
 
   // Image update
   if (req.body.imageUrl) {
@@ -345,7 +372,23 @@ const getAnnouncements = asyncHandler(async (req, res) => {
 });
 
 const createAnnouncement = asyncHandler(async (req, res) => {
-  const item = await Announcement.create({ ...req.body, createdBy: req.user._id });
+  const {
+    title, description, priority, isPinned, startDate, endDate, status, audience,
+    imageUrl, imagePublicId,
+  } = req.body;
+  const doc = {
+    title,
+    description,
+    priority,
+    isPinned,
+    startDate: startDate || null,
+    endDate: endDate || null,
+    status: status || 'ACTIVE',
+    audience,
+    createdBy: req.user._id,
+  };
+  if (imageUrl) doc.image = { url: imageUrl, publicId: imagePublicId || null };
+  const item = await Announcement.create(doc);
   await logAction({
     adminId: req.user._id, action: 'CREATE', module: 'Announcement',
     targetId: item._id.toString(), description: `Created announcement: ${item.title}`, ipAddress: req.ip,
@@ -359,6 +402,15 @@ const updateAnnouncement = asyncHandler(async (req, res) => {
 
   const allowed = ['title', 'description', 'priority', 'isPinned', 'startDate', 'endDate', 'status', 'audience'];
   allowed.forEach(f => { if (req.body[f] !== undefined) item[f] = req.body[f]; });
+  if (req.body.imageUrl !== undefined) {
+    if (req.body.imageUrl) {
+      if (item.image?.publicId) await deleteFile(item.image.publicId).catch(() => {});
+      item.image = { url: req.body.imageUrl, publicId: req.body.imagePublicId || null };
+    } else {
+      if (item.image?.publicId) await deleteFile(item.image.publicId).catch(() => {});
+      item.image = { url: null, publicId: null };
+    }
+  }
   await item.save();
   await logAction({
     adminId: req.user._id, action: 'UPDATE', module: 'Announcement',
@@ -368,8 +420,10 @@ const updateAnnouncement = asyncHandler(async (req, res) => {
 });
 
 const deleteAnnouncement = asyncHandler(async (req, res) => {
-  const item = await Announcement.findByIdAndDelete(req.params.id);
+  const item = await Announcement.findById(req.params.id);
   if (!item) throw new AppError('Announcement not found.', 404);
+  if (item.image?.publicId) await deleteFile(item.image.publicId).catch(() => {});
+  await item.deleteOne();
   await logAction({
     adminId: req.user._id, action: 'DELETE', module: 'Announcement',
     targetId: req.params.id, description: `Deleted announcement: ${item.title}`, ipAddress: req.ip,
@@ -399,7 +453,12 @@ const getAds = asyncHandler(async (req, res) => {
 const createAd = asyncHandler(async (req, res) => {
   if (!req.body.imageUrl) throw new AppError('imageUrl is required for an advertisement.', 400);
   const ad = await Advertisement.create({
-    ...req.body,
+    title: req.body.title,
+    link: req.body.link,
+    placement: req.body.placement,
+    status: req.body.status || 'ACTIVE',
+    startDate: req.body.startDate || null,
+    endDate: req.body.endDate || null,
     image: { url: req.body.imageUrl, publicId: req.body.imagePublicId || null },
     createdBy: req.user._id,
   });

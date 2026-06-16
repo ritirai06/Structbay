@@ -69,7 +69,7 @@ export function DispatchManagement() {
     setLoading(true);
     try {
       const [oRes, dRes] = await Promise.all([
-        api.getOrders({ status: 'vendor_invoice_sent,ready_for_dispatch,dispatched,in_transit', limit: '50' }),
+        api.getOrders({ status: 'INVOICE_UPLOADED,READY_FOR_DISPATCH,DISPATCH_CONFIRMED,IN_TRANSIT,OUT_FOR_DELIVERY,DELIVERED', limit: '50' }),
         api.getDispatches({ limit: '50' }),
       ]);
       setOrders(oRes.data ?? []);

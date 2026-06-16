@@ -6,7 +6,7 @@ export const CATEGORIES = [
     name: "Cement & Aggregates",
     slug: "cement",
     lucideIcon: Layers,
-    accentBg: "bg-blue-500",
+    accentBg: "bg-sb-orange",
     accentColor: "text-white"
   }
 ];

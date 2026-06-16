@@ -32,6 +32,7 @@ Admin, customer, and vendor UIs live under `frontend/src/`, not as separate top-
 
 - **`Project requirement Document .pdf`** — client PRD (repo root).
 - **`docs/MVP_SCOPE.md`** — Phase 2 vs MVP, and PRD-alignment implementation notes.
+- **`docs/ADMIN_CRUD_STANDARD.md`** — admin tables: View / Edit / Delete, bulk actions, confirm modals, and module checklist (apply incrementally).
 
 ---
 

@@ -2,10 +2,24 @@ const router = require('express').Router();
 const { protect } = require('../middleware/auth.middleware');
 const { requireRole } = require('../middleware/role.middleware');
 const { validate } = require('../middleware/validate.middleware');
+const { uploadDocumentFields, handleUploadError } = require('../middleware/upload.middleware');
+const { UPLOAD_FOLDERS } = require('../config/constants');
 const { updateUserStatusValidator, adminCreateVendorValidator } = require('../validators/auth.validator');
 const { rejectVendorValidator } = require('../validators/user.validator');
 const adminUserController = require('../controllers/adminUser.controller');
 const adminSessionController = require('../controllers/adminSession.controller');
+const catalogExportController = require('../controllers/catalogExport.controller');
+const catalogJobController = require('../controllers/catalogJob.controller');
+const {
+  catalogExportValidator,
+  catalogHistoryQueryValidator,
+} = require('../validators/catalogExport.validator');
+const {
+  catalogCreateJobValidator,
+  catalogJobIdValidator,
+  catalogJobsListValidator,
+  catalogArchiveValidator,
+} = require('../validators/catalogJob.validator');
 const { getDashboard } = require('../controllers/dashboard.controller');
 const { getLogs } = require('../services/auditLog.service');
 const ApiResponse = require('../utils/apiResponse');
@@ -18,6 +32,73 @@ router.get('/reference-search', ...adminOnly, asyncHandler(referenceSearchCtrl.s
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 router.get('/dashboard', ...adminOnly, getDashboard);
+
+// ─── Catalog export (CSV / printable HTML) ────────────────────────────────────
+router.post(
+  '/catalog/export',
+  ...adminOnly,
+  catalogExportValidator,
+  validate,
+  asyncHandler(catalogExportController.exportCatalog)
+);
+router.get(
+  '/catalog/history',
+  ...adminOnly,
+  catalogHistoryQueryValidator,
+  validate,
+  asyncHandler(catalogExportController.listCatalogHistory)
+);
+
+// ─── Catalog jobs (PDF / Excel / CSV, async + stored files) ───────────────────
+router.post(
+  '/catalog/jobs',
+  ...adminOnly,
+  catalogCreateJobValidator,
+  validate,
+  asyncHandler(catalogJobController.createJob)
+);
+router.get(
+  '/catalog/jobs',
+  ...adminOnly,
+  catalogJobsListValidator,
+  validate,
+  asyncHandler(catalogJobController.listJobs)
+);
+router.get(
+  '/catalog/jobs/:id/download',
+  ...adminOnly,
+  catalogJobIdValidator,
+  validate,
+  asyncHandler(catalogJobController.downloadJob)
+);
+router.get(
+  '/catalog/jobs/:id',
+  ...adminOnly,
+  catalogJobIdValidator,
+  validate,
+  asyncHandler(catalogJobController.getJob)
+);
+router.delete(
+  '/catalog/jobs/:id',
+  ...adminOnly,
+  catalogJobIdValidator,
+  validate,
+  asyncHandler(catalogJobController.deleteJob)
+);
+router.patch(
+  '/catalog/jobs/:id/archive',
+  ...adminOnly,
+  catalogArchiveValidator,
+  validate,
+  asyncHandler(catalogJobController.setArchived)
+);
+router.post(
+  '/catalog/jobs/:id/regenerate',
+  ...adminOnly,
+  catalogJobIdValidator,
+  validate,
+  asyncHandler(catalogJobController.regenerateJob)
+);
 
 // ─── Audit Logs ───────────────────────────────────────────────────────────────
 router.get('/audit-logs', ...adminOnly, asyncHandler(async (req, res) => {
@@ -52,6 +133,13 @@ router.get('/order-activity/:orderId', ...adminOnly, asyncHandler(async (req, re
 
 // ─── Vendor Order Assignment (legacy) ────────────────────────────────────────
 const adminVendorOrderCtrl = require('../controllers/adminVendorOrderController');
+const adminVendorWorkflowCtrl = require('../controllers/adminVendorWorkflow.controller');
+const staffNotificationCtrl = require('../controllers/staffNotification.controller');
+
+const sbDocsUpload = uploadDocumentFields(UPLOAD_FOLDERS.INVOICE, [
+  { name: 'sbInvoice', maxCount: 1 },
+  { name: 'ewayBill', maxCount: 1 },
+]);
 router.get ('/vendor-orders/analytics',          ...adminOnly, asyncHandler(adminVendorOrderCtrl.getVendorOrderAnalytics));
 router.get ('/vendor-orders',                    ...adminOnly, asyncHandler(adminVendorOrderCtrl.getAllVendorOrders));
 router.post('/vendor-orders',                    ...adminOnly, asyncHandler(adminVendorOrderCtrl.assignOrderToVendor));
@@ -60,6 +148,21 @@ router.put ('/vendor-orders/:id',                ...adminOnly, asyncHandler(admi
 router.delete('/vendor-orders/:id',              ...adminOnly, asyncHandler(adminVendorOrderCtrl.cancelVendorOrder));
 router.post('/vendor-orders/:id/request-invoice',...adminOnly, asyncHandler(adminVendorOrderCtrl.requestInvoice));
 router.post('/vendor-orders/:id/request-dispatch',...adminOnly, asyncHandler(adminVendorOrderCtrl.requestDispatch));
+
+router.post('/vendor-orders/:id/workflow/approve-dispatch', ...adminOnly, asyncHandler(adminVendorWorkflowCtrl.approveDispatch));
+router.post('/vendor-orders/:id/workflow/request-changes', ...adminOnly, asyncHandler(adminVendorWorkflowCtrl.requestDispatchChanges));
+router.post(
+  '/vendor-orders/:id/workflow/sb-docs',
+  ...adminOnly,
+  ...sbDocsUpload,
+  handleUploadError,
+  asyncHandler(adminVendorWorkflowCtrl.sendStructbayDocs)
+);
+router.post('/vendor-orders/:id/workflow/confirm-delivery', ...adminOnly, asyncHandler(adminVendorWorkflowCtrl.confirmDelivery));
+
+router.get('/inbox/notifications', ...adminOnly, asyncHandler(staffNotificationCtrl.listMine));
+router.put('/inbox/notifications/read-all', ...adminOnly, asyncHandler(staffNotificationCtrl.markAllRead));
+router.put('/inbox/notifications/:id/read', ...adminOnly, asyncHandler(staffNotificationCtrl.markRead));
 
 // ─── Session Management ───────────────────────────────────────────────────────
 router.get('/sessions',          ...adminOnly, adminSessionController.getAllSessions);

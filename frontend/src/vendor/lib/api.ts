@@ -45,6 +45,15 @@ export const api = {
   getOrder: (id: string) => req<any>('GET', `/orders/${id}`),
   updateOrderStatus: (id: string, status: string, remarks?: string) =>
     req<any>('PUT', `/orders/${id}/status`, { status, remarks }),
+  workflowAccept: (id: string) => req<any>('POST', `/orders/${id}/workflow/accept`),
+  workflowReject: (id: string, reason?: string) =>
+    req<any>('POST', `/orders/${id}/workflow/reject`, { reason }),
+  workflowReadyDispatch: (id: string, form: FormData) =>
+    req<any>('POST', `/orders/${id}/workflow/ready-dispatch`, form, true),
+  workflowMarkDispatched: (id: string, form: FormData) =>
+    req<any>('POST', `/orders/${id}/workflow/mark-dispatched`, form, true),
+  workflowMarkDelivered: (id: string, form: FormData) =>
+    req<any>('POST', `/orders/${id}/workflow/mark-delivered`, form, true),
   searchOrders: (body: Record<string, unknown>) => req<any>('POST', '/orders/search', body),
   getOrderHistory: (page = 1) =>
     req<any>('GET', `/orders/history?page=${page}&limit=20`),

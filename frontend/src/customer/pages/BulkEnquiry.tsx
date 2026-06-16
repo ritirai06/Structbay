@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import {
   ChevronRight, Upload, CheckCircle2, X, FileSpreadsheet,
   Image as ImageIcon, FileText, AlertCircle, Phone, Mail,
-  Building2, MapPin, MessageSquare,
+  Building2, MapPin, MessageSquare, User, Check,
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { getApiV1Base } from "../../lib/apiBase";
@@ -155,10 +155,13 @@ export function BulkEnquiry() {
       <div style={{ background: "linear-gradient(135deg, var(--sb-orange) 0%, #f97316 100%)" }} className="rounded-2xl p-6 text-sb-cream mb-6">
         <h1 className="text-sb-cream mb-2">Bulk Order Enquiry</h1>
         <p className="text-sb-cream/80">For orders above 100 MT or ₹5 Lakh. Get dedicated account management and exclusive B2B pricing.</p>
-        <div className="flex gap-4 mt-4 text-sm text-sb-cream/80">
-          <span>✓ Dedicated Account Manager</span>
-          <span>✓ Best Bulk Pricing</span>
-          <span>✓ Credit Terms Available</span>
+        <div className="flex flex-wrap gap-x-6 gap-y-2 mt-4 text-sm text-sb-cream/80">
+          {["Dedicated account manager", "Best bulk pricing", "Credit terms available"].map((label) => (
+            <span key={label} className="inline-flex items-center gap-1.5">
+              <Check className="w-3.5 h-3.5 shrink-0 opacity-90" aria-hidden />
+              {label}
+            </span>
+          ))}
         </div>
       </div>
 
@@ -174,7 +177,7 @@ export function BulkEnquiry() {
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                <span className="flex items-center gap-1.5"><span>👤</span> Full Name *</span>
+                <span className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" aria-hidden /> Full Name *</span>
               </label>
               <input value={form.name} onChange={e => update("name", e.target.value)} placeholder="Your full name" required className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-input-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
             </div>

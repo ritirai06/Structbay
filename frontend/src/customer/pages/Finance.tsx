@@ -1,21 +1,111 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { ChevronRight, TrendingUp, CheckCircle2, Shield, Clock, Percent } from "lucide-react";
+import { ChevronRight, TrendingUp, CheckCircle2, Shield, Clock, Percent, AlertCircle } from "lucide-react";
+import { getApiV1Base } from "../../lib/apiBase";
+import { getCustomerAccessToken } from "../lib/authStorage";
 
 export function Finance() {
   const [submitted, setSubmitted] = useState(false);
-  const [form, setForm] = useState({ company: "", projectValue: "", loanAmount: "", location: "", name: "", phone: "", email: "" });
-  const update = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
+  const [ref, setRef] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [form, setForm] = useState({
+    company: "",
+    projectValue: "",
+    loanAmount: "",
+    location: "",
+    name: "",
+    phone: "",
+    email: "",
+  });
+  const update = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  const parseAmount = (raw: string) => {
+    const n = parseFloat(String(raw).replace(/,/g, ""));
+    return Number.isFinite(n) ? n : undefined;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      const loanAmountRequired = parseAmount(form.loanAmount);
+      if (loanAmountRequired == null) {
+        setError("Enter a valid loan amount (numbers only, commas allowed).");
+        setLoading(false);
+        return;
+      }
+
+      const base = getApiV1Base().replace(/\/$/, "");
+      const token = getCustomerAccessToken();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers.Authorization = `Bearer ${token}`;
+
+      const res = await fetch(`${base}/finance/applications`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          name: form.name.trim(),
+          companyName: form.company.trim(),
+          mobile: form.phone.trim(),
+          email: form.email.trim(),
+          projectLocation: form.location.trim(),
+          loanAmountRequired,
+          projectValue: form.projectValue.trim() || undefined,
+          remarks: "Builder finance — submitted via storefront",
+        }),
+      });
+      const text = await res.text();
+      let json: { success?: boolean; message?: string; data?: { financeNumber?: string } } = {};
+      if (text) {
+        try {
+          json = JSON.parse(text) as typeof json;
+        } catch {
+          setError("Unexpected response from server.");
+          setLoading(false);
+          return;
+        }
+      }
+      if (!res.ok || json.success === false) {
+        setError(json.message || `Request failed (${res.status})`);
+        setLoading(false);
+        return;
+      }
+      setRef(json.data?.financeNumber || "");
+      setSubmitted(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Network error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (submitted) {
     return (
       <div className="max-w-xl mx-auto px-4 py-20 text-center">
-        <div style={{ backgroundColor: "var(--sb-green, #16a34a)" }} className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+        <div
+          style={{ backgroundColor: "var(--sb-green, #16a34a)" }}
+          className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"
+        >
           <CheckCircle2 className="w-12 h-12 text-sb-cream" />
         </div>
         <h2 className="text-foreground mb-2">Application Submitted!</h2>
-        <p className="text-muted-foreground mb-6">Our finance team will review your application and contact you within 24 business hours.</p>
-        <Link to="/" style={{ backgroundColor: "var(--sb-blue)" }} className="inline-flex items-center gap-2 text-sb-cream px-6 py-3 rounded-2xl font-semibold">Back to Home</Link>
+        <p className="text-muted-foreground mb-4">
+          Our finance team will review your application and contact you within 24 business hours.
+        </p>
+        {ref && (
+          <p className="text-sm text-muted-foreground mb-6">
+            Your reference: <strong className="text-foreground font-mono">{ref}</strong>
+          </p>
+        )}
+        <Link
+          to="/"
+          style={{ backgroundColor: "var(--sb-blue)" }}
+          className="inline-flex items-center gap-2 text-sb-cream px-6 py-3 rounded-2xl font-semibold"
+        >
+          Back to Home
+        </Link>
       </div>
     );
   }
@@ -23,24 +113,43 @@ export function Finance() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
       <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-        <Link to="/" className="hover:text-foreground">Home</Link>
+        <Link to="/" className="hover:text-foreground">
+          Home
+        </Link>
         <ChevronRight className="w-3 h-3" />
         <span className="text-foreground font-medium">Builder Finance</span>
       </nav>
 
       {/* Hero */}
-      <div style={{ background: "linear-gradient(135deg, var(--sb-blue-dark, #0f2850) 0%, var(--sb-blue) 100%)" }} className="rounded-3xl p-8 text-sb-cream mb-8">
+      <div
+        style={{
+          background: "linear-gradient(135deg, var(--sb-blue-dark, #0f2850) 0%, var(--sb-blue) 100%)",
+        }}
+        className="rounded-3xl p-8 text-sb-cream mb-8"
+      >
         <div className="flex items-center gap-3 mb-4">
-          <div style={{ backgroundColor: "var(--sb-yellow)" }} className="w-12 h-12 rounded-2xl flex items-center justify-center">
+          <div
+            style={{ backgroundColor: "var(--sb-yellow)" }}
+            className="w-12 h-12 rounded-2xl flex items-center justify-center"
+          >
             <TrendingUp className="w-7 h-7 text-black" />
           </div>
           <h1 className="text-sb-cream">Builder Finance</h1>
         </div>
-        <p className="text-sb-cream/80 mb-6">Get construction finance up to ₹5 Crore. Fast approval, competitive rates, and flexible repayment for builders and developers across South India.</p>
+        <p className="text-sb-cream/80 mb-6">
+          Get construction finance up to ₹5 Crore. Fast approval, competitive rates, and flexible repayment for
+          builders and developers across South India.
+        </p>
         <div className="grid grid-cols-3 gap-4">
-          {[["Up to ₹5 Cr", "Loan Amount"], ["From 10.5%", "Interest Rate"], ["48 Hours", "Approval Time"]].map(([val, label]) => (
+          {[
+            ["Up to ₹5 Cr", "Loan Amount"],
+            ["From 10.5%", "Interest Rate"],
+            ["48 Hours", "Approval Time"],
+          ].map(([val, label]) => (
             <div key={label} className="bg-white/10 rounded-2xl p-4 text-center">
-              <p style={{ color: "var(--sb-yellow)" }} className="font-bold text-xl">{val}</p>
+              <p style={{ color: "var(--sb-yellow)" }} className="font-bold text-xl">
+                {val}
+              </p>
               <p className="text-sb-cream/60 text-xs mt-1">{label}</p>
             </div>
           ))}
@@ -55,7 +164,10 @@ export function Finance() {
           { icon: Percent, label: "Best Rates", desc: "Competitive rates from 10.5% p.a." },
         ].map(({ icon: Icon, label, desc }) => (
           <div key={label} className="bg-white rounded-2xl border border-border p-4 text-center">
-            <div style={{ backgroundColor: "var(--sb-blue)" }} className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-3">
+            <div
+              style={{ backgroundColor: "var(--sb-blue)" }}
+              className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-3"
+            >
               <Icon className="w-5 h-5 text-sb-cream" />
             </div>
             <p className="font-semibold text-sm text-foreground">{label}</p>
@@ -67,7 +179,13 @@ export function Finance() {
       {/* Form */}
       <div className="bg-white rounded-2xl border border-border p-6">
         <h3 className="font-semibold text-foreground mb-5">Apply for Builder Finance</h3>
-        <form onSubmit={e => { e.preventDefault(); setSubmitted(true); }} className="space-y-4">
+        {error && (
+          <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 mb-4">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            {error}
+          </div>
+        )}
+        <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
           <div className="grid sm:grid-cols-2 gap-4">
             {[
               ["Company Name *", "company", "text", "Construction company name"],
@@ -79,16 +197,35 @@ export function Finance() {
             ].map(([label, key, type, ph]) => (
               <div key={key as string}>
                 <label className="block text-sm font-medium text-foreground mb-1.5">{label}</label>
-                <input type={type as string} value={form[key as keyof typeof form]} onChange={e => update(key as string, e.target.value)} placeholder={ph as string} required className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-input-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                <input
+                  type={type as string}
+                  value={form[key as keyof typeof form]}
+                  onChange={(e) => update(key as string, e.target.value)}
+                  placeholder={ph as string}
+                  required
+                  className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-input-background focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
               </div>
             ))}
           </div>
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">Email Address *</label>
-            <input type="email" value={form.email} onChange={e => update("email", e.target.value)} placeholder="email@company.com" required className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-input-background focus:outline-none" />
+            <input
+              type="email"
+              value={form.email}
+              onChange={(e) => update("email", e.target.value)}
+              placeholder="email@company.com"
+              required
+              className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-input-background focus:outline-none"
+            />
           </div>
-          <button type="submit" style={{ backgroundColor: "var(--sb-orange)" }} className="w-full py-3.5 rounded-2xl text-sb-cream font-semibold hover:opacity-90 transition-opacity">
-            Submit Finance Application
+          <button
+            type="submit"
+            disabled={loading}
+            style={{ backgroundColor: "var(--sb-orange)" }}
+            className="w-full py-3.5 rounded-2xl text-sb-cream font-semibold hover:opacity-90 transition-opacity disabled:opacity-60"
+          >
+            {loading ? "Submitting…" : "Submit Finance Application"}
           </button>
         </form>
       </div>

@@ -4,20 +4,12 @@ const AppError = require('../utils/AppError');
 const VendorOrder = require('../models/VendorOrder');
 const Order = require('../models/Order');
 const User = require('../models/User');
+const VendorOrderStatusAudit = require('../models/VendorOrderStatusAudit');
+const VendorInvoice = require('../models/VendorInvoice');
+const VendorDispatch = require('../models/VendorDispatch');
 const { notifyVendor } = require('../services/vendorNotification.service');
 const { PAGINATION } = require('../config/constants');
-const { generateSubOrderNumber } = require('../services/refNumber.service');
-
-// ─── Generate vendor sub-order number from master ORD number ─────────────────
-async function genVendorOrderNumber(masterOrderId) {
-  const master = await Order.findById(masterOrderId).select('orderNumber');
-  if (!master?.orderNumber) {
-    const { generatePrdMasterOrderNumber } = require('../services/refNumber.service');
-    return generatePrdMasterOrderNumber();
-  }
-  const nextIdx = (await VendorOrder.countDocuments({ masterOrder: masterOrderId })) + 1;
-  return generateSubOrderNumber(master.orderNumber, nextIdx);
-}
+const { generateSubOrderNumber, getNextSubOrderIndex } = require('../services/refNumber.service');
 
 // ─── POST /api/v1/admin/vendor-orders  ────────────────────────────────────────
 // Assign master order products to a vendor
@@ -30,7 +22,7 @@ const assignOrderToVendor = asyncHandler(async (req, res) => {
   } = req.body;
 
   const [masterOrder, vendor] = await Promise.all([
-    Order.findById(masterOrderId),
+    Order.findById(masterOrderId).populate('customer', 'name phone email').lean(),
     User.findOne({ _id: vendorId, role: 'VENDOR', vendorStatus: 'APPROVED' }),
   ]);
 
@@ -38,32 +30,76 @@ const assignOrderToVendor = asyncHandler(async (req, res) => {
   if (!vendor) throw new AppError('Vendor not found or not approved.', 404);
   if (!assignedProducts?.length) throw new AppError('assignedProducts is required.', 400);
 
-  const orderNumber = await genVendorOrderNumber(masterOrderId);
+  const subOrderIndex = await getNextSubOrderIndex(masterOrderId);
+  const orderNumber = generateSubOrderNumber(masterOrder.orderNumber, subOrderIndex);
+
+  const items = assignedProducts.map((ap) => {
+    const qty = Number(ap.quantity) || 0;
+    const unit = Number(ap.unitPrice) || 0;
+    const lineTotal = Number(ap.lineTotal) > 0 ? Number(ap.lineTotal) : qty * unit;
+    return {
+      product: ap.product,
+      variation: ap.variation || null,
+      masterItemId: ap.masterItemId || undefined,
+      productName: ap.productName || 'Product',
+      sku: ap.sku || undefined,
+      quantity: qty,
+      unitPrice: unit,
+      gstPercentage: ap.gstPercentage != null ? Number(ap.gstPercentage) : 18,
+      lineTotal,
+    };
+  });
+
+  const ship = deliveryAddress || masterOrder.shippingAddress || {};
+  const custInfo = customer || {};
+  const moCust = masterOrder.customer || {};
+
+  const customerInfo = {
+    name: custInfo.name || ship.name || moCust.name || 'Customer',
+    phone: custInfo.phone || ship.phone || moCust.phone || '',
+  };
+
+  const resolvedDelivery = {
+    line1: ship.line1 || '',
+    line2: ship.line2 || '',
+    city: ship.city || '',
+    state: ship.state || '',
+    pincode: ship.pincode || '',
+    contactPerson: ship.contactPerson || ship.name || customerInfo.name,
+    contactPhone: ship.contactPhone || ship.phone || customerInfo.phone,
+  };
+
+  const lineSum = items.reduce((s, i) => s + (Number(i.lineTotal) || 0), 0);
+  const resolvedTotal = Number(totalAmount) > 0 ? Number(totalAmount) : lineSum;
 
   const vendorOrder = await VendorOrder.create({
     masterOrder: masterOrderId,
     orderNumber,
+    subOrderIndex,
     vendor: vendorId,
     assignedBy: req.user._id,
-    assignedProducts,
-    customer,
-    deliveryAddress,
+    items,
+    customerInfo,
+    deliveryAddress: resolvedDelivery,
     deliveryType: deliveryType || 'vendor_delivery',
-    totalAmount,
+    totalAmount: resolvedTotal,
+    workflowVersion: 2,
     adminNotes,
     dispatchInstructions,
     expectedDispatchDate,
     expectedDeliveryDate,
     priority: priority || 'normal',
-    status: 'new_order_alert',
+    status: 'NEW_ASSIGNED',
     statusHistory: [{
-      status: 'new_order_alert',
+      status: 'NEW_ASSIGNED',
       updatedBy: req.user._id,
-      updatedByModel: 'User',
-      remarks: 'Order assigned by admin',
+      model: 'User',
+      note: 'Order assigned by admin',
       timestamp: new Date(),
     }],
   });
+
+  await Order.findByIdAndUpdate(masterOrderId, { $addToSet: { vendorOrders: vendorOrder._id } });
 
   // Fire notification — non-blocking
   notifyVendor({
@@ -109,7 +145,7 @@ const getAllVendorOrders = asyncHandler(async (req, res) => {
   const [orders, total] = await Promise.all([
     VendorOrder.find(filter)
       .populate('vendor', 'name email companyName')
-      .populate('assignedProducts.product', 'name')
+      .populate('items.product', 'name')
       .sort({ createdAt: -1 })
       .skip(skip).limit(limitNum),
     VendorOrder.countDocuments(filter),
@@ -126,11 +162,25 @@ const getVendorOrderById = asyncHandler(async (req, res) => {
   const order = await VendorOrder.findById(req.params.id)
     .populate('vendor', 'name email companyName phone')
     .populate('masterOrder')
-    .populate('assignedProducts.product', 'name brand images sku')
+    .populate('items.product', 'name brand images sku')
+    .populate('items.variation', 'attributes sku')
     .populate('assignedBy', 'name email');
 
   if (!order) throw new AppError('Vendor order not found.', 404);
-  return ApiResponse.success(res, 200, 'Vendor order retrieved.', order);
+
+  const [statusAudits, vendorInvoices, dispatches] = await Promise.all([
+    VendorOrderStatusAudit.find({ vendorOrder: order._id }).sort({ changedAt: -1 }).limit(200).lean(),
+    VendorInvoice.find({ vendorOrder: order._id }).sort({ createdAt: -1 }).lean(),
+    VendorDispatch.find({ vendorOrder: order._id }).sort({ createdAt: -1 }).lean(),
+  ]);
+
+  const plain = order.toObject({ virtuals: true });
+  return ApiResponse.success(res, 200, 'Vendor order retrieved.', {
+    ...plain,
+    statusAudits,
+    vendorInvoices,
+    dispatches,
+  });
 });
 
 // ─── PUT /api/v1/admin/vendor-orders/:id  ─────────────────────────────────────
@@ -141,6 +191,10 @@ const updateVendorOrder = asyncHandler(async (req, res) => {
 
   const order = await VendorOrder.findById(req.params.id);
   if (!order) throw new AppError('Vendor order not found.', 404);
+
+  if (Number(order.workflowVersion) === 2 && req.body.status !== undefined) {
+    throw new AppError('Cannot set status directly on workflow v2 orders. Use workflow endpoints.', 400);
+  }
 
   allowed.forEach((f) => {
     if (req.body[f] !== undefined) order[f] = req.body[f];
@@ -223,13 +277,13 @@ const cancelVendorOrder = asyncHandler(async (req, res) => {
   const order = await VendorOrder.findById(req.params.id).populate('vendor', '_id');
   if (!order) throw new AppError('Vendor order not found.', 404);
 
-  order.status = 'cancelled';
+  order.status = 'CANCELLED';
   order.adminNotes = reason ? `Cancelled: ${reason}` : order.adminNotes;
   order.statusHistory.push({
-    status: 'cancelled',
+    status: 'CANCELLED',
     updatedBy: req.user._id,
-    updatedByModel: 'User',
-    remarks: reason || 'Cancelled by admin',
+    model: 'User',
+    note: reason || 'Cancelled by admin',
     timestamp: new Date(),
   });
   await order.save();

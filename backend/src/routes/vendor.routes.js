@@ -3,7 +3,7 @@ const { protect } = require('../middleware/auth.middleware');
 const { requireApprovedVendor } = require('../middleware/role.middleware');
 const asyncHandler = require('../utils/asyncHandler');
 const ApiResponse = require('../utils/apiResponse');
-const { uploadDocument, uploadImage, handleUploadError } = require('../middleware/upload.middleware');
+const { uploadDocument, uploadImage, handleUploadError, uploadDocumentFields } = require('../middleware/upload.middleware');
 const { UPLOAD_FOLDERS } = require('../config/constants');
 
 const vendorAuthCtrl      = require('../controllers/vendorAuthController');
@@ -14,6 +14,7 @@ const vendorDispatchCtrl  = require('../controllers/vendorDispatchController');
 const vendorProfileCtrl   = require('../controllers/vendorProfileController');
 const vendorDocCtrl       = require('../controllers/vendorDocumentController');
 const vendorNotifCtrl     = require('../controllers/vendorNotificationController');
+const vendorOrderWfCtrl   = require('../controllers/vendorOrderWorkflow.controller');
 
 // ─── Vendor Auth Middleware ─────────────────────────────────────────────────
 // Bridges User-based JWT (protect) with vendor-specific guard
@@ -38,12 +39,43 @@ router.post('/profile/image', ...vendorGuard,
   asyncHandler(vendorProfileCtrl.uploadProfileImage)
 );
 
+const wfReadyFields = uploadDocumentFields(UPLOAD_FOLDERS.VENDOR_DOCS, [
+  { name: 'packing', maxCount: 5 },
+  { name: 'invoice', maxCount: 1 },
+]);
+const dispatchProofUpload = uploadDocument(UPLOAD_FOLDERS.VENDOR_DOCS).single('proof');
+const podUpload = uploadDocument(UPLOAD_FOLDERS.VENDOR_DOCS).single('pod');
+
 // ─── ORDERS ─────────────────────────────────────────────────────────────────
 router.get ('/orders/history',  ...vendorGuard, asyncHandler(vendorOrderCtrl.getOrderHistory));
 router.post('/orders/search',   ...vendorGuard, asyncHandler(vendorOrderCtrl.searchOrders));
 router.get ('/orders',          ...vendorGuard, asyncHandler(vendorOrderCtrl.getAssignedOrders));
 router.get ('/orders/:id',      ...vendorGuard, asyncHandler(vendorOrderCtrl.getOrderDetails));
 router.put ('/orders/:id/status',...vendorGuard,asyncHandler(vendorOrderCtrl.updateOrderStatus));
+
+router.post('/orders/:id/workflow/accept', ...vendorGuard, asyncHandler(vendorOrderWfCtrl.acceptOrder));
+router.post('/orders/:id/workflow/reject', ...vendorGuard, asyncHandler(vendorOrderWfCtrl.rejectOrder));
+router.post(
+  '/orders/:id/workflow/ready-dispatch',
+  ...vendorGuard,
+  ...wfReadyFields,
+  handleUploadError,
+  asyncHandler(vendorOrderWfCtrl.readyForDispatch)
+);
+router.post(
+  '/orders/:id/workflow/mark-dispatched',
+  ...vendorGuard,
+  ...dispatchProofUpload,
+  handleUploadError,
+  asyncHandler(vendorOrderWfCtrl.markDispatched)
+);
+router.post(
+  '/orders/:id/workflow/mark-delivered',
+  ...vendorGuard,
+  ...podUpload,
+  handleUploadError,
+  asyncHandler(vendorOrderWfCtrl.markDelivered)
+);
 
 // ─── INVOICES ───────────────────────────────────────────────────────────────
 const invoiceUploader = uploadDocument(UPLOAD_FOLDERS.INVOICE).single('invoice');

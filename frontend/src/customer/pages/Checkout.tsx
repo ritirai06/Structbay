@@ -1,13 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router";
-import { ChevronRight, MapPin, Building2, CreditCard, Shield, AlertCircle, CheckCircle2 } from "lucide-react";
+import { ChevronRight, MapPin, Building2, CreditCard, Shield, AlertCircle, CheckCircle2, Plus, Minus } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { api } from "../lib/api";
+import { loadStorefrontCities } from "../lib/storefrontCities";
+import { pushClientCartToServer } from "../lib/pushClientCartToServer";
 import { DeliveryChargesNotice } from "@shared/components/DeliveryChargesNotice";
-import { deliveryCityMatchesSelected } from "../../lib/cityNameMatch";
+import { deliveryCityMatchesSelected, normalizeCityName } from "../../lib/cityNameMatch";
 
 export function Checkout() {
-  const { cart, cartTotal, city, isLoggedIn } = useApp();
+  const { cart, cartTotal, city, cityId, isLoggedIn, clearClientCart, updateQty } = useApp();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -74,22 +76,44 @@ export function Checkout() {
   });
   const [cityError, setCityError] = useState(false);
   const [deliveryCityNames, setDeliveryCityNames] = useState<string[]>([]);
+  const [serviceCities, setServiceCities] = useState<{ id: string; name: string }[]>([]);
   const [pincodeCheck, setPincodeCheck] = useState<{ ok: boolean; message: string } | null>(null);
   const [pincodeChecking, setPincodeChecking] = useState(false);
+  const [placingOrder, setPlacingOrder] = useState(false);
+  const [orderError, setOrderError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/v1/customer/cities")
-      .then((r) => r.json())
-      .then((res) => {
-        const names = (res.data || []).map((c: { name: string }) => c.name).filter(Boolean);
-        setDeliveryCityNames(names);
-      })
-      .catch(() => setDeliveryCityNames([]));
+    let cancelled = false;
+    void (async () => {
+      try {
+        const list = await loadStorefrontCities();
+        if (cancelled) return;
+        setServiceCities(list.filter((c) => c.id && c.name).map((c) => ({ id: c.id, name: c.name })));
+        setDeliveryCityNames(list.map((c) => c.name).filter(Boolean));
+      } catch {
+        if (!cancelled) {
+          setDeliveryCityNames([]);
+          setServiceCities([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const gst = Math.round(cartTotal * 0.18);
   const delivery = cartTotal >= 10000 ? 0 : 350;
   const total = cartTotal + gst + delivery;
+
+  /** Mongo city id: header selection, else match delivery dropdown to `/cities` list (PIN + checkout APIs need this). */
+  const resolvedWarehouseCityId = useMemo(() => {
+    if (cityId) return cityId;
+    const key = normalizeCityName(form.deliveryCity);
+    if (!key || serviceCities.length === 0) return null;
+    const hit = serviceCities.find((c) => normalizeCityName(c.name) === key);
+    return hit?.id ?? null;
+  }, [cityId, form.deliveryCity, serviceCities]);
 
   const update = (k: string, v: string) => {
     if (k === "pincode") setPincodeCheck(null);
@@ -104,7 +128,7 @@ export function Checkout() {
     }
     setPincodeChecking(true);
     try {
-      const d = await api.validatePincode(digits);
+      const d = await api.validatePincode(digits, resolvedWarehouseCityId);
       if (d.serviceable && d.city) {
         setPincodeCheck({
           ok: true,
@@ -127,6 +151,7 @@ export function Checkout() {
   };
 
   const handlePlaceOrder = async () => {
+    setOrderError(null);
     if (form.deliveryCity && city && !deliveryCityMatchesSelected(city, form.deliveryCity)) {
       setCityError(true);
       return;
@@ -134,7 +159,7 @@ export function Checkout() {
     const digits = form.pincode.replace(/\D/g, "");
     if (digits.length === 6) {
       try {
-        const d = await api.validatePincode(digits);
+        const d = await api.validatePincode(digits, resolvedWarehouseCityId);
         if (!d.serviceable) {
           setPincodeCheck({
             ok: false,
@@ -154,7 +179,65 @@ export function Checkout() {
         return;
       }
     }
-    navigate("/order-success");
+
+    if (!form.contactName.trim() || !form.phone.trim() || !form.address.trim() || !form.deliveryCity.trim()) {
+      setOrderError("Please complete contact name, phone, full delivery address, and delivery city.");
+      return;
+    }
+    if (digits.length !== 6) {
+      setOrderError("Enter a valid 6-digit delivery PIN code.");
+      return;
+    }
+    if (!resolvedWarehouseCityId) {
+      setOrderError(
+        "Choose a delivery city from the list (or set your warehouse city in the header). Pricing and checkout need a serviceable city."
+      );
+      return;
+    }
+
+    setPlacingOrder(true);
+    try {
+      await api.clearCart();
+      await api.setCartCity({ cityId: resolvedWarehouseCityId });
+      await pushClientCartToServer(cart, resolvedWarehouseCityId);
+      await api.validateCheckout({ cityId: resolvedWarehouseCityId, addressCity: form.deliveryCity });
+      const line2 = [form.companyName.trim(), form.gstNumber.trim() ? `GSTIN: ${form.gstNumber.trim()}` : ""]
+        .filter(Boolean)
+        .join(" · ");
+      const res = await api.placeOrder({
+        cityId: resolvedWarehouseCityId,
+        shippingAddress: {
+          name: form.contactName.trim(),
+          phone: form.phone.trim(),
+          line1: form.address.trim(),
+          line2: line2 || undefined,
+          city: form.deliveryCity.trim(),
+          state: "",
+          pincode: digits,
+        },
+        paymentMethod: form.paymentMethod,
+      });
+      const order = res?.data as { _id?: string; id?: string; orderNumber?: string } | undefined;
+      const placedId = order?._id ?? order?.id;
+      if (!placedId) {
+        throw new Error("Order response was incomplete. Check My Orders or try again.");
+      }
+      clearClientCart();
+      navigate(
+        { pathname: "/order-success", search: `?orderId=${encodeURIComponent(String(placedId))}` },
+        { state: { order: { ...order, _id: String(placedId) } } }
+      );
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Could not place order.";
+      setOrderError(msg);
+      try {
+        await api.clearCart();
+      } catch {
+        /* ignore */
+      }
+    } finally {
+      setPlacingOrder(false);
+    }
   };
 
   if (!isLoggedIn) {
@@ -354,8 +437,31 @@ export function Checkout() {
                   <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded-xl bg-muted shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium line-clamp-2 text-foreground">{item.name}</p>
-                    <p className="text-xs text-muted-foreground">×{item.qty} {item.unit}</p>
-                    <p className="text-xs font-bold" style={{ color: "var(--sb-blue)" }}>₹{(item.price * item.qty).toLocaleString()}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{item.unit}</p>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <div className="inline-flex items-stretch rounded-lg border border-border overflow-hidden bg-muted/40">
+                        <button
+                          type="button"
+                          aria-label="Decrease quantity"
+                          onClick={() => updateQty(item.id, item.qty - 1)}
+                          className="w-7 flex items-center justify-center text-foreground hover:bg-muted transition-colors"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="min-w-[1.5rem] px-1 flex items-center justify-center text-xs font-bold tabular-nums border-x border-border">
+                          {item.qty}
+                        </span>
+                        <button
+                          type="button"
+                          aria-label="Increase quantity"
+                          onClick={() => updateQty(item.id, item.qty + 1)}
+                          className="w-7 flex items-center justify-center text-foreground hover:bg-muted transition-colors"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-xs font-bold mt-1" style={{ color: "var(--sb-blue)" }}>₹{(item.price * item.qty).toLocaleString()}</p>
                   </div>
                 </div>
               ))}
@@ -371,15 +477,23 @@ export function Checkout() {
                 <span style={{ color: "var(--sb-blue)" }}>₹{total.toLocaleString()}</span>
               </div>
             </div>
+            {orderError && (
+              <div className="mt-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden />
+                <span>{orderError}</span>
+              </div>
+            )}
             <button
-              onClick={handlePlaceOrder}
+              type="button"
+              disabled={placingOrder}
+              onClick={() => void handlePlaceOrder()}
               style={{ backgroundColor: "var(--sb-orange)" }}
-              className="w-full mt-5 py-3.5 rounded-2xl text-sb-cream font-semibold hover:opacity-90 transition-opacity"
+              className="w-full mt-5 py-3.5 rounded-2xl text-sb-cream font-semibold hover:opacity-90 transition-opacity disabled:opacity-60 disabled:pointer-events-none"
             >
-              Place Order ₹{total.toLocaleString()}
+              {placingOrder ? "Placing order…" : `Place Order ₹${total.toLocaleString()}`}
             </button>
-            <div className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-              ⚠️ Additional Delivery Charges Applicable. Charges To Be Paid At Site.
+            <div className="mt-3">
+              <DeliveryChargesNotice />
             </div>
             <p className="text-center text-xs text-muted-foreground mt-3">
               By placing the order, you agree to our Terms of Service

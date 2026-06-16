@@ -3,8 +3,17 @@ const mongoose = require('mongoose');
 const bannerSchema = new mongoose.Schema(
   {
     title: { type: String, trim: true, required: true },
+    /** Shown below the title on the storefront hero (sub-heading). */
     subtitle: { type: String, trim: true },
     description: { type: String, trim: true },
+    /** Optional hex (e.g. #F5F0E6) or CSS color for hero title. */
+    titleColor: { type: String, trim: true, default: null },
+    /** Optional color for sub-heading / body line under title. */
+    subtitleColor: { type: String, trim: true, default: null },
+    /** Solid section background when no image; subtle tint when used with image. */
+    backgroundColor: { type: String, trim: true, default: null },
+    /** 0–100: darkness of left overlay on top of hero image (higher = more contrast for text). */
+    overlayOpacity: { type: Number, min: 0, max: 100, default: null },
     image: {
       url: { type: String, default: null },
       publicId: { type: String, default: null },

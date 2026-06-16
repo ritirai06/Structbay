@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams, Link } from "react-router";
-import { ArrowLeft, Plus, Trash2, Loader2, Save, Shield, Zap, TrendingUp, Star, MapPin } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Loader2, Save, Shield, Zap, TrendingUp, Star, MapPin, Info } from "lucide-react";
 import { adminPath } from "../../lib/portalRoutes";
 import { adminFetch as apiFetch } from "../../lib/adminApi";
 
@@ -23,22 +23,22 @@ const emptyVariation = { weight: "", grade: "", size: "", color: "", finish: "",
 function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
   return (
     <div>
-      <label className="text-xs text-[#D4C4A8]/60 mb-1.5 block font-medium">
-        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+      <label className="text-xs text-sb-ink/55 mb-1.5 block font-medium">
+        {label}{required && <span className="text-sb-ink/55 ml-0.5">*</span>}
       </label>
       {children}
     </div>
   );
 }
 
-const inp = "w-full bg-[#171717] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#F4E9D8] placeholder:text-[#D4C4A8]/30 focus:outline-none focus:border-[#FE5E00] focus:ring-1 focus:ring-[#FE5E00]/20 transition-colors";
+const inp = "w-full bg-sb-cream-secondary border border-sb-ink/10 rounded-lg px-3 py-2 text-sm text-sb-ink placeholder:text-sb-ink/40 focus:outline-none focus:border-sb-orange focus:ring-1 focus:ring-sb-orange/20 transition-colors";
 const sel = `${inp} cursor-pointer`;
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-[#1A1A1A] border border-white/10 rounded-xl overflow-hidden">
-      <div className="px-5 py-3.5 border-b border-white/8">
-        <h3 className="font-semibold text-[#F4E9D8] text-sm">{title}</h3>
+    <div className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl overflow-hidden">
+      <div className="px-5 py-3.5 border-b border-sb-ink/10">
+        <h3 className="font-semibold text-sb-ink text-sm">{title}</h3>
       </div>
       <div className="p-5 space-y-4">{children}</div>
     </div>
@@ -49,14 +49,14 @@ function Toggle({ checked, onChange, label, icon: Icon, accent = "#FE5E00" }: {
   checked: boolean; onChange: (v: boolean) => void; label: string; icon: any; accent?: string;
 }) {
   return (
-    <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${checked ? "border-[#FE5E00]/30 bg-[#FE5E00]/5" : "border-white/8 bg-[#111] hover:border-white/15"}`}>
-      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${checked ? "bg-[#FE5E00]/20" : "bg-white/5"}`}>
-        <Icon className={`w-4 h-4 ${checked ? "text-[#FE5E00]" : "text-[#D4C4A8]/40"}`} />
+    <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${checked ? "border-sb-orange/30 bg-sb-orange/5" : "border-sb-ink/10 bg-[#111] hover:border-sb-ink/15"}`}>
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${checked ? "bg-sb-orange/20" : "bg-white/5"}`}>
+        <Icon className={`w-4 h-4 ${checked ? "text-sb-orange" : "text-sb-ink/45"}`} />
       </div>
       <div className="flex-1">
-        <p className={`text-sm font-medium ${checked ? "text-[#F4E9D8]" : "text-[#D4C4A8]/60"}`}>{label}</p>
+        <p className={`text-sm font-medium ${checked ? "text-sb-ink" : "text-sb-ink/55"}`}>{label}</p>
       </div>
-      <div className={`w-9 h-5 rounded-full transition-colors flex items-center px-0.5 ${checked ? "bg-[#FE5E00]" : "bg-white/15"}`}
+      <div className={`w-9 h-5 rounded-full transition-colors flex items-center px-0.5 ${checked ? "bg-sb-orange" : "bg-white/15"}`}
         onClick={() => onChange(!checked)}>
         <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-4" : ""}`} />
       </div>
@@ -190,28 +190,28 @@ export function AddProduct() {
     { key: "faqs", label: "FAQs" },
   ] as const;
 
-  if (loading) return <div className="flex justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-[#FE5E00]" /></div>;
+  if (loading) return <div className="flex justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-sb-orange" /></div>;
 
   return (
-    <div className="p-6 bg-[#0D0D0D] min-h-full">
+    <div className="p-6 bg-sb-cream min-h-full">
       {/* Header */}
       <div className="mb-6">
         <button onClick={() => navigate(adminPath("products"))}
-          className="flex items-center gap-2 text-sm text-[#D4C4A8]/60 hover:text-[#F4E9D8] mb-4 transition-colors">
+          className="flex items-center gap-2 text-sm text-sb-ink/55 hover:text-sb-ink mb-4 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to Products
         </button>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-black text-[#F4E9D8]">{isEdit ? "Edit Product" : "Add Product"}</h1>
-            <p className="text-[#D4C4A8]/60 text-sm mt-1">Admin-only product management</p>
+            <h1 className="text-2xl font-black text-sb-ink">{isEdit ? "Edit Product" : "Add Product"}</h1>
+            <p className="text-sb-ink/55 text-sm mt-1">Admin-only product management</p>
           </div>
           <div className="flex gap-3">
             <button onClick={() => { set("status", "DRAFT"); save(); }}
-              className="px-4 py-2.5 border border-white/15 rounded-lg text-sm text-[#D4C4A8] hover:border-white/30 transition-colors">
+              className="px-4 py-2.5 border border-sb-ink/15 rounded-lg text-sm text-sb-ink/60 hover:border-sb-ink/25 transition-colors">
               Save Draft
             </button>
             <button onClick={save} disabled={saving}
-              className="flex items-center gap-2 bg-[#FE5E00] hover:bg-[#E05200] text-[#0D0D0D] font-bold px-5 py-2.5 rounded-lg text-sm transition-colors disabled:opacity-60">
+              className="flex items-center gap-2 bg-sb-orange hover:bg-sb-orange-hover text-white font-bold px-5 py-2.5 rounded-lg text-sm transition-colors disabled:opacity-60">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               {isEdit ? "Update Product" : "Publish Product"}
             </button>
@@ -220,10 +220,10 @@ export function AddProduct() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 bg-[#1A1A1A] border border-white/10 rounded-lg p-1 w-fit">
+      <div className="flex gap-1 mb-6 bg-sb-cream-secondary border border-sb-ink/10 rounded-lg p-1 w-fit">
         {TABS.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${tab === t.key ? "bg-[#FE5E00] text-[#0D0D0D]" : "text-[#D4C4A8]/60 hover:text-[#F4E9D8]"}`}>
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${tab === t.key ? "bg-sb-orange text-white" : "text-sb-ink/55 hover:text-sb-ink"}`}>
             {t.label}
           </button>
         ))}
@@ -248,7 +248,7 @@ export function AddProduct() {
                   </select>
                 </Field>
               </div>
-              <p className="text-xs text-[#D4C4A8]/50 -mt-2">List and storefront prices are excluding GST; GST is applied at checkout using this rate.</p>
+              <p className="text-xs text-sb-ink/50 -mt-2">List and storefront prices are excluding GST; GST is applied at checkout using this rate.</p>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Category" required>
                   <select className={sel} value={form.category} onChange={e => set("category", e.target.value)}>
@@ -263,23 +263,23 @@ export function AddProduct() {
                   </select>
                 </Field>
               </div>
-              <p className="text-xs text-[#D4C4A8]/50 -mt-2">
-                Brands are filtered by the <strong className="text-[#D4C4A8]/70">parent category</strong> set under{" "}
-                <Link to={adminPath("brands")} className="text-[#FE5E00] hover:underline">Brands</Link>
+              <p className="text-xs text-sb-ink/50 -mt-2">
+                Brands are filtered by the <strong className="text-sb-ink/65">parent category</strong> set under{" "}
+                <Link to={adminPath("brands")} className="text-sb-orange hover:underline">Brands</Link>
                 {" "}(legacy brands with no category stay available for every category).
               </p>
-              <div className="rounded-lg border border-[#FE5E00]/25 bg-[#FE5E00]/5 px-4 py-3 flex gap-3 items-start">
-                <MapPin className="w-4 h-4 text-[#FE5E00] shrink-0 mt-0.5" />
-                <div className="text-xs text-[#D4C4A8]/80 leading-relaxed">
-                  <span className="font-semibold text-[#F4E9D8]">City-wise listing on the storefront</span> is not set on this screen.
+              <div className="rounded-lg border border-sb-orange/25 bg-sb-orange/5 px-4 py-3 flex gap-3 items-start">
+                <MapPin className="w-4 h-4 text-sb-orange shrink-0 mt-0.5" />
+                <div className="text-xs text-sb-ink/70 leading-relaxed">
+                  <span className="font-semibold text-sb-ink">City-wise listing on the storefront</span> is not set on this screen.
                   A product appears for customers in a city only when that city has both{" "}
-                  <strong className="text-[#F4E9D8]/90">visible pricing</strong> and{" "}
-                  <strong className="text-[#F4E9D8]/90">available stock</strong>.
+                  <strong className="text-sb-ink/90">visible pricing</strong> and{" "}
+                  <strong className="text-sb-ink/90">available stock</strong>.
                   Use{" "}
-                  <Link to={adminPath("pricing")} className="text-[#FE5E00] hover:underline">Pricing</Link>
+                  <Link to={adminPath("pricing")} className="text-sb-orange hover:underline">Pricing</Link>
                   {" "}and{" "}
-                  <Link to={adminPath("inventory")} className="text-[#FE5E00] hover:underline">Inventory</Link>
-                  {" "}per city (and <Link to={adminPath("cities")} className="text-[#FE5E00] hover:underline">Cities</Link> for serviceable locations).
+                  <Link to={adminPath("inventory")} className="text-sb-orange hover:underline">Inventory</Link>
+                  {" "}per city (and <Link to={adminPath("cities")} className="text-sb-orange hover:underline">Cities</Link> for serviceable locations).
                 </div>
               </div>
               <Field label="Short Description">
@@ -307,9 +307,9 @@ export function AddProduct() {
           {tab === "media" && (
             <Section title="Product Media">
               <Field label="Product Images">
-                <div className="border-2 border-dashed border-white/15 rounded-lg p-8 text-center hover:border-[#FE5E00]/40 transition-colors">
-                  <p className="text-sm text-[#D4C4A8]/60 mb-3">Use the Upload endpoint to get Cloudinary URLs, then attach them to the product</p>
-                  <Link to={adminPath("cms")} className="text-[#FE5E00] text-sm hover:underline">Open CMS / media →</Link>
+                <div className="border-2 border-dashed border-sb-ink/15 rounded-lg p-8 text-center hover:border-sb-orange/40 transition-colors">
+                  <p className="text-sm text-sb-ink/55 mb-3">Use the Upload endpoint to get Cloudinary URLs, then attach them to the product</p>
+                  <Link to={adminPath("cms")} className="text-sb-orange text-sm hover:underline">Open CMS / media →</Link>
                 </div>
               </Field>
               <Field label="Product Videos">
@@ -322,18 +322,18 @@ export function AddProduct() {
                       const vids = [...form.videos]; vids[i].url = e.target.value; set("videos", vids);
                     }} />
                     <button onClick={() => set("videos", form.videos.filter((_, j) => j !== i))}
-                      className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors">
+                      className="p-2 text-sb-ink/55 hover:bg-sb-cream-secondary rounded-lg transition-colors">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 ))}
                 <button onClick={() => set("videos", [...form.videos, { title: "", url: "" }])}
-                  className="flex items-center gap-2 text-sm text-[#FE5E00] hover:text-[#E05200] transition-colors">
+                  className="flex items-center gap-2 text-sm text-sb-orange hover:text-sb-orange-hover transition-colors">
                   <Plus className="w-4 h-4" /> Add Video
                 </button>
               </Field>
               <Field label="Product documents (PDF / spec sheets)">
-                <p className="text-xs text-[#D4C4A8]/50 mb-2">Add display name and URL (e.g. from CMS upload or Cloudinary).</p>
+                <p className="text-xs text-sb-ink/50 mb-2">Add display name and URL (e.g. from CMS upload or Cloudinary).</p>
                 {form.documents.map((doc, i) => (
                   <div key={i} className="flex gap-2 mb-2">
                     <input className={`${inp} flex-1`} placeholder="Document name" value={doc.name} onChange={e => {
@@ -343,13 +343,13 @@ export function AddProduct() {
                       const next = [...form.documents]; next[i] = { ...next[i], url: e.target.value }; set("documents", next);
                     }} />
                     <button type="button" onClick={() => set("documents", form.documents.filter((_, j) => j !== i))}
-                      className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors">
+                      className="p-2 text-sb-ink/55 hover:bg-sb-cream-secondary rounded-lg transition-colors">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 ))}
                 <button type="button" onClick={() => set("documents", [...form.documents, { name: "", url: "" }])}
-                  className="flex items-center gap-2 text-sm text-[#FE5E00] hover:text-[#E05200] transition-colors">
+                  className="flex items-center gap-2 text-sm text-sb-orange hover:text-sb-orange-hover transition-colors">
                   <Plus className="w-4 h-4" /> Add document
                 </button>
               </Field>
@@ -360,24 +360,25 @@ export function AddProduct() {
           {tab === "variations" && (
             <Section title="Product Variations">
               {!isEdit && (
-                <p className="text-xs text-[#D4C4A8]/50 bg-[#111] border border-white/8 rounded-lg p-3">
-                  💡 Save the product first to add variations.
+                <p className="text-xs text-sb-ink/50 bg-sb-cream-secondary border border-sb-ink/10 rounded-lg p-3 flex items-start gap-2">
+                  <Info className="w-4 h-4 shrink-0 text-sb-orange mt-0.5" aria-hidden />
+                  <span>Save the product first to add variations.</span>
                 </p>
               )}
               {variations.length > 0 && (
                 <div className="space-y-2">
                   {variations.map(v => (
-                    <div key={v._id} className="flex items-center gap-3 p-3 bg-[#111] border border-white/8 rounded-lg">
+                    <div key={v._id} className="flex items-center gap-3 p-3 bg-[#111] border border-sb-ink/10 rounded-lg">
                       <div className="flex-1 flex flex-wrap gap-2">
                         {Object.entries(v.attributes || {}).filter(([k, val]) => k !== 'custom' && val).map(([k, val]) => (
-                          <span key={k} className="text-xs bg-[#2A2A2A] border border-white/10 text-[#D4C4A8] px-2 py-0.5 rounded-full capitalize">
+                          <span key={k} className="text-xs bg-sb-cream-secondary border border-sb-ink/10 text-sb-ink/60 px-2 py-0.5 rounded-full capitalize">
                             {k}: {val as string}
                           </span>
                         ))}
-                        {v.sku && <span className="text-xs font-mono text-[#D4C4A8]/50">{v.sku}</span>}
+                        {v.sku && <span className="text-xs font-mono text-sb-ink/50">{v.sku}</span>}
                       </div>
-                      <span className={`text-xs px-2 py-0.5 rounded-full border ${v.status === "ACTIVE" ? "bg-green-500/15 text-green-400 border-green-500/20" : "bg-white/8 text-[#D4C4A8]/60 border-white/12"}`}>{v.status}</span>
-                      <button onClick={() => deleteVariation(v._id)} className="p-1.5 text-red-400 hover:bg-red-400/10 rounded-lg">
+                      <span className={`text-xs px-2 py-0.5 rounded-full border ${v.status === "ACTIVE" ? "bg-sb-orange/12 text-sb-orange border-sb-orange/22" : "bg-sb-cream-secondary text-sb-ink/55 border-sb-ink/12"}`}>{v.status}</span>
+                      <button onClick={() => deleteVariation(v._id)} className="p-1.5 text-sb-ink/55 hover:bg-sb-cream-secondary rounded-lg">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -385,22 +386,22 @@ export function AddProduct() {
                 </div>
               )}
               {isEdit && (
-                <div className="border border-white/10 rounded-lg p-4 space-y-3 bg-[#0D0D0D]">
-                  <p className="text-xs font-semibold text-[#D4C4A8]/60 uppercase tracking-wider">Add New Variation</p>
+                <div className="border border-sb-ink/10 rounded-lg p-4 space-y-3 bg-sb-cream">
+                  <p className="text-xs font-semibold text-sb-ink/55 uppercase tracking-wider">Add New Variation</p>
                   <div className="grid grid-cols-3 gap-2">
                     {VARIATION_ATTRS.map(attr => (
                       <div key={attr}>
-                        <label className="text-xs text-[#D4C4A8]/50 mb-1 block capitalize">{attr}</label>
+                        <label className="text-xs text-sb-ink/50 mb-1 block capitalize">{attr}</label>
                         <input className={inp} placeholder={`e.g. ${attr === "weight" ? "50kg" : attr === "grade" ? "M30" : attr}`}
                           value={(newVar as any)[attr]} onChange={e => setNewVar(v => ({ ...v, [attr]: e.target.value }))} />
                       </div>
                     ))}
                     <div>
-                      <label className="text-xs text-[#D4C4A8]/50 mb-1 block">SKU (optional)</label>
+                      <label className="text-xs text-sb-ink/50 mb-1 block">SKU (optional)</label>
                       <input className={inp} placeholder="Variant SKU" value={newVar.sku} onChange={e => setNewVar(v => ({ ...v, sku: e.target.value }))} />
                     </div>
                   </div>
-                  <button onClick={addVariation} className="flex items-center gap-2 bg-[#FE5E00]/15 hover:bg-[#FE5E00]/25 text-[#FE5E00] font-medium px-4 py-2 rounded-lg text-sm transition-colors">
+                  <button onClick={addVariation} className="flex items-center gap-2 bg-sb-orange/15 hover:bg-sb-orange/25 text-sb-orange font-medium px-4 py-2 rounded-lg text-sm transition-colors">
                     <Plus className="w-4 h-4" /> Add Variation
                   </button>
                 </div>
@@ -431,25 +432,25 @@ export function AddProduct() {
           {tab === "faqs" && (
             <Section title="Product FAQs">
               {form.faqs.map((faq, i) => (
-                <div key={i} className="p-3 bg-[#111] border border-white/8 rounded-lg space-y-2">
+                <div key={i} className="p-3 bg-[#111] border border-sb-ink/10 rounded-lg space-y-2">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm font-medium text-[#F4E9D8]">Q: {faq.question}</p>
+                    <p className="text-sm font-medium text-sb-ink">Q: {faq.question}</p>
                     <button onClick={() => set("faqs", form.faqs.filter((_, j) => j !== i))}
-                      className="p-1 text-red-400 hover:bg-red-400/10 rounded shrink-0">
+                      className="p-1 text-sb-ink/55 hover:bg-sb-cream-secondary rounded shrink-0">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  <p className="text-xs text-[#D4C4A8]/60">A: {faq.answer}</p>
+                  <p className="text-xs text-sb-ink/55">A: {faq.answer}</p>
                 </div>
               ))}
-              <div className="border border-white/10 rounded-lg p-4 space-y-3 bg-[#0D0D0D]">
+              <div className="border border-sb-ink/10 rounded-lg p-4 space-y-3 bg-sb-cream">
                 <Field label="Question">
                   <input className={inp} value={newFaq.question} onChange={e => setNewFaq(f => ({ ...f, question: e.target.value }))} />
                 </Field>
                 <Field label="Answer">
                   <textarea className={`${inp} resize-none`} rows={2} value={newFaq.answer} onChange={e => setNewFaq(f => ({ ...f, answer: e.target.value }))} />
                 </Field>
-                <button onClick={addFaq} className="flex items-center gap-2 bg-[#FE5E00]/15 hover:bg-[#FE5E00]/25 text-[#FE5E00] font-medium px-4 py-2 rounded-lg text-sm transition-colors">
+                <button onClick={addFaq} className="flex items-center gap-2 bg-sb-orange/15 hover:bg-sb-orange/25 text-sb-orange font-medium px-4 py-2 rounded-lg text-sm transition-colors">
                   <Plus className="w-4 h-4" /> Add FAQ
                 </button>
               </div>
@@ -468,29 +469,29 @@ export function AddProduct() {
             </div>
           </Section>
 
-          <div className="bg-[#1A1A1A] border border-white/10 rounded-xl p-4 space-y-3">
-            <h3 className="font-semibold text-[#F4E9D8] text-sm">Quick Save</h3>
+          <div className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl p-4 space-y-3">
+            <h3 className="font-semibold text-sb-ink text-sm">Quick Save</h3>
             <button onClick={save} disabled={saving}
-              className="w-full flex items-center justify-center gap-2 bg-[#FE5E00] hover:bg-[#E05200] text-[#0D0D0D] font-bold py-2.5 rounded-lg text-sm transition-colors disabled:opacity-60">
+              className="w-full flex items-center justify-center gap-2 bg-sb-orange hover:bg-sb-orange-hover text-white font-bold py-2.5 rounded-lg text-sm transition-colors disabled:opacity-60">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               {isEdit ? "Update Product" : "Publish Product"}
             </button>
             <button onClick={() => navigate(adminPath("products"))}
-              className="w-full py-2.5 border border-white/15 rounded-lg text-sm text-[#D4C4A8] hover:border-white/30 transition-colors">
+              className="w-full py-2.5 border border-sb-ink/15 rounded-lg text-sm text-sb-ink/60 hover:border-sb-ink/25 transition-colors">
               Cancel
             </button>
           </div>
 
-          <div className="bg-[#1A1A1A] border border-white/10 rounded-xl p-4">
-            <h3 className="font-semibold text-[#F4E9D8] text-sm mb-3">Quick Links</h3>
+          <div className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl p-4">
+            <h3 className="font-semibold text-sb-ink text-sm mb-3">Quick Links</h3>
             <div className="space-y-2">
               {isEdit && [
                 { label: "→ Manage Pricing", to: `${adminPath("pricing")}?product=${id}` },
                 { label: "→ Manage Inventory", to: `${adminPath("inventory")}?product=${id}` },
               ].map(l => (
-                <Link key={l.label} to={l.to} className="block text-sm text-[#FE5E00] hover:underline">{l.label}</Link>
+                <Link key={l.label} to={l.to} className="block text-sm text-sb-orange hover:underline">{l.label}</Link>
               ))}
-              {!isEdit && <p className="text-xs text-[#D4C4A8]/40">Save product first to manage pricing & inventory</p>}
+              {!isEdit && <p className="text-xs text-sb-ink/45">Save product first to manage pricing & inventory</p>}
             </div>
           </div>
         </div>

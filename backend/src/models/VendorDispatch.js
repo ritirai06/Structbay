@@ -33,6 +33,8 @@ const vendorDispatchSchema = new mongoose.Schema({
   // Tracking
   trackingNumber: String,
   courierPartner: String,
+  transporterName: String,
+  lrNumber: String,
   
   // Documents
   documents: [{

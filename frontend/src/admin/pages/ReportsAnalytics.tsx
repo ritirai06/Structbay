@@ -102,11 +102,11 @@ export function ReportsAnalytics() {
   }));
 
   return (
-    <div className="p-6 bg-[#0D0D0D] min-h-full">
+    <div className="p-6 bg-sb-cream min-h-full">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-[#F4E9D8]">Reports</h1>
-          <p className="text-[#D4C4A8]/60 text-sm mt-1">
+          <h1 className="text-3xl font-black text-sb-ink">Reports</h1>
+          <p className="text-sb-ink/55 text-sm mt-1">
             Live data from analytics APIs: sales, GST, payments, invoices, delivery, vendors, brands, categories, and cities.
           </p>
         </div>
@@ -124,14 +124,14 @@ export function ReportsAnalytics() {
       </div>
 
       {err && (
-        <div className="mb-4 text-sm text-red-400 border border-red-500/30 rounded-xl px-4 py-3 bg-red-500/10">{err}</div>
+        <div className="mb-4 text-sm text-sb-ink/55 border border-sb-ink/18 rounded-xl px-4 py-3 bg-sb-cream-secondary">{err}</div>
       )}
 
       {loading && !kpi ? (
-        <div className="flex justify-center py-24"><Loader2 className="h-8 w-8 animate-spin text-[#FE5E00]" /></div>
+        <div className="flex justify-center py-24"><Loader2 className="h-8 w-8 animate-spin text-sb-orange" /></div>
       ) : (
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="flex flex-wrap h-auto gap-1 bg-[#1A1A1A] p-1 rounded-xl border border-white/10">
+          <TabsList className="flex flex-wrap h-auto gap-1 bg-sb-cream-secondary p-1 rounded-xl border border-sb-ink/10">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="sales">Sales & products</TabsTrigger>
             <TabsTrigger value="dimensions">Brand / category / city</TabsTrigger>
@@ -142,34 +142,34 @@ export function ReportsAnalytics() {
 
           <TabsContent value="overview" className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <Card className="border-white/10 bg-[#1A1A1A]">
-                <CardHeader className="pb-2"><CardTitle className="text-sm text-[#D4C4A8]/60">Total sales revenue (paid orders, all time)</CardTitle></CardHeader>
-                <CardContent><div className="text-2xl font-bold text-[#F4E9D8]">{money(kpi?.totalRevenue)}</div></CardContent>
+              <Card className="border-sb-ink/10 bg-sb-cream-secondary">
+                <CardHeader className="pb-2"><CardTitle className="text-sm text-sb-ink/55">Total sales revenue (paid orders, all time)</CardTitle></CardHeader>
+                <CardContent><div className="text-2xl font-bold text-sb-ink">{money(kpi?.totalRevenue)}</div></CardContent>
               </Card>
-              <Card className="border-white/10 bg-[#1A1A1A]">
-                <CardHeader className="pb-2"><CardTitle className="text-sm text-[#D4C4A8]/60">Pending master orders</CardTitle></CardHeader>
-                <CardContent><div className="text-2xl font-bold text-[#FE5E00]">{kpi?.pendingOrders ?? "—"}</div></CardContent>
+              <Card className="border-sb-ink/10 bg-sb-cream-secondary">
+                <CardHeader className="pb-2"><CardTitle className="text-sm text-sb-ink/55">Pending master orders</CardTitle></CardHeader>
+                <CardContent><div className="text-2xl font-bold text-sb-orange">{kpi?.pendingOrders ?? "—"}</div></CardContent>
               </Card>
-              <Card className="border-white/10 bg-[#1A1A1A]">
-                <CardHeader className="pb-2"><CardTitle className="text-sm text-[#D4C4A8]/60">Vendor sub-orders assigned</CardTitle></CardHeader>
-                <CardContent><div className="text-2xl font-bold text-[#F4E9D8]">{kpi?.vendorOrdersAssigned ?? "—"}</div></CardContent>
+              <Card className="border-sb-ink/10 bg-sb-cream-secondary">
+                <CardHeader className="pb-2"><CardTitle className="text-sm text-sb-ink/55">Vendor sub-orders assigned</CardTitle></CardHeader>
+                <CardContent><div className="text-2xl font-bold text-sb-ink">{kpi?.vendorOrdersAssigned ?? "—"}</div></CardContent>
               </Card>
-              <Card className="border-white/10 bg-[#1A1A1A]">
-                <CardHeader className="pb-2"><CardTitle className="text-sm text-[#D4C4A8]/60">Shipments pending pickup</CardTitle></CardHeader>
-                <CardContent><div className="text-2xl font-bold text-[#F4E9D8]">{delivery?.pending ?? "—"}</div></CardContent>
+              <Card className="border-sb-ink/10 bg-sb-cream-secondary">
+                <CardHeader className="pb-2"><CardTitle className="text-sm text-sb-ink/55">Shipments pending pickup</CardTitle></CardHeader>
+                <CardContent><div className="text-2xl font-bold text-sb-ink">{delivery?.pending ?? "—"}</div></CardContent>
               </Card>
             </div>
-            <Card className="border-white/10 bg-[#1A1A1A]">
-              <CardHeader><CardTitle className="text-[#F4E9D8]">Paid revenue trend (monthly)</CardTitle></CardHeader>
+            <Card className="border-sb-ink/10 bg-sb-cream-secondary">
+              <CardHeader><CardTitle className="text-sb-ink">Paid revenue trend (monthly)</CardTitle></CardHeader>
               <CardContent className="h-[320px]">
                 {trendChart.length === 0 ? (
-                  <p className="text-sm text-[#D4C4A8]/50">No trend data for the selected window.</p>
+                  <p className="text-sm text-sb-ink/50">No trend data for the selected window.</p>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={trendChart}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                      <XAxis dataKey="label" tick={{ fill: "#D4C4A8", fontSize: 11 }} />
-                      <YAxis tick={{ fill: "#D4C4A8", fontSize: 11 }} />
+                      <XAxis dataKey="label" tick={{ fill: "rgba(34,34,34,0.5)", fontSize: 11 }} />
+                      <YAxis tick={{ fill: "rgba(34,34,34,0.5)", fontSize: 11 }} />
                       <Tooltip contentStyle={{ background: "#111", border: "1px solid #333" }} />
                       <Line type="monotone" dataKey="revenue" stroke="#F97316" strokeWidth={2} dot={false} />
                     </LineChart>
@@ -181,27 +181,27 @@ export function ReportsAnalytics() {
 
           <TabsContent value="sales" className="space-y-4">
             <div className="grid md:grid-cols-3 gap-4">
-              <Card className="border-white/10 bg-[#1A1A1A]">
-                <CardHeader className="pb-2"><CardTitle className="text-sm text-[#D4C4A8]/60">Revenue (range filter default)</CardTitle></CardHeader>
-                <CardContent><div className="text-xl font-bold">{money(salesSummary?.revenue)}</div><p className="text-xs text-[#D4C4A8]/50 mt-1">{salesSummary?.orders ?? 0} orders</p></CardContent>
+              <Card className="border-sb-ink/10 bg-sb-cream-secondary">
+                <CardHeader className="pb-2"><CardTitle className="text-sm text-sb-ink/55">Revenue (range filter default)</CardTitle></CardHeader>
+                <CardContent><div className="text-xl font-bold">{money(salesSummary?.revenue)}</div><p className="text-xs text-sb-ink/50 mt-1">{salesSummary?.orders ?? 0} orders</p></CardContent>
               </Card>
-              <Card className="border-white/10 bg-[#1A1A1A]">
-                <CardHeader className="pb-2"><CardTitle className="text-sm text-[#D4C4A8]/60">GST on orders</CardTitle></CardHeader>
+              <Card className="border-sb-ink/10 bg-sb-cream-secondary">
+                <CardHeader className="pb-2"><CardTitle className="text-sm text-sb-ink/55">GST on orders</CardTitle></CardHeader>
                 <CardContent><div className="text-xl font-bold">{money(salesSummary?.gstTotal)}</div></CardContent>
               </Card>
-              <Card className="border-white/10 bg-[#1A1A1A]">
-                <CardHeader className="pb-2"><CardTitle className="text-sm text-[#D4C4A8]/60">Avg order value</CardTitle></CardHeader>
+              <Card className="border-sb-ink/10 bg-sb-cream-secondary">
+                <CardHeader className="pb-2"><CardTitle className="text-sm text-sb-ink/55">Avg order value</CardTitle></CardHeader>
                 <CardContent><div className="text-xl font-bold">{money(salesSummary?.avgOrderValue)}</div></CardContent>
               </Card>
             </div>
-            <Card className="border-white/10 bg-[#1A1A1A]">
-              <CardHeader><CardTitle className="text-[#F4E9D8]">Top products by line revenue</CardTitle></CardHeader>
+            <Card className="border-sb-ink/10 bg-sb-cream-secondary">
+              <CardHeader><CardTitle className="text-sb-ink">Top products by line revenue</CardTitle></CardHeader>
               <CardContent className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={topProducts.slice(0, 8).map((p: any) => ({ name: (p.name || "Product").slice(0, 18), revenue: Math.round(p.revenue || 0) }))}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                    <XAxis dataKey="name" tick={{ fill: "#D4C4A8", fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={70} />
-                    <YAxis tick={{ fill: "#D4C4A8", fontSize: 11 }} />
+                    <XAxis dataKey="name" tick={{ fill: "rgba(34,34,34,0.5)", fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={70} />
+                    <YAxis tick={{ fill: "rgba(34,34,34,0.5)", fontSize: 11 }} />
                     <Tooltip contentStyle={{ background: "#111", border: "1px solid #333" }} />
                     <Bar dataKey="revenue" fill="#f97316" radius={[4, 4, 0, 0]} />
                   </BarChart>
@@ -211,36 +211,36 @@ export function ReportsAnalytics() {
           </TabsContent>
 
           <TabsContent value="dimensions" className="grid md:grid-cols-3 gap-4">
-            <Card className="border-white/10 bg-[#1A1A1A]">
-              <CardHeader><CardTitle className="text-[#F4E9D8] text-sm">Brand-wise sales</CardTitle></CardHeader>
+            <Card className="border-sb-ink/10 bg-sb-cream-secondary">
+              <CardHeader><CardTitle className="text-sb-ink text-sm">Brand-wise sales</CardTitle></CardHeader>
               <CardContent className="space-y-2 max-h-72 overflow-y-auto text-sm">
                 {brands.map((b: any) => (
-                  <div key={String(b._id)} className="flex justify-between gap-2 border-b border-white/5 pb-2">
-                    <span className="text-[#D4C4A8]/80 truncate">{b.brand?.name || "—"}</span>
-                    <span className="text-[#F4E9D8] font-semibold shrink-0">{money(b.revenue)}</span>
+                  <div key={String(b._id)} className="flex justify-between gap-2 border-b border-sb-ink/8 pb-2">
+                    <span className="text-sb-ink/70 truncate">{b.brand?.name || "—"}</span>
+                    <span className="text-sb-ink font-semibold shrink-0">{money(b.revenue)}</span>
                   </div>
                 ))}
-                {brands.length === 0 && <p className="text-[#D4C4A8]/50 text-xs">No brand data.</p>}
+                {brands.length === 0 && <p className="text-sb-ink/50 text-xs">No brand data.</p>}
               </CardContent>
             </Card>
-            <Card className="border-white/10 bg-[#1A1A1A]">
-              <CardHeader><CardTitle className="text-[#F4E9D8] text-sm">Category-wise sales</CardTitle></CardHeader>
+            <Card className="border-sb-ink/10 bg-sb-cream-secondary">
+              <CardHeader><CardTitle className="text-sb-ink text-sm">Category-wise sales</CardTitle></CardHeader>
               <CardContent className="space-y-2 max-h-72 overflow-y-auto text-sm">
                 {categories.map((c: any) => (
-                  <div key={String(c._id)} className="flex justify-between gap-2 border-b border-white/5 pb-2">
-                    <span className="text-[#D4C4A8]/80 truncate">{c.category?.name || "—"}</span>
-                    <span className="text-[#F4E9D8] font-semibold shrink-0">{money(c.revenue)}</span>
+                  <div key={String(c._id)} className="flex justify-between gap-2 border-b border-sb-ink/8 pb-2">
+                    <span className="text-sb-ink/70 truncate">{c.category?.name || "—"}</span>
+                    <span className="text-sb-ink font-semibold shrink-0">{money(c.revenue)}</span>
                   </div>
                 ))}
               </CardContent>
             </Card>
-            <Card className="border-white/10 bg-[#1A1A1A]">
-              <CardHeader><CardTitle className="text-[#F4E9D8] text-sm">City-wise sales</CardTitle></CardHeader>
+            <Card className="border-sb-ink/10 bg-sb-cream-secondary">
+              <CardHeader><CardTitle className="text-sb-ink text-sm">City-wise sales</CardTitle></CardHeader>
               <CardContent className="space-y-2 max-h-72 overflow-y-auto text-sm">
                 {cities.map((c: any) => (
-                  <div key={String(c._id)} className="flex justify-between gap-2 border-b border-white/5 pb-2">
-                    <span className="text-[#D4C4A8]/80 truncate">{c.city?.name || "—"}</span>
-                    <span className="text-[#F4E9D8] font-semibold shrink-0">{money(c.revenue)}</span>
+                  <div key={String(c._id)} className="flex justify-between gap-2 border-b border-sb-ink/8 pb-2">
+                    <span className="text-sb-ink/70 truncate">{c.city?.name || "—"}</span>
+                    <span className="text-sb-ink font-semibold shrink-0">{money(c.revenue)}</span>
                   </div>
                 ))}
               </CardContent>
@@ -249,22 +249,22 @@ export function ReportsAnalytics() {
 
           <TabsContent value="vendors" className="space-y-4">
             <div className="grid md:grid-cols-2 gap-4">
-              <Card className="border-white/10 bg-[#1A1A1A]">
-                <CardHeader><CardTitle className="text-sm text-[#D4C4A8]/60">Vendor directory</CardTitle></CardHeader>
-                <CardContent className="text-sm text-[#D4C4A8]/80 space-y-2">
-                  <p>Total: <strong className="text-[#F4E9D8]">{vendorSummary?.total ?? 0}</strong></p>
-                  <p>Active: <strong className="text-[#F4E9D8]">{vendorSummary?.active ?? 0}</strong></p>
-                  <p>Pending verification: <strong className="text-[#FE5E00]">{vendorSummary?.pending ?? 0}</strong></p>
-                  <p>Inactive: <strong className="text-[#F4E9D8]">{vendorSummary?.inactive ?? 0}</strong></p>
+              <Card className="border-sb-ink/10 bg-sb-cream-secondary">
+                <CardHeader><CardTitle className="text-sm text-sb-ink/55">Vendor directory</CardTitle></CardHeader>
+                <CardContent className="text-sm text-sb-ink/70 space-y-2">
+                  <p>Total: <strong className="text-sb-ink">{vendorSummary?.total ?? 0}</strong></p>
+                  <p>Active: <strong className="text-sb-ink">{vendorSummary?.active ?? 0}</strong></p>
+                  <p>Pending verification: <strong className="text-sb-orange">{vendorSummary?.pending ?? 0}</strong></p>
+                  <p>Inactive: <strong className="text-sb-ink">{vendorSummary?.inactive ?? 0}</strong></p>
                 </CardContent>
               </Card>
-              <Card className="border-white/10 bg-[#1A1A1A]">
-                <CardHeader><CardTitle className="text-sm text-[#F4E9D8]">Top vendors</CardTitle></CardHeader>
+              <Card className="border-sb-ink/10 bg-sb-cream-secondary">
+                <CardHeader><CardTitle className="text-sm text-sb-ink">Top vendors</CardTitle></CardHeader>
                 <CardContent className="space-y-2 text-sm max-h-80 overflow-y-auto">
                   {vendorRank.map((v: any, i: number) => (
-                    <div key={i} className="flex justify-between border-b border-white/5 pb-2">
-                      <span className="text-[#D4C4A8]/80">{v.vendor?.companyName || v.vendor?.contactPerson || "—"}</span>
-                      <span className="text-[#F4E9D8] font-medium">{money(v.revenue)}</span>
+                    <div key={i} className="flex justify-between border-b border-sb-ink/8 pb-2">
+                      <span className="text-sb-ink/70">{v.vendor?.companyName || v.vendor?.contactPerson || "—"}</span>
+                      <span className="text-sb-ink font-medium">{money(v.revenue)}</span>
                     </div>
                   ))}
                 </CardContent>
@@ -274,8 +274,8 @@ export function ReportsAnalytics() {
 
           <TabsContent value="gst" className="space-y-4">
             <div className="grid md:grid-cols-2 gap-4">
-              <Card className="border-white/10 bg-[#1A1A1A]">
-                <CardHeader><CardTitle className="text-sm text-[#F4E9D8]">GST accrual by period (from paid orders)</CardTitle></CardHeader>
+              <Card className="border-sb-ink/10 bg-sb-cream-secondary">
+                <CardHeader><CardTitle className="text-sm text-sb-ink">GST accrual by period (from paid orders)</CardTitle></CardHeader>
                 <CardContent className="h-[260px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={gstRows.slice(-12).map((r: any) => ({
@@ -283,21 +283,21 @@ export function ReportsAnalytics() {
                       gst: Math.round(r.gst || 0),
                     }))}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                      <XAxis dataKey="label" tick={{ fill: "#D4C4A8", fontSize: 10 }} />
-                      <YAxis tick={{ fill: "#D4C4A8", fontSize: 11 }} />
+                      <XAxis dataKey="label" tick={{ fill: "rgba(34,34,34,0.5)", fontSize: 10 }} />
+                      <YAxis tick={{ fill: "rgba(34,34,34,0.5)", fontSize: 11 }} />
                       <Tooltip contentStyle={{ background: "#111", border: "1px solid #333" }} />
-                      <Bar dataKey="gst" fill="#C9A227" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="gst" fill="#FE5E00" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
               </Card>
-              <Card className="border-white/10 bg-[#1A1A1A]">
-                <CardHeader><CardTitle className="text-sm text-[#F4E9D8]">Payment gateway summary</CardTitle></CardHeader>
-                <CardContent className="text-sm text-[#D4C4A8]/80 space-y-2">
-                  <p>Paid: <strong className="text-[#F4E9D8]">{money(paySummary?.totalCollected)}</strong> ({paySummary?.countPaid ?? 0} txns)</p>
-                  <p>Pending: <strong className="text-[#F4E9D8]">{money(paySummary?.totalPending)}</strong></p>
-                  <p>Failed: <strong className="text-[#F4E9D8]">{money(paySummary?.totalFailed)}</strong></p>
-                  <p>Refunded: <strong className="text-[#F4E9D8]">{money(paySummary?.totalRefunded)}</strong></p>
+              <Card className="border-sb-ink/10 bg-sb-cream-secondary">
+                <CardHeader><CardTitle className="text-sm text-sb-ink">Payment gateway summary</CardTitle></CardHeader>
+                <CardContent className="text-sm text-sb-ink/70 space-y-2">
+                  <p>Paid: <strong className="text-sb-ink">{money(paySummary?.totalCollected)}</strong> ({paySummary?.countPaid ?? 0} txns)</p>
+                  <p>Pending: <strong className="text-sb-ink">{money(paySummary?.totalPending)}</strong></p>
+                  <p>Failed: <strong className="text-sb-ink">{money(paySummary?.totalFailed)}</strong></p>
+                  <p>Refunded: <strong className="text-sb-ink">{money(paySummary?.totalRefunded)}</strong></p>
                 </CardContent>
               </Card>
             </div>
@@ -305,20 +305,20 @@ export function ReportsAnalytics() {
 
           <TabsContent value="ops" className="space-y-4">
             <div className="grid md:grid-cols-2 gap-4">
-              <Card className="border-white/10 bg-[#1A1A1A]">
-                <CardHeader><CardTitle className="text-sm text-[#F4E9D8]">Delivery / dispatch</CardTitle></CardHeader>
-                <CardContent className="text-sm text-[#D4C4A8]/80 space-y-1">
-                  <p>Total shipments: <strong className="text-[#F4E9D8]">{delivery?.total ?? 0}</strong></p>
-                  <p>In transit: <strong className="text-[#F4E9D8]">{delivery?.inTransit ?? 0}</strong></p>
-                  <p>Pending pickup: <strong className="text-[#FE5E00]">{delivery?.pending ?? 0}</strong></p>
-                  <p>Delivered: <strong className="text-green-400">{delivery?.delivered ?? 0}</strong></p>
+              <Card className="border-sb-ink/10 bg-sb-cream-secondary">
+                <CardHeader><CardTitle className="text-sm text-sb-ink">Delivery / dispatch</CardTitle></CardHeader>
+                <CardContent className="text-sm text-sb-ink/70 space-y-1">
+                  <p>Total shipments: <strong className="text-sb-ink">{delivery?.total ?? 0}</strong></p>
+                  <p>In transit: <strong className="text-sb-ink">{delivery?.inTransit ?? 0}</strong></p>
+                  <p>Pending pickup: <strong className="text-sb-orange">{delivery?.pending ?? 0}</strong></p>
+                  <p>Delivered: <strong className="text-sb-orange">{delivery?.delivered ?? 0}</strong></p>
                 </CardContent>
               </Card>
-              <Card className="border-white/10 bg-[#1A1A1A]">
-                <CardHeader><CardTitle className="text-sm text-[#F4E9D8]">Uploaded documents (invoices / e-way)</CardTitle></CardHeader>
-                <CardContent className="text-xs font-mono text-[#D4C4A8]/70 max-h-56 overflow-y-auto">
+              <Card className="border-sb-ink/10 bg-sb-cream-secondary">
+                <CardHeader><CardTitle className="text-sm text-sb-ink">Uploaded documents (invoices / e-way)</CardTitle></CardHeader>
+                <CardContent className="text-xs font-mono text-sb-ink/65 max-h-56 overflow-y-auto">
                   {invoiceAgg.length === 0 ? <p>No document aggregates.</p> : invoiceAgg.map((row: any, i: number) => (
-                    <div key={i} className="border-b border-white/5 py-1">{JSON.stringify(row._id)} → {row.count}</div>
+                    <div key={i} className="border-b border-sb-ink/8 py-1">{JSON.stringify(row._id)} → {row.count}</div>
                   ))}
                 </CardContent>
               </Card>
