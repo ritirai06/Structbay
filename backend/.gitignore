@@ -8,6 +8,7 @@ node_modules/
 
 logs/
 src/uploads/temp/
+uploads/catalogs/
 *.log
 .DS_Store
 Thumbs.db

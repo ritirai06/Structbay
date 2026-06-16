@@ -13,4 +13,15 @@ function imageUploadResult(req, res) {
   });
 }
 
-module.exports = { imageUploadResult };
+/** Same response shape as images; multer field name is `document`. */
+function documentUploadResult(req, res) {
+  if (!req.file?.path) {
+    return ApiResponse.badRequest(res, 'Document file is required (form field name: document).');
+  }
+  return ApiResponse.success(res, 200, 'File uploaded.', {
+    url: req.file.path,
+    publicId: req.file.filename,
+  });
+}
+
+module.exports = { imageUploadResult, documentUploadResult };

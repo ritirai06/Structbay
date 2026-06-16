@@ -3,6 +3,7 @@ const VendorOrder = require('../models/VendorOrder');
 const VendorActivityLog = require('../models/VendorActivityLog');
 const ApiResponse = require('../utils/apiResponse');
 const { vendorOrderMatch } = require('../utils/vendorOrderAccess');
+const { isWorkflowVendorOrder } = require('../services/vendorOrderWorkflow.service');
 
 // @desc    Create Dispatch Entry
 // @route   POST /api/v1/vendor/dispatch
@@ -18,6 +19,22 @@ exports.createDispatch = async (req, res) => {
   const order = await VendorOrder.findOne({ _id: orderId, ...match });
   if (!order) return ApiResponse.notFound(res, 'Order not found.');
 
+  if (isWorkflowVendorOrder(order)) {
+    if (['NEW_ASSIGNED', 'ASSIGNED'].includes(order.status)) {
+      return ApiResponse.badRequest(res, 'Accept the order first, then use Ready for dispatch from the vendor workflow.');
+    }
+    if (['ACCEPTED', 'CHANGES_REQUESTED'].includes(order.status)) {
+      return ApiResponse.badRequest(
+        res,
+        'Use POST /api/v1/vendor/orders/:id/workflow/ready-dispatch (packing, optional invoice, estimated dispatch date).'
+      );
+    }
+    return ApiResponse.badRequest(
+      res,
+      'This sub-order uses the StructBay workflow — use Mark dispatched / workflow actions instead of the legacy dispatch create endpoint.'
+    );
+  }
+
   const data = {
     vendorOrder: orderId, vendor: req.user._id,
     dispatchType, dispatchDate, expectedDeliveryDate, dispatchRemarks,
@@ -32,12 +49,15 @@ exports.createDispatch = async (req, res) => {
 
   const dispatch = await VendorDispatch.create(data);
 
-  order.dispatchStatus = 'ready';
-  order.status = 'ready_for_dispatch';
+  order.dispatchStatus = 'READY';
+  order.status = 'READY_FOR_DISPATCH';
   order.expectedDispatchDate = dispatchDate;
   order.statusHistory.push({
-    status: 'ready_for_dispatch', updatedBy: req.user._id, updatedByModel: 'User',
-    remarks: dispatchRemarks, timestamp: new Date(),
+    status: 'READY_FOR_DISPATCH',
+    updatedBy: req.user._id,
+    model: 'User',
+    note: dispatchRemarks || 'Dispatch details submitted',
+    timestamp: new Date(),
   });
   await order.save();
 
@@ -58,6 +78,15 @@ exports.updateDispatchStatus = async (req, res) => {
   const dispatch = await VendorDispatch.findOne({ _id: req.params.id, vendor: req.user._id });
   if (!dispatch) return ApiResponse.notFound(res, 'Dispatch not found.');
 
+  const order = await VendorOrder.findById(dispatch.vendorOrder);
+  if (!order) return ApiResponse.notFound(res, 'Order not found.');
+  if (isWorkflowVendorOrder(order)) {
+    return ApiResponse.badRequest(
+      res,
+      'This sub-order uses the StructBay workflow — update dispatch status from the workflow steps instead of this legacy endpoint.'
+    );
+  }
+
   const oldStatus = dispatch.status;
   dispatch.status = status;
   if (trackingNumber) dispatch.trackingNumber = trackingNumber;
@@ -67,13 +96,26 @@ exports.updateDispatchStatus = async (req, res) => {
   dispatch.updatedByModel = 'User';
   await dispatch.save();
 
-  const order = await VendorOrder.findById(dispatch.vendorOrder);
   if (status === 'dispatched') {
-    order.status = 'dispatched'; order.dispatchStatus = 'dispatched'; order.actualDispatchDate = new Date();
+    order.status = 'IN_TRANSIT';
+    order.dispatchStatus = 'DISPATCHED';
+    order.actualDispatchDate = new Date();
+  } else if (status === 'in_transit') {
+    order.status = 'IN_TRANSIT';
+  } else if (status === 'out_for_delivery') {
+    order.status = 'OUT_FOR_DELIVERY';
   } else if (status === 'delivered') {
-    order.status = 'material_delivered'; order.dispatchStatus = 'delivered'; order.actualDeliveryDate = new Date();
+    order.status = 'DELIVERED';
+    order.dispatchStatus = 'DELIVERED';
+    order.actualDeliveryDate = new Date();
   }
-  order.statusHistory.push({ status: order.status, updatedBy: req.user._id, updatedByModel: 'User', remarks, timestamp: new Date() });
+  order.statusHistory.push({
+    status: order.status,
+    updatedBy: req.user._id,
+    model: 'User',
+    note: remarks || undefined,
+    timestamp: new Date(),
+  });
   await order.save();
 
   await VendorActivityLog.create({
@@ -120,18 +162,33 @@ exports.uploadDeliveryProof = async (req, res) => {
   if (!dispatch) return ApiResponse.notFound(res, 'Dispatch not found.');
   if (!req.file) return ApiResponse.badRequest(res, 'Please upload delivery proof.');
 
+  const order = await VendorOrder.findById(dispatch.vendorOrder);
+  if (!order) return ApiResponse.notFound(res, 'Order not found.');
+  if (isWorkflowVendorOrder(order)) {
+    if (order.status === 'DISPATCHED') {
+      return ApiResponse.badRequest(
+        res,
+        'Use POST /api/v1/vendor/orders/:id/workflow/mark-delivered to upload POD for this workflow order.'
+      );
+    }
+    return ApiResponse.badRequest(res, 'Delivery proof for this order is handled via the StructBay vendor workflow.');
+  }
+
   dispatch.deliveryProof.push({ type: type || 'photo', url: req.file.path, cloudinaryId: req.file.filename });
   if (receivedBy) dispatch.receivedBy = receivedBy;
   if (deliveryRemarks) dispatch.deliveryRemarks = deliveryRemarks;
   dispatch.receivedAt = new Date();
   await dispatch.save();
 
-  const order = await VendorOrder.findById(dispatch.vendorOrder);
-  order.status = 'material_delivered';
+  order.status = 'DELIVERED';
+  order.dispatchStatus = 'DELIVERED';
   order.actualDeliveryDate = new Date();
   order.statusHistory.push({
-    status: 'material_delivered', updatedBy: req.user._id, updatedByModel: 'User',
-    remarks: deliveryRemarks || 'Delivery proof uploaded', timestamp: new Date(),
+    status: 'DELIVERED',
+    updatedBy: req.user._id,
+    model: 'User',
+    note: deliveryRemarks || 'Delivery proof uploaded',
+    timestamp: new Date(),
   });
   await order.save();
 

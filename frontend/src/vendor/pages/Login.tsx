@@ -30,7 +30,7 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] flex">
+    <div className="min-h-screen bg-sb-cream flex">
       {/* Left branding */}
       <div className="hidden lg:flex flex-col justify-between flex-1 bg-[#171717] border-r border-white/8 p-12 relative overflow-hidden">
         <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, #F4E9D8 1px, transparent 0)', backgroundSize: '40px 40px' }} />
@@ -76,7 +76,7 @@ export function Login() {
       </div>
 
       {/* Right form */}
-      <div className="flex-1 flex items-center justify-center p-6 bg-[#0D0D0D]">
+      <div className="flex-1 flex items-center justify-center p-6 bg-sb-cream">
         <div className="w-full max-w-sm">
           <div className="lg:hidden flex items-center justify-center gap-2 mb-8">
             <img src={logoImg} alt="StructBay" className="h-14 w-auto object-contain" />
@@ -130,7 +130,7 @@ export function Login() {
 
             <button
               type="submit" disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-[#FE5E00] hover:bg-[#E05200] disabled:opacity-60 active:scale-[0.98] text-[#0D0D0D] font-bold py-3 rounded-lg transition-all duration-200 shadow-[0_4px_16px_rgba(254,94,0,0.25)] mt-2"
+              className="w-full flex items-center justify-center gap-2 bg-[#FE5E00] hover:bg-[#E05200] disabled:opacity-60 active:scale-[0.98] text-white font-bold py-3 rounded-lg transition-all duration-200 shadow-[0_4px_16px_rgba(254,94,0,0.25)] mt-2"
             >
               {loading ? <div className="w-4 h-4 rounded-full border-2 border-[#0D0D0D]/30 border-t-[#0D0D0D] animate-spin" /> : <LogIn className="w-4 h-4" />}
               {loading ? 'Signing in...' : 'Login to Portal'}

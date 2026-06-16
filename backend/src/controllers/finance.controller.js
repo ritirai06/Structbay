@@ -20,14 +20,52 @@ exports.submitApplication = asyncHandler(async (req, res) => {
     loanAmountRequired, purposeOfLoan, monthlyTurnover, remarks,
   } = req.body;
 
+  if (!name || !String(name).trim()) throw new AppError('Name is required.', 400);
+  if (!mobile || !String(mobile).trim()) throw new AppError('Mobile number is required.', 400);
+
+  const parseMoney = (v) => {
+    if (v === undefined || v === null || v === '') return undefined;
+    const n = parseFloat(String(v).replace(/,/g, ''));
+    return Number.isFinite(n) ? n : undefined;
+  };
+
+  const loanNum = parseMoney(loanAmountRequired);
+  const turnoverNum = parseMoney(monthlyTurnover);
+
   const financeNumber = await generateRefNumber('FINANCE');
+
+  const customerId =
+    req.user && req.user.role === 'CUSTOMER' ? req.user._id : null;
+
+  const allowedBiz = ['proprietorship', 'partnership', 'pvtltd', 'llp', 'other'];
+  const biz =
+    businessType && allowedBiz.includes(String(businessType).toLowerCase())
+      ? String(businessType).toLowerCase()
+      : undefined;
+
+  let extraRemarks = remarks ? String(remarks).trim() : '';
+  if (req.body.projectValue != null && String(req.body.projectValue).trim()) {
+    const pv = String(req.body.projectValue).trim();
+    extraRemarks = extraRemarks
+      ? `${extraRemarks}\n\nProject value (₹): ${pv}`
+      : `Project value (₹): ${pv}`;
+  }
 
   const lead = await FinanceLead.create({
     financeNumber,
-    name, companyName, mobile, email, gstNumber,
-    businessType, projectType, projectLocation,
-    loanAmountRequired, purposeOfLoan, monthlyTurnover, remarks,
-    customer: req.user?._id || null,
+    name: String(name).trim(),
+    companyName: companyName ? String(companyName).trim() : undefined,
+    mobile: String(mobile).trim(),
+    email: email ? String(email).trim().toLowerCase() : undefined,
+    gstNumber: gstNumber ? String(gstNumber).trim().toUpperCase() : undefined,
+    businessType: biz,
+    projectType: projectType ? String(projectType).trim() : undefined,
+    projectLocation: projectLocation ? String(projectLocation).trim() : undefined,
+    loanAmountRequired: loanNum,
+    purposeOfLoan: purposeOfLoan ? String(purposeOfLoan).trim() : undefined,
+    monthlyTurnover: turnoverNum,
+    remarks: extraRemarks || undefined,
+    customer: customerId,
     status: 'NEW',
     statusHistory: [{ status: 'NEW', note: 'Application submitted.', changedAt: new Date() }],
   });
@@ -127,16 +165,27 @@ exports.updateStatus = asyncHandler(async (req, res) => {
   const lead = await FinanceLead.findById(req.params.id);
   if (!lead) throw new AppError('Finance lead not found.', 404);
 
-  const update = {
-    status,
-    $push: { statusHistory: { status, changedBy: req.user._id, note, changedAt: new Date() } },
-  };
+  const $set = { status };
   if (status === 'DISBURSED') {
-    update.disbursedAmount = disbursedAmount;
-    update.disbursedAt     = new Date();
+    $set.disbursedAmount = disbursedAmount;
+    $set.disbursedAt = new Date();
   }
 
-  const updated = await FinanceLead.findByIdAndUpdate(req.params.id, update, { new: true });
+  const updated = await FinanceLead.findByIdAndUpdate(
+    req.params.id,
+    {
+      $set,
+      $push: {
+        statusHistory: {
+          status,
+          changedBy: req.user._id,
+          note,
+          changedAt: new Date(),
+        },
+      },
+    },
+    { new: true }
+  );
   await auditAction(req.user._id, 'FINANCE_STATUS_UPDATE', { leadId: lead._id, status });
 
   return ApiResponse.success(res, 200, 'Lead status updated.', updated);

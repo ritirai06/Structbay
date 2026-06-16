@@ -11,6 +11,8 @@ const orderItemSchema = new mongoose.Schema(
     gstPercentage: { type: Number, default: 18 },
     gstAmount:     { type: Number, default: 0 },
     lineTotal:     { type: Number, required: true },
+    /** Customer-selected vendor user at checkout (optional; procurement may reassign). */
+    vendorUser: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     // Vendor assignment per item (set after order placement)
     assignedVendor:     { type: mongoose.Schema.Types.ObjectId, ref: 'Vendor', default: null },
     vendorAssignmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'VendorAssignment', default: null },
@@ -76,6 +78,9 @@ const orderSchema = new mongoose.Schema(
     paymentStatus: { type: String, enum: ['PENDING', 'PAID', 'FAILED', 'REFUNDED', 'CANCELLED'], default: 'PENDING' },
     paymentMethod: { type: String, default: null },
     paymentTransactionId: { type: mongoose.Schema.Types.ObjectId, ref: 'PaymentTransaction', default: null },
+
+    /** Primary vendor (User id, role VENDOR) — quick tag on master order; line-level assignment stays on items[]. */
+    assignedVendor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 
     // Multi-vendor sub-orders
     vendorOrders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'VendorOrder' }],

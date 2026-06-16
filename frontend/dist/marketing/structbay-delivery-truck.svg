@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 280" fill="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="cab" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="trail" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#111827"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="240" cy="252" rx="200" ry="14" fill="#0f172a" opacity="0.12"/>
+  <!-- Trailer -->
+  <rect x="88" y="72" width="268" height="118" rx="10" fill="url(#trail)" stroke="#334155" stroke-width="1.5"/>
+  <path d="M108 92h228v4H108zm0 18h228v4H108zm0 18h180v4H108z" fill="#475569" opacity="0.45"/>
+  <!-- Orange brand mark -->
+  <rect x="118" y="108" width="56" height="44" rx="6" fill="#FE5E00"/>
+  <path d="M132 134 L146 120 L146 140 Z" fill="#fff"/>
+  <text x="182" y="138" fill="#FE5E00" font-family="system-ui,Segoe UI,sans-serif" font-size="22" font-weight="800" letter-spacing="0.02em">STRUCTBAY</text>
+  <text x="182" y="158" fill="#e2e8f0" font-family="system-ui,Segoe UI,sans-serif" font-size="11" font-weight="600" letter-spacing="0.12em">CLICK · BUY · BUILD</text>
+  <!-- Cab -->
+  <path d="M52 118 L52 190 H88 V150 L108 118 Z" fill="url(#cab)" stroke="#334155" stroke-width="1.5"/>
+  <rect x="62" y="128" width="28" height="22" rx="3" fill="#1e293b" stroke="#475569"/>
+  <circle cx="72" cy="198" r="22" fill="#0f172a" stroke="#64748b" stroke-width="3"/>
+  <circle cx="72" cy="198" r="9" fill="#94a3b8"/>
+  <circle cx="352" cy="198" r="22" fill="#0f172a" stroke="#64748b" stroke-width="3"/>
+  <circle cx="352" cy="198" r="9" fill="#94a3b8"/>
+  <circle cx="412" cy="198" r="22" fill="#0f172a" stroke="#64748b" stroke-width="3"/>
+  <circle cx="412" cy="198" r="9" fill="#94a3b8"/>
+  <!-- Orange accent line -->
+  <rect x="88" y="186" width="268" height="3" fill="#FE5E00" opacity="0.85"/>
+</svg>

@@ -4,20 +4,19 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "./utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FE5E00] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0D0D0D] disabled:pointer-events-none disabled:opacity-40",
+  "inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sb-orange focus-visible:ring-offset-2 focus-visible:ring-offset-sb-cream disabled:pointer-events-none disabled:opacity-40",
   {
     variants: {
       variant: {
-        default:
-          "bg-[#FE5E00] text-[#0D0D0D] shadow hover:bg-[#E05200] active:scale-[0.98]",
+        default: "bg-sb-orange text-white shadow-sm hover:bg-sb-orange-hover active:scale-[0.98]",
         destructive:
-          "bg-red-600/20 text-red-400 border border-red-600/30 hover:bg-red-600 hover:text-white",
+          "border border-sb-ink/25 bg-transparent text-sb-ink hover:bg-sb-cream-secondary hover:border-sb-ink",
         outline:
-          "border border-white/20 bg-transparent text-[#F4E9D8] hover:border-[#FE5E00] hover:text-[#FE5E00]",
+          "border border-sb-ink bg-sb-cream text-sb-ink hover:border-sb-orange hover:text-sb-orange",
         secondary:
-          "bg-[#222222] text-[#F4E9D8] border border-white/10 hover:bg-[#2A2A2A] hover:border-white/20",
-        ghost:  "bg-transparent text-[#D4C4A8] hover:bg-[#222222] hover:text-[#F4E9D8]",
-        link:   "text-[#FE5E00] underline-offset-4 hover:underline hover:text-[#E05200]",
+          "bg-sb-cream-secondary text-sb-ink border border-sb-ink/15 hover:bg-sb-cream hover:border-sb-ink/25",
+        ghost: "bg-transparent text-sb-ink/70 hover:bg-sb-cream-secondary hover:text-sb-ink",
+        link: "text-sb-orange underline-offset-4 hover:underline hover:text-sb-orange-hover",
       },
       size: {
         default: "h-9 px-4 py-2",

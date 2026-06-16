@@ -7,8 +7,9 @@ const adminOnly = [protect, requireRole('ADMIN')];
 
 router.get('/invoices/summary',       ...adminOnly, ctrl.invoiceSummary);
 router.get('/invoices',               ...adminOnly, ctrl.listInvoices);
-router.get('/',                   ...adminOnly, ctrl.getAll);
+// Register /stats before / so "stats" is never captured as :id.
 router.get('/stats',              ...adminOnly, ctrl.getStats);
+router.get('/',                   ...adminOnly, ctrl.getAll);
 router.post('/',                  ...adminOnly, ctrl.create);
 router.patch('/:id/edit',         ...adminOnly, ctrl.patchOrderDetails);
 router.patch('/:id/status',       ...adminOnly, ctrl.updateStatus);

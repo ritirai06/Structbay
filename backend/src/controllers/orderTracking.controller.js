@@ -12,6 +12,7 @@ const VendorOrder    = require('../models/VendorOrder');
 const VendorInvoice  = require('../models/VendorInvoice');
 const { CUSTOMER_NON_CANCELLABLE_MASTER_ORDER_STATUSES } = require('../constants/orderCancellation');
 const { customerOrderProgress } = require('../utils/customerOrderProgress');
+const { buildOrderAcknowledgementHtml } = require('../services/orderInvoiceHtml.service');
 
 // ─── GET /customer/orders ─────────────────────────────────────────────────────
 exports.getMyOrders = asyncHandler(async (req, res) => {
@@ -179,6 +180,23 @@ exports.getOrderInvoices = asyncHandler(async (req, res) => {
   });
 
   return ApiResponse.success(res, 200, 'Downloadable invoice files.', unique);
+});
+
+// ─── GET /customer/orders/:id/invoice-summary ─────────────────────────────────
+/** Themed HTML order summary for customer download (acknowledgement / provisional invoice). */
+exports.downloadInvoiceSummary = asyncHandler(async (req, res) => {
+  const order = await Order.findOne({ _id: req.params.id, customer: req.user._id })
+    .populate('city', 'name state')
+    .populate('items.product', 'name sku')
+    .populate('items.variation', 'attributes sku');
+  if (!order) throw new AppError('Order not found.', 404);
+
+  const html = buildOrderAcknowledgementHtml(order);
+  const safeName = `StructBay-order-${String(order.orderNumber || 'order').replace(/[^\w.-]+/g, '_')}.html`;
+
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${safeName}"`);
+  return res.status(200).send(html);
 });
 
 // ─── PATCH /customer/orders/:id/cancel ───────────────────────────────────────

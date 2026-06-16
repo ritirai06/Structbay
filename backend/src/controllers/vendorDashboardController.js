@@ -3,6 +3,7 @@ const VendorNotification = require('../models/VendorNotification');
 const VendorActivityLog = require('../models/VendorActivityLog');
 const ApiResponse = require('../utils/apiResponse');
 const { vendorOrderMatch } = require('../utils/vendorOrderAccess');
+const { decorateVendorOrderForPortal } = require('../utils/vendorOrderPortal');
 
 // @desc    Get Vendor Dashboard Stats
 // @route   GET /api/v1/vendor/dashboard
@@ -40,7 +41,7 @@ exports.getDashboardStats = async (req, res) => {
   return ApiResponse.success(res, 200, 'Dashboard stats retrieved.', {
     orderStats: { total: totalOrders, pending: pendingOrders, readyForDispatch, inTransit, delivered, pendingInvoices },
     monthlyFulfillment: monthlyStats[0] || { totalOrders: 0, completedOrders: 0, totalAmount: 0 },
-    recentOrders,
+    recentOrders: recentOrders.map((o) => decorateVendorOrderForPortal(o)),
     recentActivities,
     unreadNotifications,
   });

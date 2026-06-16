@@ -35,15 +35,15 @@ export function Sidebar() {
   const location = useLocation();
 
   return (
-    <div className="flex h-screen w-64 flex-col bg-[#0D0D0D] border-r border-white/8 shrink-0">
-      {/* Logo */}
-      <div className="flex h-16 items-center px-5 border-b border-white/8 shrink-0 gap-3">
+    <div className="flex h-screen w-64 shrink-0 flex-col border-r border-sb-border-dark bg-sb-ink">
+      <div className="flex h-16 shrink-0 items-center gap-3 border-b border-sb-border-dark px-5">
         <img src={logoImg} alt="StructBay" className="h-12 w-auto object-contain" />
-        <span className="ml-auto text-[10px] font-semibold text-[#D4C4A8]/40 uppercase tracking-widest shrink-0">Admin</span>
+        <span className="ml-auto shrink-0 text-[10px] font-semibold uppercase tracking-widest text-[var(--sb-chrome-fg-muted)]">
+          Admin
+        </span>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive =
@@ -57,24 +57,25 @@ export function Sidebar() {
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-150",
                 isActive
-                  ? "bg-[#FE5E00]/15 text-[#FE5E00] font-semibold border-l-2 border-[#FE5E00] pl-[10px]"
-                  : "text-[#D4C4A8]/70 hover:text-[#F4E9D8] hover:bg-[#222222]"
+                  ? "border-l-2 border-sb-orange bg-sb-cream pl-[10px] font-semibold text-sb-ink"
+                  : "border-l-2 border-transparent pl-[10px] text-[var(--sb-chrome-fg-muted)] hover:bg-[var(--sb-chrome-hover)] hover:text-[var(--sb-chrome-fg)]"
               )}
             >
-              <Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-[#FE5E00]" : "text-[#D4C4A8]/50")} />
+              <Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-sb-orange" : "text-[var(--sb-chrome-fg-muted)]")} />
               <span>{item.label}</span>
             </Link>
           );
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="p-3 border-t border-white/8">
-        <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[#222222] border border-white/8">
-          <div className="w-7 h-7 rounded-full bg-[#FE5E00] flex items-center justify-center text-[#0D0D0D] font-semibold text-xs shrink-0">A</div>
+      <div className="border-t border-sb-border-dark p-3">
+        <div className="flex items-center gap-3 rounded-lg border border-sb-border-dark bg-sb-ink px-3 py-2.5">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sb-orange text-xs font-semibold text-white">
+            A
+          </div>
           <div className="min-w-0">
-            <p className="text-xs font-semibold text-[#F4E9D8] truncate">Admin User</p>
-            <p className="text-[10px] text-[#D4C4A8]/50 truncate">Super Admin</p>
+            <p className="truncate text-xs font-semibold text-[var(--sb-chrome-fg)]">Admin User</p>
+            <p className="truncate text-[10px] text-[var(--sb-chrome-fg-muted)]">Super Admin</p>
           </div>
         </div>
       </div>

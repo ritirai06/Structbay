@@ -1,20 +1,27 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { vendorPath } from '../../lib/portalRoutes';
-import { Search, Filter, FileText, Upload, Package, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Filter, FileText, Upload, Package, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { StatusBadge } from '../components/StatusBadge';
 import { api } from '../lib/api';
 
 const STATUS_OPTIONS = [
-  { value: '',                  label: 'All Status' },
-  { value: 'new_order_alert',   label: 'New Order' },
-  { value: 'ready_for_dispatch',label: 'Ready for Dispatch' },
-  { value: 'vendor_invoice_sent',label: 'Invoice Sent' },
-  { value: 'dispatched',        label: 'Dispatched' },
-  { value: 'in_transit',        label: 'In Transit' },
-  { value: 'material_delivered',label: 'Delivered' },
-  { value: 'delivery_confirmed',label: 'Confirmed' },
-  { value: 'completed',         label: 'Completed' },
+  { value: '', label: 'All Status' },
+  { value: 'NEW_ASSIGNED,ASSIGNED', label: 'Assigned' },
+  { value: 'ACCEPTED', label: 'Accepted' },
+  { value: 'READY_FOR_DISPATCH', label: 'Ready for dispatch' },
+  { value: 'CHANGES_REQUESTED', label: 'Changes requested' },
+  { value: 'DISPATCH_APPROVED', label: 'Dispatch approved' },
+  { value: 'VENDOR_INVOICE_SUBMITTED', label: 'Vendor invoice' },
+  { value: 'SB_INVOICE_SENT', label: 'SB docs sent' },
+  { value: 'DISPATCHED', label: 'Dispatched' },
+  { value: 'DELIVERED', label: 'Delivered' },
+  { value: 'COMPLETED', label: 'Completed' },
+  { value: 'ASSIGNED', label: 'Legacy: New' },
+  { value: 'INVOICE_UPLOADED', label: 'Legacy: Invoice' },
+  { value: 'DISPATCH_CONFIRMED', label: 'Legacy: Dispatch OK' },
+  { value: 'IN_TRANSIT', label: 'In transit' },
+  { value: 'OUT_FOR_DELIVERY', label: 'Out for delivery' },
 ];
 
 const SB = { color: 'var(--sb-text-primary)', muted: 'var(--sb-text-muted)', faint: 'var(--sb-text-faint)', orange: 'var(--sb-orange)', card: 'var(--sb-card)', border: 'var(--sb-border)', bg: 'var(--sb-bg-section)' };
@@ -92,10 +99,10 @@ export function OrdersList() {
               style={{ background: SB.bg, border: `1px solid ${SB.border}`, color: SB.color, minWidth: 180 }}
             >
               <option value="">All Invoices</option>
-              <option value="pending">Invoice Pending</option>
-              <option value="uploaded">Invoice Uploaded</option>
-              <option value="verified">Invoice Verified</option>
-              <option value="rejected">Invoice Rejected</option>
+              <option value="PENDING">Invoice Pending</option>
+              <option value="UPLOADED">Invoice Uploaded</option>
+              <option value="VERIFIED">Invoice Verified</option>
+              <option value="REJECTED">Invoice Rejected</option>
             </select>
           </div>
         </div>
@@ -129,9 +136,14 @@ export function OrdersList() {
                     {new Date(o.createdAt).toLocaleDateString('en-IN')}
                   </td>
                   <td className="py-3.5 px-4">
-                    {o.invoiceStatus === 'pending'
-                      ? <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444' }}>Pending</span>
-                      : <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: 'rgba(34,197,94,0.1)', color: '#22C55E' }}>✓ {o.invoiceStatus}</span>
+                    {String(o.invoiceStatus || '').toUpperCase() === 'PENDING'
+                      ? <span className="text-xs font-semibold px-2 py-0.5 rounded-full border border-sb-ink/15 bg-sb-cream-secondary text-sb-ink/70">Pending</span>
+                      : (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border border-sb-orange/22 bg-sb-orange/10 text-sb-orange">
+                          <CheckCircle2 className="w-3 h-3 shrink-0" aria-hidden />
+                          <span className="capitalize">{String(o.invoiceStatus || '').toLowerCase()}</span>
+                        </span>
+                      )
                     }
                   </td>
                   <td className="py-3.5 px-4"><StatusBadge status={o.status} /></td>
@@ -140,7 +152,7 @@ export function OrdersList() {
                       <Link to={vendorPath('orders', String(o._id))} className="p-1.5 rounded-lg" title="View Details" style={{ color: SB.orange }}>
                         <FileText className="w-4 h-4" />
                       </Link>
-                      {o.invoiceStatus === 'pending' && (
+                      {String(o.invoiceStatus || '').toUpperCase() === 'PENDING' && (
                         <Link to={vendorPath('orders', String(o._id), 'invoice')} className="p-1.5 rounded-lg" title="Upload Invoice" style={{ color: SB.muted }}>
                           <Upload className="w-4 h-4" />
                         </Link>

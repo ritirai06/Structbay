@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider, Outlet, useLocation, Navigate } from "react-router";
+import { createBrowserRouter, RouterProvider, Outlet, useLocation, Navigate, useParams } from "react-router";
 
 // --- CUSTOMER PORTAL ---
 import { AppProvider } from "./customer/context/AppContext";
@@ -15,6 +15,7 @@ import { OrderSuccess } from "./customer/pages/OrderSuccess";
 import { OrderTracking } from "./customer/pages/OrderTracking";
 import { Login as CustomerLogin } from "./customer/pages/Login";
 import { Register } from "./customer/pages/Register";
+import { VerifyEmail } from "./customer/pages/VerifyEmail";
 import { Dashboard as CustomerDashboard } from "./customer/pages/Dashboard";
 import { RFQ } from "./customer/pages/RFQ";
 import { BulkEnquiry } from "./customer/pages/BulkEnquiry";
@@ -74,8 +75,15 @@ const FULLSCREEN_ROUTES = [
   "/register",
   "/forgot-password",
   "/reset-password",
+  "/verify-email",
   "/account",
 ];
+
+function LegacyBlogSlugRedirect() {
+  const { slug } = useParams();
+  if (!slug) return <Navigate to="/blogs" replace />;
+  return <Navigate to={`/blogs/${encodeURIComponent(slug)}`} replace />;
+}
 
 function MarketplaceLayout() {
   const location = useLocation();
@@ -96,7 +104,26 @@ function MarketplaceLayout() {
   );
 }
 
+/**
+ * RR7's `RouterProvider` does not reliably expose parent React context to route
+ * components. Keep customer `AppProvider` + vendor auth here so hooks like `useApp`
+ * work on every route (e.g. `/login`).
+ */
+function RootLayout() {
+  return (
+    <AppProvider>
+      <VendorAuthProvider>
+        <Outlet />
+      </VendorAuthProvider>
+    </AppProvider>
+  );
+}
+
 const router = createBrowserRouter([
+  {
+    id: "root",
+    Component: RootLayout,
+    children: [
   // ─── SPLASH ───────────────────────────────────────────────
   { path: "/splash", Component: SplashScreen },
 
@@ -184,6 +211,7 @@ const router = createBrowserRouter([
       { path: "register", Component: Register },
       { path: "forgot-password", Component: CustomerLogin },
       { path: "reset-password", Component: CustomerLogin },
+      { path: "verify-email", Component: VerifyEmail },
 
       // Marketplace
       { path: "shop", Component: CategoryListing },
@@ -219,7 +247,7 @@ const router = createBrowserRouter([
       // Legacy redirects
       { path: "city", element: <Navigate to="/city-selection" replace /> },
       { path: "blog", element: <Navigate to="/blogs" replace /> },
-      { path: "blog/:id", element: <Navigate to="/blogs" replace /> },
+      { path: "blog/:slug", element: <LegacyBlogSlugRedirect /> },
       { path: "bulk", element: <Navigate to="/bulk-enquiry" replace /> },
       { path: "track", element: <Navigate to="/" replace /> },
       { path: "dashboard", element: <Navigate to="/account" replace /> },
@@ -229,14 +257,10 @@ const router = createBrowserRouter([
       { path: "*", Component: Homepage },
     ],
   },
+    ],
+  },
 ]);
 
 export default function App() {
-  return (
-    <AppProvider>
-      <VendorAuthProvider>
-        <RouterProvider router={router} />
-      </VendorAuthProvider>
-    </AppProvider>
-  );
+  return <RouterProvider router={router} />;
 }

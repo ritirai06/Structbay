@@ -4,6 +4,7 @@ const Order = require('../models/Order');
 const Notification = require('../models/Notification');
 const ApiResponse = require('../utils/apiResponse');
 const { vendorOrderMatch } = require('../utils/vendorOrderAccess');
+const { decorateVendorOrderForPortal } = require('../utils/vendorOrderPortal');
 const { notifyVendor } = require('../services/vendorNotification.service');
 
 const VENDOR_ALLOWED_STATUSES = [
@@ -19,18 +20,34 @@ const VENDOR_ALLOWED_STATUSES = [
 exports.getAssignedOrders = async (req, res) => {
   const { status, invoiceStatus, dispatchStatus, search, page = 1, limit = 20 } = req.query;
   const match = await vendorOrderMatch(req.user);
-  const query = { ...match };
+  /** Never overwrite `match.$or` / access clauses — combine search with `$and`. */
+  const query =
+    search && String(search).trim()
+      ? {
+          $and: [
+            { ...match },
+            {
+              $or: [
+                { orderNumber: { $regex: String(search).trim(), $options: 'i' } },
+                { 'customerInfo.name': { $regex: String(search).trim(), $options: 'i' } },
+                { 'deliveryAddress.city': { $regex: String(search).trim(), $options: 'i' } },
+              ],
+            },
+          ],
+        }
+      : { ...match };
 
-  if (status) query.status = status;
+  if (status) {
+    const raw = String(status).trim();
+    if (raw.includes(',')) {
+      const parts = raw.split(',').map((s) => s.trim()).filter(Boolean);
+      if (parts.length) query.status = { $in: parts };
+    } else {
+      query.status = raw;
+    }
+  }
   if (invoiceStatus) query.invoiceStatus = invoiceStatus;
   if (dispatchStatus) query.dispatchStatus = dispatchStatus;
-  if (search) {
-    query.$or = [
-      { orderNumber: { $regex: search, $options: 'i' } },
-      { 'customerInfo.name': { $regex: search, $options: 'i' } },
-      { 'deliveryAddress.city': { $regex: search, $options: 'i' } },
-    ];
-  }
 
   const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
   const [orders, total] = await Promise.all([
@@ -41,7 +58,9 @@ exports.getAssignedOrders = async (req, res) => {
     VendorOrder.countDocuments(query),
   ]);
 
-  return ApiResponse.success(res, 200, 'Orders retrieved.', orders, {
+  const payload = orders.map((o) => decorateVendorOrderForPortal(o));
+
+  return ApiResponse.success(res, 200, 'Orders retrieved.', payload, {
     page: parseInt(page, 10), limit: parseInt(limit, 10), total, pages: Math.ceil(total / parseInt(limit, 10)),
   });
 };
@@ -63,7 +82,7 @@ exports.getOrderDetails = async (req, res) => {
     relatedOrder: order._id, ipAddress: req.ip,
   }).catch(() => {});
 
-  return ApiResponse.success(res, 200, 'Order details retrieved.', order);
+  return ApiResponse.success(res, 200, 'Order details retrieved.', decorateVendorOrderForPortal(order));
 };
 
 // @desc    Update Order Status
@@ -78,6 +97,13 @@ exports.updateOrderStatus = async (req, res) => {
   const match = await vendorOrderMatch(req.user);
   const order = await VendorOrder.findOne({ _id: req.params.id, ...match });
   if (!order) return ApiResponse.notFound(res, 'Order not found.');
+
+  if (Number(order.workflowVersion) === 2) {
+    return ApiResponse.badRequest(
+      res,
+      'This order uses the StructBay workflow — use Accept / Ready for dispatch / Mark delivered actions instead of manual status updates.'
+    );
+  }
 
   const oldStatus = order.status;
   order.status = status;
@@ -131,7 +157,7 @@ exports.updateOrderStatus = async (req, res) => {
     }).catch(() => {});
   }
 
-  return ApiResponse.success(res, 200, 'Order status updated.', order);
+  return ApiResponse.success(res, 200, 'Order status updated.', decorateVendorOrderForPortal(order));
 };
 
 // @desc    Search Orders
@@ -144,7 +170,15 @@ exports.searchOrders = async (req, res) => {
   if (orderNumber) query.orderNumber = { $regex: orderNumber, $options: 'i' };
   if (customerName) query['customerInfo.name'] = { $regex: customerName, $options: 'i' };
   if (city) query['deliveryAddress.city'] = { $regex: city, $options: 'i' };
-  if (status) query.status = status;
+  if (status) {
+    const raw = String(status).trim();
+    if (raw.includes(',')) {
+      const parts = raw.split(',').map((s) => s.trim()).filter(Boolean);
+      if (parts.length) query.status = { $in: parts };
+    } else {
+      query.status = raw;
+    }
+  }
   if (invoiceStatus) query.invoiceStatus = invoiceStatus;
   if (dispatchStatus) query.dispatchStatus = dispatchStatus;
   if (dateFrom || dateTo) {
@@ -157,7 +191,7 @@ exports.searchOrders = async (req, res) => {
     .populate('items.product', 'name brand')
     .sort({ createdAt: -1 }).limit(100);
 
-  return ApiResponse.success(res, 200, 'Search results.', orders);
+  return ApiResponse.success(res, 200, 'Search results.', orders.map((o) => decorateVendorOrderForPortal(o)));
 };
 
 // @desc    Get Order History (Completed)
@@ -178,7 +212,7 @@ exports.getOrderHistory = async (req, res) => {
     VendorOrder.countDocuments(query),
   ]);
 
-  return ApiResponse.success(res, 200, 'Order history retrieved.', orders, {
+  return ApiResponse.success(res, 200, 'Order history retrieved.', orders.map((o) => decorateVendorOrderForPortal(o)), {
     page: parseInt(page, 10), limit: parseInt(limit, 10), total,
     pages: Math.ceil(total / parseInt(limit, 10)),
   });

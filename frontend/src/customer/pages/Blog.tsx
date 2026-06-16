@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router";
 import { Search, ChevronRight, Calendar, User, Tag } from "lucide-react";
-import { api } from "../lib/api";
+import { useCmsPageSeo } from "../hooks/useCmsPageSeo";
 
 // ── Blog Listing ─────────────────────────────────────────────────────────────
 export function BlogListing() {
+  useCmsPageSeo("blog");
   const [blogs, setBlogs]             = useState<any[]>([]);
   const [loading, setLoading]         = useState(true);
   const [search, setSearch]           = useState("");
@@ -162,7 +163,8 @@ function BlogCard({ blog, large = false }: { blog: any; large?: boolean }) {
 
 // ── Blog Details ─────────────────────────────────────────────────────────────
 export function BlogDetails() {
-  const { slug } = useParams<{ slug: string }>();
+  const { slug: slugParam, id: legacyId } = useParams<{ slug?: string; id?: string }>();
+  const slug = slugParam || legacyId;
   const navigate = useNavigate();
   const [blog, setBlog]     = useState<any>(null);
   const [related, setRelated] = useState<any[]>([]);
@@ -170,20 +172,32 @@ export function BlogDetails() {
 
   useEffect(() => {
     if (!slug) return;
-    fetch(`/api/v1/cms/blogs/${slug}`)
-      .then(r => r.json())
-      .then(d => {
-        if (!d.data) { navigate("/blogs", { replace: true }); return; }
+    fetch(`/api/v1/cms/blogs/${encodeURIComponent(slug)}`)
+      .then(async (r) => {
+        const d = await r.json();
+        if (!r.ok || d.success === false || !d.data) {
+          navigate("/blogs", { replace: true });
+          return null;
+        }
         setBlog(d.data);
-        // Fetch related
-        return fetch("/api/v1/cms/blogs?status=PUBLISHED&limit=3").then(r => r.json());
+        const title = (d.data.metaTitle || d.data.title || "").trim();
+        if (title) document.title = title;
+        let desc = document.querySelector('meta[name="description"]');
+        if (!desc) {
+          desc = document.createElement("meta");
+          desc.setAttribute("name", "description");
+          document.head.appendChild(desc);
+        }
+        const md = (d.data.metaDescription || d.data.description || "").trim();
+        if (md) desc.setAttribute("content", md);
+        return fetch("/api/v1/cms/blogs?status=PUBLISHED&limit=8").then((r2) => r2.json());
       })
-      .then(d => {
+      .then((d) => {
         if (d?.data) setRelated(d.data.filter((b: any) => b.slug !== slug).slice(0, 3));
       })
       .catch(() => navigate("/blogs", { replace: true }))
       .finally(() => setLoading(false));
-  }, [slug]);
+  }, [slug, navigate]);
 
   if (loading) return (
     <div className="min-h-screen bg-sb-page flex items-center justify-center">

@@ -10,14 +10,14 @@ import { Button } from "@shared/components/ui/button";
 import { adminFetch as apiFetch } from "../../lib/adminApi";
 
 const actionColors: Record<string, string> = {
-  CREATE: "bg-green-500/15 text-green-400 border-green-500/25",
-  UPDATE: "bg-blue-500/15 text-blue-400 border-blue-500/25",
-  DELETE: "bg-red-500/15 text-red-400 border-red-500/25",
-  UPLOAD: "bg-cyan-500/15 text-cyan-400 border-cyan-500/25",
-  APPROVE: "bg-[#FE5E00]/15 text-[#FE5E00] border-[#FE5E00]/25",
-  REJECT: "bg-yellow-500/15 text-yellow-400 border-yellow-500/25",
-  PUBLISH: "bg-purple-500/15 text-purple-400 border-purple-500/25",
-  TOGGLE: "bg-white/10 text-[#D4C4A8] border-white/15",
+  CREATE: "bg-sb-orange/12 text-sb-orange border-sb-orange/22",
+  UPDATE: "bg-sb-cream-secondary text-sb-ink border-sb-ink/12",
+  DELETE: "bg-sb-cream-secondary text-sb-ink/55 border-sb-ink/15",
+  UPLOAD: "bg-sb-cream-secondary text-sb-ink border-sb-ink/12",
+  APPROVE: "bg-sb-orange/15 text-sb-orange border-sb-orange/25",
+  REJECT: "bg-sb-orange/10 text-sb-orange border-sb-orange/25",
+  PUBLISH: "bg-sb-orange/10 text-sb-ink border-sb-orange/22",
+  TOGGLE: "bg-sb-cream-secondary text-sb-ink/60 border-sb-ink/15",
 };
 
 export function AuditLogs() {
@@ -43,23 +43,23 @@ export function AuditLogs() {
   const ACTIONS = ["CREATE", "UPDATE", "DELETE", "UPLOAD", "APPROVE", "REJECT", "PUBLISH", "TOGGLE"];
 
   return (
-    <div className="p-6 bg-[#0D0D0D] min-h-full">
+    <div className="p-6 bg-sb-cream min-h-full">
       <div className="mb-6">
-        <h1 className="text-2xl font-black text-[#F4E9D8]">Audit Logs</h1>
-        <p className="text-[#D4C4A8]/60 text-sm mt-1">Complete history of every admin action on the platform.</p>
+        <h1 className="text-2xl font-black text-sb-ink">Audit Logs</h1>
+        <p className="text-sb-ink/55 text-sm mt-1">Complete history of every admin action on the platform.</p>
       </div>
 
-      <Card className="border-white/10 bg-[#1A1A1A]">
+      <Card className="border-sb-ink/10 bg-sb-cream-secondary">
         <CardHeader>
           <div className="flex flex-wrap items-center gap-3">
-            <CardTitle className="text-[#F4E9D8] mr-auto">Activity Log</CardTitle>
+            <CardTitle className="text-sb-ink mr-auto">Activity Log</CardTitle>
             <select value={filters.module} onChange={e => setFilters(f => ({ ...f, module: e.target.value, page: 1 }))}
-              className="bg-[#0D0D0D] border border-white/15 rounded-md px-3 py-2 text-sm text-[#F4E9D8]">
+              className="bg-sb-cream border border-sb-ink/15 rounded-md px-3 py-2 text-sm text-sb-ink">
               <option value="">All Modules</option>
               {MODULES.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
             <select value={filters.action} onChange={e => setFilters(f => ({ ...f, action: e.target.value, page: 1 }))}
-              className="bg-[#0D0D0D] border border-white/15 rounded-md px-3 py-2 text-sm text-[#F4E9D8]">
+              className="bg-sb-cream border border-sb-ink/15 rounded-md px-3 py-2 text-sm text-sb-ink">
               <option value="">All Actions</option>
               {ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}
             </select>
@@ -70,48 +70,48 @@ export function AuditLogs() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-[#FE5E00]" /></div>
+            <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-sb-orange" /></div>
           ) : logs.length === 0 ? (
-            <p className="text-center py-10 text-[#D4C4A8]/40 text-sm">No audit logs found.</p>
+            <p className="text-center py-10 text-sb-ink/45 text-sm">No audit logs found.</p>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-white/10">
-                    <TableHead className="text-[#D4C4A8]/60">Admin</TableHead>
-                    <TableHead className="text-[#D4C4A8]/60">Action</TableHead>
-                    <TableHead className="text-[#D4C4A8]/60">Module</TableHead>
-                    <TableHead className="text-[#D4C4A8]/60">Description</TableHead>
-                    <TableHead className="text-[#D4C4A8]/60">IP</TableHead>
-                    <TableHead className="text-[#D4C4A8]/60">Platform</TableHead>
-                    <TableHead className="text-[#D4C4A8]/60">Timestamp</TableHead>
+                  <TableRow className="border-sb-ink/10">
+                    <TableHead className="text-sb-ink/55">Admin</TableHead>
+                    <TableHead className="text-sb-ink/55">Action</TableHead>
+                    <TableHead className="text-sb-ink/55">Module</TableHead>
+                    <TableHead className="text-sb-ink/55">Description</TableHead>
+                    <TableHead className="text-sb-ink/55">IP</TableHead>
+                    <TableHead className="text-sb-ink/55">Platform</TableHead>
+                    <TableHead className="text-sb-ink/55">Timestamp</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {logs.map(log => (
-                    <TableRow key={log._id} className="border-white/6 hover:bg-white/4">
-                      <TableCell className="font-medium text-[#F4E9D8] text-sm">
+                    <TableRow key={log._id} className="border-sb-ink/8 hover:bg-sb-cream-secondary/80">
+                      <TableCell className="font-medium text-sb-ink text-sm">
                         {log.adminId?.name || "Admin"}
-                        <p className="text-xs text-[#D4C4A8]/50">{log.adminId?.email}</p>
+                        <p className="text-xs text-sb-ink/50">{log.adminId?.email}</p>
                       </TableCell>
                       <TableCell>
-                        <Badge className={actionColors[log.action] || "bg-white/10 text-[#D4C4A8]"}>
+                        <Badge className={actionColors[log.action] || "bg-sb-cream-secondary text-sb-ink/60"}>
                           {log.action}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="text-[#D4C4A8]/70">{log.module}</Badge>
+                        <Badge variant="outline" className="text-sb-ink/65">{log.module}</Badge>
                       </TableCell>
-                      <TableCell className="max-w-xs text-sm text-[#D4C4A8]/70 truncate">
+                      <TableCell className="max-w-xs text-sm text-sb-ink/65 truncate">
                         {log.description}
                       </TableCell>
-                      <TableCell className="text-xs font-mono text-[#D4C4A8]/50">
+                      <TableCell className="text-xs font-mono text-sb-ink/50">
                         {log.ipAddress || "—"}
                       </TableCell>
-                      <TableCell className="text-xs text-[#D4C4A8]/60 max-w-[140px] truncate" title={log.platform || ""}>
+                      <TableCell className="text-xs text-sb-ink/55 max-w-[140px] truncate" title={log.platform || ""}>
                         {log.platform || "—"}
                       </TableCell>
-                      <TableCell className="text-xs font-mono text-[#D4C4A8]/50">
+                      <TableCell className="text-xs font-mono text-sb-ink/50">
                         {new Date(log.createdAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
                       </TableCell>
                     </TableRow>
@@ -123,11 +123,11 @@ export function AuditLogs() {
 
           {/* Pagination */}
           {pagination.pages > 1 && (
-            <div className="flex items-center justify-between pt-4 border-t border-white/10 mt-4">
-              <span className="text-sm text-[#D4C4A8]/50">{pagination.total} total entries</span>
+            <div className="flex items-center justify-between pt-4 border-t border-sb-ink/10 mt-4">
+              <span className="text-sm text-sb-ink/50">{pagination.total} total entries</span>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" disabled={filters.page <= 1} onClick={() => setFilters(f => ({ ...f, page: f.page - 1 }))}>Prev</Button>
-                <span className="px-3 py-1 text-sm text-[#D4C4A8]">{filters.page} / {pagination.pages}</span>
+                <span className="px-3 py-1 text-sm text-sb-ink/60">{filters.page} / {pagination.pages}</span>
                 <Button variant="outline" size="sm" disabled={filters.page >= pagination.pages} onClick={() => setFilters(f => ({ ...f, page: f.page + 1 }))}>Next</Button>
               </div>
             </div>

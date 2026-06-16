@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from "react";
 import { getApiV1Base } from "../../lib/apiBase";
 import { clearCustomerSession, getCustomerAccessToken } from "../lib/authStorage";
+import { loadStorefrontCities } from "../lib/storefrontCities";
 
 export interface CartItem {
   id: string;
@@ -26,6 +27,51 @@ export type SelectedCity = {
 
 const STORAGE_KEY = "sb_selected_city";
 const LEGACY_CITY_KEY = "sb_city";
+const CART_STORAGE_KEY = "sb_cart";
+
+function readStoredCart(): CartItem[] {
+  try {
+    const raw = localStorage.getItem(CART_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    const out: CartItem[] = [];
+    for (const x of parsed) {
+      if (!x || typeof x !== "object") continue;
+      const o = x as Record<string, unknown>;
+      const id = o.id;
+      const name = o.name;
+      if (typeof id !== "string" || !id || typeof name !== "string" || !name) continue;
+      const price = Number(o.price);
+      const qty = Math.floor(Number(o.qty));
+      if (!Number.isFinite(price) || price < 0 || !Number.isFinite(qty) || qty < 1) continue;
+      out.push({
+        id,
+        productSlug: typeof o.productSlug === "string" ? o.productSlug : undefined,
+        variationId: typeof o.variationId === "string" ? o.variationId : undefined,
+        variationLabel: typeof o.variationLabel === "string" ? o.variationLabel : undefined,
+        name,
+        brand: typeof o.brand === "string" ? o.brand : "",
+        price,
+        qty,
+        unit: typeof o.unit === "string" ? o.unit : "",
+        image: typeof o.image === "string" ? o.image : "",
+      });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+function persistCartSnapshot(items: CartItem[]) {
+  try {
+    if (items.length === 0) localStorage.removeItem(CART_STORAGE_KEY);
+    else localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+  } catch {
+    /* quota / private mode */
+  }
+}
 
 function readStoredCity(): SelectedCity | null {
   try {
@@ -61,6 +107,8 @@ interface AppContextType {
   addToCart: (item: CartItem) => void;
   removeFromCart: (id: string) => void;
   updateQty: (id: string, qty: number) => void;
+  /** Clear in-memory cart (e.g. after a successful server checkout). */
+  clearClientCart: () => void;
   cartTotal: number;
   cartCount: number;
   isLoggedIn: boolean;
@@ -104,19 +152,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const legacy = localStorage.getItem(LEGACY_CITY_KEY);
     if (!legacy?.trim()) return;
 
-    fetch("/api/v1/customer/cities")
-      .then((r) => r.json())
-      .then((res) => {
-        const list = res.data || [];
+    let cancelled = false;
+    void (async () => {
+      try {
+        const list = await loadStorefrontCities();
+        if (cancelled) return;
         const key = legacy.trim().toLowerCase();
         const match = list.find(
-          (c: any) =>
-            String(c.name || "").toLowerCase() === key ||
-            String(c.slug || "").toLowerCase() === key
+          (c) =>
+            c.name.toLowerCase() === key ||
+            (c.slug && c.slug.toLowerCase() === key)
         );
-        if (match?._id) {
+        if (match) {
           const next: SelectedCity = {
-            id: String(match._id),
+            id: match.id,
             name: match.name,
             state: match.state || "",
             slug: match.slug,
@@ -125,13 +174,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
           persistCity(next);
         }
         localStorage.removeItem(LEGACY_CITY_KEY);
-      })
-      .catch(() => {
+      } catch {
         /* keep legacy key until cities load later */
-      });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cart, setCart] = useState<CartItem[]>(() => readStoredCart());
+
+  /** Keep cart across refresh (same browser). */
+  useEffect(() => {
+    persistCartSnapshot(cart);
+  }, [cart]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<{ name: string; company: string; email: string } | null>(null);
 
@@ -219,6 +277,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setCart((prev) => prev.map((i) => (i.id === id ? { ...i, qty } : i)));
   };
 
+  const clearClientCart = () => setCart([]);
+
   const cartTotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
   const cartCount = cart.reduce((sum, i) => sum + i.qty, 0);
 
@@ -277,6 +337,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addToCart,
         removeFromCart,
         updateQty,
+        clearClientCart,
         cartTotal,
         cartCount,
         isLoggedIn,

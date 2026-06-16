@@ -17,10 +17,10 @@ const emptyForm = {
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-      <div className="bg-[#1A1A1A] border border-white/10 rounded-xl w-full max-w-lg">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-          <h3 className="font-bold text-[#F4E9D8]">{title}</h3>
-          <button onClick={onClose} className="text-[#D4C4A8]/60 hover:text-[#F4E9D8] text-xl">×</button>
+      <div className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl w-full max-w-lg">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-sb-ink/10">
+          <h3 className="font-bold text-sb-ink">{title}</h3>
+          <button onClick={onClose} className="text-sb-ink/55 hover:text-sb-ink text-xl">×</button>
         </div>
         <div className="p-5">{children}</div>
       </div>
@@ -28,7 +28,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   );
 }
 
-const inp = "w-full bg-[#0D0D0D] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#F4E9D8] placeholder:text-[#D4C4A8]/30 focus:outline-none focus:border-[#FE5E00] transition-colors";
+const inp = "w-full bg-sb-cream border border-sb-ink/10 rounded-lg px-3 py-2 text-sm text-sb-ink placeholder:text-sb-ink/40 focus:outline-none focus:border-sb-orange transition-colors";
 
 export function BrandManagement() {
   const [brands, setBrands] = useState<any[]>([]);
@@ -127,11 +127,11 @@ export function BrandManagement() {
   };
 
   return (
-    <div className="p-6 bg-[#0D0D0D] min-h-full">
+    <div className="p-6 bg-sb-cream min-h-full">
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-[#F4E9D8]">Brand Management</h1>
-          <p className="text-[#D4C4A8]/60 text-sm mt-1">
+          <h1 className="text-2xl font-black text-sb-ink">Brand Management</h1>
+          <p className="text-sb-ink/55 text-sm mt-1">
             {pagination.total || brands.length} brands — each linked to a category (e.g. several brands under Cement). Upload logo & banner for customers.
           </p>
         </div>
@@ -139,11 +139,11 @@ export function BrandManagement() {
           <button
             type="button"
             onClick={() => setBulkOpen(true)}
-            className="flex items-center gap-2 border border-white/15 bg-[#1A1A1A] hover:border-[#FE5E00]/40 text-[#F4E9D8] font-bold px-4 py-2.5 rounded-lg text-sm transition-colors"
+            className="flex items-center gap-2 border border-sb-ink/15 bg-sb-cream-secondary hover:border-sb-orange/40 text-sb-ink font-bold px-4 py-2.5 rounded-lg text-sm transition-colors"
           >
-            <Upload className="w-4 h-4 text-[#FE5E00]" /> Bulk CSV
+            <Upload className="w-4 h-4 text-sb-orange" /> Bulk CSV
           </button>
-          <button onClick={openCreate} className="flex items-center gap-2 bg-[#FE5E00] hover:bg-[#E05200] text-[#0D0D0D] font-bold px-4 py-2.5 rounded-lg text-sm transition-colors">
+          <button onClick={openCreate} className="flex items-center gap-2 bg-sb-orange hover:bg-sb-orange-hover text-white font-bold px-4 py-2.5 rounded-lg text-sm transition-colors">
             <Plus className="w-4 h-4" /> Add Brand
           </button>
         </div>
@@ -152,49 +152,49 @@ export function BrandManagement() {
       {/* Search + category filter */}
       <div className="flex flex-wrap gap-3 mb-5">
         <div className="relative flex-1 min-w-[180px] max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#D4C4A8]/40" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-sb-ink/45" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search brands..."
-            className="w-full pl-9 pr-4 py-2 bg-[#1A1A1A] border border-white/10 rounded-lg text-sm text-[#F4E9D8] placeholder:text-[#D4C4A8]/30 focus:outline-none focus:border-[#FE5E00] transition-colors" />
+            className="w-full pl-9 pr-4 py-2 bg-sb-cream-secondary border border-sb-ink/10 rounded-lg text-sm text-sb-ink placeholder:text-sb-ink/40 focus:outline-none focus:border-sb-orange transition-colors" />
         </div>
         <select
           value={categoryFilter}
           onChange={e => setCategoryFilter(e.target.value)}
-          className="bg-[#1A1A1A] border border-white/10 rounded-lg text-sm text-[#F4E9D8] px-3 py-2 min-w-[160px] focus:outline-none focus:border-[#FE5E00]"
+          className="bg-sb-cream-secondary border border-sb-ink/10 rounded-lg text-sm text-sb-ink px-3 py-2 min-w-[160px] focus:outline-none focus:border-sb-orange"
         >
           <option value="">All categories</option>
           {categories.map(c => (
             <option key={c._id} value={c._id}>{c.name}</option>
           ))}
         </select>
-        <button type="button" onClick={() => load()} className="p-2 bg-[#1A1A1A] border border-white/10 rounded-lg text-[#D4C4A8]/60 hover:text-[#F4E9D8] transition-colors">
+        <button type="button" onClick={() => load()} className="p-2 bg-sb-cream-secondary border border-sb-ink/10 rounded-lg text-sb-ink/55 hover:text-sb-ink transition-colors">
           <RefreshCw className="h-4 w-4" />
         </button>
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-[#FE5E00]" /></div>
+        <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-sb-orange" /></div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {brands.map(brand => (
-            <div key={brand._id} className="bg-[#1A1A1A] border border-white/10 rounded-xl overflow-hidden hover:border-white/20 transition-colors group">
+            <div key={brand._id} className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl overflow-hidden hover:border-sb-ink/20 transition-colors group">
               {/* Banner / Logo Area */}
-              <div className="h-24 bg-[#222] relative flex items-center justify-center border-b border-white/8">
+              <div className="h-24 bg-[#222] relative flex items-center justify-center border-b border-sb-ink/10">
                 {brand.banner?.url
                   ? <img src={brand.banner.url} alt="" className="w-full h-full object-cover" />
-                  : <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-[#2A2A2A] to-[#1A1A1A]">
-                      <Image className="w-8 h-8 text-[#D4C4A8]/20" />
+                  : <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-sb-cream-secondary to-sb-cream">
+                      <Image className="w-8 h-8 text-sb-ink/20" />
                     </div>
                 }
                 <div className="absolute bottom-2 left-3">
                   {brand.logo?.url
-                    ? <img src={brand.logo.url} alt={brand.name} className="w-10 h-10 rounded-lg object-cover border-2 border-[#1A1A1A] bg-[#1A1A1A]" />
-                    : <div className="w-10 h-10 rounded-lg bg-[#FE5E00]/15 border-2 border-[#1A1A1A] flex items-center justify-center">
-                        <Award className="w-5 h-5 text-[#FE5E00]" />
+                    ? <img src={brand.logo.url} alt={brand.name} className="w-10 h-10 rounded-lg object-cover border-2 border-sb-ink/10 bg-sb-cream-secondary" />
+                    : <div className="w-10 h-10 rounded-lg bg-sb-orange/15 border-2 border-sb-ink/10 flex items-center justify-center">
+                        <Award className="w-5 h-5 text-sb-orange" />
                       </div>
                   }
                 </div>
                 <div className="absolute top-2 right-2">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${brand.status === "ACTIVE" ? "bg-green-500/20 text-green-400 border-green-500/30" : "bg-white/8 text-[#D4C4A8]/60 border-white/12"}`}>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${brand.status === "ACTIVE" ? "bg-sb-orange/12 text-sb-orange border-sb-orange/25" : "bg-sb-cream-secondary text-sb-ink/55 border-sb-ink/12"}`}>
                     {brand.status}
                   </span>
                 </div>
@@ -202,26 +202,26 @@ export function BrandManagement() {
 
               <div className="p-4">
                 <div className="mb-2">
-                  <p className="font-bold text-[#F4E9D8] text-sm">{brand.name}</p>
-                  <p className="text-xs text-[#D4C4A8]/50">/brands/{brand.slug}</p>
+                  <p className="font-bold text-sb-ink text-sm">{brand.name}</p>
+                  <p className="text-xs text-sb-ink/50">/brands/{brand.slug}</p>
                   {brand.category?.name && (
-                    <p className="text-[10px] text-[#FE5E00]/90 mt-1 font-medium">Category: {brand.category.name}</p>
+                    <p className="text-[10px] text-sb-orange mt-1 font-medium">Category: {brand.category.name}</p>
                   )}
                 </div>
                 {brand.description && (
-                  <p className="text-xs text-[#D4C4A8]/60 line-clamp-2 mb-3">{brand.description}</p>
+                  <p className="text-xs text-sb-ink/55 line-clamp-2 mb-3">{brand.description}</p>
                 )}
-                <div className="text-xs text-[#D4C4A8]/40 mb-3">Sort: {brand.sortOrder}</div>
+                <div className="text-xs text-sb-ink/45 mb-3">Sort: {brand.sortOrder}</div>
                 <div className="flex gap-2">
-                  <button onClick={() => openEdit(brand)} className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-white/10 rounded-lg text-xs text-[#D4C4A8] hover:border-[#FE5E00]/50 hover:text-[#FE5E00] transition-colors">
+                  <button onClick={() => openEdit(brand)} className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-sb-ink/10 rounded-lg text-xs text-sb-ink/60 hover:border-sb-orange/50 hover:text-sb-orange transition-colors">
                     <Edit className="w-3.5 h-3.5" /> Edit
                   </button>
                   <button onClick={() => toggle(brand._id)} title={brand.status === "ACTIVE" ? "Disable" : "Enable"}
-                    className="p-2 border border-white/10 rounded-lg text-[#D4C4A8]/60 hover:border-white/20 hover:text-[#F4E9D8] transition-colors">
-                    {brand.status === "ACTIVE" ? <ToggleRight className="w-3.5 h-3.5 text-green-400" /> : <ToggleLeft className="w-3.5 h-3.5" />}
+                    className="p-2 border border-sb-ink/10 rounded-lg text-sb-ink/55 hover:border-sb-ink/20 hover:text-sb-ink transition-colors">
+                    {brand.status === "ACTIVE" ? <ToggleRight className="w-3.5 h-3.5 text-sb-orange" /> : <ToggleLeft className="w-3.5 h-3.5" />}
                   </button>
                   <button onClick={() => remove(brand._id, brand.name)}
-                    className="p-2 border border-red-400/20 rounded-lg text-red-400 hover:bg-red-400/10 transition-colors">
+                    className="p-2 border border-sb-ink/18 rounded-lg text-sb-ink/55 hover:bg-sb-cream-secondary transition-colors">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -233,8 +233,8 @@ export function BrandManagement() {
 
       {brands.length === 0 && !loading && (
         <div className="text-center py-16">
-          <Award className="w-12 h-12 text-[#D4C4A8]/20 mx-auto mb-3" />
-          <p className="text-[#D4C4A8]/40">No brands found. Create your first brand.</p>
+          <Award className="w-12 h-12 text-sb-ink/20 mx-auto mb-3" />
+          <p className="text-sb-ink/45">No brands found. Create your first brand.</p>
         </div>
       )}
 
@@ -255,11 +255,11 @@ export function BrandManagement() {
         <Modal title={modal.data ? `Edit — ${modal.data.name}` : "Create Brand"} onClose={() => setModal({ open: false, data: null })}>
           <div className="space-y-3">
             <div>
-              <label className="text-xs text-[#D4C4A8]/60 mb-1 block">Brand Name *</label>
+              <label className="text-xs text-sb-ink/55 mb-1 block">Brand Name *</label>
               <input className={inp} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. UltraTech Cement" />
             </div>
             <div>
-              <label className="text-xs text-[#D4C4A8]/60 mb-1 block">Category *</label>
+              <label className="text-xs text-sb-ink/55 mb-1 block">Category *</label>
               <select
                 className={`${inp} cursor-pointer`}
                 value={form.category}
@@ -273,44 +273,44 @@ export function BrandManagement() {
               </select>
             </div>
             <div>
-              <label className="text-xs text-[#D4C4A8]/60 mb-1 block">Description</label>
+              <label className="text-xs text-sb-ink/55 mb-1 block">Description</label>
               <textarea className={`${inp} resize-none`} rows={3} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
             </div>
             <div className="space-y-2">
-              <p className="text-xs text-[#D4C4A8]/60">Customer-facing images (JPEG/PNG/WebP, max 5MB)</p>
+              <p className="text-xs text-sb-ink/55">Customer-facing images (JPEG/PNG/WebP, max 5MB)</p>
               <div className="flex flex-wrap gap-3">
                 <div>
-                  <span className="text-[10px] text-[#D4C4A8]/50 block mb-1">Logo</span>
-                  <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-white/15 bg-[#0D0D0D] text-xs text-[#F4E9D8]">
+                  <span className="text-[10px] text-sb-ink/50 block mb-1">Logo</span>
+                  <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-sb-ink/15 bg-sb-cream text-xs text-sb-ink">
                     <input type="file" accept="image/jpeg,image/png,image/webp,image/jpg" className="hidden" disabled={uploading === "logo"} onChange={e => onPickFile("logo", e)} />
                     {uploading === "logo" ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
                     {form.logo?.url ? "Replace" : "Upload"}
                   </label>
-                  {form.logo?.url && <img src={form.logo.url} alt="" className="mt-2 h-12 w-12 rounded object-cover border border-white/10" />}
+                  {form.logo?.url && <img src={form.logo.url} alt="" className="mt-2 h-12 w-12 rounded object-cover border border-sb-ink/10" />}
                 </div>
                 <div>
-                  <span className="text-[10px] text-[#D4C4A8]/50 block mb-1">Banner</span>
-                  <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-white/15 bg-[#0D0D0D] text-xs text-[#F4E9D8]">
+                  <span className="text-[10px] text-sb-ink/50 block mb-1">Banner</span>
+                  <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-sb-ink/15 bg-sb-cream text-xs text-sb-ink">
                     <input type="file" accept="image/jpeg,image/png,image/webp,image/jpg" className="hidden" disabled={uploading === "banner"} onChange={e => onPickFile("banner", e)} />
                     {uploading === "banner" ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
                     {form.banner?.url ? "Replace" : "Upload"}
                   </label>
-                  {form.banner?.url && <img src={form.banner.url} alt="" className="mt-2 h-10 w-24 rounded object-cover border border-white/10" />}
+                  {form.banner?.url && <img src={form.banner.url} alt="" className="mt-2 h-10 w-24 rounded object-cover border border-sb-ink/10" />}
                 </div>
               </div>
               {(form.logo?.url || form.banner?.url) && (
-                <button type="button" className="text-xs text-red-400 hover:underline" onClick={() => setForm(f => ({ ...f, logo: null, banner: null }))}>
+                <button type="button" className="text-xs text-sb-ink/55 hover:underline" onClick={() => setForm(f => ({ ...f, logo: null, banner: null }))}>
                   Clear logo & banner
                 </button>
               )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-[#D4C4A8]/60 mb-1 block">Sort Order</label>
+                <label className="text-xs text-sb-ink/55 mb-1 block">Sort Order</label>
                 <input type="number" className={inp} min={0} value={form.sortOrder} onChange={e => setForm(f => ({ ...f, sortOrder: +e.target.value }))} />
               </div>
               <div>
-                <label className="text-xs text-[#D4C4A8]/60 mb-1 block">Status</label>
+                <label className="text-xs text-sb-ink/55 mb-1 block">Status</label>
                 <select className={`${inp} cursor-pointer`} value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
                   <option value="ACTIVE">ACTIVE</option>
                   <option value="INACTIVE">INACTIVE</option>
@@ -319,12 +319,12 @@ export function BrandManagement() {
             </div>
             <div className="pt-2 flex gap-2">
               <button onClick={save} disabled={saving || !form.name}
-                className="flex items-center gap-2 bg-[#FE5E00] hover:bg-[#E05200] text-[#0D0D0D] font-bold px-4 py-2 rounded-lg text-sm flex-1 justify-center disabled:opacity-60">
+                className="flex items-center gap-2 bg-sb-orange hover:bg-sb-orange-hover text-white font-bold px-4 py-2 rounded-lg text-sm flex-1 justify-center disabled:opacity-60">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 {modal.data ? "Update Brand" : "Create Brand"}
               </button>
               <button onClick={() => setModal({ open: false, data: null })}
-                className="px-4 py-2 border border-white/15 rounded-lg text-sm text-[#D4C4A8] hover:border-white/30 transition-colors">
+                className="px-4 py-2 border border-sb-ink/15 rounded-lg text-sm text-sb-ink/60 hover:border-sb-ink/25 transition-colors">
                 Cancel
               </button>
             </div>

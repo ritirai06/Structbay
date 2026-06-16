@@ -20,7 +20,8 @@ exports.validate = asyncHandler(async (req, res) => {
 
   const cart = await Cart.findOne({ customer: req.user._id })
     .populate('items.product', 'name sku status gstPercentage')
-    .populate('items.variation', 'attributes sku');
+    .populate('items.variation', 'attributes sku')
+    .populate('items.vendorUser', 'name companyName');
 
   if (!cart || !cart.items.filter(i => !i.savedForLater).length) {
     throw new AppError('Your cart is empty.', 400);
@@ -79,11 +80,12 @@ exports.validate = asyncHandler(async (req, res) => {
       product: item.product._id,
       variation: item.variation?._id || null,
       name: item.product.name,
-      sku: item.product.sku,
+      sku: item.variation?.sku || item.product.sku,
       quantity: item.quantity,
       unitPrice,
       gstPercentage: item.product.gstPercentage || 18,
       lineTotal,
+      vendorUser: item.vendorUser?._id || null,
     });
   }
 
@@ -117,7 +119,8 @@ exports.placeOrder = asyncHandler(async (req, res) => {
 
   const cart = await Cart.findOne({ customer: req.user._id })
     .populate('items.product', 'name sku status gstPercentage')
-    .populate('items.variation', 'attributes sku');
+    .populate('items.variation', 'attributes sku')
+    .populate('items.vendorUser', 'name companyName');
 
   const activeItems = cart?.items.filter(i => !i.savedForLater) || [];
   if (!activeItems.length) throw new AppError('Cart is empty.', 400);
@@ -142,11 +145,12 @@ exports.placeOrder = asyncHandler(async (req, res) => {
       product: item.product._id,
       variation: item.variation?._id || null,
       name: item.product.name,
-      sku: item.product.sku,
+      sku: item.variation?.sku || item.product.sku,
       quantity: item.quantity,
       unitPrice,
       gstPercentage: item.product.gstPercentage || 18,
       lineTotal,
+      vendorUser: item.vendorUser?._id || null,
     });
 
     // Reserve inventory

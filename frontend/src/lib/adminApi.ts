@@ -177,6 +177,49 @@ export async function adminFetch<T = unknown>(
   return data;
 }
 
+/**
+ * Authenticated GET for binary downloads (catalog PDF, etc.). Uses the same token refresh path as {@link adminFetch}.
+ */
+export async function adminDownloadBlob(relPath: string, downloadFileName: string): Promise<void> {
+  const base = getApiV1Base().replace(/\/$/, "");
+  const rel = relPath.startsWith("/") ? relPath : `/${relPath}`;
+  const url = `${base}${rel}`;
+
+  const buildHeaders = () => {
+    const headers = new Headers();
+    const t = getAdminToken();
+    if (t) headers.set("Authorization", `Bearer ${t}`);
+    return headers;
+  };
+
+  const doFetch = () => fetch(url, { headers: buildHeaders() });
+
+  let res = await doFetch();
+  if (res.status === 401 && getAdminRefreshToken()) {
+    const ok = await refreshAdminAccessToken();
+    if (ok) res = await doFetch();
+  }
+
+  if (!res.ok) {
+    const text = await res.text();
+    let msg = `Download failed (${res.status})`;
+    try {
+      const j = JSON.parse(text) as { message?: string };
+      if (j?.message) msg = j.message;
+    } catch {
+      if (text) msg = text.slice(0, 200);
+    }
+    throw new Error(msg);
+  }
+
+  const blob = await res.blob();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = downloadFileName;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 /** Upload one image (multipart field `image`) to an admin upload endpoint; returns Cloudinary `url` + `publicId`. */
 export async function adminUploadImage(
   uploadPath: string,

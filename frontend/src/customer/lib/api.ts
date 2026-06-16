@@ -6,6 +6,18 @@ function token() {
   return getCustomerAccessToken();
 }
 
+function formatApiError(json: unknown): string {
+  const j = json as { message?: unknown; errors?: unknown };
+  let msg = j?.message ?? 'Request failed';
+  if (typeof msg !== 'string') msg = String(msg);
+  const errs = j?.errors;
+  if (Array.isArray(errs) && errs.length) {
+    const parts = errs.map((x) => (typeof x === 'string' ? x : JSON.stringify(x)));
+    return `${msg} ${parts.join('; ')}`;
+  }
+  return msg;
+}
+
 async function reqV1<T>(method: string, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = {};
   const t = token();
@@ -18,7 +30,7 @@ async function reqV1<T>(method: string, path: string, body?: unknown): Promise<T
     body: body != null && method !== 'GET' ? JSON.stringify(body) : undefined,
   });
   const json = await res.json();
-  if (!res.ok) throw new Error(json.message ?? 'Request failed');
+  if (!res.ok) throw new Error(formatApiError(json));
   return json as T;
 }
 
@@ -35,7 +47,7 @@ async function req<T>(method: string, path: string, body?: unknown, isForm = fal
   });
 
   const json = await res.json();
-  if (!res.ok) throw new Error(json.message ?? 'Request failed');
+  if (!res.ok) throw new Error(formatApiError(json));
   return json;
 }
 
@@ -43,17 +55,45 @@ export const api = {
   // ─── Public Catalog ────────────────────────────────────────────────────────
   getCities: () => req<any>('GET', '/cities'),
 
-  /** Public PIN check — no auth. Returns `{ serviceable, message?, city? }` inside `data`. */
-  validatePincode: async (code: string) => {
+  /** Public homepage / storefront CMS (top bar, promo modal, hero copy). */
+  getCmsHomepage: async (): Promise<Record<string, unknown>> => {
+    const res = await fetch("/api/v1/cms/homepage");
+    const json = (await res.json()) as { success?: boolean; message?: string; data?: Record<string, unknown> };
+    if (!res.ok) throw new Error(json.message || "Failed to load storefront settings");
+    return json.data || {};
+  },
+
+  /** Public PIN check — no auth. Optional `cityId` = header-selected warehouse city (better Bengaluru coverage). */
+  validatePincode: async (code: string, cityId?: string | null) => {
     const digits = String(code ?? '').replace(/\D/g, '').slice(0, 6);
-    const res = await fetch(`${BASE}/serviceability/pincode?${new URLSearchParams({ code: digits })}`);
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.message ?? 'Request failed');
-    return json.data as {
+    const p = new URLSearchParams({ code: digits });
+    if (cityId) p.set('cityId', String(cityId));
+    const res = await fetch(`${BASE}/serviceability/pincode?${p.toString()}`);
+    const text = await res.text();
+    type PinData = {
       serviceable: boolean;
       message?: string;
       city?: { id: string; name: string; state: string; slug?: string };
     };
+    let json: { message?: string; data?: PinData } = {};
+    if (text.trim()) {
+      try {
+        json = JSON.parse(text) as typeof json;
+      } catch {
+        throw new Error('Could not read the server response. Is the API running (e.g. backend on port 5000)?');
+      }
+    }
+    if (!res.ok) {
+      throw new Error(typeof json.message === 'string' ? json.message : `Request failed (${res.status})`);
+    }
+    const data = json.data;
+    if (!data || typeof data !== 'object') {
+      return {
+        serviceable: false,
+        message: 'Empty response from server. Check your connection and try again.',
+      } satisfies PinData;
+    }
+    return data;
   },
 
   getCategories: (params?: Record<string, any>) => {
@@ -141,6 +181,18 @@ export const api = {
   addToCart: (data: any) => req<any>('POST', '/cart/items', data),
   updateCartItem: (itemId: string, data: any) => req<any>('PATCH', `/cart/items/${itemId}`, data),
   removeCartItem: (itemId: string) => req<any>('DELETE', `/cart/items/${itemId}`),
+  clearCart: () => req<any>('DELETE', '/cart'),
+  setCartCity: (data: { cityId: string }) => req<any>('PATCH', '/cart/city', data),
+
+  validateCheckout: (data: { cityId: string; addressCity?: string }) =>
+    req<any>('POST', '/checkout/validate', data),
+
+  placeOrder: (data: {
+    cityId: string;
+    shippingAddress: Record<string, string | undefined>;
+    paymentMethod?: string;
+    addressId?: string;
+  }) => req<any>('POST', '/checkout/place-order', data),
 
   // ─── Orders & invoices ───────────────────────────────────────────────────
   getOrders: (params?: Record<string, string>) => {
@@ -153,6 +205,25 @@ export const api = {
   postOrderChatMessage: (orderId: string, text: string) =>
     reqV1<any>('POST', `/order-chat/${orderId}/messages`, { text }),
   getOrderInvoices: (id: string) => req<any>('GET', `/orders/${id}/invoices`),
+
+  /** Themed HTML order summary (download). */
+  downloadOrderInvoiceSummaryHtml: async (orderId: string) => {
+    const headers: Record<string, string> = {};
+    const t = token();
+    if (t) headers.Authorization = `Bearer ${t}`;
+    const res = await fetch(`${BASE}/orders/${encodeURIComponent(orderId)}/invoice-summary`, { headers });
+    if (!res.ok) {
+      let msg = 'Failed to download invoice';
+      try {
+        const j = await res.json();
+        msg = formatApiError(j);
+      } catch {
+        /* ignore */
+      }
+      throw new Error(msg);
+    }
+    return res.blob();
+  },
 
   // ─── Notifications (email + in-app; email via templates / checkout) ───────
   getNotifications: (params?: Record<string, string>) => {

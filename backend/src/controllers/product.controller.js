@@ -5,10 +5,16 @@ const mongoose = require('mongoose');
 const Product = require('../models/Product');
 const ProductVariation = require('../models/ProductVariation');
 const Brand = require('../models/Brand');
+const Category = require('../models/Category');
+const CategoryFilter = require('../models/CategoryFilter');
+const City = require('../models/City');
+const CityPricing = require('../models/CityPricing');
+const Inventory = require('../models/Inventory');
 const { deleteFile } = require('../config/cloudinary');
 const { logAction } = require('../services/auditLog.service');
 const { generateRefNumber } = require('../services/refNumber.service');
 const { resolveCategoryFromRow, escRx } = require('../utils/resolveCategoryFromRow');
+const catalogBrowse = require('../services/catalogBrowse.service');
 
 async function resolveBrandForProductRow(r) {
   const byId = String(r.brandId || r.brand_id || '').trim();
@@ -37,10 +43,10 @@ const getAll = asyncHandler(async (req, res) => {
   if (status) filter.status = status;
   if (category) filter.category = category;
   if (brand) filter.brand = brand;
-  if (search) filter.$or = [
-    { name: { $regex: search, $options: 'i' } },
-    { sku: { $regex: search, $options: 'i' } },
-  ];
+  if (search) {
+    const searchOr = await catalogBrowse.buildProductSearchOr(search);
+    if (searchOr) filter.$or = searchOr.$or;
+  }
 
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(100, parseInt(limit));
@@ -80,6 +86,8 @@ const create = asyncHandler(async (req, res) => {
   const {
     name, sku, category, brand, shortDescription, description,
     gstPercentage, status, isFeatured, isTopSelling, isAssured, isExpress,
+    isStructbayAssured, isStructbayDelivery, assuredVerifiedAt, assuredVerifiedBy,
+    structbayDeliverySupported, structbayDeliveryZones, structbayDeliveryLeadTimeDays,
     displayOrder, seo, faqs, videos, documents,
   } = req.body;
 
@@ -88,6 +96,8 @@ const create = asyncHandler(async (req, res) => {
   const product = await Product.create({
     name, sku, category, brand, shortDescription, description,
     gstPercentage, status, isFeatured, isTopSelling, isAssured, isExpress,
+    isStructbayAssured, isStructbayDelivery, assuredVerifiedAt, assuredVerifiedBy,
+    structbayDeliverySupported, structbayDeliveryZones, structbayDeliveryLeadTimeDays,
     displayOrder, seo, faqs, videos, documents,
     referenceNumber,
     createdBy: req.user._id,
@@ -106,6 +116,8 @@ const update = asyncHandler(async (req, res) => {
   const allowed = [
     'name', 'sku', 'category', 'brand', 'shortDescription', 'description',
     'gstPercentage', 'status', 'isFeatured', 'isTopSelling', 'isAssured', 'isExpress',
+    'isStructbayAssured', 'isStructbayDelivery', 'assuredVerifiedAt', 'assuredVerifiedBy',
+    'structbayDeliverySupported', 'structbayDeliveryZones', 'structbayDeliveryLeadTimeDays',
     'displayOrder', 'seo', 'faqs', 'videos', 'documents',
   ];
   allowed.forEach(f => { if (req.body[f] !== undefined) product[f] = req.body[f]; });
@@ -163,7 +175,10 @@ const createVariation = asyncHandler(async (req, res) => {
 const updateVariation = asyncHandler(async (req, res) => {
   const variation = await ProductVariation.findOne({ _id: req.params.varId, product: req.params.id });
   if (!variation) throw new AppError('Variation not found.', 404);
-  const allowed = ['attributes', 'sku', 'images', 'status', 'sortOrder'];
+  const allowed = [
+    'attributes', 'sku', 'images', 'status', 'sortOrder',
+    'mrp', 'weightKg', 'leadTimeDays', 'moq', 'vendorSku', 'vendorPrice',
+  ];
   allowed.forEach(f => { if (req.body[f] !== undefined) variation[f] = req.body[f]; });
   await variation.save();
   return ApiResponse.success(res, 200, 'Variation updated.', variation);
@@ -240,6 +255,8 @@ const bulkImport = asyncHandler(async (req, res) => {
         isTopSelling: boolField(r.isTopSelling, false),
         isAssured: boolField(r.isAssured, false),
         isExpress: boolField(r.isExpress, false),
+        isStructbayAssured: boolField(r.isStructbayAssured ?? r.structbayAssured, false),
+        isStructbayDelivery: boolField(r.isStructbayDelivery ?? r.structbayDelivery, false),
         displayOrder:
           r.displayOrder !== undefined && r.displayOrder !== '' && Number.isFinite(Number(r.displayOrder))
             ? Number(r.displayOrder)
@@ -273,7 +290,251 @@ const bulkImport = asyncHandler(async (req, res) => {
   });
 });
 
+const FIXED_ATTR = new Set(['weight', 'grade', 'size', 'color', 'finish', 'diameter']);
+
+const RESERVED_VARIANT_ROW_KEYS = new Set([
+  'productSku', 'parent_sku', 'parentSku', 'product_sku',
+  'variantSku', 'variant_sku',
+  'mrp', 'salePrice', 'price', 'selling_price', 'stock', 'cityId', 'city_id',
+  'moq', 'leadTimeDays', 'lead_time', 'weightKg', 'weight_kg',
+  'vendorSku', 'vendor_sku', 'vendorPrice', 'vendor_price',
+]);
+
+function mergeVariationAttributes(prev, next) {
+  const p = prev && typeof prev === 'object' ? prev : {};
+  const n = next && typeof next === 'object' ? next : {};
+  const out = { ...p, ...n };
+  delete out.custom;
+  const prevC = Array.isArray(p.custom) ? p.custom : [];
+  const nextC = Array.isArray(n.custom) ? n.custom : [];
+  const map = new Map();
+  prevC.forEach((c) => {
+    if (c?.key) map.set(String(c.key).toLowerCase(), c);
+  });
+  nextC.forEach((c) => {
+    if (c?.key) map.set(String(c.key).toLowerCase(), c);
+  });
+  out.custom = [...map.values()];
+  return out;
+}
+
+function variantAttributesFromRow(row, filterKeys) {
+  const attrs = { custom: [] };
+  for (const fk of filterKeys) {
+    if (RESERVED_VARIANT_ROW_KEYS.has(fk)) continue;
+    const raw = row[fk];
+    if (raw === undefined || raw === null || String(raw).trim() === '') continue;
+    const val = String(raw).trim();
+    if (FIXED_ATTR.has(fk)) attrs[fk] = val;
+    else attrs.custom.push({ key: fk, value: val });
+  }
+  for (const k of FIXED_ATTR) {
+    if (attrs[k]) continue;
+    const raw = row[k];
+    if (raw !== undefined && raw !== null && String(raw).trim() !== '') {
+      attrs[k] = String(raw).trim();
+    }
+  }
+  return attrs;
+}
+
+const getBulkImportTemplate = asyncHandler(async (req, res) => {
+  const { categoryId, mode = 'variants' } = req.query;
+  if (!categoryId || !mongoose.Types.ObjectId.isValid(String(categoryId))) {
+    throw new AppError('Query parameter categoryId is required.', 400);
+  }
+  const category = await Category.findById(categoryId).select('name slug status').lean();
+  if (!category) throw new AppError('Category not found.', 404);
+
+  const cf = await CategoryFilter.findOne({ category: categoryId }).lean();
+  const dyn = (cf?.filters || [])
+    .filter((f) => f.isActive !== false)
+    .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+
+  const baseProductCols = [
+    { key: 'name', label: 'Product Name', group: 'product', required: true },
+    { key: 'sku', label: 'Parent SKU', group: 'product', required: mode === 'products' },
+    { key: 'brandName', label: 'Brand Name', group: 'product', required: true },
+    { key: 'categorySlug', label: 'Category Slug', group: 'product', required: false },
+    { key: 'shortDescription', label: 'Short Description', group: 'product', required: false },
+    { key: 'description', label: 'Description', group: 'product', required: false },
+  ];
+
+  const variantCols = [
+    { key: 'productSku', label: 'Parent Product SKU', group: 'variant', required: true },
+    { key: 'variantSku', label: 'Variant SKU', group: 'variant', required: true },
+    { key: 'mrp', label: 'MRP', group: 'pricing', required: false },
+    { key: 'salePrice', label: 'Sale Price (city)', group: 'pricing', required: true },
+    { key: 'stock', label: 'Stock (city)', group: 'inventory', required: true },
+    { key: 'cityId', label: 'City ID', group: 'inventory', required: true },
+    { key: 'moq', label: 'MOQ', group: 'variant', required: false },
+    { key: 'leadTimeDays', label: 'Lead Time (days)', group: 'variant', required: false },
+    { key: 'weightKg', label: 'Weight (kg)', group: 'variant', required: false },
+    { key: 'vendorSku', label: 'Vendor SKU', group: 'vendor', required: false },
+    { key: 'vendorPrice', label: 'Vendor Price', group: 'vendor', required: false },
+  ];
+
+  const dynCols = dyn.map((f) => ({
+    key: f.key,
+    label: f.label,
+    group: mode === 'products' ? 'product_attribute' : 'variant_attribute',
+    filterType: f.type,
+    required: false,
+    options: f.options || [],
+    sortOrder: f.sortOrder,
+  }));
+
+  const columns = mode === 'products'
+    ? [
+      ...baseProductCols,
+      ...dynCols,
+      { key: 'gstPercentage', label: 'GST %', group: 'product', required: false },
+      { key: 'status', label: 'Status (DRAFT|ACTIVE|ARCHIVED)', group: 'product', required: false },
+      { key: 'isAssured', label: 'Legacy Assured', group: 'badges', required: false },
+      { key: 'isExpress', label: 'Legacy Express', group: 'badges', required: false },
+      { key: 'isStructbayAssured', label: 'StructBay Assured', group: 'badges', required: false },
+      { key: 'isStructbayDelivery', label: 'StructBay Delivery', group: 'badges', required: false },
+    ]
+    : [...variantCols.slice(0, 2), ...dynCols, ...variantCols.slice(2)];
+
+  return ApiResponse.success(res, 200, 'Bulk import template.', {
+    mode,
+    categoryId: String(category._id),
+    category,
+    columns,
+    generatedAt: new Date().toISOString(),
+  });
+});
+
+const bulkImportVariants = asyncHandler(async (req, res) => {
+  const { rows, cityId: bodyCityId } = req.body;
+  if (!Array.isArray(rows)) throw new AppError('rows must be an array.', 400);
+  if (!rows.length) throw new AppError('rows cannot be empty.', 400);
+  if (rows.length > BULK_MAX_ROWS) {
+    throw new AppError(`Too many rows (max ${BULK_MAX_ROWS}).`, 400);
+  }
+
+  const errors = [];
+  let ok = 0;
+  const batchId = new mongoose.Types.ObjectId().toString();
+
+  for (let i = 0; i < rows.length; i += 1) {
+    const row = rows[i];
+    try {
+      const r = typeof row === 'object' && row !== null ? row : {};
+      const productSku = String(r.productSku || r.parentSku || r.product_sku || r.parent_sku || '').trim().toUpperCase();
+      const variantSku = String(r.variantSku || r.variant_sku || '').trim();
+      const rowCity = r.cityId || r.city_id || bodyCityId;
+      if (!productSku) throw new AppError('productSku (parent sku) is required.', 400);
+      if (!variantSku) throw new AppError('variantSku is required.', 400);
+      if (!rowCity || !mongoose.Types.ObjectId.isValid(String(rowCity))) {
+        throw new AppError('cityId is required on each row (or once in request body).', 400);
+      }
+
+      const city = await City.findOne({ _id: rowCity, status: 'ACTIVE', isServiceable: true }).select('_id').lean();
+      if (!city) throw new AppError('Invalid or non-serviceable cityId.', 400);
+
+      const product = await Product.findOne({ sku: productSku });
+      if (!product) throw new AppError(`Product not found for sku ${productSku}.`, 404);
+
+      const cf = await CategoryFilter.findOne({ category: product.category }).lean();
+      const filterKeys = (cf?.filters || []).filter((f) => f.isActive !== false).map((f) => f.key);
+      const attrs = variantAttributesFromRow(r, filterKeys);
+
+      let variation = await ProductVariation.findOne({ product: product._id, sku: variantSku });
+      const moq = r.moq !== undefined && r.moq !== '' && Number.isFinite(Number(r.moq)) ? Math.max(1, Number(r.moq)) : undefined;
+      const leadRaw = r.leadTimeDays ?? r.lead_time;
+      const leadTimeDays = leadRaw !== undefined && leadRaw !== '' ? Number(leadRaw) : null;
+      const weightRaw = r.weightKg ?? r.weight_kg;
+      const weightKg = weightRaw !== undefined && weightRaw !== '' ? Number(weightRaw) : null;
+      const mrp = r.mrp !== undefined && r.mrp !== '' ? Number(r.mrp) : null;
+      const vendorSku = r.vendorSku || r.vendor_sku || null;
+      const vendorPriceRaw = r.vendorPrice ?? r.vendor_price;
+      const vendorPrice = vendorPriceRaw !== undefined && vendorPriceRaw !== '' ? Number(vendorPriceRaw) : null;
+
+      const salePrice = Number(r.salePrice ?? r.price ?? r.selling_price);
+      if (!Number.isFinite(salePrice) || salePrice < 0) throw new AppError('salePrice (or price) must be a valid number.', 400);
+
+      const stock = Number(r.stock);
+      if (!Number.isFinite(stock) || stock < 0) throw new AppError('stock must be a valid non-negative number.', 400);
+
+      if (!variation) {
+        variation = await ProductVariation.create({
+          product: product._id,
+          sku: variantSku,
+          attributes: attrs,
+          moq: moq ?? 1,
+          leadTimeDays: Number.isFinite(leadTimeDays) ? leadTimeDays : null,
+          weightKg: Number.isFinite(weightKg) ? weightKg : null,
+          mrp: Number.isFinite(mrp) && mrp >= 0 ? mrp : null,
+          vendorSku: vendorSku ? String(vendorSku).trim() : null,
+          vendorPrice: Number.isFinite(vendorPrice) && vendorPrice >= 0 ? vendorPrice : null,
+        });
+      } else {
+        variation.attributes = mergeVariationAttributes(variation.attributes, attrs);
+        if (moq !== undefined) variation.moq = moq;
+        if (Number.isFinite(leadTimeDays)) variation.leadTimeDays = leadTimeDays;
+        if (Number.isFinite(weightKg)) variation.weightKg = weightKg;
+        if (Number.isFinite(mrp) && mrp >= 0) variation.mrp = mrp;
+        if (vendorSku != null) variation.vendorSku = String(vendorSku).trim() || null;
+        if (Number.isFinite(vendorPrice) && vendorPrice >= 0) variation.vendorPrice = vendorPrice;
+        await variation.save();
+      }
+
+      const reg = Number.isFinite(mrp) && mrp >= 0 ? mrp : salePrice;
+
+      await CityPricing.findOneAndUpdate(
+        { product: product._id, variation: variation._id, city: city._id },
+        {
+          $set: {
+            regularPrice: reg,
+            salePrice,
+            isVisible: true,
+            isDeleted: false,
+            updatedBy: req.user._id,
+          },
+        },
+        { upsert: true, new: true }
+      );
+
+      await Inventory.findOneAndUpdate(
+        { product: product._id, variation: variation._id, city: city._id },
+        {
+          $set: {
+            quantity: stock,
+            isDeleted: false,
+            updatedBy: req.user._id,
+          },
+        },
+        { upsert: true, new: true }
+      );
+
+      ok += 1;
+    } catch (e) {
+      errors.push({ row: i + 1, message: bulkProductRowError(e) });
+    }
+  }
+
+  await logAction({
+    adminId: req.user._id,
+    action: 'CREATE',
+    module: 'Product',
+    targetId: batchId,
+    description: `Bulk variant import: ${ok} succeeded, ${errors.length} failed (${rows.length} rows)`,
+    ipAddress: req.ip,
+  });
+
+  return ApiResponse.success(res, 200, 'Variant bulk import completed.', {
+    batchId,
+    total: rows.length,
+    succeeded: ok,
+    failed: errors.length,
+    errors,
+  });
+});
+
 module.exports = {
-  getAll, getById, getBySlug, create, update, addImages, removeImage, remove, bulkImport,
+  getAll, getById, getBySlug, create, update, addImages, removeImage, remove, bulkImport, bulkImportVariants,
+  getBulkImportTemplate,
   getVariations, createVariation, updateVariation, deleteVariation,
 };

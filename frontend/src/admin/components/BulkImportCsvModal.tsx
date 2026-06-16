@@ -114,44 +114,44 @@ export function BulkImportCsvModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-      <div className={`bg-[#1A1A1A] border border-white/10 rounded-xl w-full ${panelClassName}`}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-          <h3 className="font-bold text-[#F4E9D8]">{title}</h3>
-          <button type="button" onClick={close} className="text-[#D4C4A8]/60 hover:text-[#F4E9D8] text-xl leading-none">
+      <div className={`bg-sb-cream-secondary border border-sb-ink/10 rounded-xl w-full ${panelClassName}`}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-sb-ink/10">
+          <h3 className="font-bold text-sb-ink">{title}</h3>
+          <button type="button" onClick={close} className="text-sb-ink/55 hover:text-sb-ink text-xl leading-none">
             ×
           </button>
         </div>
         <div className="p-5">
-          <p className="text-xs text-[#D4C4A8]/55 mb-4 leading-relaxed whitespace-pre-line">{instructions}</p>
+          <p className="text-xs text-sb-ink/50 mb-4 leading-relaxed whitespace-pre-line">{instructions}</p>
           <div className="flex flex-wrap gap-2 mb-4">
             <button
               type="button"
               onClick={downloadTemplate}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold bg-[#0D0D0D] border border-white/12 text-[#F4E9D8] hover:border-[#FE5E00]/40 transition-colors"
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold bg-sb-cream border border-sb-ink/12 text-sb-ink hover:border-sb-orange/40 transition-colors"
             >
-              <Download className="w-4 h-4 text-[#FE5E00]" />
+              <Download className="w-4 h-4 text-sb-orange" />
               Download template
             </button>
-            <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold bg-[#FE5E00] hover:bg-[#E05200] text-[#0D0D0D] cursor-pointer transition-colors">
+            <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold bg-sb-orange hover:bg-sb-orange-hover text-white cursor-pointer transition-colors">
               <Upload className="w-4 h-4" />
               Choose CSV
               <input type="file" accept=".csv,text/csv" className="hidden" onChange={onFile} />
             </label>
             {fileName && (
-              <span className="text-xs text-[#D4C4A8]/60 self-center">
-                File: <span className="text-[#F4E9D8]/90 font-mono">{fileName}</span>
+              <span className="text-xs text-sb-ink/55 self-center">
+                File: <span className="text-sb-ink/90 font-mono">{fileName}</span>
               </span>
             )}
           </div>
           {parseError && (
-            <div className="mb-3 text-sm text-red-400/95 bg-red-500/10 border border-red-500/25 rounded-lg px-3 py-2">{parseError}</div>
+            <div className="mb-3 text-sm text-sb-ink bg-sb-cream-secondary border border-sb-ink/15 rounded-lg px-3 py-2">{parseError}</div>
           )}
           {result && (
             <div
               className={`mb-3 text-sm rounded-lg px-3 py-2 border ${
                 result.failed > 0
-                  ? "text-amber-200/95 bg-amber-500/10 border-amber-500/25"
-                  : "text-green-300/95 bg-green-500/10 border-green-500/25"
+                  ? "text-sb-ink/80 bg-sb-orange/10 border-sb-orange/25"
+                  : "text-sb-ink/80 bg-sb-orange/10 border-sb-orange/22"
               }`}
             >
               Processed {result.total ?? rows.length} row(s): <strong>{result.succeeded}</strong> succeeded,{" "}
@@ -174,12 +174,12 @@ export function BulkImportCsvModal({
             </div>
           )}
           {rows.length > 0 && previewKeys.length > 0 && (
-            <div className="mb-4 max-h-56 overflow-auto rounded-lg border border-white/10">
+            <div className="mb-4 max-h-56 overflow-auto rounded-lg border border-sb-ink/10">
               <table className="w-full text-xs">
-                <thead className="sticky top-0 bg-[#0D0D0D] border-b border-white/10">
+                <thead className="sticky top-0 z-[1] border-b border-sb-border-dark bg-sb-ink text-sb-cream">
                   <tr>
                     {previewKeys.map((h) => (
-                      <th key={h} className="text-left py-2 px-2 text-[#D4C4A8]/55 font-semibold">
+                      <th key={h} className="text-left py-2 px-2 text-sb-ink/50 font-semibold">
                         {h}
                       </th>
                     ))}
@@ -187,9 +187,9 @@ export function BulkImportCsvModal({
                 </thead>
                 <tbody>
                   {rows.slice(0, 20).map((row, i) => (
-                    <tr key={i} className="border-b border-white/5">
+                    <tr key={i} className="border-b border-sb-ink/8">
                       {previewKeys.map((k) => (
-                        <td key={k} className="py-1.5 px-2 text-[#F4E9D8]/90 truncate max-w-[10rem]">
+                        <td key={k} className="py-1.5 px-2 text-sb-ink/90 truncate max-w-[10rem]">
                           {row[k] ?? "—"}
                         </td>
                       ))}
@@ -198,7 +198,7 @@ export function BulkImportCsvModal({
                 </tbody>
               </table>
               {rows.length > 20 && (
-                <p className="text-[#D4C4A8]/45 text-xs px-2 py-2 border-t border-white/5">Showing first 20 of {rows.length} rows.</p>
+                <p className="text-sb-ink/45 text-xs px-2 py-2 border-t border-sb-ink/8">Showing first 20 of {rows.length} rows.</p>
               )}
             </div>
           )}
@@ -207,7 +207,7 @@ export function BulkImportCsvModal({
               type="button"
               disabled={submitting || rows.length === 0}
               onClick={() => void submit()}
-              className="flex-1 flex items-center justify-center gap-2 bg-[#FE5E00] hover:bg-[#E05200] text-[#0D0D0D] font-bold px-4 py-2.5 rounded-lg text-sm disabled:opacity-50 transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 bg-sb-orange hover:bg-sb-orange-hover text-white font-bold px-4 py-2.5 rounded-lg text-sm disabled:opacity-50 transition-colors"
             >
               {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
               Import {rows.length > 0 ? `(${rows.length})` : ""}
@@ -215,7 +215,7 @@ export function BulkImportCsvModal({
             <button
               type="button"
               onClick={close}
-              className="px-4 py-2.5 border border-white/15 rounded-lg text-sm text-[#D4C4A8] hover:border-white/30 transition-colors"
+              className="px-4 py-2.5 border border-sb-ink/15 rounded-lg text-sm text-sb-ink/60 hover:border-sb-ink/25 transition-colors"
             >
               Close
             </button>

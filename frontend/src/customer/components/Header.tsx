@@ -2,42 +2,56 @@ import { useState, useEffect, useRef } from "react";
 import { NavLink, Link, useNavigate } from "react-router";
 import {
   Search, ShoppingCart, User, MapPin, ChevronDown, Menu, X,
-  Bell, LogOut, Phone, FileText, TrendingUp, Store, ChevronRight,
-  Zap, ShieldCheck, BadgeCheck,
+  Bell, LogOut, Phone, FileText, TrendingUp, ChevronRight,
+  Zap,
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { api } from "../lib/api";
 import { clearCustomerSession } from "../lib/authStorage";
 import { CitySelection } from "../pages/CitySelection";
 import { SearchDropdown } from "./SearchDropdown";
+import { StorefrontPromoModal, shouldShowStorefrontPromoModal } from "./StorefrontPromoModal";
 import logoImg from "/shared/assets/logos/Structbay-Logo-F-1.png";
 
-const ANNOUNCEMENTS = [
-  { icon: Zap,         text: "Express Delivery Available in 24–48 Hours" },
-  { icon: ShieldCheck, text: "StructBay Assured — Quality Verified Products" },
-  { icon: BadgeCheck,  text: "GST Invoice on Every Order" },
-  { icon: Store,       text: "Trusted Vendor Network Across South India" },
-  { icon: TrendingUp,  text: "Bulk Order Discounts Available for 50+ MT" },
+/** After user picks a city, skips location, or closes the onboarding popup — do not auto-open again. */
+const LOCATION_ONBOARDING_DONE_KEY = "sb_location_choice_made";
+
+const MARQUEE_SEGMENTS_DEFAULT = [
+  "GST Invoice on Every Order",
+  "Additional delivery charges may apply — payable at site where applicable",
+  "India's Premier B2B Construction Materials Marketplace",
+  "StructBay Assured — Quality Verified Products",
+  "Express delivery available in 24–48 hours in select zones",
+  "Trusted vendor network across South India",
 ];
 
-function AnnouncementSlider() {
-  const [idx, setIdx] = useState(0);
-  const [fade, setFade] = useState(true);
-
-  useEffect(() => {
-    const t = setInterval(() => {
-      setFade(false);
-      setTimeout(() => { setIdx(i => (i + 1) % ANNOUNCEMENTS.length); setFade(true); }, 300);
-    }, 3500);
-    return () => clearInterval(t);
-  }, []);
-
-  const { icon: Icon, text } = ANNOUNCEMENTS[idx];
+function TopMarquee({ segments }: { segments: string[] }) {
+  const line = (segments.length ? segments : MARQUEE_SEGMENTS_DEFAULT).join("     •     ");
+  const doubled = `${line}     •     ${line}`;
   return (
-    <div className="flex items-center justify-center gap-2 transition-opacity duration-300" style={{ opacity: fade ? 1 : 0 }}>
-      <Icon className="w-3.5 h-3.5 shrink-0" />
-      <span className="font-medium">{text}</span>
-    </div>
+    <>
+      <style>
+        {`
+        @keyframes sb-top-marquee {
+          from { transform: translateX(0); }
+          to { transform: translateX(-50%); }
+        }
+        .sb-top-marquee-track {
+          display: inline-block;
+          white-space: nowrap;
+          animation: sb-top-marquee 52s linear infinite;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .sb-top-marquee-track { animation: none; }
+        }
+      `}
+      </style>
+      <div className="relative w-full overflow-hidden min-h-[1.35rem] flex items-center" aria-live="polite">
+        <div className="sb-top-marquee-track text-sb-cream/95 text-[11px] sm:text-xs font-medium tracking-wide">
+          {doubled}
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -50,6 +64,8 @@ export function Header() {
   const [userOpen, setUserOpen]           = useState(false);
   const [cityModalOpen, setCityModalOpen] = useState(false);
   const [categories, setCategories]       = useState<any[]>([]);
+  const [storefront, setStorefront]       = useState<Record<string, unknown> | null>(null);
+  const [promoModalOpen, setPromoModalOpen] = useState(false);
   const navigate  = useNavigate();
   const searchRef = useRef<HTMLDivElement>(null);
   const catRef    = useRef<HTMLDivElement>(null);
@@ -70,6 +86,46 @@ export function Header() {
   }, [cityId]);
 
   useEffect(() => {
+    api
+      .getCmsHomepage()
+      .then((data) => setStorefront(data))
+      .catch(() => setStorefront(null));
+  }, []);
+
+  const promo = (storefront?.storefrontPromo || null) as Record<string, unknown> | null;
+  const promoEnabled = promo == null || promo.enabled !== false;
+  const topBarStyle = String(promo?.topBarStyle || "center_banner");
+  const topBarText = String(promo?.topBarText || "").trim();
+  const topBarBg = String(promo?.topBarBg || "#FDE047");
+  const topBarTextColor = String(promo?.topBarTextColor || "#171717");
+  const marqueeFromCms = Array.isArray(promo?.marqueeSegments)
+    ? (promo!.marqueeSegments as unknown[]).map((s) => String(s).trim()).filter(Boolean)
+    : [];
+
+  useEffect(() => {
+    const p = storefront?.storefrontPromo as Record<string, unknown> | undefined;
+    if (!p || p.enabled === false) return;
+    if (!p.modalEnabled || !String(p.modalTitle || "").trim()) return;
+    if (!shouldShowStorefrontPromoModal(p as any)) return;
+    const t = window.setTimeout(() => setPromoModalOpen(true), 1100);
+    return () => window.clearTimeout(t);
+  }, [storefront]);
+
+  /** First visit: no city, no stored city, and user has not dismissed onboarding — show location popup. */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      if (city || cityId) return;
+      if (localStorage.getItem(LOCATION_ONBOARDING_DONE_KEY) === "1") return;
+      if (localStorage.getItem("sb_selected_city")) return;
+      const t = window.setTimeout(() => setCityModalOpen(true), 400);
+      return () => window.clearTimeout(t);
+    } catch {
+      /* ignore */
+    }
+  }, [city, cityId]);
+
+  useEffect(() => {
     function handler(e: MouseEvent) {
       if (catRef.current && !catRef.current.contains(e.target as Node))    setCatOpen(false);
       if (userRef.current && !userRef.current.contains(e.target as Node))  setUserOpen(false);
@@ -81,35 +137,52 @@ export function Header() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      addRecentSearch(searchQuery);
-      setSearchFocused(false);
-      navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
-    }
+    const q = searchQuery.trim();
+    // Backend global search requires ≥2 chars; match that so results and typeahead stay aligned.
+    if (q.length < 2) return;
+    addRecentSearch(q);
+    setSearchFocused(false);
+    navigate(`/search?q=${encodeURIComponent(q)}`);
   };
 
   return (
     <>
+      <StorefrontPromoModal
+        promo={(promo as any) || undefined}
+        open={promoModalOpen}
+        onClose={() => setPromoModalOpen(false)}
+      />
+
       {/* ── Sticky header wrapper ──────────────────────────────────────────── */}
       <header className="sticky top-0 z-50" style={{ background: "var(--sb-nav)" }}>
-        {/* Subtle orange top line */}
+        {promoEnabled && topBarText && (
+          <div
+            className="w-full py-2.5 px-4 text-center text-xs sm:text-sm font-bold tracking-tight border-b border-black/10"
+            style={{ background: topBarBg, color: topBarTextColor }}
+          >
+            {topBarText}
+          </div>
+        )}
+
+        {/* Subtle orange top line (hidden visually when yellow strip sits flush above — keep for brand when no strip) */}
         <div className="h-px w-full" style={{ background: "linear-gradient(90deg, transparent, var(--sb-orange), transparent)" }} />
 
         {/* ── Top utility bar ─────────────────────────────────────────────── */}
-        <div className="text-white text-xs py-1.5 px-4" style={{ background: "var(--sb-orange)" }}>
-          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-            <span className="font-semibold hidden sm:block shrink-0">India's Premier B2B Construction Materials Marketplace</span>
-            <div className="flex-1 text-center text-xs overflow-hidden">
-              <AnnouncementSlider />
+        <div className="text-sb-cream/90 text-xs py-1.5 px-4 border-b border-sb-border-dark bg-sb-nav">
+          <div className="max-w-7xl mx-auto flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <div className="flex-1 min-w-0 order-2 sm:order-1 sm:pr-2">
+              {!(promoEnabled && topBarText && topBarStyle === "center_banner") && (
+                <TopMarquee segments={marqueeFromCms} />
+              )}
             </div>
-            <div className="hidden sm:flex gap-4 items-center font-semibold shrink-0">
-              <Link to="/blog"    className="hover:opacity-80 transition-opacity">Blog</Link>
-              <Link to="/tools/cement-estimator" className="hover:opacity-80 transition-opacity">Cement calculator</Link>
-              <Link to="/rfq"     className="hover:opacity-80 transition-opacity">Get RFQ</Link>
-              <Link to="/bulk-enquiry" className="hover:opacity-80 transition-opacity">Bulk Enquiry</Link>
-              <Link to="/finance" className="hover:opacity-80 transition-opacity">Finance</Link>
-              <a href="#"         className="hover:opacity-80 transition-opacity">Vendor Portal</a>
-              <a href="tel:+918045678900" className="flex items-center gap-1 hover:opacity-80 transition-opacity">
+            <div className="hidden sm:flex order-1 sm:order-2 gap-4 items-center font-semibold shrink-0 text-sb-cream/90 flex-wrap justify-end">
+              <Link to="/blogs"    className="hover:text-sb-orange transition-colors">Blog</Link>
+              <Link to="/tools/cement-estimator" className="hover:text-sb-orange transition-colors">Cement calculator</Link>
+              <Link to="/rfq"     className="hover:text-sb-orange transition-colors">Get RFQ</Link>
+              <Link to="/bulk-enquiry" className="hover:text-sb-orange transition-colors">Bulk Enquiry</Link>
+              <Link to="/finance" className="hover:text-sb-orange transition-colors">Finance</Link>
+              <a href="#"         className="hover:text-sb-orange transition-colors">Vendor Portal</a>
+              <a href="tel:+918045678900" className="flex items-center gap-1 hover:text-sb-orange transition-colors">
                 <Phone className="w-3 h-3" /> Support
               </a>
             </div>
@@ -117,16 +190,13 @@ export function Header() {
         </div>
 
         {/* ── Main header row ─────────────────────────────────────────────── */}
-        <div className="px-4 py-2.5 border-b" style={{ background: "var(--sb-nav)", borderColor: "rgba(55,65,81,0.5)" }}>
+        <div className="px-4 py-2.5 border-b border-sb-border-dark bg-sb-nav">
           <div className="max-w-7xl mx-auto flex items-center gap-3">
 
             {/* Mobile menu toggle */}
             <button
               onClick={() => setMenuOpen(true)}
-              className="md:hidden p-2 rounded-xl transition-colors"
-              style={{ color: "var(--sb-text-secondary)" }}
-              onMouseEnter={e => (e.currentTarget.style.background = "var(--sb-bg-section)")}
-              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+              className="md:hidden p-2 rounded-xl transition-colors text-[var(--sb-chrome-fg-muted)] hover:bg-[var(--sb-chrome-hover)] hover:text-[var(--sb-chrome-fg)]"
             >
               <Menu className="w-5 h-5" />
             </button>
@@ -141,21 +211,21 @@ export function Header() {
               onClick={() => setCityModalOpen(true)}
               className="hidden sm:flex items-center gap-1.5 text-sm shrink-0 rounded-xl px-3 py-2 transition-all duration-200"
               style={{
-                border: "1px solid var(--sb-border)",
-                color: "var(--sb-text-primary)",
+                border: "1px solid var(--sb-chrome-border)",
+                color: "var(--sb-chrome-fg)",
               }}
               onMouseEnter={e => {
                 e.currentTarget.style.borderColor = "var(--sb-orange)";
                 e.currentTarget.style.boxShadow = "0 0 0 2px var(--sb-orange-subtle)";
               }}
               onMouseLeave={e => {
-                e.currentTarget.style.borderColor = "var(--sb-border)";
+                e.currentTarget.style.borderColor = "var(--sb-chrome-border)";
                 e.currentTarget.style.boxShadow = "none";
               }}
             >
               <MapPin className="w-4 h-4" style={{ color: "var(--sb-orange)" }} />
               <span className="font-medium max-w-[120px] truncate">{city || "All cities"}</span>
-              <ChevronDown className="w-3 h-3" style={{ color: "var(--sb-text-muted)" }} />
+              <ChevronDown className="w-3 h-3" style={{ color: "var(--sb-chrome-fg-muted)" }} />
             </button>
 
             {/* Categories dropdown */}
@@ -164,14 +234,14 @@ export function Header() {
                 onClick={() => setCatOpen(v => !v)}
                 className="flex items-center gap-1.5 text-sm rounded-xl px-3 py-2 transition-all duration-200"
                 style={{
-                  border: `1px solid ${catOpen ? "var(--sb-orange)" : "var(--sb-border)"}`,
-                  color: "var(--sb-text-primary)",
+                  border: `1px solid ${catOpen ? "var(--sb-orange)" : "var(--sb-chrome-border)"}`,
+                  color: "var(--sb-chrome-fg)",
                   background: catOpen ? "var(--sb-orange-subtle)" : "transparent",
                 }}
               >
                 <Menu className="w-4 h-4" />
                 <span>Categories</span>
-                <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${catOpen ? "rotate-180" : ""}`} style={{ color: "var(--sb-text-muted)" }} />
+                <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${catOpen ? "rotate-180" : ""}`} style={{ color: "var(--sb-chrome-fg-muted)" }} />
               </button>
 
               {catOpen && (
@@ -179,15 +249,15 @@ export function Header() {
                   className="absolute top-full left-0 mt-2 rounded-2xl shadow-2xl w-56 z-50 py-1.5 animate-scale-in"
                   style={{
                     background: "var(--sb-card)",
-                    border: "1px solid var(--sb-border)",
-                    boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+                    border: "1px solid var(--sb-border-on-light)",
+                    boxShadow: "0 20px 60px rgba(34, 34, 34, 0.12)",
                   }}
                 >
                   <Link
                     to="/shop"
                     onClick={() => setCatOpen(false)}
                     className="flex items-center justify-between px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors"
-                    style={{ color: "var(--sb-orange)", borderBottom: "1px solid var(--sb-border)" }}
+                    style={{ color: "var(--sb-orange)", borderBottom: "1px solid var(--sb-border-on-light)" }}
                     onMouseEnter={e => (e.currentTarget.style.background = "var(--sb-bg-section)")}
                     onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                   >
@@ -204,7 +274,7 @@ export function Header() {
                         }`
                       }
                       style={({ isActive }) => ({
-                        color: isActive ? "var(--sb-orange)" : "var(--sb-text-primary)",
+                        color: isActive ? "var(--sb-orange)" : "var(--sb-text-on-light)",
                         background: isActive ? "var(--sb-orange-subtle)" : "transparent",
                       })}
                       onMouseEnter={e => {
@@ -228,30 +298,37 @@ export function Header() {
             </div>
 
             {/* Search */}
-            <form onSubmit={handleSearch} className="flex-1 flex items-center">
+            <form onSubmit={handleSearch} className="flex-1 flex items-center min-w-0">
               <div className="relative w-full" ref={searchRef}>
                 <input
-                  type="text"
+                  type="search"
+                  enterKeyHint="search"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  aria-autocomplete="list"
+                  aria-expanded={searchFocused}
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   onFocus={() => setSearchFocused(true)}
                   placeholder="Search cement, steel, paints, tools..."
-                  className="w-full pl-4 pr-12 py-2.5 rounded-xl text-sm transition-all duration-200"
+                  className="w-full min-w-0 pl-4 pr-14 py-2.5 rounded-full text-sm transition-all duration-200"
                   style={{
                     background: "var(--sb-bg-section)",
-                    border: `1px solid ${searchFocused ? "var(--sb-orange)" : "var(--sb-border)"}`,
-                    color: "var(--sb-text-primary)",
-                    boxShadow: searchFocused ? "0 0 0 3px rgba(249,115,22,0.12)" : "none",
+                    border: `1px solid ${searchFocused ? "var(--sb-orange)" : "var(--sb-border-on-light)"}`,
+                    color: "var(--sb-text-on-light)",
+                    boxShadow: searchFocused ? "0 0 0 3px var(--sb-orange-ring)" : "none",
                   }}
                 />
                 <button
                   type="submit"
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors"
+                  title="Search"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-colors"
                   style={{ background: "var(--sb-orange)", color: "#fff" }}
                   onMouseEnter={e => (e.currentTarget.style.background = "var(--sb-orange-hover)")}
                   onMouseLeave={e => (e.currentTarget.style.background = "var(--sb-orange)")}
                 >
-                  <Search className="w-4 h-4" />
+                  <Search className="w-4 h-4" aria-hidden />
                 </button>
                 {searchFocused && (
                   <SearchDropdown
@@ -268,9 +345,9 @@ export function Header() {
               {isLoggedIn && (
                 <button
                   className="relative p-2 rounded-xl transition-colors"
-                  style={{ color: "var(--sb-text-muted)" }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "var(--sb-bg-section)"; e.currentTarget.style.color = "var(--sb-text-primary)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--sb-text-muted)"; }}
+                  style={{ color: "var(--sb-chrome-fg-muted)" }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "var(--sb-chrome-hover)"; e.currentTarget.style.color = "var(--sb-chrome-fg)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--sb-chrome-fg-muted)"; }}
                 >
                   <Bell className="w-5 h-5" />
                   <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: "var(--sb-orange)" }} />
@@ -280,7 +357,7 @@ export function Header() {
               <NavLink
                 to="/cart"
                 className="relative p-2 rounded-xl transition-colors"
-                style={{ color: "var(--sb-text-muted)" }}
+                style={{ color: "var(--sb-chrome-fg-muted)" }}
               >
                 {({ isActive }) => (
                   <>
@@ -305,7 +382,7 @@ export function Header() {
                   style={
                     isLoggedIn
                       ? { background: "var(--sb-orange)", color: "#fff", boxShadow: "0 2px 10px rgba(249,115,22,0.3)" }
-                      : { border: "1px solid var(--sb-border)", color: "var(--sb-text-primary)", background: "transparent" }
+                      : { border: "1px solid var(--sb-chrome-border)", color: "var(--sb-chrome-fg)", background: "transparent" }
                   }
                 >
                   <User className="w-4 h-4" />
@@ -317,7 +394,7 @@ export function Header() {
                 {userOpen && (
                   <div
                     className="absolute right-0 top-full mt-2 rounded-2xl shadow-2xl w-52 z-50 py-1.5 animate-scale-in"
-                    style={{ background: "var(--sb-card)", border: "1px solid var(--sb-border)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}
+                    style={{ background: "var(--sb-card)", border: "1px solid var(--sb-border-on-light)", boxShadow: "0 20px 60px rgba(34, 34, 34, 0.12)" }}
                   >
                     {isLoggedIn ? (
                       <>
@@ -325,8 +402,8 @@ export function Header() {
                           to="/dashboard"
                           onClick={() => setUserOpen(false)}
                           className="block px-4 py-2.5 text-sm transition-colors"
-                          style={{ color: "var(--sb-text-primary)" }}
-                          onMouseEnter={e => (e.currentTarget.style.background = "var(--sb-bg-section)")}
+                          style={{ color: "var(--sb-text-on-light)" }}
+                          onMouseEnter={e => (e.currentTarget.style.background = "var(--sb-cream-secondary)")}
                           onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                         >
                           My Dashboard
@@ -335,13 +412,13 @@ export function Header() {
                           to="/dashboard"
                           onClick={() => setUserOpen(false)}
                           className="block px-4 py-2.5 text-sm transition-colors"
-                          style={{ color: "var(--sb-text-primary)" }}
-                          onMouseEnter={e => (e.currentTarget.style.background = "var(--sb-bg-section)")}
+                          style={{ color: "var(--sb-text-on-light)" }}
+                          onMouseEnter={e => (e.currentTarget.style.background = "var(--sb-cream-secondary)")}
                           onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                         >
                           My Orders
                         </Link>
-                        <hr style={{ borderColor: "var(--sb-border)", margin: "4px 0" }} />
+                        <hr style={{ borderColor: "var(--sb-border-on-light)", margin: "4px 0" }} />
                         <button
                           onClick={() => {
                             clearCustomerSession();
@@ -350,8 +427,8 @@ export function Header() {
                             setUserOpen(false);
                           }}
                           className="flex items-center gap-2 w-full px-4 py-2.5 text-sm transition-colors"
-                          style={{ color: "#f87171" }}
-                          onMouseEnter={e => (e.currentTarget.style.background = "rgba(239,68,68,0.08)")}
+                          style={{ color: "var(--sb-text-on-light)" }}
+                          onMouseEnter={e => (e.currentTarget.style.background = "var(--sb-cream-secondary)")}
                           onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                         >
                           <LogOut className="w-4 h-4" /> Logout
@@ -363,8 +440,8 @@ export function Header() {
                           to="/login"
                           onClick={() => setUserOpen(false)}
                           className="block px-4 py-2.5 text-sm transition-colors"
-                          style={{ color: "var(--sb-text-primary)" }}
-                          onMouseEnter={e => (e.currentTarget.style.background = "var(--sb-bg-section)")}
+                          style={{ color: "var(--sb-text-on-light)" }}
+                          onMouseEnter={e => (e.currentTarget.style.background = "var(--sb-cream-secondary)")}
                           onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                         >
                           Login
@@ -373,8 +450,8 @@ export function Header() {
                           to="/register"
                           onClick={() => setUserOpen(false)}
                           className="block px-4 py-2.5 text-sm transition-colors"
-                          style={{ color: "var(--sb-text-primary)" }}
-                          onMouseEnter={e => (e.currentTarget.style.background = "var(--sb-bg-section)")}
+                          style={{ color: "var(--sb-text-on-light)" }}
+                          onMouseEnter={e => (e.currentTarget.style.background = "var(--sb-cream-secondary)")}
                           onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                         >
                           Register
@@ -390,8 +467,7 @@ export function Header() {
 
         {/* ── Category nav bar ────────────────────────────────────────────── */}
         <div
-          className="hidden md:block px-4"
-          style={{ background: "var(--sb-bg-section)", borderBottom: "1px solid rgba(55,65,81,0.4)" }}
+          className="hidden md:block px-4 bg-sb-nav border-b border-sb-border-dark"
         >
           <div className="max-w-7xl mx-auto flex gap-0 overflow-x-auto scrollbar-none">
             <NavLink
@@ -399,8 +475,8 @@ export function Header() {
               className={({ isActive }) =>
                 `text-xs px-4 py-2.5 whitespace-nowrap transition-all duration-200 font-bold border-b-2 -mb-px ${
                   isActive
-                    ? "border-[#F97316] text-[#F97316]"
-                    : "border-transparent text-[#94A3B8] hover:text-[#F97316] hover:border-[#F97316]/50"
+                    ? "border-sb-orange text-sb-orange"
+                    : "border-transparent text-sb-cream/70 hover:text-sb-orange hover:border-sb-orange/50"
                 }`
               }
             >
@@ -413,8 +489,8 @@ export function Header() {
                 className={({ isActive }) =>
                   `text-xs px-4 py-2.5 whitespace-nowrap transition-all duration-200 border-b-2 -mb-px ${
                     isActive
-                      ? "border-[#F97316] text-[#F97316] font-semibold"
-                      : "border-transparent text-[#94A3B8] hover:text-[#F8FAFC] hover:border-[#F97316]/40"
+                      ? "border-sb-orange text-sb-orange font-semibold"
+                      : "border-transparent text-sb-cream/70 hover:text-sb-cream hover:border-sb-orange/40"
                   }`
                 }
               >
@@ -426,28 +502,19 @@ export function Header() {
             <div className="ml-auto flex items-center gap-1 shrink-0">
               <Link
                 to="/tools/cement-estimator"
-                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg my-1.5 font-semibold transition-all duration-200"
-                style={{ color: "var(--sb-text-muted)" }}
-                onMouseEnter={e => (e.currentTarget.style.color = "var(--sb-text-primary)")}
-                onMouseLeave={e => (e.currentTarget.style.color = "var(--sb-text-muted)")}
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg my-1.5 font-semibold transition-all duration-200 text-sb-cream/65 hover:text-sb-orange"
               >
                 <Zap className="w-3 h-3" /> Cement calc
               </Link>
               <Link
                 to="/bulk-enquiry"
-                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg my-1.5 font-semibold transition-all duration-200"
-                style={{ background: "rgba(249,115,22,0.1)", color: "var(--sb-orange)", border: "1px solid rgba(249,115,22,0.2)" }}
-                onMouseEnter={e => (e.currentTarget.style.background = "var(--sb-orange)", e.currentTarget.style.color = "#fff")}
-                onMouseLeave={e => (e.currentTarget.style.background = "rgba(249,115,22,0.1)", e.currentTarget.style.color = "var(--sb-orange)")}
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg my-1.5 font-semibold transition-all duration-200 border border-sb-orange/25 bg-sb-orange/10 text-sb-orange hover:bg-sb-orange hover:text-white hover:border-sb-orange"
               >
                 <FileText className="w-3 h-3" /> Bulk Enquiry
               </Link>
               <Link
                 to="/rfq"
-                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg my-1.5 font-semibold transition-all duration-200"
-                style={{ color: "var(--sb-text-muted)" }}
-                onMouseEnter={e => (e.currentTarget.style.color = "var(--sb-text-primary)")}
-                onMouseLeave={e => (e.currentTarget.style.color = "var(--sb-text-muted)")}
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg my-1.5 font-semibold transition-all duration-200 text-sb-cream/65 hover:text-sb-orange"
               >
                 <TrendingUp className="w-3 h-3" /> Concrete RFQ
               </Link>
@@ -456,15 +523,35 @@ export function Header() {
         </div>
       </header>
 
-      {/* City modal */}
+      {/* City modal — compact premium layout (max 850px / 75vh); backdrop dismiss = onboarding done */}
       {cityModalOpen && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center p-4"
-          style={{ background: "rgba(15,23,42,0.85)", backdropFilter: "blur(8px)" }}
-          onClick={() => setCityModalOpen(false)}
+          className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4"
+          style={{ background: "rgba(34, 34, 34, 0.78)", backdropFilter: "blur(6px)" }}
+          onClick={() => {
+            try {
+              localStorage.setItem(LOCATION_ONBOARDING_DONE_KEY, "1");
+            } catch {
+              /* ignore */
+            }
+            setCityModalOpen(false);
+          }}
         >
-          <div onClick={e => e.stopPropagation()} className="w-full max-w-lg animate-scale-in">
-            <CitySelection isModal onClose={() => setCityModalOpen(false)} />
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-[680px] max-h-[68vh] flex min-h-0"
+          >
+            <CitySelection
+              isModal
+              onClose={() => {
+                try {
+                  localStorage.setItem(LOCATION_ONBOARDING_DONE_KEY, "1");
+                } catch {
+                  /* ignore */
+                }
+                setCityModalOpen(false);
+              }}
+            />
           </div>
         </div>
       )}
@@ -475,12 +562,12 @@ export function Header() {
           <div className="absolute inset-0 bg-black/75" onClick={() => setMenuOpen(false)} />
           <div
             className="relative w-72 h-full overflow-y-auto flex flex-col animate-slide-left"
-            style={{ background: "var(--sb-nav)", borderRight: "1px solid var(--sb-border)" }}
+            style={{ background: "var(--sb-nav)", borderRight: "1px solid var(--sb-chrome-border)" }}
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center p-4" style={{ borderBottom: "1px solid var(--sb-border)" }}>
+            <div className="flex justify-between items-center p-4 border-b border-sb-border-dark">
               <img src={logoImg} alt="StructBay" className="h-12 w-auto object-contain" />
-              <button onClick={() => setMenuOpen(false)} style={{ color: "var(--sb-text-muted)" }}>
+              <button onClick={() => setMenuOpen(false)} style={{ color: "var(--sb-chrome-fg-muted)" }}>
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -488,7 +575,7 @@ export function Header() {
             <button
               onClick={() => { setCityModalOpen(true); setMenuOpen(false); }}
               className="flex items-center gap-2 px-4 py-3 text-sm transition-colors w-full text-left"
-              style={{ color: "var(--sb-text-primary)", borderBottom: "1px solid var(--sb-border)" }}
+              style={{ color: "var(--sb-chrome-fg)", borderBottom: "1px solid var(--sb-chrome-border)" }}
               onMouseEnter={e => (e.currentTarget.style.background = "var(--sb-bg-section)")}
               onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
             >
@@ -516,7 +603,7 @@ export function Header() {
                     }`
                   }
                   style={({ isActive }) => ({
-                    color: isActive ? "var(--sb-orange)" : "var(--sb-text-primary)",
+                    color: isActive ? "var(--sb-orange)" : "var(--sb-chrome-fg)",
                     borderColor: "var(--sb-orange)",
                     borderBottom: "1px solid rgba(55,65,81,0.2)",
                   })}
@@ -526,14 +613,14 @@ export function Header() {
               ))}
             </div>
 
-            <div className="p-4 space-y-2" style={{ borderTop: "1px solid var(--sb-border)" }}>
+            <div className="p-4 space-y-2" style={{ borderTop: "1px solid var(--sb-chrome-border)" }}>
               {isLoggedIn ? (
                 <>
                   <Link
                     to="/dashboard"
                     onClick={() => setMenuOpen(false)}
                     className="block py-2.5 text-sm transition-colors"
-                    style={{ color: "var(--sb-text-primary)" }}
+                    style={{ color: "var(--sb-chrome-fg)" }}
                   >
                     Dashboard
                   </Link>
@@ -564,7 +651,7 @@ export function Header() {
                     to="/register"
                     onClick={() => setMenuOpen(false)}
                     className="block py-2.5 text-center rounded-xl text-sm"
-                    style={{ border: "1px solid var(--sb-border)", color: "var(--sb-text-primary)" }}
+                    style={{ border: "1px solid var(--sb-chrome-border)", color: "var(--sb-chrome-fg)" }}
                   >
                     Register
                   </Link>

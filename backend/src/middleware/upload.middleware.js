@@ -9,12 +9,25 @@ const {
   ALLOWED_DOC_TYPES,
 } = require('../config/constants');
 
+const trimEnv = (v) => (typeof v === 'string' ? v.trim() : v || '');
+
 /**
  * Custom Multer storage engine that streams files directly to Cloudinary v2.
  * Bypasses disk storage entirely — memory → stream → Cloudinary.
  */
 const buildCloudinaryStorage = (folder, resourceType = 'auto') => ({
   _handleFile(req, file, cb) {
+    const cn = trimEnv(process.env.CLOUDINARY_CLOUD_NAME);
+    const ck = trimEnv(process.env.CLOUDINARY_API_KEY);
+    const cs = trimEnv(process.env.CLOUDINARY_API_SECRET);
+    if (!cn || !ck || !cs) {
+      return cb(
+        new Error(
+          'Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.'
+        )
+      );
+    }
+
     const uploadStream = cloudinary.uploader.upload_stream(
       { folder, resource_type: resourceType, use_filename: true, unique_filename: true },
       (error, result) => {
@@ -82,6 +95,34 @@ const createUploader = (folder, allowedTypes, maxSize, resourceType = 'auto') =>
         }
       },
     ],
+    /** e.g. [{ name: 'packing', maxCount: 5 }, { name: 'invoice', maxCount: 1 }] */
+    fields: (fieldDefs) => [
+      memUpload.fields(fieldDefs),
+      (req, res, next) => {
+        if (!req.files || typeof req.files !== 'object') return next();
+        const grouped = req.files;
+        const flat = [];
+        Object.keys(grouped).forEach((k) => {
+          (grouped[k] || []).forEach((f) => flat.push({ ...f, _field: k }));
+        });
+        if (!flat.length) return next();
+        let completed = 0;
+        const byField = {};
+        for (const file of flat) {
+          cloudStorage._handleFile(req, file, (err, info) => {
+            if (err) return next(err);
+            const field = file._field;
+            const merged = { ...file, ...info };
+            if (!byField[field]) byField[field] = [];
+            byField[field].push(merged);
+            if (++completed === flat.length) {
+              req.files = byField;
+              next();
+            }
+          });
+        }
+      },
+    ],
   };
 };
 
@@ -92,6 +133,10 @@ const uploadImage = (folder = UPLOAD_FOLDERS.BANNER) =>
 
 const uploadDocument = (folder = UPLOAD_FOLDERS.CUSTOMER_DOCS) =>
   createUploader(folder, [...ALLOWED_IMAGE_TYPES, ...ALLOWED_DOC_TYPES], FILE_SIZE_LIMITS.DOCUMENT, 'auto');
+
+/** Multipart fields → Cloudinary (e.g. packing[] + invoice). */
+const uploadDocumentFields = (folder, fieldDefs) =>
+  createUploader(folder, [...ALLOWED_IMAGE_TYPES, ...ALLOWED_DOC_TYPES], FILE_SIZE_LIMITS.DOCUMENT, 'auto').fields(fieldDefs);
 
 // ─── Multer error handler ─────────────────────────────────────────────────────
 
@@ -105,4 +150,4 @@ const handleUploadError = (err, req, res, next) => {
   next(err);
 };
 
-module.exports = { uploadImage, uploadDocument, handleUploadError, createUploader };
+module.exports = { uploadImage, uploadDocument, uploadDocumentFields, handleUploadError, createUploader };

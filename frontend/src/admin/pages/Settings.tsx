@@ -9,8 +9,8 @@ export function Settings() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-black text-[#F4E9D8]">Settings</h1>
-        <p className="text-[#D4C4A8]/60">Configure system settings and preferences</p>
+        <h1 className="text-3xl font-black text-sb-ink">Settings</h1>
+        <p className="text-sb-ink/55">Configure system settings and preferences</p>
       </div>
 
       <Tabs defaultValue="general" className="space-y-6">
@@ -80,29 +80,29 @@ export function Settings() {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-[#F4E9D8]">Order Notifications</p>
-                  <p className="text-sm text-[#D4C4A8]/60">Get notified when new orders arrive</p>
+                  <p className="font-medium text-sb-ink">Order Notifications</p>
+                  <p className="text-sm text-sb-ink/55">Get notified when new orders arrive</p>
                 </div>
                 <Switch defaultChecked />
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-[#F4E9D8]">Low Stock Alerts</p>
-                  <p className="text-sm text-[#D4C4A8]/60">Alerts when inventory is running low</p>
+                  <p className="font-medium text-sb-ink">Low Stock Alerts</p>
+                  <p className="text-sm text-sb-ink/55">Alerts when inventory is running low</p>
                 </div>
                 <Switch defaultChecked />
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-[#F4E9D8]">RFQ Notifications</p>
-                  <p className="text-sm text-[#D4C4A8]/60">Get notified about new RFQ requests</p>
+                  <p className="font-medium text-sb-ink">RFQ Notifications</p>
+                  <p className="text-sm text-sb-ink/55">Get notified about new RFQ requests</p>
                 </div>
                 <Switch defaultChecked />
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-[#F4E9D8]">Daily Reports</p>
-                  <p className="text-sm text-[#D4C4A8]/60">Receive daily business summary</p>
+                  <p className="font-medium text-sb-ink">Daily Reports</p>
+                  <p className="text-sm text-sb-ink/55">Receive daily business summary</p>
                 </div>
                 <Switch />
               </div>
@@ -127,8 +127,8 @@ export function Settings() {
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-[#F4E9D8]">Test Mode</p>
-                  <p className="text-sm text-[#D4C4A8]/60">Use test credentials</p>
+                  <p className="font-medium text-sb-ink">Test Mode</p>
+                  <p className="text-sm text-sb-ink/55">Use test credentials</p>
                 </div>
                 <Switch defaultChecked />
               </div>
@@ -153,8 +153,8 @@ export function Settings() {
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-[#F4E9D8]">GST Inclusive Pricing</p>
-                  <p className="text-sm text-[#D4C4A8]/60">Show prices inclusive of GST</p>
+                  <p className="font-medium text-sb-ink">GST Inclusive Pricing</p>
+                  <p className="text-sm text-sb-ink/55">Show prices inclusive of GST</p>
                 </div>
                 <Switch />
               </div>

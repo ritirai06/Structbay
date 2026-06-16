@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
-import { Phone, Mail, MapPin, Facebook, Twitter, Instagram, Linkedin, Youtube, Send } from "lucide-react";
+import { Phone, Mail, MapPin, Facebook, Twitter, Instagram, Linkedin, Youtube, Send, Check } from "lucide-react";
 import { useFooterCMS } from "@shared/hooks/useFooterCMS";
 import logoImg from "/shared/assets/logos/Structbay-Logo-F-1.png";
 import { useApp } from "../context/AppContext";
@@ -43,8 +43,8 @@ export function Footer() {
   };
 
   return (
-    <footer className="bg-[#0D0D0D] text-[#F4E9D8] mt-16 border-t border-white/8">
-      <div className="h-0.5 w-full bg-gradient-to-r from-[#FE5E00] via-[#C9A227] to-[#FE5E00]" />
+    <footer className="mt-16 border-t border-sb-border-dark bg-sb-ink text-sb-cream">
+      <div className="h-0.5 w-full bg-sb-orange" />
 
       <div className="max-w-7xl mx-auto px-4 py-14">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
@@ -66,7 +66,7 @@ export function Footer() {
                     href={href}
                     target="_blank"
                     rel="noreferrer"
-                    className="w-9 h-9 rounded-lg bg-[#222222] border border-white/10 flex items-center justify-center text-[#D4C4A8] hover:bg-[#FE5E00] hover:text-[#0D0D0D] hover:border-[#FE5E00] transition-all"
+                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-sb-border-dark bg-sb-ink text-[var(--sb-chrome-fg-muted)] transition-all hover:border-sb-orange hover:bg-sb-orange hover:text-white"
                   >
                     <Icon className="w-4 h-4" />
                   </a>
@@ -124,7 +124,10 @@ export function Footer() {
               <h4 className="font-semibold mb-2 text-[#F4E9D8] text-sm uppercase tracking-wider">Newsletter</h4>
               <p className="text-xs text-[#D4C4A8]/60 mb-3">{cms.newsletterText}</p>
               {subscribed ? (
-                <p className="text-xs text-[#FE5E00] font-semibold">✓ Thanks for subscribing!</p>
+                <p className="text-xs text-[#FE5E00] font-semibold flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5 shrink-0" strokeWidth={2.5} aria-hidden />
+                  Thanks for subscribing!
+                </p>
               ) : (
                 <form onSubmit={handleSubscribe} className="flex gap-2">
                   <input
@@ -135,7 +138,7 @@ export function Footer() {
                     required
                     className="flex-1 bg-[#171717] border border-white/15 rounded-lg px-3 py-2 text-xs text-[#F4E9D8] placeholder:text-[#D4C4A8]/40 focus:outline-none focus:border-[#FE5E00] transition-colors min-w-0"
                   />
-                  <button type="submit" className="p-2 rounded-lg bg-[#FE5E00] hover:bg-[#E05200] text-[#0D0D0D] transition-colors shrink-0">
+                  <button type="submit" className="p-2 rounded-lg bg-[#FE5E00] hover:bg-[#E05200] text-white transition-colors shrink-0">
                     <Send className="w-3.5 h-3.5" />
                   </button>
                 </form>

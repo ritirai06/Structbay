@@ -1,5 +1,5 @@
 import { Link, useSearchParams } from "react-router";
-import { Star, Shield, Zap, ShoppingCart, ChevronRight, ChevronDown, Package } from "lucide-react";
+import { Star, Shield, Zap, ShoppingCart, ChevronRight, ChevronDown, Package, Search } from "lucide-react";
 import { api } from "../lib/api";
 import { useState, useEffect, useMemo } from "react";
 import { useApp } from "../context/AppContext";
@@ -47,24 +47,27 @@ export function SearchResults() {
     setInStockOnly(false);
   }, [query]);
 
+  const q = query.trim();
+  const canSearch = q.length >= 2;
+
   useEffect(() => {
-    if (query) {
-      setLoading(true);
-      const qp: Record<string, string> = {};
-      if (cityId) qp.cityId = cityId;
-      if (showAssured) qp.assured = "true";
-      if (showExpress) qp.express = "true";
-      api.globalSearch(query, Object.keys(qp).length ? qp : undefined)
-        .then(res => {
-          setResults(res.data?.products || []);
-        })
-        .catch(() => setResults([]))
-        .finally(() => setLoading(false));
-    } else {
+    if (!canSearch) {
       setResults([]);
       setLoading(false);
+      return;
     }
-  }, [query, cityId, showAssured, showExpress]);
+    setLoading(true);
+    const qp: Record<string, string> = {};
+    if (cityId) qp.cityId = cityId;
+    if (showAssured) qp.assured = "true";
+    if (showExpress) qp.express = "true";
+    api.globalSearch(q, Object.keys(qp).length ? qp : undefined)
+      .then(res => {
+        setResults(res.data?.products || []);
+      })
+      .catch(() => setResults([]))
+      .finally(() => setLoading(false));
+  }, [q, cityId, showAssured, showExpress]);
 
   const filteredResults = useMemo(() => {
     if (!inStockOnly) return results;
@@ -76,18 +79,31 @@ export function SearchResults() {
       <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
         <Link to="/" className="hover:text-foreground">Home</Link>
         <ChevronRight className="w-3 h-3" />
-        <span className="text-foreground font-medium">Search: "{query}"</span>
+        <span className="text-foreground font-medium">Search{q ? `: "${q}"` : ""}</span>
       </nav>
 
-      <div className="mb-6">
-        <h1 className="text-foreground">
-          {loading ? "Searching…" : `${filteredResults.length} result${filteredResults.length !== 1 ? "s" : ""} for "${query}"`}
-        </h1>
-        {city && <p className="text-sm text-muted-foreground mt-1">Prices for {city}</p>}
-      </div>
+      {!q ? (
+        <div className="text-center py-16 max-w-md mx-auto">
+          <Search className="w-16 h-16 mx-auto mb-4 text-muted-foreground/35" strokeWidth={1.25} aria-hidden />
+          <h2 className="text-foreground mb-2 text-xl font-semibold">Search the catalogue</h2>
+          <p className="text-muted-foreground text-sm">Use the search bar above. Enter at least two characters (for example &quot;cement&quot; or &quot;TMT&quot;) to see products, categories, and brands.</p>
+        </div>
+      ) : q.length < 2 ? (
+        <div className="text-center py-16 max-w-md mx-auto">
+          <Search className="w-16 h-16 mx-auto mb-4 text-muted-foreground/35" strokeWidth={1.25} aria-hidden />
+          <h2 className="text-foreground mb-2 text-xl font-semibold">Keep typing</h2>
+          <p className="text-muted-foreground text-sm">Search needs at least two characters. You entered one character for &quot;{query}&quot;.</p>
+        </div>
+      ) : (
+        <>
+          <div className="mb-6">
+            <h1 className="text-foreground">
+              {loading ? "Searching…" : `${filteredResults.length} result${filteredResults.length !== 1 ? "s" : ""} for "${q}"`}
+            </h1>
+            {city && <p className="text-sm text-muted-foreground mt-1">Prices for {city}</p>}
+          </div>
 
-      {query.length >= 2 && (
-        <div className="mb-6 rounded-2xl border border-border bg-muted/30 px-4 py-3">
+          <div className="mb-6 rounded-2xl border border-border bg-muted/30 px-4 py-3">
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Quick badges</p>
           <div className="flex flex-wrap gap-x-6 gap-y-2">
             <label className="flex items-center gap-2.5 cursor-pointer">
@@ -106,12 +122,11 @@ export function SearchResults() {
               <span className="text-sm text-foreground/80">In stock only</span>
             </label>
           </div>
-        </div>
-      )}
+          </div>
 
-      {filteredResults.length === 0 && !loading ? (
+          {filteredResults.length === 0 && !loading ? (
         <div className="text-center py-16">
-          <div className="text-6xl mb-4">🔍</div>
+          <Search className="w-16 h-16 mx-auto mb-4 text-muted-foreground/35" strokeWidth={1.25} aria-hidden />
           <h2 className="text-foreground mb-2">No results found</h2>
           <p className="text-muted-foreground mb-6">Try different keywords or browse our categories</p>
           <div>
@@ -140,8 +155,8 @@ export function SearchResults() {
             const inStock = product.inStock !== false;
 
             return (
-              <div key={slug} className="bg-white rounded-2xl border border-border overflow-hidden hover:shadow-lg transition-all group flex flex-col">
-                <Link to={`/products/${slug}`} className="block relative aspect-square overflow-hidden bg-muted">
+              <div key={slug} className="bg-white rounded-2xl border border-border overflow-hidden hover:shadow-lg transition-shadow group flex flex-col">
+                <Link to={`/product/${slug}`} className="block relative aspect-square overflow-hidden bg-muted">
                   {image && <img src={image} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />}
                   <div className="absolute top-2 left-2 flex gap-1 flex-col">
                     {product.isAssured && (
@@ -158,7 +173,7 @@ export function SearchResults() {
                 </Link>
                 <div className="p-3 flex flex-col flex-1">
                   <p className="text-xs text-muted-foreground">{brandName}</p>
-                  <Link to={`/products/${slug}`}>
+                  <Link to={`/product/${slug}`}>
                     <h3 className="text-sm font-medium text-foreground line-clamp-2 mt-0.5 hover:text-primary">{product.name}</h3>
                   </Link>
                   <div className="flex items-center gap-1 mt-1.5">
@@ -225,6 +240,8 @@ export function SearchResults() {
             );
           })}
         </div>
+          )}
+        </>
       )}
     </div>
   );

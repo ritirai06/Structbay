@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { Package, Clock, Truck, CheckCircle, Upload, Download, Send, AlertCircle, TrendingUp, ArrowRight, Activity, RefreshCw } from 'lucide-react';
+import { Package, Clock, Truck, CheckCircle, Upload, Download, Send, AlertCircle, TrendingUp, ArrowRight, Activity, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { api } from '../lib/api';
@@ -195,13 +195,21 @@ export function Dashboard() {
                     <td className="py-3.5 px-4 whitespace-nowrap" style={{ color: SB.muted }}>{o.deliveryAddress?.city ?? '—'}</td>
                     <td className="py-3.5 px-4">
                       {o.invoiceStatus === 'pending'
-                        ? <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444' }}>Pending</span>
-                        : <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: 'rgba(34,197,94,0.1)', color: '#22C55E' }}>✓ {o.invoiceStatus}</span>
+                        ? <span className="text-xs font-semibold px-2 py-0.5 rounded-full border border-sb-ink/15 bg-sb-cream-secondary text-sb-ink/70">Pending</span>
+                        : (
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border border-sb-orange/22 bg-sb-orange/10 text-sb-orange">
+                            <CheckCircle2 className="w-3 h-3 shrink-0" aria-hidden />
+                            <span className="capitalize">{o.invoiceStatus}</span>
+                          </span>
+                        )
                       }
                     </td>
                     <td className="py-3.5 px-4"><StatusBadge status={o.status as any} /></td>
                     <td className="py-3.5 px-4">
-                      <Link to={vendorPath('orders', String(o._id))} className="text-xs font-bold" style={{ color: 'var(--sb-orange)' }}>View →</Link>
+                      <Link to={vendorPath('orders', String(o._id))} className="inline-flex items-center gap-1 text-xs font-bold" style={{ color: 'var(--sb-orange)' }}>
+                        View
+                        <ArrowRight className="w-3 h-3" aria-hidden />
+                      </Link>
                     </td>
                   </tr>
                 ))}

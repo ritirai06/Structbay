@@ -54,6 +54,12 @@ export function parseCategoryBulkCsv(text: string): Record<string, string>[] {
 export const CITY_BULK_TEMPLATE = `name,state,pincodes,status,isServiceable,priority,sortOrder
 Bengaluru,Karnataka,"560001, 560002",ACTIVE,true,0,0`;
 
+/** Single-city PIN bulk → POST /cities/:cityId/pins/bulk-import (paste or .csv/.txt) */
+export const CITY_PIN_BULK_TEMPLATE = `pincode
+560001
+560002
+560003`;
+
 export function parseCityBulkCsv(text: string): Record<string, string>[] {
   const lines = parseLines(text);
   if (lines.length < 2) return [];

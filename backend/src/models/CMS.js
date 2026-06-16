@@ -53,7 +53,7 @@ const cmsSchema = new mongoose.Schema(
       },
     ],
 
-    // ─── Announcements ─────────────────────────────────
+    // ─── Announcements (short lines / links; optional marquee fallback) ─────
     announcements: [
       {
         text: { type: String, trim: true, required: true },
@@ -62,6 +62,34 @@ const cmsSchema = new mongoose.Schema(
         expiresAt: { type: Date, default: null },
       },
     ],
+
+    /**
+     * Storefront promo: HomeRun-style top strip + optional hero modal (all CMS-driven).
+     * Images: upload in Admin → CMS → Homepage → “Top bar & promo popup”.
+     */
+    storefrontPromo: {
+      enabled: { type: Boolean, default: true },
+      /** `center_banner` = single line (e.g. yellow bar). `marquee` = scrolling segments. */
+      topBarStyle: { type: String, enum: ['center_banner', 'marquee'], default: 'center_banner' },
+      topBarText: { type: String, default: '', trim: true },
+      topBarBg: { type: String, default: '#FDE047', trim: true },
+      topBarTextColor: { type: String, default: '#171717', trim: true },
+      /** Used when topBarStyle === marquee (fallback to hardcoded segments if empty). */
+      marqueeSegments: [{ type: String, trim: true }],
+
+      modalEnabled: { type: Boolean, default: false },
+      modalTitle: { type: String, default: '', trim: true },
+      modalSubtitle: { type: String, default: '', trim: true },
+      modalHeroImageUrl: { type: String, default: null, trim: true },
+      modalHeroImagePublicId: { type: String, default: null, trim: true },
+      modalBackgroundImageUrl: { type: String, default: null, trim: true },
+      modalBackgroundImagePublicId: { type: String, default: null, trim: true },
+      modalBadgeLeft: { type: String, default: 'Auto applied on checkout', trim: true },
+      modalBadgeRight: { type: String, default: 'Minimum order value ₹500', trim: true },
+      modalFooterNote: { type: String, default: 'Offer valid as per StructBay policy. T&C apply.', trim: true },
+      /** After user closes modal, do not show again for this many days. */
+      modalSuppressDays: { type: Number, default: 1, min: 0, max: 365 },
+    },
 
     // ─── Testimonials ──────────────────────────────────
     testimonials: [

@@ -115,6 +115,7 @@ const approveVendor = asyncHandler(async (req, res) => {
 
   vendor.vendorStatus = VENDOR_STATUS.APPROVED;
   vendor.status = USER_STATUS.ACTIVE;
+  vendor.isEmailVerified = true;
   vendor.vendorApprovedBy = req.user._id;
   vendor.vendorApprovedAt = new Date();
   vendor.vendorRejectionReason = null;
@@ -181,15 +182,33 @@ const getAllVendors = asyncHandler(async (req, res) => {
   const skip = (pageNum - 1) * limitNum;
 
   const filter = { role: 'VENDOR' };
-  if (vendorStatus) filter.vendorStatus = vendorStatus;
-  if (search) {
-    filter.$or = [
-      { name: { $regex: search, $options: 'i' } },
-      { email: { $regex: search, $options: 'i' } },
-      { companyName: { $regex: search, $options: 'i' } },
-      { gstNumber: { $regex: search, $options: 'i' } },
-    ];
+  const andParts = [];
+
+  /** Dropdowns (e.g. order assignment) use APPROVED — include legacy rows with null vendorStatus but active account. */
+  if (vendorStatus === 'APPROVED') {
+    andParts.push({
+      $or: [
+        { vendorStatus: 'APPROVED' },
+        { vendorStatus: null, status: 'ACTIVE' },
+      ],
+    });
+  } else if (vendorStatus) {
+    andParts.push({ vendorStatus });
   }
+
+  if (search) {
+    andParts.push({
+      $or: [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { companyName: { $regex: search, $options: 'i' } },
+        { gstNumber: { $regex: search, $options: 'i' } },
+      ],
+    });
+  }
+
+  if (andParts.length === 1) Object.assign(filter, andParts[0]);
+  else if (andParts.length > 1) filter.$and = andParts;
 
   const [vendors, total] = await Promise.all([
     User.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limitNum),

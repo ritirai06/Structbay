@@ -1,21 +1,39 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router";
-import { Search, Plus, MoreVertical, Edit, Trash2, Archive, Loader2, RefreshCw, Shield, Zap, Star, TrendingUp, Copy, Check, Upload } from "lucide-react";
+import {
+  Search, Plus, MoreVertical, Edit, Trash2, Archive, Loader2, RefreshCw, Shield, Zap, Star, TrendingUp,
+  Copy, Check, Upload, ChevronDown, FileDown, Eye, BookOpen, FileText,
+} from "lucide-react";
 import { BulkImportCsvModal } from "../components/BulkImportCsvModal";
+import { CatalogGenerateModal, type CatalogModalScope } from "../components/CatalogGenerateModal";
 import { parseProductBulkCsv, PRODUCT_BULK_TEMPLATE } from "../lib/adminBulkCsvParsers";
 import { adminPath } from "../../lib/portalRoutes";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@shared/components/ui/dropdown-menu";
 import { adminFetch as apiFetch } from "../../lib/adminApi";
+import {
+  type CatalogJobRow,
+  createAndDownloadCatalog,
+  downloadCompletedJob,
+  regenerateAndDownload,
+} from "../lib/catalogJobs";
 
 const statusBadge = (status: string) =>
   status === "ACTIVE"
-    ? "bg-green-500/15 text-green-400 border border-green-500/20"
-    : "bg-white/8 text-[#D4C4A8]/60 border border-white/12";
+    ? "bg-sb-orange/12 text-sb-orange border border-sb-orange/22"
+    : "bg-sb-cream-secondary text-sb-ink/55 border border-sb-ink/12";
 
 function Spinner() {
-  return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-[#FE5E00]" /></div>;
+  return (
+    <div className="flex justify-center py-16">
+      <Loader2 className="h-6 w-6 animate-spin text-sb-orange" />
+    </div>
+  );
 }
 
 function CopyId({ id }: { id: string }) {
@@ -31,12 +49,25 @@ function CopyId({ id }: { id: string }) {
       type="button"
       title={`Product id — full value copied on click\n${id}`}
       onClick={copy}
-      className="inline-flex items-center gap-1 font-mono text-[10px] text-[#D4C4A8]/50 hover:text-[#FE5E00] max-w-[9rem] truncate"
+      className="inline-flex items-center gap-1 font-mono text-[10px] text-sb-ink/50 hover:text-sb-orange max-w-[9rem] truncate"
     >
       {id.slice(0, 10)}…
-      {done ? <Check className="w-3 h-3 shrink-0 text-green-400" /> : <Copy className="w-3 h-3 shrink-0 opacity-60" />}
+      {done ? <Check className="w-3 h-3 shrink-0 text-sb-orange" /> : <Copy className="w-3 h-3 shrink-0 opacity-60" />}
     </button>
   );
+}
+
+function escapeCsvCell(val: unknown) {
+  const s = val == null ? "" : String(val);
+  if (/[",\r\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+function formatBytes(n: number | null | undefined) {
+  if (n == null || !Number.isFinite(n)) return "—";
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export function ProductList() {
@@ -48,31 +79,64 @@ export function ProductList() {
   const [pagination, setPagination] = useState({ total: 0, pages: 1, page: 1 });
   const [bulkOpen, setBulkOpen] = useState(false);
 
-  const load = useCallback((page = 1) => {
-    setLoading(true);
-    const params = new URLSearchParams({ page: String(page), limit: "24" });
-    if (search) params.set("search", search);
-    if (statusFilter) params.set("status", statusFilter);
-    apiFetch(`/products?${params}`)
-      .then(d => {
-        setLoadError(null);
-        setProducts(d.data || []);
-        const pg = d.pagination as { total?: number; pages?: number; page?: number } | undefined;
-        setPagination(
-          pg && typeof pg.total === "number"
-            ? { total: pg.total, pages: pg.pages ?? 1, page: pg.page ?? page }
-            : { total: (d.data as unknown[])?.length ?? 0, pages: 1, page: 1 }
-        );
-      })
-      .catch((e: Error) => {
-        setLoadError(e.message || "Could not load products");
-        setProducts([]);
-        setPagination({ total: 0, pages: 1, page: 1 });
-      })
-      .finally(() => setLoading(false));
-  }, [search, statusFilter]);
+  const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const [catalogOpen, setCatalogOpen] = useState(false);
+  const [catalogScope, setCatalogScope] = useState<CatalogModalScope>("ALL");
+  const [singleProductId, setSingleProductId] = useState<string | undefined>();
 
-  useEffect(() => { load(); }, [load]);
+  const [historyJobs, setHistoryJobs] = useState<CatalogJobRow[]>([]);
+  const [historyBusy, setHistoryBusy] = useState(false);
+
+  const load = useCallback(
+    (page = 1) => {
+      setLoading(true);
+      const params = new URLSearchParams({ page: String(page), limit: "24" });
+      if (search) params.set("search", search);
+      if (statusFilter) params.set("status", statusFilter);
+      apiFetch(`/products?${params}`)
+        .then((d) => {
+          setLoadError(null);
+          setProducts(d.data || []);
+          const pg = d.pagination as { total?: number; pages?: number; page?: number } | undefined;
+          setPagination(
+            pg && typeof pg.total === "number"
+              ? { total: pg.total, pages: pg.pages ?? 1, page: pg.page ?? page }
+              : { total: (d.data as unknown[])?.length ?? 0, pages: 1, page: 1 }
+          );
+        })
+        .catch((e: Error) => {
+          setLoadError(e.message || "Could not load products");
+          setProducts([]);
+          setPagination({ total: 0, pages: 1, page: 1 });
+        })
+        .finally(() => setLoading(false));
+    },
+    [search, statusFilter]
+  );
+
+  const loadHistory = useCallback(async () => {
+    setHistoryBusy(true);
+    try {
+      const r = await apiFetch<CatalogJobRow[]>(`/admin/catalog/jobs?limit=12&includeArchived=true`);
+      setHistoryJobs((r.data as CatalogJobRow[]) || []);
+    } catch {
+      setHistoryJobs([]);
+    } finally {
+      setHistoryBusy(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useEffect(() => {
+    void loadHistory();
+  }, [loadHistory]);
+
+  useEffect(() => {
+    setSelected({});
+  }, [pagination.page, search, statusFilter]);
 
   const remove = async (id: string, name: string) => {
     if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
@@ -84,19 +148,134 @@ export function ProductList() {
     }
   };
 
-  const filtered = products.filter(p => {
+  const filtered = products.filter((p) => {
     if (!search && !statusFilter) return true;
-    const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.sku?.toLowerCase().includes(search.toLowerCase());
+    const matchSearch =
+      !search ||
+      p.name.toLowerCase().includes(search.toLowerCase()) ||
+      p.sku?.toLowerCase().includes(search.toLowerCase());
     const matchStatus = !statusFilter || p.status === statusFilter;
     return matchSearch && matchStatus;
   });
 
+  const selectedIds = filtered.filter((p) => selected[String(p._id)]).map((p) => String(p._id));
+  const allSelected = filtered.length > 0 && selectedIds.length === filtered.length;
+
+  const toggleOne = (id: string) => {
+    setSelected((s) => ({ ...s, [id]: !s[id] }));
+  };
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelected({});
+      return;
+    }
+    const next: Record<string, boolean> = {};
+    filtered.forEach((p) => {
+      next[String(p._id)] = true;
+    });
+    setSelected(next);
+  };
+
+  const openCatalog = (scope: CatalogModalScope, productId?: string) => {
+    setCatalogScope(scope);
+    setSingleProductId(productId);
+    setCatalogOpen(true);
+  };
+
+  const exportProductsCsv = () => {
+    const header = ["name", "sku", "productId", "category", "brand", "status", "slug"];
+    const lines = [header.join(",")];
+    for (const p of filtered) {
+      lines.push(
+        [
+          escapeCsvCell(p.name),
+          escapeCsvCell(p.sku),
+          escapeCsvCell(p._id),
+          escapeCsvCell(p.category?.name),
+          escapeCsvCell(p.brand?.name),
+          escapeCsvCell(p.status),
+          escapeCsvCell(p.slug),
+        ].join(",")
+      );
+    }
+    const blob = new Blob([lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `structbay-products-page-${pagination.page}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const storefrontProductHref = (slug: string) => `/products/${encodeURIComponent(slug)}`;
+
+  const quickProductPdf = async (productId: string) => {
+    try {
+      await createAndDownloadCatalog({
+        scopeType: "PRODUCT",
+        productId,
+        format: "pdf",
+        filters: { status: "ACTIVE" },
+        options: {
+          includePricing: true,
+          includeDocuments: true,
+          includeVariants: true,
+          includeQrCodes: true,
+          includeVendorInfo: false,
+        },
+      });
+      void loadHistory();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Could not generate PDF");
+    }
+  };
+
+  const onDeleteJob = async (id: string) => {
+    if (!confirm("Delete this catalog record and file?")) return;
+    try {
+      await apiFetch(`/admin/catalog/jobs/${id}`, { method: "DELETE" });
+      void loadHistory();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Delete failed");
+    }
+  };
+
+  const onArchiveJob = async (id: string, archived: boolean) => {
+    try {
+      await apiFetch(`/admin/catalog/jobs/${id}/archive`, {
+        method: "PATCH",
+        body: JSON.stringify({ archived }),
+      });
+      void loadHistory();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Update failed");
+    }
+  };
+
+  const onRegenerateJob = async (id: string) => {
+    try {
+      await regenerateAndDownload(id);
+      void loadHistory();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Regenerate failed");
+    }
+  };
+
+  const onDownloadJob = async (job: CatalogJobRow) => {
+    try {
+      await downloadCompletedJob(job);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Download failed");
+    }
+  };
+
   return (
-    <div className="p-6 bg-[#0D0D0D] min-h-full">
+    <div className="p-6 bg-sb-cream min-h-full">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-[#F4E9D8]">Product Management</h1>
-          <p className="text-[#D4C4A8]/60 text-sm mt-0.5">
+          <h1 className="text-2xl font-semibold text-sb-ink">Product Management</h1>
+          <p className="text-sb-ink/55 text-sm mt-0.5">
             {pagination.total || filtered.length} products — Admin-only catalog control
           </p>
         </div>
@@ -104,95 +283,190 @@ export function ProductList() {
           <button
             type="button"
             onClick={() => setBulkOpen(true)}
-            className="flex items-center gap-2 border border-white/15 bg-[#171717] hover:border-[#FE5E00]/40 text-[#F4E9D8] font-medium px-4 py-2.5 rounded-lg text-sm transition-colors"
+            className="flex items-center gap-2 border border-sb-ink/15 bg-sb-cream-secondary hover:border-sb-orange/40 text-sb-ink font-medium px-4 py-2.5 rounded-lg text-sm transition-colors"
           >
-            <Upload className="w-4 h-4 text-[#FE5E00]" /> Bulk upload CSV
+            <Upload className="w-4 h-4 text-sb-orange" /> Import products
           </button>
-          <Link to={adminPath("products", "create")}
-            className="flex items-center gap-2 bg-[#FE5E00] hover:bg-[#E05200] text-[#0D0D0D] font-medium px-4 py-2.5 rounded-lg text-sm transition-colors shadow-[0_4px_12px_rgba(254,94,0,0.2)]">
-            <Plus className="w-4 h-4" /> Add Product
+          <button
+            type="button"
+            onClick={exportProductsCsv}
+            disabled={!filtered.length}
+            className="flex items-center gap-2 border border-sb-ink/15 bg-sb-cream-secondary hover:border-sb-orange/40 text-sb-ink font-medium px-4 py-2.5 rounded-lg text-sm transition-colors disabled:opacity-45"
+          >
+            <FileDown className="w-4 h-4 text-sb-orange" /> Export products
+          </button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-2 border border-sb-ink/15 bg-sb-cream-secondary hover:border-sb-orange/40 text-sb-ink font-medium px-4 py-2.5 rounded-lg text-sm transition-colors"
+              >
+                <BookOpen className="w-4 h-4 text-sb-orange" />
+                Generate catalog
+                <ChevronDown className="w-4 h-4 opacity-60" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-sb-cream border border-sb-ink/15 text-sb-ink min-w-[220px]">
+              <DropdownMenuItem className="cursor-pointer" onSelect={() => openCatalog("ALL")}>
+                All products catalog
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer"
+                disabled={selectedIds.length === 0}
+                onSelect={() => openCatalog("SELECTED")}
+              >
+                Selected products ({selectedIds.length})
+              </DropdownMenuItem>
+              <DropdownMenuItem className="cursor-pointer" onSelect={() => openCatalog("CATEGORY")}>
+                Category catalog…
+              </DropdownMenuItem>
+              <DropdownMenuItem className="cursor-pointer" onSelect={() => openCatalog("BRAND")}>
+                Brand catalog…
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Link
+            to={adminPath("products", "create")}
+            className="flex items-center gap-2 bg-sb-orange hover:bg-sb-orange-hover text-white font-medium px-4 py-2.5 rounded-lg text-sm transition-colors shadow-[0_4px_12px_rgba(254,94,0,0.2)]"
+          >
+            <Plus className="w-4 h-4" /> Add product
           </Link>
         </div>
       </div>
 
       {loadError && (
-        <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200/90">
+        <div className="mb-4 rounded-lg border border-sb-orange/25 bg-sb-orange/10 px-4 py-3 text-sm text-sb-ink/90">
           {loadError}
         </div>
       )}
 
-      {/* Filters */}
-      <div className="bg-[#222222] border border-white/10 rounded-xl p-4 mb-5 flex flex-col sm:flex-row gap-3">
+      <div className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl p-4 mb-5 flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#D4C4A8]/40" />
-          <input placeholder="Search products or SKU..." value={search} onChange={e => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-[#171717] border border-white/10 rounded-lg text-sm text-[#F4E9D8] placeholder:text-[#D4C4A8]/35 focus:outline-none focus:border-[#FE5E00] focus:ring-1 focus:ring-[#FE5E00]/20 transition-colors" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sb-ink/45" />
+          <input
+            placeholder="Search products or SKU..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-sb-cream-secondary border border-sb-ink/10 rounded-lg text-sm text-sb-ink placeholder:text-sb-ink/40 focus:outline-none focus:border-sb-orange focus:ring-1 focus:ring-sb-orange/20 transition-colors"
+          />
         </div>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-          className="bg-[#171717] border border-white/10 rounded-lg text-sm text-[#F4E9D8] px-3 py-2 focus:outline-none focus:border-[#FE5E00] transition-colors cursor-pointer min-w-[130px]">
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="bg-sb-cream-secondary border border-sb-ink/10 rounded-lg text-sm text-sb-ink px-3 py-2 focus:outline-none focus:border-sb-orange transition-colors cursor-pointer min-w-[130px]"
+        >
           <option value="">All Status</option>
           <option value="ACTIVE">Active</option>
           <option value="DRAFT">Draft</option>
           <option value="ARCHIVED">Archived</option>
         </select>
-        <button onClick={() => load()} className="p-2 bg-[#171717] border border-white/10 rounded-lg text-[#D4C4A8]/60 hover:text-[#F4E9D8] hover:border-[#FE5E00]/50 transition-colors">
+        <button
+          type="button"
+          onClick={() => load()}
+          className="p-2 bg-sb-cream-secondary border border-sb-ink/10 rounded-lg text-sb-ink/55 hover:text-sb-ink hover:border-sb-orange/50 transition-colors"
+        >
           <RefreshCw className="w-4 h-4" />
         </button>
       </div>
 
-      {/* Table */}
-      <div className="bg-[#222222] border border-white/10 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-white/8 flex items-center justify-between">
-          <h3 className="font-semibold text-[#F4E9D8] text-sm">
-            Products <span className="text-[#D4C4A8]/40 font-normal ml-1">({filtered.length})</span>
-          </h3>
+      <div className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-sb-ink/10 flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-sb-ink text-sm">
+              Products <span className="text-sb-ink/45 font-normal ml-1">({filtered.length})</span>
+            </h3>
+            <p className="text-[11px] text-sb-ink/45 mt-1">
+              Checkboxes apply to this page only. Use search/status to narrow the list, then select and run a selected-products catalog.
+            </p>
+          </div>
         </div>
 
-        {loading ? <Spinner /> : (
+        {loading ? (
+          <Spinner />
+        ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/8">
-                  {["Product", "Product ID", "SKU", "Category", "Brand", "Badges", "Status", "Order", ""].map(h => (
-                    <th key={h} className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wider text-[#D4C4A8]/50">{h}</th>
+                <tr className="border-b border-sb-ink/10">
+                  <th className="w-10 py-3 px-2">
+                    <input
+                      type="checkbox"
+                      className="rounded border-sb-ink/25"
+                      checked={allSelected}
+                      onChange={toggleAll}
+                      title="Select all on this page"
+                    />
+                  </th>
+                  {["Product", "Product ID", "SKU", "Category", "Brand", "Badges", "Status", "Order", ""].map((h) => (
+                    <th key={h} className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wider text-sb-ink/50">
+                      {h}
+                    </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(p => (
-                  <tr key={p._id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                {filtered.map((p) => (
+                  <tr key={p._id} className="border-b border-sb-ink/8 hover:bg-sb-cream-secondary/90 transition-colors">
+                    <td className="py-3.5 px-2 align-middle">
+                      <input
+                        type="checkbox"
+                        className="rounded border-sb-ink/25"
+                        checked={!!selected[String(p._id)]}
+                        onChange={() => toggleOne(String(p._id))}
+                      />
+                    </td>
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-3">
-                        {p.images?.[0]?.url
-                          ? <img src={p.images[0].url} alt={p.name} className="w-10 h-10 rounded-lg object-cover border border-white/10 shrink-0" />
-                          : <div className="w-10 h-10 rounded-lg bg-[#2A2A2A] border border-white/10 shrink-0 flex items-center justify-center text-[#D4C4A8]/30 text-xs">IMG</div>
-                        }
+                        {p.images?.[0]?.url ? (
+                          <img
+                            src={p.images[0].url}
+                            alt={p.name}
+                            className="w-10 h-10 rounded-lg object-cover border border-sb-ink/10 shrink-0"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-sb-cream-secondary border border-sb-ink/10 shrink-0 flex items-center justify-center text-sb-ink/40 text-xs">
+                            IMG
+                          </div>
+                        )}
                         <div>
-                          <span className="font-medium text-[#F4E9D8] text-sm">{p.name}</span>
-                          {p.isFeatured && <span className="ml-2 text-[10px] font-medium text-[#C9A227] uppercase tracking-wide">Featured</span>}
+                          <span className="font-medium text-sb-ink text-sm">{p.name}</span>
+                          {p.isFeatured && (
+                            <span className="ml-2 text-[10px] font-medium text-sb-orange uppercase tracking-wide">Featured</span>
+                          )}
                         </div>
                       </div>
                     </td>
                     <td className="py-3.5 px-4 align-top">
                       <CopyId id={String(p._id)} />
                     </td>
-                    <td className="py-3.5 px-4 font-mono text-xs text-[#D4C4A8]/60">{p.sku}</td>
-                    <td className="py-3.5 px-4 text-[#D4C4A8]/70">{p.category?.name || "—"}</td>
-                    <td className="py-3.5 px-4 text-[#D4C4A8]/70">{p.brand?.name || "—"}</td>
+                    <td className="py-3.5 px-4 font-mono text-xs text-sb-ink/55">{p.sku}</td>
+                    <td className="py-3.5 px-4 text-sb-ink/65">{p.category?.name || "—"}</td>
+                    <td className="py-3.5 px-4 text-sb-ink/65">{p.brand?.name || "—"}</td>
                     <td className="py-3.5 px-4">
                       <div className="flex gap-1">
                         {p.isAssured && (
-                          <span title="StructBay Assured" className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-500/15 text-blue-400 border border-blue-500/20">
+                          <span
+                            title="StructBay Assured"
+                            className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-sb-cream-secondary text-sb-ink border border-sb-ink/12"
+                          >
                             <Shield className="w-2.5 h-2.5" /> Assured
                           </span>
                         )}
                         {p.isExpress && (
-                          <span title="StructBay Express" className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#FE5E00]/15 text-[#FE5E00] border border-[#FE5E00]/20">
+                          <span
+                            title="StructBay Express"
+                            className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-sb-orange/15 text-sb-orange border border-sb-orange/20"
+                          >
                             <Zap className="w-2.5 h-2.5" /> Express
                           </span>
                         )}
                         {p.isTopSelling && (
-                          <span title="Top Selling" className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#C9A227]/15 text-[#C9A227] border border-[#C9A227]/20">
+                          <span
+                            title="Top Selling"
+                            className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-sb-orange/12 text-sb-orange border border-sb-orange/20"
+                          >
                             <TrendingUp className="w-2.5 h-2.5" /> Top
                           </span>
                         )}
@@ -203,30 +477,66 @@ export function ProductList() {
                         {p.status}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 text-[#D4C4A8]/50 text-xs">{p.displayOrder}</td>
+                    <td className="py-3.5 px-4 text-sb-ink/50 text-xs">{p.displayOrder}</td>
                     <td className="py-3.5 px-4 text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <button className="p-1.5 rounded-lg text-[#D4C4A8]/50 hover:text-[#F4E9D8] hover:bg-[#2A2A2A] transition-colors">
+                          <button
+                            type="button"
+                            className="p-1.5 rounded-lg text-sb-ink/50 hover:text-sb-ink hover:bg-sb-cream-secondary transition-colors"
+                          >
                             <MoreVertical className="w-4 h-4" />
                           </button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-[#222222] border border-white/15 text-[#F4E9D8] min-w-[150px]">
-                          <DropdownMenuItem asChild className="hover:bg-[#2A2A2A] cursor-pointer text-sm gap-2">
-                            <Link to={adminPath("products", String(p._id), "edit")}><Edit className="w-3.5 h-3.5 text-[#D4C4A8]/60" /> Edit Product</Link>
+                        <DropdownMenuContent align="end" className="bg-sb-cream border border-sb-ink/15 text-sb-ink min-w-[200px]">
+                          {p.slug ? (
+                            <DropdownMenuItem asChild className="hover:bg-sb-cream-secondary cursor-pointer text-sm gap-2">
+                              <a href={storefrontProductHref(p.slug)} target="_blank" rel="noreferrer">
+                                <Eye className="w-3.5 h-3.5 text-sb-ink/55" /> View on storefront
+                              </a>
+                            </DropdownMenuItem>
+                          ) : null}
+                          <DropdownMenuItem asChild className="hover:bg-sb-cream-secondary cursor-pointer text-sm gap-2">
+                            <Link to={adminPath("products", String(p._id), "edit")}>
+                              <Edit className="w-3.5 h-3.5 text-sb-ink/55" /> Edit product
+                            </Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem asChild className="hover:bg-[#2A2A2A] cursor-pointer text-sm gap-2">
-                            <Link to={`${adminPath("pricing")}?product=${p._id}`}><Star className="w-3.5 h-3.5 text-[#D4C4A8]/60" /> Manage Pricing</Link>
+                          <DropdownMenuItem asChild className="hover:bg-sb-cream-secondary cursor-pointer text-sm gap-2">
+                            <Link to={`${adminPath("pricing")}?product=${p._id}`}>
+                              <Star className="w-3.5 h-3.5 text-sb-ink/55" /> Manage pricing
+                            </Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem asChild className="hover:bg-[#2A2A2A] cursor-pointer text-sm gap-2">
-                            <Link to={`${adminPath("inventory")}?product=${p._id}`}><Archive className="w-3.5 h-3.5 text-[#D4C4A8]/60" /> Manage Inventory</Link>
+                          <DropdownMenuItem asChild className="hover:bg-sb-cream-secondary cursor-pointer text-sm gap-2">
+                            <Link to={`${adminPath("inventory")}?product=${p._id}`}>
+                              <Archive className="w-3.5 h-3.5 text-sb-ink/55" /> Manage inventory
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="hover:bg-sb-cream-secondary cursor-pointer text-sm gap-2"
+                            onSelect={(ev) => {
+                              ev.preventDefault();
+                              openCatalog("PRODUCT", String(p._id));
+                            }}
+                          >
+                            <BookOpen className="w-3.5 h-3.5 text-sb-ink/55" /> Generate product catalog…
                           </DropdownMenuItem>
                           <DropdownMenuItem
+                            className="hover:bg-sb-cream-secondary cursor-pointer text-sm gap-2"
+                            onSelect={(ev) => {
+                              ev.preventDefault();
+                              void quickProductPdf(String(p._id));
+                            }}
+                          >
+                            <FileText className="w-3.5 h-3.5 text-sb-ink/55" /> Download product PDF
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="hover:bg-sb-cream-secondary cursor-pointer text-sb-ink/55 text-sm gap-2"
                             onSelect={(ev) => {
                               ev.preventDefault();
                               void remove(p._id, p.name);
                             }}
-                            className="hover:bg-red-500/10 cursor-pointer text-red-400 text-sm gap-2"
                           >
                             <Trash2 className="w-3.5 h-3.5" /> Delete
                           </DropdownMenuItem>
@@ -241,31 +551,170 @@ export function ProductList() {
         )}
 
         {!loading && filtered.length === 0 && (
-          <div className="py-16 text-center text-[#D4C4A8]/40 text-sm">No products match your filters</div>
+          <div className="py-16 text-center text-sb-ink/45 text-sm">No products match your filters</div>
         )}
       </div>
 
       {pagination.pages > 1 && (
         <div className="flex justify-center gap-2 mt-6">
-          {Array.from({ length: pagination.pages }, (_, i) => i + 1).map(p => (
-            <button key={p} onClick={() => load(p)}
-              className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${p === pagination.page ? "bg-[#FE5E00] text-black" : "bg-[#222222] border border-white/10 text-[#D4C4A8] hover:border-[#FE5E00]/50"}`}>
+          {Array.from({ length: pagination.pages }, (_, i) => i + 1).map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => load(p)}
+              className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
+                p === pagination.page ? "bg-sb-orange text-white" : "bg-sb-cream border border-sb-ink/10 text-sb-ink/60 hover:border-sb-orange/50"
+              }`}
+            >
               {p}
             </button>
           ))}
         </div>
       )}
 
+      <div className="mt-10 border border-sb-ink/10 rounded-xl overflow-hidden bg-sb-cream-secondary">
+        <div className="px-5 py-4 border-b border-sb-ink/10 flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-sb-ink text-sm">Catalog history</h3>
+            <p className="text-xs text-sb-ink/50 mt-0.5">Recent PDF / Excel / CSV runs (stored on server)</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void loadHistory()}
+            className="text-xs font-medium text-sb-orange hover:underline disabled:opacity-50"
+            disabled={historyBusy}
+          >
+            Refresh
+          </button>
+        </div>
+        {historyBusy && !historyJobs.length ? (
+          <div className="py-8 flex justify-center">
+            <Loader2 className="w-5 h-5 animate-spin text-sb-orange" />
+          </div>
+        ) : historyJobs.length === 0 ? (
+          <p className="px-5 py-8 text-sm text-sb-ink/45 text-center">No catalog jobs yet. Generate one from the actions above.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-sb-ink/10 text-sb-ink/50 uppercase tracking-wide">
+                  <th className="text-left py-2 px-4">Name</th>
+                  <th className="text-left py-2 px-4">Type</th>
+                  <th className="text-left py-2 px-4">Format</th>
+                  <th className="text-left py-2 px-4">Status</th>
+                  <th className="text-right py-2 px-4">Products</th>
+                  <th className="text-right py-2 px-4">Size</th>
+                  <th className="text-left py-2 px-4">When</th>
+                  <th className="text-right py-2 px-4">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {historyJobs.map((j) => (
+                  <tr key={j._id} className="border-b border-sb-ink/8 hover:bg-sb-cream/80">
+                    <td className="py-2.5 px-4 text-sb-ink font-medium max-w-[200px]">
+                      <div className="truncate" title={j.catalogName || ""}>
+                        {j.catalogName || "—"}
+                      </div>
+                      {j.archived ? (
+                        <span className="text-[10px] uppercase tracking-wide text-sb-ink/45">Archived</span>
+                      ) : null}
+                    </td>
+                    <td className="py-2.5 px-4 text-sb-ink/70">{j.scopeType}</td>
+                    <td className="py-2.5 px-4 text-sb-ink/70">{String(j.format || "").toUpperCase()}</td>
+                    <td className="py-2.5 px-4">
+                      <span
+                        className={`inline-flex px-2 py-0.5 rounded-full font-semibold ${
+                          j.status === "COMPLETED"
+                            ? "bg-emerald-500/12 text-emerald-800"
+                            : j.status === "FAILED"
+                              ? "bg-red-500/12 text-red-800"
+                              : "bg-sb-ink/8 text-sb-ink/70"
+                        }`}
+                      >
+                        {j.status}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-4 text-right text-sb-ink/70">{j.productCount ?? "—"}</td>
+                    <td className="py-2.5 px-4 text-right text-sb-ink/70">{formatBytes(j.fileSizeBytes)}</td>
+                    <td className="py-2.5 px-4 text-sb-ink/55 whitespace-nowrap">
+                      {j.createdAt ? new Date(j.createdAt).toLocaleString() : "—"}
+                    </td>
+                    <td className="py-2.5 px-4 text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button type="button" className="text-sb-orange text-xs font-semibold hover:underline">
+                            Manage
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="bg-sb-cream border border-sb-ink/15 text-sb-ink min-w-[160px]">
+                          {j.status === "COMPLETED" ? (
+                            <DropdownMenuItem
+                              className="cursor-pointer text-sm"
+                              onSelect={(ev) => {
+                                ev.preventDefault();
+                                void onDownloadJob(j);
+                              }}
+                            >
+                              Download
+                            </DropdownMenuItem>
+                          ) : null}
+                          <DropdownMenuItem
+                            className="cursor-pointer text-sm"
+                            onSelect={(ev) => {
+                              ev.preventDefault();
+                              void onRegenerateJob(j._id);
+                            }}
+                          >
+                            Regenerate
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="cursor-pointer text-sm"
+                            onSelect={(ev) => {
+                              ev.preventDefault();
+                              void onArchiveJob(j._id, !j.archived);
+                            }}
+                          >
+                            {j.archived ? "Unarchive" : "Archive"}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="cursor-pointer text-sm text-red-700"
+                            onSelect={(ev) => {
+                              ev.preventDefault();
+                              void onDeleteJob(j._id);
+                            }}
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       <BulkImportCsvModal
         open={bulkOpen}
         onClose={() => setBulkOpen(false)}
-        title="Bulk import products (CSV)"
+        title="Import products (CSV)"
         instructions={`Up to 200 rows per upload. Required: name, sku, category (categorySlug or categoryId), brand (brandName or brandId).\nOptional: status (DRAFT|ACTIVE|ARCHIVED), gstPercentage, shortDescription, description, displayOrder, isFeatured, isTopSelling, isAssured, isExpress (true/false).\nSlug is generated from name; images can be added after import.`}
         templateCsv={PRODUCT_BULK_TEMPLATE}
         templateFileName="structbay-products-bulk-template.csv"
         apiPath="/products/bulk-import"
         parseRows={parseProductBulkCsv}
         onSuccess={() => load(pagination.page)}
+      />
+
+      <CatalogGenerateModal
+        open={catalogOpen}
+        onClose={() => setCatalogOpen(false)}
+        scope={catalogScope}
+        selectedProductIds={selectedIds}
+        singleProductId={singleProductId}
+        onComplete={() => void loadHistory()}
       />
     </div>
   );

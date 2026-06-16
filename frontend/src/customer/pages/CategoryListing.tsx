@@ -5,14 +5,24 @@ import {
   ChevronRight, FileText, ChevronLeft, ChevronDown, X,
   ShieldCheck, BadgeCheck, Building2, Package,
   ArrowRight, BarChart3, Heart, GitCompare, MapPin,
+  Plus, Minus,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { useApp } from "../context/AppContext";
+import {
+  formatVariationLabel,
+  firstImageUrl,
+  topAttributeChipsForListing,
+} from "../lib/productAttributes";
 
 const PAGE_SIZE = 12;
 
-function formatVariationLabel(v: any) {
-  return Object.values(v.attributes || {}).filter(Boolean).join(" · ") || "Option";
+/** URL param vs API slug (encoding / casing). */
+function categorySlugMatches(routeSlug: string | undefined, cat: { slug?: string }) {
+  if (!routeSlug) return false;
+  const a = decodeURIComponent(String(routeSlug)).trim().toLowerCase();
+  const b = decodeURIComponent(String(cat?.slug ?? "")).trim().toLowerCase();
+  return a.length > 0 && a === b;
 }
 
 function unitPriceForListingProduct(p: any, variationId: string | null) {
@@ -66,7 +76,7 @@ function AccordionSection({ title, children, defaultOpen = true }: AccordionSect
 
 export function CategoryListing() {
   const { category } = useParams<{ category?: string }>();
-  const { addToCart, city, cityId, isWishlisted, addToWishlist, removeFromWishlist, addToCompare } = useApp();
+  const { addToCart, updateQty, cart, city, cityId, isWishlisted, addToWishlist, removeFromWishlist, addToCompare } = useApp();
   const navigate = useNavigate();
 
   const isShopAll = !category || category === "all";
@@ -76,6 +86,10 @@ export function CategoryListing() {
   const [catData, setCatData]       = useState<any>(null);
   const [allCategories, setAllCategories] = useState<any[]>([]);
   const [allBrands, setAllBrands]   = useState<any[]>([]);
+  /** Admin-defined category filters (CategoryFilter.filters) — drives dynamic attribute filters. */
+  const [categoryFilters, setCategoryFilters] = useState<any[]>([]);
+  /** Selected attribute values per filter key (multi-select). */
+  const [dynAttrSelections, setDynAttrSelections] = useState<Record<string, string[]>>({});
   const [loading, setLoading]       = useState(true);
   const [totalCount, setTotalCount] = useState(0);
 
@@ -90,6 +104,8 @@ export function CategoryListing() {
   const [minRating, setMinRating]           = useState(0);
   const [filterOpen, setFilterOpen]         = useState(false);
   const [page, setPage]                     = useState(1);
+  /** Per-product slug → selected variation id for pricing / add-to-cart */
+  const [varChoice, setVarChoice]           = useState<Record<string, string>>({});
   /** Category page: maps sidebar brand name → Mongo id for API `brand` filter */
   const brandNameToIdRef = useRef<Record<string, string>>({});
 
@@ -104,6 +120,7 @@ export function CategoryListing() {
     setPriceMax("");
     setMinRating(0);
     setVarChoice({});
+    setDynAttrSelections({});
     brandNameToIdRef.current = {};
   }, [category]);
 
@@ -127,6 +144,7 @@ export function CategoryListing() {
           const data = res.data || [];
           setProducts(data);
           setTotalCount(res.pagination?.total || data.length);
+          setCategoryFilters([]);
           setCatData({
             name: "Shop All",
             slug: "all",
@@ -147,10 +165,13 @@ export function CategoryListing() {
       if (cid) qp.cityId = cid;
       if (showAssured) qp.assured = "true";
       if (showExpress) qp.express = "true";
-      if (selectedBrands.length > 0) {
-        const bid = brandNameToIdRef.current[selectedBrands[0]];
-        if (bid) qp.brand = bid;
-      }
+      if (priceMin) qp.minPrice = priceMin;
+      if (priceMax) qp.maxPrice = priceMax;
+      const brandIds = selectedBrands.map((n) => brandNameToIdRef.current[n]).filter(Boolean);
+      if (brandIds.length) qp.brands = brandIds.join(",");
+      Object.entries(dynAttrSelections).forEach(([k, vals]) => {
+        if (vals?.length) qp[k] = vals.join(",");
+      });
 
       api.getCategoryDetails(category!, qp)
         .then((res: any) => {
@@ -158,6 +179,7 @@ export function CategoryListing() {
           setCatData(d.category || null);
           setProducts(d.products || []);
           setTotalCount(d.pagination?.total || (d.products || []).length);
+          setCategoryFilters(Array.isArray(d.filters) ? d.filters : []);
           const brands = d.brands || [];
           const map: Record<string, string> = {};
           brands.forEach((b: any) => {
@@ -165,71 +187,102 @@ export function CategoryListing() {
           });
           brandNameToIdRef.current = map;
           setAllBrands(brands.map((b: any) => b.name || b.slug || ""));
-          setAllCategories(d.categories || []);
           if (!d.category) navigate("/shop", { replace: true });
         })
         .finally(() => setLoading(false));
     }
-  }, [category, cityId, isShopAll, sortBy, page, showAssured, showExpress, selectedBrands]);
+  }, [category, cityId, isShopAll, sortBy, page, showAssured, showExpress, selectedBrands, priceMin, priceMax, JSON.stringify(dynAttrSelections)]);
 
-  // Shop-all: category quick-nav pills (same city filter as PLP)
+  // Quick-nav pills: API `/category/:slug` does not return sibling list — always load categories.
   useEffect(() => {
-    if (!isShopAll) return;
-    const params: Record<string, any> = { status: 'ACTIVE', limit: 100 };
+    const params: Record<string, any> = { status: "ACTIVE", limit: 100 };
     const cid = cityId || undefined;
     if (cid) params.cityId = cid;
     api
       .getCategories(params)
       .then((res: any) => setAllCategories(res.data || []))
       .catch(() => setAllCategories([]));
-  }, [isShopAll, cityId]);
+  }, [cityId]);
 
-  // ── Client-side filters (price/rating only — rest handled by server) ───────
-  let filteredProducts = [...products];
-  if (selectedBrands.length > 0)
-    filteredProducts = filteredProducts.filter((p: any) =>
-      selectedBrands.includes(p.brand?.name || p.brand)
-    );
-  if (priceMin)
-    filteredProducts = filteredProducts.filter((p: any) =>
-      (p.pricing?.regularPrice || p.price || 0) >= Number(priceMin)
-    );
-  if (priceMax)
-    filteredProducts = filteredProducts.filter((p: any) =>
-      (p.pricing?.regularPrice || p.price || 0) <= Number(priceMax)
-    );
-  if (inStockOnly)
-    filteredProducts = filteredProducts.filter((p: any) => p.inStock !== false);
-  if (sortBy === "priceLow")
-    filteredProducts = [...filteredProducts].sort((a, b) =>
-      (a.pricing?.regularPrice || a.price || 0) - (b.pricing?.regularPrice || b.price || 0)
-    );
-  if (sortBy === "priceHigh")
-    filteredProducts = [...filteredProducts].sort((a, b) =>
-      (b.pricing?.regularPrice || b.price || 0) - (a.pricing?.regularPrice || a.price || 0)
-    );
-  if (sortBy === "express")
-    filteredProducts = [...filteredProducts].sort((a, b) => (b.isExpress ? 1 : 0) - (a.isExpress ? 1 : 0));
-
-  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
-  const paginated  = filteredProducts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  const toggleBrand = (b: string) =>
-    setSelectedBrands(prev => prev.includes(b) ? prev.filter(x => x !== b) : [...prev, b]);
-
-  const clearFilters = () => {
-    setSelectedBrands([]); setPriceMin(""); setPriceMax("");
-    setShowAssured(false); setShowExpress(false); setInStockOnly(false);
-    setMinRating(0); setPage(1);
+  const toggleDynFilter = (key: string, value: string) => {
+    setDynAttrSelections((prev) => {
+      const cur = prev[key] || [];
+      const has = cur.includes(value);
+      const nextVals = has ? cur.filter((x) => x !== value) : [...cur, value];
+      const next = { ...prev };
+      if (nextVals.length) next[key] = nextVals;
+      else delete next[key];
+      return next;
+    });
+    setPage(1);
   };
 
+  // ── Client-side filters (shop-all: full list; category page: only fields not on server) ───────
+  let filteredProducts = [...products];
+  if (isShopAll) {
+    if (selectedBrands.length > 0)
+      filteredProducts = filteredProducts.filter((p: any) =>
+        selectedBrands.includes(p.brand?.name || p.brand)
+      );
+    if (priceMin)
+      filteredProducts = filteredProducts.filter(
+        (p: any) => (p.pricing?.regularPrice || p.price || 0) >= Number(priceMin)
+      );
+    if (priceMax)
+      filteredProducts = filteredProducts.filter(
+        (p: any) => (p.pricing?.regularPrice || p.price || 0) <= Number(priceMax)
+      );
+    if (inStockOnly) filteredProducts = filteredProducts.filter((p: any) => p.inStock !== false);
+    if (sortBy === "priceLow")
+      filteredProducts = [...filteredProducts].sort(
+        (a, b) => (a.pricing?.regularPrice || a.price || 0) - (b.pricing?.regularPrice || b.price || 0)
+      );
+    if (sortBy === "priceHigh")
+      filteredProducts = [...filteredProducts].sort(
+        (a, b) => (b.pricing?.regularPrice || b.price || 0) - (a.pricing?.regularPrice || a.price || 0)
+      );
+    if (sortBy === "express")
+      filteredProducts = [...filteredProducts].sort(
+        (a, b) => (b.isExpress ? 1 : 0) - (a.isExpress ? 1 : 0)
+      );
+  } else {
+    if (minRating > 0)
+      filteredProducts = filteredProducts.filter((p: any) => Number(p.rating || 0) >= minRating);
+    if (inStockOnly) filteredProducts = filteredProducts.filter((p: any) => p.inStock !== false);
+  }
+
+  const totalPages = isShopAll
+    ? Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE))
+    : Math.max(1, Math.ceil((totalCount || 0) / PAGE_SIZE));
+
+  const paginated = isShopAll
+    ? filteredProducts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+    : filteredProducts;
+
+  const toggleBrand = (b: string) =>
+    setSelectedBrands((prev) => (prev.includes(b) ? prev.filter((x) => x !== b) : [...prev, b]));
+
+  const clearFilters = () => {
+    setSelectedBrands([]);
+    setPriceMin("");
+    setPriceMax("");
+    setShowAssured(false);
+    setShowExpress(false);
+    setInStockOnly(false);
+    setMinRating(0);
+    setDynAttrSelections({});
+    setPage(1);
+  };
+
+  const dynAttrActiveCount = Object.values(dynAttrSelections).reduce((n, a) => n + (a?.length || 0), 0);
   const activeFilters =
     selectedBrands.length +
     (showAssured ? 1 : 0) +
     (showExpress ? 1 : 0) +
     (inStockOnly ? 1 : 0) +
     (minRating > 0 ? 1 : 0) +
-    (priceMin || priceMax ? 1 : 0);
+    (priceMin || priceMax ? 1 : 0) +
+    dynAttrActiveCount;
 
   if (!catData && !loading) return null;
 
@@ -275,6 +328,41 @@ export function CategoryListing() {
         </div>
       </AccordionSection>
 
+      {!isShopAll &&
+        categoryFilters
+          .filter((f: any) => f?.key && f?.isActive !== false)
+          .sort((a: any, b: any) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0))
+          .map((f: any) => (
+            <AccordionSection key={String(f.key)} title={f.label || f.key}>
+              {f.type === "RANGE" ? (
+                <p className="text-xs text-sb-ink-muted/50">Use the price range below. Advanced per-attribute ranges can be enabled from admin.</p>
+              ) : (f.options || []).length > 0 ? (
+                <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                  {(f.options || []).map((opt: any) => {
+                    const val = String(opt.value ?? opt.label ?? "");
+                    const label = String(opt.label ?? opt.value ?? "");
+                    const checked = (dynAttrSelections[String(f.key)] || []).includes(val);
+                    return (
+                      <label key={`${f.key}:${val}`} className="flex items-center gap-2.5 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleDynFilter(String(f.key), val)}
+                          className="w-4 h-4 rounded accent-[#FE5E00]"
+                        />
+                        <span className="text-sm text-sb-ink-muted/80 group-hover:text-sb-ink">{label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-sb-ink-muted/50">
+                  Add options in Admin → Category filters so shoppers can narrow by {f.label || f.key}. Variant values already exist on products.
+                </p>
+              )}
+            </AccordionSection>
+          ))}
+
       <AccordionSection title="Price Range (₹)">
         <div className="flex gap-2">
           <input type="number" placeholder="Min" value={priceMin}
@@ -317,30 +405,34 @@ export function CategoryListing() {
             alt={catData?.name || ""}
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0D0D0D] via-[#0D0D0D]/88 to-[#0D0D0D]/40" />
+          <div className="absolute inset-0 bg-gradient-to-r from-sb-ink via-sb-ink/90 to-sb-ink/40" />
         </div>
         <div className="relative max-w-7xl mx-auto px-4 py-10">
-          <nav className="flex items-center gap-1.5 text-xs text-sb-ink-muted/50 mb-4">
+          <nav className="flex items-center gap-1.5 text-xs text-white/65 mb-4 flex-wrap">
             <Link to="/" className="hover:text-[#FE5E00] transition-colors">Home</Link>
-            <ChevronRight className="w-3 h-3" />
+            <ChevronRight className="w-3 h-3 text-white/40 shrink-0" />
             <Link to="/shop" className="hover:text-[#FE5E00] transition-colors">Shop</Link>
-            <ChevronRight className="w-3 h-3" />
-            <span className="text-sb-ink font-medium">{catData?.name}</span>
+            {!isShopAll && (
+              <>
+                <ChevronRight className="w-3 h-3 text-white/40 shrink-0" />
+                <span className="text-white font-medium">{catData?.name}</span>
+              </>
+            )}
           </nav>
 
           <div className="flex items-end justify-between gap-6">
             <div>
-              <h1 className="text-3xl md:text-4xl font-black text-sb-ink mb-2">{catData?.name}</h1>
-              <p className="text-sb-ink-muted/70 max-w-xl text-sm leading-relaxed">
+              <h1 className="text-3xl md:text-4xl font-black !text-white mb-2 drop-shadow-sm">{catData?.name}</h1>
+              <p className="text-white/85 max-w-xl text-sm leading-relaxed">
                 {catData?.description || catData?.longDescription || "Browse premium construction materials from verified vendors."}
               </p>
               <div className="flex items-center gap-3 mt-4 flex-wrap">
-                <span className="text-xs text-sb-ink-muted/50 bg-white/8 border border-sb-ink/12 px-3 py-1 rounded-full">
+                <span className="text-xs text-white/95 bg-white/10 border border-white/20 px-3 py-1 rounded-full">
                   {totalCount}+ Products
                 </span>
                 {city && (
-                  <span className="text-xs text-[#FE5E00] bg-[#FE5E00]/10 border border-[#FE5E00]/20 px-3 py-1 rounded-full flex items-center gap-1">
-                    <MapPin className="w-3 h-3" /> Delivering in {city}
+                  <span className="text-xs text-white/95 bg-white/10 border border-white/20 px-3 py-1 rounded-full flex items-center gap-1">
+                    <MapPin className="w-3 h-3 text-[#FE5E00]" /> Delivering in {city}
                   </span>
                 )}
               </div>
@@ -387,12 +479,12 @@ export function CategoryListing() {
           >
             All
           </Link>
-          {allCategories.map((cat: any) => (
+          {allCategories.filter((c: any) => c?.slug).map((cat: any) => (
             <Link
-              key={cat.slug}
+              key={cat.slug || cat._id}
               to={`/category/${cat.slug}`}
               className={`text-xs px-3.5 py-1.5 rounded-full whitespace-nowrap font-medium transition-all ${
-                cat.slug === category
+                categorySlugMatches(category, cat)
                   ? "bg-[#FE5E00] text-sb-on-orange"
                   : "text-sb-ink-muted/60 hover:text-sb-ink hover:bg-sb-surface-2 border border-sb-ink/10"
               }`}
@@ -428,7 +520,7 @@ export function CategoryListing() {
             {/* Sort + count bar */}
             <div className="flex items-center justify-between mb-4 bg-sb-surface border border-sb-ink/10 rounded-xl px-4 py-2.5">
               <span className="text-sm text-sb-ink-muted/60">
-                <span className="font-semibold text-sb-ink">{filteredProducts.length}</span> products
+                <span className="font-semibold text-sb-ink">{isShopAll ? filteredProducts.length : totalCount}</span> products
                 {activeFilters > 0 && <span className="ml-1.5 text-[#FE5E00] text-xs">· {activeFilters} filter{activeFilters > 1 ? "s" : ""} applied</span>}
               </span>
               <div className="flex items-center gap-2">
@@ -499,26 +591,38 @@ export function CategoryListing() {
                   const unitP = unitPriceForListingProduct(product, selVid || null);
                   const regP = Number(product.pricing?.regularPrice ?? product.price ?? unitP);
                   const discount = regP && unitP < regP ? Math.round((1 - unitP / regP) * 100) : 0;
-                  const image = Array.isArray(product.images) ? product.images[0] : product.image;
+                  const image = firstImageUrl(product.images);
                   const brandName = product.brand?.name || product.brand || "";
                   const selectedVar = variations.find((v: any) => String(v._id) === selVid);
+                  const attrChips = topAttributeChipsForListing(selectedVar || variations[0], categoryFilters, 5);
+                  const showAssuredBadge = !!(product.isStructbayAssured || product.isAssured || product.displayStructbayAssured);
+                  const showDeliveryBadge = !!(product.isStructbayDelivery || product.isExpress || product.displayStructbayDelivery);
+                  const vidForCart = selVid || undefined;
+                  const cartId = `${slug}::${vidForCart || "base"}`;
+                  const cartLine = cart.find((i) => i.id === cartId);
 
                   return (
                     <div key={slug} className="bg-sb-surface border border-sb-ink/10 rounded-2xl overflow-hidden hover:border-[#FE5E00]/40 hover:shadow-[0_4px_24px_rgba(254,94,0,0.1)] transition-all duration-300 group flex flex-col">
                       {/* Image */}
                       <Link to={`/products/${slug}`} className="relative aspect-square overflow-hidden bg-sb-surface-2 shrink-0 block">
-                        <img src={image} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                        {image ? (
+                          <img src={image} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-sb-ink-muted/35">
+                            <Package className="w-14 h-14" aria-hidden />
+                          </div>
+                        )}
 
                         {/* Badges */}
                         <div className="absolute top-2 left-2 flex gap-1 flex-col">
-                          {product.isAssured && (
+                          {showAssuredBadge && (
                             <span className="bg-sb-page/90 text-[#C9A227] border border-[#C9A227]/40 text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1 font-bold">
                               <Shield className="w-2.5 h-2.5" /> Assured
                             </span>
                           )}
-                          {product.isExpress && (
+                          {showDeliveryBadge && (
                             <span className="bg-[#FE5E00] text-sb-on-orange text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1 font-bold">
-                              <Zap className="w-2.5 h-2.5" /> Express
+                              <Zap className="w-2.5 h-2.5" /> Delivery
                             </span>
                           )}
                         </div>
@@ -561,6 +665,20 @@ export function CategoryListing() {
                           </span>
                         )}
 
+                        {attrChips.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {attrChips.map((c) => (
+                              <span
+                                key={`${c.label}:${c.value}`}
+                                className="text-[10px] leading-tight px-1.5 py-0.5 rounded-md bg-sb-page border border-sb-ink/10 text-sb-ink-muted"
+                              >
+                                <span className="text-sb-ink-muted/55">{c.label}: </span>
+                                <span className="font-semibold text-sb-ink">{c.value}</span>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
                         {variations.length > 0 && (
                           <label className="block mt-2">
                             <span className="sr-only">Variant</span>
@@ -596,32 +714,55 @@ export function CategoryListing() {
                           </p>
                         )}
 
-                        {/* Actions */}
-                        <div className="mt-auto pt-3 flex gap-1.5">
-                          <button
-                            onClick={() => {
-                              const vid = selVid || undefined;
-                              const cartId = `${slug}::${vid || "base"}`;
-                              addToCart({
-                                id: cartId,
-                                productSlug: slug,
-                                variationId: vid,
-                                variationLabel: selectedVar ? formatVariationLabel(selectedVar) : undefined,
-                                name: product.name,
-                                brand: brandName,
-                                price: unitP,
-                                qty: 1,
-                                unit: product.unit || "unit",
-                                image,
-                              });
-                            }}
-                            className="flex-1 py-2 rounded-xl bg-[#FE5E00] hover:bg-[#E05200] text-sb-on-orange text-xs font-bold transition-colors flex items-center justify-center gap-1"
-                          >
-                            <ShoppingCart className="w-3 h-3" /> Add
-                          </button>
+                        {/* Actions: Add → inline − qty + when line is in cart */}
+                        <div className="mt-auto pt-3 flex gap-1.5 items-stretch">
+                          {cartLine ? (
+                            <div className="flex-1 flex items-stretch rounded-xl border-2 border-[#FE5E00]/60 bg-sb-surface-2 overflow-hidden min-h-[2.25rem]">
+                              <button
+                                type="button"
+                                aria-label="Decrease quantity"
+                                onClick={() => updateQty(cartId, cartLine.qty - 1)}
+                                className="w-9 shrink-0 flex items-center justify-center text-[#FE5E00] hover:bg-[#FE5E00]/15 active:bg-[#FE5E00]/25 transition-colors"
+                              >
+                                <Minus className="w-4 h-4 stroke-[2.5]" />
+                              </button>
+                              <span className="flex-1 min-w-0 flex items-center justify-center text-sm font-black text-sb-ink tabular-nums border-x border-[#FE5E00]/25">
+                                {cartLine.qty}
+                              </span>
+                              <button
+                                type="button"
+                                aria-label="Increase quantity"
+                                onClick={() => updateQty(cartId, cartLine.qty + 1)}
+                                className="w-9 shrink-0 flex items-center justify-center text-[#FE5E00] hover:bg-[#FE5E00]/15 active:bg-[#FE5E00]/25 transition-colors"
+                              >
+                                <Plus className="w-4 h-4 stroke-[2.5]" />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                addToCart({
+                                  id: cartId,
+                                  productSlug: slug,
+                                  variationId: vidForCart,
+                                  variationLabel: selectedVar ? formatVariationLabel(selectedVar) : undefined,
+                                  name: product.name,
+                                  brand: brandName,
+                                  price: unitP,
+                                  qty: 1,
+                                  unit: product.unit || "unit",
+                                  image: image || "",
+                                });
+                              }}
+                              className="flex-1 py-2 rounded-xl bg-[#FE5E00] hover:bg-[#E05200] text-sb-on-orange text-xs font-bold transition-colors flex items-center justify-center gap-1"
+                            >
+                              <ShoppingCart className="w-3 h-3" /> Add
+                            </button>
+                          )}
                           <Link
                             to="/rfq"
-                            className="py-2 px-2.5 rounded-xl border border-sb-ink/15 hover:border-[#FE5E00]/50 text-sb-ink-muted hover:text-[#FE5E00] transition-colors"
+                            className="py-2 px-2.5 rounded-xl border border-sb-ink/15 hover:border-[#FE5E00]/50 text-sb-ink-muted hover:text-[#FE5E00] transition-colors flex items-center justify-center shrink-0"
                             title="Get RFQ"
                           >
                             <FileText className="w-3.5 h-3.5" />
@@ -668,10 +809,10 @@ export function CategoryListing() {
             )}
 
             {/* ── Dark RFQ CTA ──────────────────────────────────────────── */}
-            <div className="mt-8 bg-[#1A1A1A] rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 border border-sb-ink/12">
+            <div className="mt-8 bg-[#1A1A1A] rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 border border-white/10">
               <div>
-                <p className="font-black text-sb-ink text-lg mb-1">Need {catData?.name} in bulk?</p>
-                <p className="text-sm text-sb-ink-muted/60">Get competitive quotes from multiple vendors. No minimum order limit.</p>
+                <p className="font-black text-white text-lg mb-1">Need {catData?.name} in bulk?</p>
+                <p className="text-sm text-white/85">Get competitive quotes from multiple vendors. No minimum order limit.</p>
               </div>
               <div className="flex gap-3 shrink-0">
                 <Link
@@ -682,7 +823,7 @@ export function CategoryListing() {
                 </Link>
                 <Link
                   to="/bulk"
-                  className="flex items-center gap-2 border border-sb-ink/15 hover:border-[#FE5E00] text-sb-ink hover:text-[#FE5E00] px-5 py-2.5 rounded-xl font-semibold text-sm transition-all"
+                  className="flex items-center gap-2 border border-white/25 hover:border-[#FE5E00] text-white hover:text-[#FE5E00] px-5 py-2.5 rounded-xl font-semibold text-sm transition-all"
                 >
                   Bulk Order <ArrowRight className="w-4 h-4" />
                 </Link>
