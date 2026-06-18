@@ -376,7 +376,7 @@ const DEFAULT_HERO_SLIDES: Omit<HeroSlide, "id">[] = [
     shopLabel: "Shop Now",
     shopHref: "/shop",
     secondaryHref: "/rfq",
-    overlayOpacity: 52,
+    overlayOpacity: null,
     titleColor: null,
     subtitleColor: null,
     backgroundColor: null,
@@ -389,7 +389,7 @@ const DEFAULT_HERO_SLIDES: Omit<HeroSlide, "id">[] = [
     shopLabel: "Start Procuring",
     shopHref: "/shop",
     secondaryHref: "/rfq",
-    overlayOpacity: 52,
+    overlayOpacity: null,
     titleColor: null,
     subtitleColor: null,
     backgroundColor: null,
@@ -402,7 +402,7 @@ const DEFAULT_HERO_SLIDES: Omit<HeroSlide, "id">[] = [
     shopLabel: "Get Quote",
     shopHref: "/rfq",
     secondaryHref: "/shop",
-    overlayOpacity: 52,
+    overlayOpacity: null,
     titleColor: null,
     subtitleColor: null,
     backgroundColor: null,
@@ -423,21 +423,25 @@ function buildHeroSlides(rawBanners: any[], cms: Record<string, unknown>): HeroS
     return true;
   });
 
-  const mapBanner = (b: any, i: number): HeroSlide => {
+  const mapBanner = (b: any, i: number, { useCmsFallbacks = false } = {}): HeroSlide => {
     const img = (b.image?.url || b.imageUrl || "").trim() || cmsBg || DEFAULT_HERO_IMAGE;
     const titleRaw = String(b.title || "").trim();
-    const title = titleRaw.length >= 3 ? titleRaw : cmsTitle || defaultTitle;
-    const sub =
-      [b.subtitle, b.description]
-        .map((x: any) => String(x || "").trim())
-        .filter(Boolean)
-        .join(" — ") || cmsSub || DEFAULT_SUB;
+    const title = useCmsFallbacks
+      ? (titleRaw.length >= 3 ? titleRaw : cmsTitle || defaultTitle)
+      : titleRaw;
+    const bannerSub = [b.subtitle, b.description]
+      .map((x: any) => String(x || "").trim())
+      .filter(Boolean)
+      .join(" — ");
+    const sub = useCmsFallbacks
+      ? (bannerSub || cmsSub || DEFAULT_SUB)
+      : bannerSub;
     return {
       id: String(b._id || `slide-${i}`),
       imageUrl: img,
       title,
       sub,
-      shopLabel: String(b.buttonText || "").trim() || cmsCta,
+      shopLabel: String(b.buttonText || "").trim() || (useCmsFallbacks ? cmsCta : ""),
       shopHref: String(b.buttonLink || "/shop").trim() || "/shop",
       secondaryHref: "/rfq",
       overlayOpacity: b.overlayOpacity ?? null,
@@ -451,7 +455,7 @@ function buildHeroSlides(rawBanners: any[], cms: Record<string, unknown>): HeroS
   if (live.length > 0) {
     const slides = live
       .sort((a: any, b: any) => (Number(a.displayOrder) || 0) - (Number(b.displayOrder) || 0))
-      .map(mapBanner);
+      .map((b: any, i: number) => mapBanner(b, i));
     return slides;
   }
 
@@ -466,8 +470,8 @@ function buildHeroSlides(rawBanners: any[], cms: Record<string, unknown>): HeroS
       imageUrl: b.imageUrl,
       buttonLink: b.linkUrl,
       buttonText: null,
-      overlayOpacity: 52,
-    }, i));
+      overlayOpacity: null,
+    }, i, { useCmsFallbacks: true }));
 
   if (fromCmsHome.length > 0) return fromCmsHome;
 
@@ -481,7 +485,7 @@ function buildHeroSlides(rawBanners: any[], cms: Record<string, unknown>): HeroS
         shopLabel: cmsCta,
         shopHref: "/shop",
         secondaryHref: "/rfq",
-        overlayOpacity: 52,
+        overlayOpacity: null,
         titleColor: null,
         subtitleColor: null,
         backgroundColor: null,
@@ -493,15 +497,15 @@ function buildHeroSlides(rawBanners: any[], cms: Record<string, unknown>): HeroS
   return DEFAULT_HERO_SLIDES.map((s, i) => ({ ...s, id: `default-${i}` }));
 }
 
-/** Readable overlay tuned by alignment + CMS `overlayOpacity` 0–100. */
+/** Optional CMS overlay — only when `overlayOpacity` is set above 0. */
 function heroReadableOverlay(
   opacityPct: number | null | undefined,
   align: HeroTextAlign = "right"
-): CSSProperties {
-  const pct =
-    opacityPct != null && Number.isFinite(Number(opacityPct))
-      ? Math.min(100, Math.max(0, Number(opacityPct)))
-      : 52;
+): CSSProperties | null {
+  if (opacityPct == null || !Number.isFinite(Number(opacityPct)) || Number(opacityPct) <= 0) {
+    return null;
+  }
+  const pct = Math.min(100, Math.max(0, Number(opacityPct)));
   const strength = 0.42 + (pct / 100) * 0.38;
   const mid = strength * 0.62;
   const soft = Math.min(0.88, strength);
@@ -531,7 +535,7 @@ function parseHeroTitle(title: string): { line1: string; line2: string | null } 
   if (dot > 0 && dot < t.length - 1) {
     return { line1: t.slice(0, dot + 1).trim(), line2: t.slice(dot + 1).trim() };
   }
-  return { line1: t || "Build Better.", line2: null };
+  return { line1: t, line2: null };
 }
 
 function StructBayHero({
@@ -550,7 +554,9 @@ function StructBayHero({
 
   const n = slides.length;
   const slide = slides[Math.min(current, n - 1)] || slides[0];
-  const { line1, line2 } = parseHeroTitle(slide.title);
+  const hasTitle = Boolean(String(slide.title || "").trim());
+  const hasSub = Boolean(String(slide.sub || "").trim());
+  const { line1, line2 } = hasTitle ? parseHeroTitle(slide.title) : { line1: "", line2: null };
 
   useEffect(() => {
     setCurrent((c) => Math.min(c, Math.max(n - 1, 0)));
@@ -579,14 +585,13 @@ function StructBayHero({
 
   const titleColor = normalizeCssColor(slide.titleColor) || "#ffffff";
   const subColor = normalizeCssColor(slide.subtitleColor) || "rgba(255,255,255,0.88)";
-  const bgColor = normalizeCssColor(slide.backgroundColor) || "#020617";
+  const bgColor = normalizeCssColor(slide.backgroundColor) || "transparent";
   const align = slide.textAlign;
-  const btnAlignClass =
-    align === "left" ? "justify-start" : align === "center" ? "justify-center" : "justify-end";
 
   return (
     <section
       className="sf-hero-ref"
+      style={bgColor !== "transparent" ? { backgroundColor: bgColor } : undefined}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)}
@@ -594,50 +599,55 @@ function StructBayHero({
       aria-roledescription="carousel"
       aria-label="Homepage banners"
     >
-      <div className="absolute inset-0" style={{ backgroundColor: bgColor }}>
-        {slides.map((s, i) => (
-          <div
-            key={s.id}
-            className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${i === current ? "opacity-100 z-[1]" : "opacity-0 z-0"}`}
-            aria-hidden={i !== current}
-          >
-            <img
-              src={s.imageUrl}
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover"
-              loading={i === 0 ? "eager" : "lazy"}
-            />
-            <div className="absolute inset-0" style={heroReadableOverlay(s.overlayOpacity, s.textAlign)} aria-hidden />
-            <div className="absolute inset-0 bg-black/35" aria-hidden />
-          </div>
-        ))}
+      <div className="sf-hero-ref__slides">
+        {slides.map((s, i) => {
+          const overlayStyle = heroReadableOverlay(s.overlayOpacity, s.textAlign);
+          const isActive = i === current;
+          return (
+            <div
+              key={s.id}
+              className={`sf-hero-ref__slide${isActive ? " sf-hero-ref__slide--active" : ""}`}
+              aria-hidden={!isActive}
+            >
+              <img
+                src={s.imageUrl}
+                alt=""
+                className="sf-hero-ref__img"
+                loading={i === 0 ? "eager" : "lazy"}
+              />
+              {overlayStyle ? (
+                <div className="sf-hero-ref__overlay" style={overlayStyle} aria-hidden />
+              ) : null}
+            </div>
+          );
+        })}
       </div>
 
-      <div
-        className={`sf-hero-ref__copy sf-hero-ref__copy--${align}`}
-        key={slide.id}
-        style={
-          {
-            "--hero-title-color": titleColor,
-            "--hero-sub-color": subColor,
-          } as CSSProperties
-        }
-      >
-        <h1>
-          <span>{line1}</span>
-          {line2 ? (
-            <>
-              <br />
-              <span>{line2}</span>
-            </>
-          ) : null}
-        </h1>
-        <p className="line-clamp-3">{slide.sub}</p>
-        <div className={`mt-5 flex flex-wrap gap-3 ${btnAlignClass}`}>
-          <Link to={slide.shopHref} className="sf-btn-orange">{slide.shopLabel}</Link>
-          <Link to={slide.secondaryHref} className="sf-btn-outline border-white text-white hover:text-sb-orange">Get Quote</Link>
+      {(hasTitle || hasSub) && (
+        <div
+          className={`sf-hero-ref__copy sf-hero-ref__copy--${align}`}
+          key={slide.id}
+          style={
+            {
+              "--hero-title-color": titleColor,
+              "--hero-sub-color": subColor,
+            } as CSSProperties
+          }
+        >
+          {hasTitle && (
+            <h1>
+              <span>{line1}</span>
+              {line2 ? (
+                <>
+                  <br />
+                  <span>{line2}</span>
+                </>
+              ) : null}
+            </h1>
+          )}
+          {hasSub && <p className="line-clamp-3">{slide.sub}</p>}
         </div>
-      </div>
+      )}
 
       {n > 1 && (
         <>
@@ -1014,6 +1024,45 @@ export function Homepage() {
         </section>
       )}
 
+
+ {/* ── Featured brands (logo carousel) ─────────────────────────────────── */}
+      {brands.length > 0 && (
+        <section className="sf-brands-section py-14 px-4 border-y border-[#E85A00]/15">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-8">
+              <h2 className="text-sb-ink">Featured Brands</h2>
+              <p className="text-sb-ink-muted/60 text-sm mt-1">Authorized partners for India&apos;s top construction brands</p>
+            </div>
+            <div className="bg-white rounded-2xl border border-black/10 py-6 sb-marquee shadow-sm">
+              <div className="sb-marquee__track items-stretch px-4 gap-4 md:gap-6">
+                {[...brands, ...brands].map((brand, i) => (
+                  <Link
+                    key={`${brand.slug}-${i}`}
+                    to={`/brands/${brand.slug}`}
+                    className="group shrink-0 flex flex-col items-center justify-center w-[7.25rem] sm:w-36 min-h-[5.5rem] rounded-2xl border border-sb-ink/10 bg-white hover:border-[#E85A00]/50 hover:shadow-[0_8px_24px_rgba(232, 90, 0,0.12)] transition-all px-3 py-3"
+                  >
+                    {brand.logo?.url ? (
+                      <img
+                        src={brand.logo.url}
+                        alt={brand.name}
+                        className="max-h-11 sm:max-h-12 max-w-[5.5rem] sm:max-w-[6.25rem] w-auto object-contain"
+                      />
+                    ) : (
+                      <div className="h-11 w-11 rounded-xl flex items-center justify-center bg-[#E85A00]/12 border border-[#E85A00]/20 text-[#E85A00] font-black text-sm">
+                        {(brand.name || "?")[0]}
+                      </div>
+                    )}
+                    <span className="mt-2 text-[11px] sm:text-xs font-semibold text-sb-ink/90 text-center line-clamp-2 leading-tight max-w-full group-hover:text-[#E85A00] transition-colors">
+                      {brand.name}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+      
       {/* ── Why StructBay? ─────────────────────────────────────────────────── */}
       <section className="sf-dot-grid border-y border-black/8 py-14 px-4">
         <div className="max-w-5xl mx-auto text-center mb-10">
@@ -1066,43 +1115,7 @@ export function Homepage() {
         </section>
       )}
 
-      {/* ── Featured brands (logo carousel) ─────────────────────────────────── */}
-      {brands.length > 0 && (
-        <section className="sf-brands-section py-14 px-4 border-y border-[#E85A00]/15">
-          <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-8">
-              <h2 className="text-sb-ink">Featured Brands</h2>
-              <p className="text-sb-ink-muted/60 text-sm mt-1">Authorized partners for India&apos;s top construction brands</p>
-            </div>
-            <div className="bg-white rounded-2xl border border-black/10 py-6 sb-marquee shadow-sm">
-              <div className="sb-marquee__track items-stretch px-4 gap-4 md:gap-6">
-                {[...brands, ...brands].map((brand, i) => (
-                  <Link
-                    key={`${brand.slug}-${i}`}
-                    to={`/brands/${brand.slug}`}
-                    className="group shrink-0 flex flex-col items-center justify-center w-[7.25rem] sm:w-36 min-h-[5.5rem] rounded-2xl border border-sb-ink/10 bg-white hover:border-[#E85A00]/50 hover:shadow-[0_8px_24px_rgba(232, 90, 0,0.12)] transition-all px-3 py-3"
-                  >
-                    {brand.logo?.url ? (
-                      <img
-                        src={brand.logo.url}
-                        alt={brand.name}
-                        className="max-h-11 sm:max-h-12 max-w-[5.5rem] sm:max-w-[6.25rem] w-auto object-contain"
-                      />
-                    ) : (
-                      <div className="h-11 w-11 rounded-xl flex items-center justify-center bg-[#E85A00]/12 border border-[#E85A00]/20 text-[#E85A00] font-black text-sm">
-                        {(brand.name || "?")[0]}
-                      </div>
-                    )}
-                    <span className="mt-2 text-[11px] sm:text-xs font-semibold text-sb-ink/90 text-center line-clamp-2 leading-tight max-w-full group-hover:text-[#E85A00] transition-colors">
-                      {brand.name}
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
+     
 
       {/* ── CTA Banners Row ────────────────────────────────────────────────── */}
       <section

@@ -56,39 +56,59 @@ function notificationPath(n: CustomerNotification): string {
 /** After user picks a city in the onboarding modal — persisted via `locationOnboarding.ts`. */
 
 const MARQUEE_SEGMENTS_DEFAULT = [
-  "GST Invoice on Every Order",
-  "Additional delivery charges may apply — payable at site where applicable",
-  "India's Premier B2B Construction Materials Marketplace",
-  "StructBay Assured — Quality Verified Products",
-  "Express delivery available in 24–48 hours in select zones",
-  "Trusted vendor network across South India",
+  "Super fast same day delivery",
+  "Minimum Order Value Rs. 2000.",
+  "Additional Delivery Charges Applicable - pay at site.",
 ];
 
+const MARQUEE_HOLD_MS = 3000;
+const MARQUEE_FADE_MS = 450;
+
 function TopMarquee({ segments }: { segments: string[] }) {
-  const line = (segments.length ? segments : MARQUEE_SEGMENTS_DEFAULT).join("     •     ");
-  const doubled = `${line}     •     ${line}`;
+  const items = segments.length ? segments : MARQUEE_SEGMENTS_DEFAULT;
+  const [index, setIndex] = useState(0);
+  const [fading, setFading] = useState(false);
+
+  useEffect(() => {
+    if (items.length <= 1) return;
+    const holdTimer = window.setTimeout(() => setFading(true), MARQUEE_HOLD_MS);
+    return () => clearTimeout(holdTimer);
+  }, [index, items.length]);
+
+  useEffect(() => {
+    if (!fading || items.length <= 1) return;
+    const fadeTimer = window.setTimeout(() => {
+      setIndex((i) => (i + 1) % items.length);
+      setFading(false);
+    }, MARQUEE_FADE_MS);
+    return () => clearTimeout(fadeTimer);
+  }, [fading, items.length]);
+
   return (
     <>
       <style>
         {`
-        @keyframes sb-top-marquee {
-          from { transform: translateX(0); }
-          to { transform: translateX(-50%); }
-        }
-        .sb-top-marquee-track {
-          display: inline-block;
-          white-space: nowrap;
-          animation: sb-top-marquee 52s linear infinite;
+        .sb-top-marquee-message {
+          transition: opacity ${MARQUEE_FADE_MS}ms ease-in-out;
         }
         @media (prefers-reduced-motion: reduce) {
-          .sb-top-marquee-track { animation: none; }
+          .sb-top-marquee-message { transition: none; }
         }
       `}
       </style>
-      <div className="relative w-full overflow-hidden min-h-[1.35rem] flex items-center" aria-live="polite">
-        <div className="sb-top-marquee-track text-white/95 text-[11px] sm:text-xs font-medium tracking-wide">
-          {doubled}
-        </div>
+      <div
+        className="relative w-full min-h-[2.0rem] flex items-center justify-center"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        <p
+          key={index}
+          className={`sb-top-marquee-message text-white/95 text-[12px] sm:text-lg font-medium tracking-wide text-center px-1 ${
+            fading ? "opacity-0" : "opacity-100"
+          }`}
+        >
+          {items[index]}
+        </p>
       </div>
     </>
   );
@@ -319,8 +339,8 @@ export function Header() {
             <Menu className="w-6 h-6" />
           </button>
 
-          <Link to="/" className="shrink-0">
-            <img src={logoImg} alt="StructBay" className="h-12 sm:h-14 w-auto object-contain" />
+          <Link to="/" className="shrink-0 sf-header-logo-link">
+            <img src={logoImg} alt="StructBay" className="sf-header-logo" />
           </Link>
 
           <nav className="sf-nav" aria-label="Main">
@@ -581,7 +601,7 @@ export function Header() {
             onClick={e => e.stopPropagation()}
           >
             <div className="flex justify-between items-center p-4 border-b border-sb-border-dark">
-              <img src={logoImg} alt="StructBay" className="h-12 w-auto object-contain" />
+              <img src={logoImg} alt="StructBay" className="sf-header-logo" />
               <button onClick={() => setMenuOpen(false)} style={{ color: "var(--sb-chrome-fg-muted)" }}>
                 <X className="w-5 h-5" />
               </button>

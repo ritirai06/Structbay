@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const bannerSchema = new mongoose.Schema(
   {
-    title: { type: String, trim: true, required: true },
+    title: { type: String, trim: true, default: '' },
     /** Shown below the title on the storefront hero (sub-heading). */
     subtitle: { type: String, trim: true },
     description: { type: String, trim: true },

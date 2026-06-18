@@ -69,6 +69,9 @@ const getBanners = asyncHandler(async (req, res) => {
 
 const createBanner = asyncHandler(async (req, res) => {
   const payload = { ...req.body };
+  if (payload.title !== undefined && payload.title !== null) {
+    payload.title = String(payload.title).trim();
+  }
   if (req.body.imageUrl) {
     payload.image = { url: req.body.imageUrl, publicId: req.body.imagePublicId || null };
     delete payload.imageUrl;
@@ -104,7 +107,19 @@ const updateBanner = asyncHandler(async (req, res) => {
   allowed.forEach((f) => {
     if (req.body[f] === undefined) return;
     let v = req.body[f];
-    if (['titleColor', 'subtitleColor', 'backgroundColor'].includes(f) && (v === '' || v === null)) {
+    if (f === 'title' && (v === null || v === undefined)) {
+      v = '';
+    } else if (f === 'title' && typeof v === 'string') {
+      v = v.trim();
+    } else if (f === 'subtitle' && (v === null || v === undefined)) {
+      v = '';
+    } else if (f === 'subtitle' && typeof v === 'string') {
+      v = v.trim();
+    } else if (f === 'buttonText' && (v === null || v === undefined || v === '')) {
+      v = null;
+    } else if (f === 'buttonText' && typeof v === 'string') {
+      v = v.trim() || null;
+    } else if (['titleColor', 'subtitleColor', 'backgroundColor'].includes(f) && (v === '' || v === null)) {
       v = null;
     } else if (f === 'overlayOpacity') {
       if (v === '' || v === null) v = null;
