@@ -43,8 +43,9 @@ const UPLOAD_FOLDERS = {
 
 // ─── File Limits ─────────────────────────────────────────────────────────────
 const FILE_SIZE_LIMITS = {
-  IMAGE: 5 * 1024 * 1024,      // 5 MB
-  DOCUMENT: 20 * 1024 * 1024,  // 20 MB
+  IMAGE: 5 * 1024 * 1024,        // 5 MB
+  BANNER_IMAGE: 15 * 1024 * 1024, // 15 MB — hero / CMS banners
+  DOCUMENT: 20 * 1024 * 1024,    // 20 MB
 };
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];

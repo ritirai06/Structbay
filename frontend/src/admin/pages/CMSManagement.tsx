@@ -740,6 +740,8 @@ function HomepageTab() {
 }
 
 // ─── Banners Tab ─────────────────────────────────────────────────────────────
+const BANNER_IMAGE_MAX_BYTES = 15 * 1024 * 1024;
+
 function BannersTab() {
   const [banners, setBanners] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -787,9 +789,9 @@ function BannersTab() {
   };
   const openEdit = (b: any) => {
     setForm({
-      title: b.title,
-      subtitle: b.subtitle || "",
-      buttonText: b.buttonText || "",
+      title: b.title ?? "",
+      subtitle: b.subtitle ?? "",
+      buttonText: b.buttonText ?? "",
       buttonLink: b.buttonLink || "#",
       displayOrder: b.displayOrder,
       status: b.status,
@@ -810,9 +812,9 @@ function BannersTab() {
     try {
       const isEdit = !!modal.data;
       const payload: Record<string, unknown> = {
-        title: form.title,
-        subtitle: form.subtitle?.trim() || undefined,
-        buttonText: form.buttonText?.trim() || undefined,
+        title: form.title?.trim() ?? "",
+        subtitle: form.subtitle?.trim() ?? "",
+        buttonText: form.buttonText?.trim() ?? "",
         buttonLink: form.buttonLink || "#",
         displayOrder: form.displayOrder,
         status: form.status,
@@ -830,10 +832,6 @@ function BannersTab() {
       } else if (imageUrl) {
         payload.imageUrl = imageUrl;
         if (imagePublicId) payload.imagePublicId = imagePublicId;
-      } else if (!isEdit) {
-        alert("Please upload a hero banner image (wide photo works best).");
-        setSaving(false);
-        return;
       }
 
       const tc = String(form.titleColor || "").trim();
@@ -889,6 +887,10 @@ function BannersTab() {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    if (file.size > BANNER_IMAGE_MAX_BYTES) {
+      alert("Image must be 15 MB or smaller.");
+      return;
+    }
     setUploadingImage(true);
     try {
       const up = await adminUploadImage("/upload/banner", file);
@@ -1007,8 +1009,10 @@ function BannersTab() {
       {modal.open && (
         <Modal title={modal.data ? "Edit Banner" : "Create Banner"} onClose={() => setModal({ open: false, data: null })}>
           <div className="space-y-3">
-            <div><label className="text-xs text-sb-ink/55 mb-1 block">Title *</label>
-              <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} /></div>
+            <div>
+              <label className="text-xs text-sb-ink/55 mb-1 block">Title</label>
+              <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Optional — shown on the hero image" />
+            </div>
             <div>
               <label className="text-xs text-sb-ink/55 mb-1 block">Sub-heading</label>
               <Textarea
@@ -1114,7 +1118,7 @@ function BannersTab() {
             <div>
               <label className="text-xs text-sb-ink/55 mb-1 block">Hero banner image</label>
               <p className="text-[10px] text-sb-ink/45 mb-2">
-                Wide photo (16:9 or wider). Uses <code className="text-sb-orange">/upload/banner</code> — separate from product images.
+                Wide photo (16:9 or wider). JPEG, PNG, or WebP — max 15 MB. Uses <code className="text-sb-orange">/upload/banner</code> — separate from product images.
               </p>
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <label className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-sb-ink/15 bg-sb-cream text-sm text-sb-ink cursor-pointer hover:border-sb-orange/50 transition-colors">
@@ -1157,9 +1161,15 @@ function BannersTab() {
                         : "text-right"
                   }`}
                 >
-                  <p className="font-bold text-lg leading-tight" style={{ color: previewTitleColor }}>
-                    {form.title || "Hero title preview"}
-                  </p>
+                  {form.title?.trim() ? (
+                    <p className="font-bold text-lg leading-tight" style={{ color: previewTitleColor }}>
+                      {form.title.trim()}
+                    </p>
+                  ) : (
+                    <p className="text-sm italic opacity-60" style={{ color: previewSubColor }}>
+                      No title — only the image will show on the storefront
+                    </p>
+                  )}
                   {form.subtitle && (
                     <p className="text-sm mt-1" style={{ color: previewSubColor }}>{form.subtitle}</p>
                   )}

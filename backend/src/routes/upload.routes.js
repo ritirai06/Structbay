@@ -1,8 +1,8 @@
 const router = require('express').Router();
 const { protect } = require('../middleware/auth.middleware');
 const { requireRole } = require('../middleware/role.middleware');
-const { uploadImage, uploadDocument, handleUploadError } = require('../middleware/upload.middleware');
-const { UPLOAD_FOLDERS } = require('../config/constants');
+const { uploadImage, uploadDocument, handleUploadError, createUploader } = require('../middleware/upload.middleware');
+const { UPLOAD_FOLDERS, FILE_SIZE_LIMITS, ALLOWED_IMAGE_TYPES } = require('../config/constants');
 const uploadCtrl = require('../controllers/upload.controller');
 
 /**
@@ -49,12 +49,12 @@ router.post(
   uploadCtrl.imageUploadResult
 );
 
-// Admin — hero / CMS banner (customer-facing)
+// Admin — hero / CMS banner (customer-facing, up to 15 MB)
 router.post(
   '/banner',
   protect,
   requireRole('ADMIN'),
-  ...uploadImage(UPLOAD_FOLDERS.BANNER).single('image'),
+  ...createUploader(UPLOAD_FOLDERS.BANNER, ALLOWED_IMAGE_TYPES, FILE_SIZE_LIMITS.BANNER_IMAGE, 'image').single('image'),
   handleUploadError,
   uploadCtrl.imageUploadResult
 );

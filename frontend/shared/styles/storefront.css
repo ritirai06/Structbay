@@ -7,7 +7,7 @@
   top: 0;
   z-index: 50;
   overflow: visible;
-  --sf-chrome-sticky: 7.5rem;
+  --sf-chrome-sticky: 8.25rem;
 }
 
 .sf-announce {
@@ -27,8 +27,32 @@
   gap: 1rem;
   max-width: 1280px;
   margin: 0 auto;
-  padding: 0.75rem 1rem;
-  min-height: 72px;
+  padding: 0.625rem 1.25rem;
+  min-height: 5.25rem;
+}
+
+.sf-header-logo {
+  display: block;
+  height: 3.5rem;
+  width: auto;
+  object-fit: contain;
+}
+
+@media (min-width: 640px) {
+  .sf-header-logo {
+    height: 4.25rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .sf-header-main {
+    min-height: 5.5rem;
+    padding: 0.75rem 1.5rem;
+  }
+
+  .sf-header-logo {
+    height: 4.75rem;
+  }
 }
 
 .sf-nav {
@@ -865,10 +889,46 @@
 
 .sf-hero-ref {
   position: relative;
-  min-height: clamp(400px, 62vh, 590px);
-  max-height: 610px;
+  width: 100%;
   overflow: hidden;
   background: var(--chrome-black, #000000);
+}
+
+.sf-hero-ref__slides {
+  position: relative;
+  width: 100%;
+  line-height: 0;
+}
+
+.sf-hero-ref__slide {
+  transition: opacity 0.7s ease-in-out;
+}
+
+.sf-hero-ref__slide:not(.sf-hero-ref__slide--active) {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sf-hero-ref__slide--active {
+  position: relative;
+  opacity: 1;
+}
+
+.sf-hero-ref__img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+}
+
+.sf-hero-ref__overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }
 
 .sf-hero-ref__copy {
@@ -998,12 +1058,12 @@
 
 .sf-intro__inner {
   max-width: 72rem;
-  margin: 0 auto;
+  margin: 40px auto;
 }
 
 .sf-intro h2 {
   text-align: center;
-  font-size: clamp(1.05rem, 2.15vw, 1.5rem);
+  font-size: clamp(2.5rem, 2.15vw, 3.3rem);
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.025em;
@@ -1017,7 +1077,7 @@
   text-align: center;
   color: var(--primary, #E85A00);
   font-weight: 600;
-  font-size: clamp(0.9375rem, 1.55vw, 1.0625rem);
+  font-size: clamp(1.0rem, 1.55vw, 1.3rem);
   margin: 0.75rem auto 0;
   line-height: 1.4;
 }
@@ -1027,7 +1087,7 @@
   max-width: min(92vw, 58rem);
   margin: 1rem auto 0;
   color: #666666;
-  font-size: clamp(0.8125rem, 1.05vw, 0.9375rem);
+  font-size: clamp(1.0rem, 1.05vw, 1.3rem);
   line-height: 1.65;
   font-weight: 400;
 }

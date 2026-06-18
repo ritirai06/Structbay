@@ -2,7 +2,7 @@ const { body, param } = require('express-validator');
 
 // ─── Banner ───────────────────────────────────────────────────────────────────
 const bannerCreateValidator = [
-  body('title').notEmpty().withMessage('Title is required').trim(),
+  body('title').optional().isString().trim(),
   body('subtitle').optional().isString().trim(),
   body('status').optional().isIn(['ACTIVE', 'INACTIVE']).withMessage('Invalid status'),
   body('displayOrder').optional().isInt({ min: 0 }).withMessage('displayOrder must be a non-negative integer'),
