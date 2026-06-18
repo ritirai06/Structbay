@@ -6,6 +6,7 @@ const User = require('../models/User');
 const { ROLES, VENDOR_STATUS } = require('../config/constants');
 const { logAction } = require('../services/auditLog.service');
 const { generateMasterOrderNumber } = require('../services/order.service');
+const { releaseInventory } = require('../services/order.service');
 const VendorOrder = require('../models/VendorOrder');
 const { generateSubOrderNumber, getNextSubOrderIndex } = require('../services/refNumber.service');
 const { notifyVendor } = require('../services/vendorNotification.service');
@@ -83,9 +84,14 @@ const updateStatus = asyncHandler(async (req, res) => {
   return ApiResponse.success(res, 200, 'Order status updated.', order);
 });
 
+const VALID_DELIVERY_TYPES = ['vendor_delivery', 'structbay_delivery'];
+
 const assignVendor = asyncHandler(async (req, res) => {
-  const { vendorId } = req.body;
+  const { vendorId, deliveryType: rawDeliveryType } = req.body;
   if (!vendorId) throw new AppError('vendorId is required.', 400);
+  const deliveryType = rawDeliveryType && VALID_DELIVERY_TYPES.includes(rawDeliveryType)
+    ? rawDeliveryType
+    : 'vendor_delivery';
   const vendor = await User.findOne({
     _id: vendorId,
     role: ROLES.VENDOR,
@@ -140,8 +146,17 @@ const assignVendor = asyncHandler(async (req, res) => {
       masterOrder: order._id,
       vendor: vendor._id,
     })
-      .select('_id')
+      .select('_id status deliveryType')
       .lean();
+
+    if (existingVoAfterLink) {
+      const earlyStatuses = new Set(['NEW_ASSIGNED', 'ASSIGNED', 'ACCEPTED', 'READY_FOR_DISPATCH', 'CHANGES_REQUESTED']);
+      if (earlyStatuses.has(existingVoAfterLink.status)) {
+        await VendorOrder.findByIdAndUpdate(existingVoAfterLink._id, {
+          $set: { deliveryType },
+        });
+      }
+    }
 
     if (!existingVoAfterLink && order.items?.length) {
       const full = await Order.findById(order._id).populate('customer', 'name phone email').lean();
@@ -183,7 +198,7 @@ const assignVendor = asyncHandler(async (req, res) => {
           contactPerson: ship.name || cust.name || '',
           contactPhone: ship.phone || cust.phone || '',
         },
-        deliveryType: 'vendor_delivery',
+        deliveryType,
         status: 'NEW_ASSIGNED',
         statusHistory: [{
           status: 'NEW_ASSIGNED',
@@ -247,6 +262,42 @@ const patchOrderDetails = asyncHandler(async (req, res) => {
   return ApiResponse.success(res, 200, 'Order updated.', order);
 });
 
+/** Admin confirms payment received (COD / credit / manual verification). */
+const confirmPayment = asyncHandler(async (req, res) => {
+  const { paymentStatus, note } = req.body;
+  const allowed = ['PAID', 'FAILED', 'CANCELLED'];
+  if (!paymentStatus || !allowed.includes(paymentStatus)) {
+    throw new AppError(`paymentStatus must be one of: ${allowed.join(', ')}`, 400);
+  }
+
+  const order = await Order.findById(req.params.id);
+  if (!order) throw new AppError('Order not found.', 404);
+
+  const oldPay = order.paymentStatus;
+  order.paymentStatus = paymentStatus;
+  const methodLabel = order.paymentMethod || 'unspecified';
+  const histNote =
+    note?.trim() ||
+    `Payment ${paymentStatus.toLowerCase()} (was ${oldPay}) · method: ${methodLabel}`;
+  order.statusHistory.push({
+    status: order.status,
+    changedBy: req.user._id,
+    note: histNote,
+  });
+  await order.save();
+
+  await logAction({
+    adminId: req.user._id,
+    action: 'UPDATE',
+    module: 'Order',
+    targetId: order._id.toString(),
+    description: `Payment ${oldPay} → ${paymentStatus} (${methodLabel})`,
+    ipAddress: req.ip,
+  });
+
+  return ApiResponse.success(res, 200, 'Payment status updated.', order);
+});
+
 const uploadDocs = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id);
   if (!order) throw new AppError('Order not found.', 404);
@@ -277,14 +328,10 @@ const getStats = asyncHandler(async (req, res) => {
   return ApiResponse.success(res, 200, 'Order stats.', { total, pending, processing, dispatched, delivered, cancelled });
 });
 
+/** Same scope for invoice table + all KPI aggregates (avoids pending ₹ with 0 rows). */
 const invoiceListFilter = () => ({
   status: { $nin: ['CANCELLED', 'RETURNED'] },
-  $or: [
-    { paymentStatus: 'PAID' },
-    { structbayInvoiceUrl: { $nin: [null, ''] } },
-    { invoiceUrl: { $nin: [null, ''] } },
-    { customerInvoiceNumber: { $nin: [null, ''] } },
-  ],
+  paymentStatus: { $nin: ['REFUNDED', 'CANCELLED'] },
 });
 
 const listInvoices = asyncHandler(async (req, res) => {
@@ -334,9 +381,9 @@ const listInvoices = asyncHandler(async (req, res) => {
 });
 
 const invoiceSummary = asyncHandler(async (req, res) => {
-  const base = { status: { $nin: ['CANCELLED', 'RETURNED'] } };
-  const [totalRows, paidAgg, pendingAgg, withPdf] = await Promise.all([
-    Order.countDocuments(invoiceListFilter()),
+  const base = invoiceListFilter();
+  const [totalRows, paidAgg, pendingAgg, withPdf, pendingCount, paidCount] = await Promise.all([
+    Order.countDocuments(base),
     Order.aggregate([
       { $match: { ...base, paymentStatus: 'PAID' } },
       { $group: { _id: null, total: { $sum: '$grandTotal' } } },
@@ -352,6 +399,8 @@ const invoiceSummary = asyncHandler(async (req, res) => {
         { invoiceUrl: { $nin: [null, ''] } },
       ],
     }),
+    Order.countDocuments({ ...base, paymentStatus: 'PENDING' }),
+    Order.countDocuments({ ...base, paymentStatus: 'PAID' }),
   ]);
 
   return ApiResponse.success(res, 200, 'Invoice summary.', {
@@ -359,6 +408,75 @@ const invoiceSummary = asyncHandler(async (req, res) => {
     ordersWithPdf: withPdf,
     pendingPaymentAmount: pendingAgg[0]?.total || 0,
     totalCollectedAmount: paidAgg[0]?.total || 0,
+    pendingOrderCount: pendingCount,
+    paidOrderCount: paidCount,
+  });
+});
+
+const LOCKED_ORDER_STATUSES = ['DISPATCHED', 'PARTIALLY_DELIVERED', 'DELIVERED', 'COMPLETED'];
+const BULK_DELETE_MAX = 200;
+
+async function softDeleteOrder(order, userId, ip) {
+  if (LOCKED_ORDER_STATUSES.includes(order.status)) {
+    throw new AppError(
+      'Cannot delete order after dispatch/delivery. Cancel or complete workflow first.',
+      400
+    );
+  }
+  if (!['CANCELLED', 'RETURNED'].includes(order.status)) {
+    try {
+      await releaseInventory(order.items, order.city);
+    } catch {
+      /* best effort */
+    }
+  }
+  await Order.updateOne({ _id: order._id }, { $set: { isDeleted: true } });
+  await logAction({
+    adminId: userId,
+    action: 'DELETE',
+    module: 'Order',
+    targetId: order._id.toString(),
+    description: `Soft-deleted order ${order.orderNumber}`,
+    ipAddress: ip,
+  });
+}
+
+const remove = asyncHandler(async (req, res) => {
+  const order = await Order.findById(req.params.id);
+  if (!order) throw new AppError('Order not found.', 404);
+  await softDeleteOrder(order, req.user._id, req.ip);
+  return ApiResponse.success(res, 200, 'Order deleted.', { id: order._id });
+});
+
+const bulkRemove = asyncHandler(async (req, res) => {
+  const raw = req.body?.ids;
+  const ids = Array.isArray(raw) ? raw.map((x) => String(x).trim()).filter(Boolean) : [];
+  if (!ids.length) throw new AppError('No valid order ids provided.', 400);
+  if (ids.length > BULK_DELETE_MAX) {
+    throw new AppError(`Too many ids (max ${BULK_DELETE_MAX}).`, 400);
+  }
+
+  const errors = [];
+  let ok = 0;
+  for (const id of ids) {
+    try {
+      const order = await Order.findById(id);
+      if (!order) throw new AppError('Order not found.', 404);
+      await softDeleteOrder(order, req.user._id, req.ip);
+      ok += 1;
+    } catch (e) {
+      errors.push({
+        id,
+        message: e instanceof AppError ? e.message : (e && e.message) || String(e),
+      });
+    }
+  }
+
+  return ApiResponse.success(res, 200, `Deleted ${ok} order(s).`, {
+    total: ids.length,
+    succeeded: ok,
+    failed: errors.length,
+    errors,
   });
 });
 
@@ -371,6 +489,9 @@ module.exports = {
   uploadDocs,
   getStats,
   patchOrderDetails,
+  confirmPayment,
   listInvoices,
   invoiceSummary,
+  remove,
+  bulkRemove,
 };

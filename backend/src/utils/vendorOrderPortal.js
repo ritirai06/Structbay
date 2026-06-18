@@ -17,7 +17,7 @@ function decorateVendorOrderForPortal(doc) {
     o.customer = { name: o.customerInfo.name, phone: o.customerInfo.phone };
   }
   if (Number(o.workflowVersion) === 2) {
-    o.pendingVendorAction = pendingVendorAction(o.status);
+    o.pendingVendorAction = pendingVendorAction(o.status, o.deliveryType);
     o.workflowTimeline = WORKFLOW_TIMELINE_STEPS;
     o.customerMilestone = customerMilestoneFromVendorStatus(o.status);
   }
@@ -88,7 +88,8 @@ function aggregateCustomerMilestone(vendorOrders) {
   return label;
 }
 
-function pendingVendorAction(status) {
+function pendingVendorAction(status, deliveryType) {
+  const typeB = deliveryType === 'structbay_delivery';
   switch (status) {
     case 'NEW_ASSIGNED':
     case 'ASSIGNED':
@@ -99,15 +100,23 @@ function pendingVendorAction(status) {
     case 'READY_FOR_DISPATCH':
       return 'Awaiting StructBay dispatch approval';
     case 'DISPATCH_APPROVED':
-      return 'Upload final tax invoice (PDF)';
+      return typeB
+        ? 'Upload final tax invoice (PDF) and pickup contact (name & phone) for StructBay pickup'
+        : 'Upload final tax invoice (PDF)';
     case 'VENDOR_INVOICE_SUBMITTED':
       return 'Awaiting StructBay invoice and e-way bill';
     case 'SB_INVOICE_SENT':
-      return 'Mark dispatched with transporter / LR / proof';
+      return typeB
+        ? 'StructBay will book Porter/Delhivery and deliver to the customer — no vendor dispatch needed'
+        : 'Mark dispatched with transporter / LR / proof';
     case 'DISPATCHED':
-      return 'Mark delivered with POD and delivery date';
+      return typeB
+        ? 'StructBay is delivering to the customer'
+        : 'Mark delivered with POD and delivery date';
     case 'DELIVERED':
-      return 'Awaiting StructBay delivery confirmation';
+      return typeB
+        ? 'Awaiting StructBay delivery confirmation'
+        : 'Awaiting StructBay delivery confirmation';
     case 'REJECTED':
       return 'No further action (rejected)';
     case 'COMPLETED':

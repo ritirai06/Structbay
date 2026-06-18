@@ -10,9 +10,17 @@ const Inventory      = require('../models/Inventory');
 const InventoryLog   = require('../models/InventoryLog');
 const VendorOrder    = require('../models/VendorOrder');
 const VendorInvoice  = require('../models/VendorInvoice');
-const { CUSTOMER_NON_CANCELLABLE_MASTER_ORDER_STATUSES } = require('../constants/orderCancellation');
+const { CUSTOMER_CANCELLABLE_MASTER_ORDER_STATUSES, VENDOR_ORDER_STATUSES_BLOCKING_CUSTOMER_CANCEL } = require('../constants/orderCancellation');
 const { customerOrderProgress } = require('../utils/customerOrderProgress');
+const { deriveMasterStatusFromVendorOrders } = require('../services/masterOrderStatusSync.service');
+const { resolveCustomerMasterOrder } = require('../utils/resolveCustomerOrder');
 const { buildOrderAcknowledgementHtml } = require('../services/orderInvoiceHtml.service');
+const { buildOrderAcknowledgementPdf } = require('../services/orderInvoicePdf.service');
+const {
+  listOrderInvoiceFiles,
+  fetchInvoiceFileBuffer,
+  safeFilename,
+} = require('../services/orderInvoiceFiles.service');
 
 // ─── GET /customer/orders ─────────────────────────────────────────────────────
 exports.getMyOrders = asyncHandler(async (req, res) => {
@@ -42,22 +50,28 @@ exports.getMyOrders = asyncHandler(async (req, res) => {
 
 // ─── GET /customer/orders/:id ─────────────────────────────────────────────────
 exports.getMyOrderById = asyncHandler(async (req, res) => {
-  const order = await Order.findOne({ _id: req.params.id, customer: req.user._id })
-    .populate('city', 'name state')
-    .populate('items.product', 'name images sku gstPercentage')
-    .populate('items.variation', 'attributes sku images');
+  const order = await resolveCustomerMasterOrder(req.user._id, req.params.id);
   if (!order) throw new AppError('Order not found.', 404);
+  await order.populate([
+    { path: 'city', select: 'name state' },
+    { path: 'items.product', select: 'name images sku gstPercentage' },
+    { path: 'items.variation', select: 'attributes sku images' },
+  ]);
   const payload = order.toObject();
-  payload.customerProgress = customerOrderProgress(payload);
+  const vendorOrdersLean = await VendorOrder.find({ masterOrder: order._id }).select('status workflowVersion').lean();
+  const derivedStatus = deriveMasterStatusFromVendorOrders(vendorOrdersLean);
+  payload.customerProgress = customerOrderProgress(
+    derivedStatus ? { ...payload, status: derivedStatus } : payload
+  );
   return ApiResponse.success(res, 200, 'Order retrieved.', payload);
 });
 
 // ─── GET /customer/orders/:id/tracking ────────────────────────────────────────
 exports.getTracking = asyncHandler(async (req, res) => {
-  const order = await Order.findOne({ _id: req.params.id, customer: req.user._id })
-    .select('orderNumber status statusHistory createdAt city deliveryDetails grandTotal paymentStatus gstTotal')
-    .populate('city', 'name state');
+  const order = await resolveCustomerMasterOrder(req.user._id, req.params.id);
   if (!order) throw new AppError('Order not found.', 404);
+
+  await order.populate('city', 'name state');
 
   // Get shipments with public delivery notes
   const shipments = await Shipment.find({ masterOrder: order._id })
@@ -66,7 +80,7 @@ exports.getTracking = asyncHandler(async (req, res) => {
   // Filter delivery notes visible to customer
   const publicShipments = shipments.map((s) => ({
     ...s.toObject(),
-    deliveryNotes: s.deliveryNotes.filter((n) => n.visibleToCustomer),
+    deliveryNotes: (s.deliveryNotes || []).filter((n) => n.visibleToCustomer),
   }));
 
   // Activity log (public events only)
@@ -98,15 +112,20 @@ exports.getTracking = asyncHandler(async (req, res) => {
       vo.deliveryType === 'structbay_delivery' ? vo.structbayLogistics || null : null,
   }));
 
+  const derivedStatus = deriveMasterStatusFromVendorOrders(vendorOrders);
+  const progressSource = derivedStatus
+    ? { ...order.toObject(), status: derivedStatus }
+    : order.toObject();
+
   return ApiResponse.success(res, 200, 'Tracking retrieved.', {
     order: {
       orderNumber: order.orderNumber,
-      status: order.status,
+      status: derivedStatus || order.status,
       createdAt: order.createdAt,
       statusHistory: order.statusHistory,
       city: order.city,
       deliveryDetails: order.deliveryDetails,
-      customerProgress: customerOrderProgress(order.toObject()),
+      customerProgress: customerOrderProgress(progressSource),
     },
     deliveryLines,
     shipments: publicShipments,
@@ -134,52 +153,38 @@ exports.getOrderInvoices = asyncHandler(async (req, res) => {
     .select('orderNumber structbayInvoiceUrl invoiceUrl ewayBillUrl customerInvoiceNumber ewayBillNumber');
   if (!order) throw new AppError('Order not found.', 404);
 
-  const files = [];
-  const add = (label, url, kind, reference) => {
-    if (!url || typeof url !== 'string') return;
-    files.push({ label, url, kind, reference: reference || null });
-  };
+  const files = await listOrderInvoiceFiles(order);
+  const out = files.map((f, index) => ({
+    label: f.label,
+    kind: f.kind,
+    reference: f.reference,
+    index,
+  }));
 
-  add('StructBay tax invoice', order.structbayInvoiceUrl || order.invoiceUrl, 'STRUCTBAY_INVOICE', order.customerInvoiceNumber);
-  add('E-way bill', order.ewayBillUrl, 'EWAY_BILL', order.ewayBillNumber);
+  return ApiResponse.success(res, 200, 'Downloadable invoice files.', out);
+});
 
-  const docs = await OrderDocument.find({
-    masterOrder: order._id,
-    visibleToCustomer: true,
-    documentType: { $in: ['STRUCTBAY_INVOICE', 'TAX_INVOICE', 'EWAY_BILL', 'DELIVERY_CHALLAN', 'SHIPPING_LABEL'] },
-  }).select('documentType label url documentReference').lean();
+// ─── GET /customer/orders/:id/invoices/:index/file ─────────────────────────────
+/** Authenticated proxy download for Cloudinary / stored invoice PDFs. */
+exports.downloadInvoiceFile = asyncHandler(async (req, res) => {
+  const order = await Order.findOne({ _id: req.params.id, customer: req.user._id })
+    .select('_id orderNumber structbayInvoiceUrl invoiceUrl ewayBillUrl customerInvoiceNumber ewayBillNumber');
+  if (!order) throw new AppError('Order not found.', 404);
 
-  for (const d of docs) {
-    add(d.label || d.documentType, d.url, d.documentType, d.documentReference);
+  const files = await listOrderInvoiceFiles(order);
+  const idx = parseInt(req.params.index, 10);
+  if (!Number.isFinite(idx) || idx < 0 || idx >= files.length) {
+    throw new AppError('Invoice file not found.', 404);
   }
 
-  const subOrders = await VendorOrder.find({ masterOrder: order._id }).select('_id orderNumber').lean();
-  const subIds = subOrders.map((s) => s._id);
-  if (subIds.length) {
-    const invs = await VendorInvoice.find({
-      vendorOrder: { $in: subIds },
-      status: { $ne: 'replaced' },
-    }).select('invoiceNumber invoiceUrl vendorTaxInvoiceNumber vendorOrder').lean();
+  const file = files[idx];
+  const buffer = await fetchInvoiceFileBuffer(file);
+  const name = safeFilename(file.label, file.reference || order.orderNumber);
 
-    for (const inv of invs) {
-      const vo = subOrders.find((x) => String(x._id) === String(inv.vendorOrder));
-      add(
-        `Vendor invoice — ${vo?.orderNumber || 'sub-order'}`,
-        inv.invoiceUrl,
-        'VENDOR_INVOICE',
-        inv.vendorTaxInvoiceNumber || inv.invoiceNumber,
-      );
-    }
-  }
-
-  const seen = new Set();
-  const unique = files.filter((f) => {
-    if (seen.has(f.url)) return false;
-    seen.add(f.url);
-    return true;
-  });
-
-  return ApiResponse.success(res, 200, 'Downloadable invoice files.', unique);
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${name}"`);
+  res.setHeader('Content-Length', buffer.length);
+  return res.status(200).send(buffer);
 });
 
 // ─── GET /customer/orders/:id/invoice-summary ─────────────────────────────────
@@ -199,13 +204,47 @@ exports.downloadInvoiceSummary = asyncHandler(async (req, res) => {
   return res.status(200).send(html);
 });
 
+// ─── GET /customer/orders/:id/invoice-pdf ───────────────────────────────────────
+/** PDF order summary with StructBay logo for customer download. */
+exports.downloadInvoicePdf = asyncHandler(async (req, res) => {
+  const order = await Order.findOne({ _id: req.params.id, customer: req.user._id })
+    .populate('city', 'name state')
+    .populate('items.product', 'name sku')
+    .populate('items.variation', 'attributes sku');
+  if (!order) throw new AppError('Order not found.', 404);
+
+  const pdf = await buildOrderAcknowledgementPdf(order);
+  const safeName = `StructBay-order-${String(order.orderNumber || 'order').replace(/[^\w.-]+/g, '_')}.pdf`;
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${safeName}"`);
+  res.setHeader('Content-Length', pdf.length);
+  return res.status(200).send(pdf);
+});
+
 // ─── PATCH /customer/orders/:id/cancel ───────────────────────────────────────
 exports.cancelOrder = asyncHandler(async (req, res) => {
   const order = await Order.findOne({ _id: req.params.id, customer: req.user._id });
   if (!order) throw new AppError('Order not found.', 404);
 
-  if (CUSTOMER_NON_CANCELLABLE_MASTER_ORDER_STATUSES.includes(order.status)) {
-    throw new AppError(`Order cannot be cancelled at status: ${order.status}.`, 422);
+  if (!CUSTOMER_CANCELLABLE_MASTER_ORDER_STATUSES.includes(order.status)) {
+    throw new AppError(
+      order.status === 'READY_FOR_DISPATCH'
+        ? 'Order cannot be cancelled once it is Ready for Dispatch. Contact StructBay support.'
+        : `Order cannot be cancelled at status: ${order.status}.`,
+      422
+    );
+  }
+
+  const vendorDispatchStarted = await VendorOrder.exists({
+    masterOrder: order._id,
+    status: { $in: VENDOR_ORDER_STATUSES_BLOCKING_CUSTOMER_CANCEL },
+  });
+  if (vendorDispatchStarted) {
+    throw new AppError(
+      'Order cannot be cancelled after the vendor has marked it Ready for Dispatch. Contact StructBay support.',
+      422
+    );
   }
 
   const shipmentOpen = ['CREATED', 'PICKUP_SCHEDULED', 'PICKED_UP'];
@@ -222,8 +261,8 @@ exports.cancelOrder = asyncHandler(async (req, res) => {
   order.statusHistory.push({ status: 'CANCELLED', changedBy: req.user._id, note: req.body.reason || 'Cancelled by customer.' });
   await order.save();
 
-  // Release reserved inventory (any pre-dispatch cancellation)
-  if (['PENDING', 'PAID', 'VENDOR_ASSIGNMENT_PENDING', 'PROCESSING', 'READY_FOR_DISPATCH'].includes(prev)) {
+  // Release reserved inventory (pre–ready-for-dispatch cancellation)
+  if (CUSTOMER_CANCELLABLE_MASTER_ORDER_STATUSES.includes(prev)) {
     for (const item of order.items) {
       const q = { product: item.product, city: order.city };
       if (item.variation) q.variation = item.variation;

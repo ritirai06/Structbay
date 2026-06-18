@@ -28,15 +28,59 @@ const DISPATCH_STATUSES = [
   { value: 'delivered',          label: 'Delivered' },
 ];
 
+const WORKFLOW_PENDING_STATUSES =
+  'SB_INVOICE_SENT,DISPATCH_APPROVED,VENDOR_INVOICE_SUBMITTED,READY_FOR_DISPATCH,CHANGES_REQUESTED,ACCEPTED';
+
+function fmtDate(d: unknown) {
+  if (!d) return '—';
+  try {
+    return new Date(String(d)).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  } catch {
+    return String(d);
+  }
+}
+
+function TransportDetails({ dispatch }: { dispatch: any }) {
+  const t = dispatch?.transport || {};
+  const rows: [string, string][] = [
+    ['Transporter', t.transporterName || dispatch?.courierPartner || '—'],
+    ['LR / Docket', t.lrNumber || '—'],
+    ['Vehicle', t.vehicleNumber || dispatch?.vehicleDetails?.vehicleNumber || '—'],
+    ['Tracking', t.trackingNumber || '—'],
+    ['Dispatch date', fmtDate(t.dispatchDate || dispatch?.dispatchDate)],
+    ['Status', String(dispatch?.status || '—').replace(/_/g, ' ')],
+  ];
+  return (
+    <div className="rounded-2xl p-4 space-y-3" style={{ background: SB.bg, border: `1px solid ${SB.border}` }}>
+      <h4 className="vendor-section-title" style={{ color: SB.muted }}>Transport details</h4>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+        {rows.map(([label, value]) => (
+          <div key={label}>
+            <p style={{ color: SB.faint }}>{label}</p>
+            <p className="font-semibold mt-0.5 break-words" style={{ color: SB.color }}>{value}</p>
+          </div>
+        ))}
+      </div>
+      {t.proofUrl && (
+        <a href={t.proofUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-bold" style={{ color: SB.orange }}>
+          <FileText className="w-3.5 h-3.5" /> View dispatch proof
+        </a>
+      )}
+    </div>
+  );
+}
+
 export function DispatchManagement() {
   const [orders, setOrders] = useState<any[]>([]);
   const [dispatches, setDispatches] = useState<any[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [selectedDispatch, setSelectedDispatch] = useState<any>(null);
   const [existingDispatch, setExistingDispatch] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [tab, setTab] = useState<'create' | 'update' | 'proof'>('create');
+  const [listFilter, setListFilter] = useState<'all' | 'dispatched' | 'pending'>('all');
 
   // Create dispatch fields
   const [dispatchType, setDispatchType] = useState<'vendor_delivery' | 'structbay_pickup'>('vendor_delivery');
@@ -69,7 +113,7 @@ export function DispatchManagement() {
     setLoading(true);
     try {
       const [oRes, dRes] = await Promise.all([
-        api.getOrders({ status: 'INVOICE_UPLOADED,READY_FOR_DISPATCH,DISPATCH_CONFIRMED,IN_TRANSIT,OUT_FOR_DELIVERY,DELIVERED', limit: '50' }),
+        api.getOrders({ status: `${WORKFLOW_PENDING_STATUSES},INVOICE_UPLOADED,READY_FOR_DISPATCH,DISPATCH_CONFIRMED,IN_TRANSIT,OUT_FOR_DELIVERY`, limit: '50' }),
         api.getDispatches({ limit: '50' }),
       ]);
       setOrders(oRes.data ?? []);
@@ -77,17 +121,53 @@ export function DispatchManagement() {
     } finally { setLoading(false); }
   }
 
+  const filteredDispatches = dispatches.filter((d) => {
+    const st = String(d.status || '').toLowerCase();
+    if (listFilter === 'dispatched') {
+      return ['dispatched', 'in_transit', 'out_for_delivery', 'delivered'].includes(st);
+    }
+    if (listFilter === 'pending') {
+      return ['pending', 'ready_for_dispatch'].includes(st);
+    }
+    return true;
+  });
+
+  const pendingWorkflowOrders = orders.filter((o) => {
+    const st = String(o.status || '');
+    return ['SB_INVOICE_SENT', 'DISPATCH_APPROVED', 'VENDOR_INVOICE_SUBMITTED', 'READY_FOR_DISPATCH', 'CHANGES_REQUESTED', 'ACCEPTED'].includes(st);
+  });
+
+  async function onSelectDispatch(dispatch: any) {
+    setSelectedDispatch(dispatch);
+    setMsg(null);
+    const vo = dispatch.vendorOrder;
+    const orderId = typeof vo === 'object' ? vo?._id : vo;
+    if (orderId) {
+      try {
+        const oRes = await api.getOrder(String(orderId));
+        setSelectedOrder(oRes.data);
+      } catch {
+        setSelectedOrder(typeof vo === 'object' ? vo : { _id: orderId, orderNumber: dispatch.orderNumber });
+      }
+    }
+    setExistingDispatch(dispatch);
+    setTab(['dispatched', 'in_transit', 'out_for_delivery', 'delivered'].includes(String(dispatch.status || '').toLowerCase()) ? 'update' : 'create');
+  }
+
   useEffect(() => { loadData(); }, []);
 
   async function onSelectOrder(order: any) {
     setSelectedOrder(order);
+    setSelectedDispatch(null);
     setMsg(null);
     try {
       const res = await api.getDispatchByOrder(order._id);
       setExistingDispatch(res.data);
+      setSelectedDispatch(res.data);
       setTab('update');
     } catch {
       setExistingDispatch(null);
+      setSelectedDispatch(null);
       setTab('create');
     }
   }
@@ -170,7 +250,7 @@ export function DispatchManagement() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black" style={{ color: SB.color }}>Dispatch Management</h1>
+          <h1 className="vendor-page-title" style={{ color: SB.color }}>Dispatch Management</h1>
           <p className="text-sm mt-0.5" style={{ color: SB.muted }}>Create and update dispatch entries for your assigned orders.</p>
         </div>
         <button onClick={loadData} className="p-2 rounded-xl" style={{ background: SB.card, border: `1px solid ${SB.border}`, color: SB.muted }}>
@@ -189,31 +269,76 @@ export function DispatchManagement() {
         {/* Order List */}
         <div className="rounded-2xl overflow-hidden" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
           <div className="px-4 py-3" style={{ borderBottom: `1px solid ${SB.border}` }}>
-            <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: SB.muted }}>Orders Needing Dispatch</h2>
+            <h2 className="vendor-section-title mb-2" style={{ color: SB.muted }}>Dispatch records</h2>
+            <select
+              value={listFilter}
+              onChange={e => setListFilter(e.target.value as 'all' | 'dispatched' | 'pending')}
+              className="w-full px-3 py-2 rounded-xl text-sm"
+              style={{ background: SB.bg, border: `1px solid ${SB.border}`, color: SB.color }}
+            >
+              <option value="all">All records</option>
+              <option value="dispatched">Dispatched</option>
+              <option value="pending">Pending</option>
+            </select>
           </div>
-          <div className="divide-y" style={{ borderColor: SB.border }}>
+          <div className="divide-y max-h-[420px] overflow-y-auto" style={{ borderColor: SB.border }}>
             {loading ? (
               <div className="py-10 flex justify-center">
                 <div className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: SB.orange, borderTopColor: 'transparent' }} />
               </div>
-            ) : orders.length === 0 ? (
-              <div className="py-10 text-center">
+            ) : filteredDispatches.length === 0 ? (
+              <div className="py-8 text-center px-3">
                 <Truck className="w-10 h-10 mx-auto mb-2" style={{ color: SB.faint }} />
-                <p className="text-sm" style={{ color: SB.faint }}>No orders awaiting dispatch</p>
+                <p className="text-sm" style={{ color: SB.faint }}>No dispatch records in this filter</p>
               </div>
-            ) : orders.map(order => (
-              <button key={order._id} onClick={() => onSelectOrder(order)}
-                className="w-full text-left p-4 transition-all"
-                style={{ background: selectedOrder?._id === order._id ? 'var(--sb-orange-subtle)' : 'transparent', borderLeft: selectedOrder?._id === order._id ? '2px solid var(--sb-orange)' : '2px solid transparent' }}>
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-sm font-bold" style={{ color: SB.orange }}>{order.orderNumber}</span>
-                  <StatusBadge status={order.status} />
-                </div>
-                <p className="text-xs truncate" style={{ color: SB.color }}>{order.assignedProducts?.[0]?.productName ?? '—'}</p>
-                <p className="text-xs mt-0.5" style={{ color: SB.faint }}>{order.deliveryAddress?.city ?? '—'}</p>
-              </button>
-            ))}
+            ) : filteredDispatches.map((dispatch) => {
+              const orderNo = dispatch.orderNumber || dispatch.vendorOrder?.orderNumber || '—';
+              const active = selectedDispatch?._id === dispatch._id;
+              return (
+                <button
+                  key={dispatch._id}
+                  type="button"
+                  onClick={() => onSelectDispatch(dispatch)}
+                  className="w-full text-left p-4 transition-all"
+                  style={{
+                    background: active ? 'var(--sb-orange-subtle)' : 'transparent',
+                    borderLeft: active ? '2px solid var(--sb-orange)' : '2px solid transparent',
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-1.5 gap-2">
+                    <span className="text-sm font-bold" style={{ color: SB.orange }}>{orderNo}</span>
+                    <StatusBadge status={dispatch.status} />
+                  </div>
+                  <p className="text-xs truncate" style={{ color: SB.color }}>
+                    {dispatch.transport?.transporterName || dispatch.courierPartner || '—'}
+                    {dispatch.transport?.lrNumber ? ` · LR ${dispatch.transport.lrNumber}` : ''}
+                  </p>
+                  <p className="text-[10px] mt-0.5" style={{ color: SB.faint }}>
+                    {fmtDate(dispatch.transport?.dispatchDate || dispatch.dispatchDate)}
+                  </p>
+                </button>
+              );
+            })}
           </div>
+          {pendingWorkflowOrders.length > 0 && (
+            <div className="px-4 py-3" style={{ borderTop: `1px solid ${SB.border}`, background: SB.bg }}>
+              <p className="vendor-section-title mb-2" style={{ color: SB.muted }}>Workflow — action needed</p>
+              <div className="space-y-1 max-h-32 overflow-y-auto">
+                {pendingWorkflowOrders.map((order) => (
+                  <button
+                    key={order._id}
+                    type="button"
+                    onClick={() => onSelectOrder(order)}
+                    className="w-full text-left text-xs py-1.5 px-2 rounded-lg hover:opacity-90"
+                    style={{ color: SB.color, border: `1px solid ${SB.border}` }}
+                  >
+                    <span className="font-mono text-[var(--sb-orange)]">{order.orderNumber}</span>
+                    <span className="ml-2 opacity-70">{order.status?.replace(/_/g, ' ')}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right Panel */}
@@ -228,7 +353,7 @@ export function DispatchManagement() {
               {/* Order Summary */}
               <div className="rounded-2xl p-4" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-xs font-bold uppercase tracking-widest" style={{ color: SB.muted }}>Selected Order</h3>
+                  <h3 className="vendor-section-title" style={{ color: SB.muted }}>Selected Order</h3>
                   <Link to={vendorPath('orders', String(selectedOrder._id))} className="text-xs font-bold" style={{ color: SB.orange }}>View Full →</Link>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
@@ -246,6 +371,8 @@ export function DispatchManagement() {
                 </div>
               </div>
 
+              {existingDispatch && <TransportDetails dispatch={existingDispatch} />}
+
               {/* Tabs */}
               <div className="flex gap-2">
                 {([['create', 'Create Dispatch'], ['update', 'Update Status'], ['proof', 'Delivery Proof']] as const).map(([t, label]) => (
@@ -262,7 +389,7 @@ export function DispatchManagement() {
               {/* Create Dispatch */}
               {tab === 'create' && !existingDispatch && (
                 <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
-                  <h3 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: SB.muted }}>Create Dispatch Entry</h3>
+                  <h3 className="vendor-section-title mb-4" style={{ color: SB.muted }}>Create Dispatch Entry</h3>
                   <form onSubmit={handleCreate} className="space-y-4">
                     <Field label="Delivery Type" required>
                       <select value={dispatchType} onChange={e => setDispatchType(e.target.value as any)} className={inputCls} style={inputStyle}>
@@ -345,7 +472,7 @@ export function DispatchManagement() {
               {/* Update Status */}
               {tab === 'update' && (
                 <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
-                  <h3 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: SB.muted }}>Update Dispatch Status</h3>
+                  <h3 className="vendor-section-title mb-4" style={{ color: SB.muted }}>Update Dispatch Status</h3>
                   {!existingDispatch ? (
                     <p className="text-sm" style={{ color: SB.faint }}>No dispatch created yet. Use "Create Dispatch" tab first.</p>
                   ) : (
@@ -383,7 +510,7 @@ export function DispatchManagement() {
 
                       {/* Upload dispatch doc */}
                       <div className="mt-5 pt-5" style={{ borderTop: `1px solid ${SB.border}` }}>
-                        <h4 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: SB.muted }}>Upload Dispatch Document</h4>
+                        <h4 className="vendor-section-title mb-3" style={{ color: SB.muted }}>Upload Dispatch Document</h4>
                         <form onSubmit={handleDocUpload} className="flex gap-3">
                           <select value={docType} onChange={e => setDocType(e.target.value)} className="px-3 py-2 rounded-xl text-sm" style={inputStyle}>
                             <option value="packing_slip">Packing Slip</option>
@@ -412,7 +539,7 @@ export function DispatchManagement() {
               {/* Delivery Proof */}
               {tab === 'proof' && (
                 <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
-                  <h3 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: SB.muted }}>Upload Delivery Proof</h3>
+                  <h3 className="vendor-section-title mb-4" style={{ color: SB.muted }}>Upload Delivery Proof</h3>
                   {!existingDispatch ? (
                     <p className="text-sm" style={{ color: SB.faint }}>Create dispatch first.</p>
                   ) : (

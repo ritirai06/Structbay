@@ -7,6 +7,8 @@ const variationSchema = new mongoose.Schema(
       weight: { type: String, default: null },
       grade: { type: String, default: null },
       size: { type: String, default: null },
+      thickness: { type: String, default: null },
+      length: { type: String, default: null },
       color: { type: String, default: null },
       finish: { type: String, default: null },
       diameter: { type: String, default: null },
@@ -38,7 +40,7 @@ variationSchema.pre(/^find/, function (next) { this.where({ isDeleted: false });
 function buildSearchText(doc) {
   const parts = [doc.sku, doc.vendorSku].filter(Boolean).map(String);
   const a = doc.attributes || {};
-  ['weight', 'grade', 'size', 'color', 'finish', 'diameter'].forEach((k) => {
+  ['weight', 'grade', 'size', 'thickness', 'length', 'color', 'finish', 'diameter'].forEach((k) => {
     if (a[k]) parts.push(String(a[k]));
   });
   (a.custom || []).forEach((c) => {

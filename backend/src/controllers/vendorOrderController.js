@@ -72,7 +72,8 @@ exports.getOrderDetails = async (req, res) => {
   const order = await VendorOrder.findOne({ _id: req.params.id, ...match })
     .populate('items.product', 'name brand images sku')
     .populate('items.variation', 'attributes sku')
-    .populate('assignedBy', 'name email');
+    .populate('assignedBy', 'name email')
+    .populate('masterOrder', 'orderNumber paymentMethod paymentStatus grandTotal');
 
   if (!order) return ApiResponse.notFound(res, 'Order not found or not assigned to you.');
 

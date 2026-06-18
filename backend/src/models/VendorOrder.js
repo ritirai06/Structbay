@@ -21,7 +21,7 @@ const vendorOrderSchema = new mongoose.Schema(
     orderNumber: { type: String, required: true, unique: true },
     subOrderIndex: { type: Number, required: true },
 
-    vendor: { type: mongoose.Schema.Types.ObjectId, ref: 'Vendor', required: true },
+    vendor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     assignedAt: { type: Date, default: Date.now },
     assignmentNotes: String,
@@ -97,6 +97,8 @@ const vendorOrderSchema = new mongoose.Schema(
       pickupScheduledText: { type: String, default: null },
       companyName: { type: String, default: null },
       driverContactDetails: { type: String, default: null },
+      pickupContactName: { type: String, default: null },
+      pickupContactPhone: { type: String, default: null },
     },
 
     /** Vendor step: packing + optional pre-dispatch invoice before admin approves dispatch */
@@ -150,9 +152,26 @@ const vendorOrderSchema = new mongoose.Schema(
 
     rejectReason: String,
     adminChangeRequestNote: String,
+
+    isDeleted: { type: Boolean, default: false, select: false },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: {
+      virtuals: true,
+      transform(doc, ret) {
+        delete ret.__v;
+        delete ret.isDeleted;
+        return ret;
+      },
+    },
+  }
 );
+
+vendorOrderSchema.pre(/^find/, function (next) {
+  this.where({ isDeleted: false });
+  next();
+});
 
 vendorOrderSchema.index({ vendor: 1, status: 1 });
 vendorOrderSchema.index({ masterOrder: 1 });

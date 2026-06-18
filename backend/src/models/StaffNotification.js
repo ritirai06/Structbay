@@ -7,6 +7,9 @@ const staffNotificationSchema = new mongoose.Schema(
       type: String,
       required: true,
       enum: [
+        'NEW_ORDER',
+        'NEW_RFQ',
+        'LOW_STOCK',
         'ORDER_ASSIGNED',
         'ORDER_ACCEPTED',
         'ORDER_REJECTED',
@@ -23,6 +26,7 @@ const staffNotificationSchema = new mongoose.Schema(
     title: { type: String, required: true },
     message: { type: String, required: true },
     relatedVendorOrder: { type: mongoose.Schema.Types.ObjectId, ref: 'VendorOrder' },
+    relatedMasterOrder: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' },
     metadata: mongoose.Schema.Types.Mixed,
     isRead: { type: Boolean, default: false },
     readAt: Date,

@@ -25,6 +25,8 @@ const productSchema = new mongoose.Schema(
     faqs: [faqSchema],
 
     gstPercentage: { type: Number, enum: [0, 5, 12, 18, 28], default: 18 },
+    /** When true, storefront shows city prices including GST (admin setting per product). */
+    priceIncludesGst: { type: Boolean, default: false },
 
     status: { type: String, enum: ['DRAFT', 'ACTIVE', 'ARCHIVED'], default: 'DRAFT' },
     isFeatured: { type: Boolean, default: false },
@@ -71,7 +73,12 @@ productSchema.pre('save', function (next) {
   if (this.isModified('name')) this.slug = slugify(this.name, { lower: true, strict: true });
   next();
 });
-productSchema.pre(/^find/, function (next) { this.where({ isDeleted: false }); next(); });
+const excludeSoftDeleted = function (next) {
+  this.where({ isDeleted: { $ne: true } });
+  next();
+};
+productSchema.pre(/^find/, excludeSoftDeleted);
+productSchema.pre('countDocuments', excludeSoftDeleted);
 productSchema.index({ category: 1, brand: 1, status: 1, isDeleted: 1 });
 // sku: index already created by field `unique: true`
 

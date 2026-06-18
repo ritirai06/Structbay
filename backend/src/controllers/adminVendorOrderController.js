@@ -7,9 +7,12 @@ const User = require('../models/User');
 const VendorOrderStatusAudit = require('../models/VendorOrderStatusAudit');
 const VendorInvoice = require('../models/VendorInvoice');
 const VendorDispatch = require('../models/VendorDispatch');
+const { rowFromVendorOrder } = require('../utils/vendorDispatchEnrich');
 const { notifyVendor } = require('../services/vendorNotification.service');
 const { PAGINATION } = require('../config/constants');
 const { generateSubOrderNumber, getNextSubOrderIndex } = require('../services/refNumber.service');
+
+const VALID_DELIVERY_TYPES = ['vendor_delivery', 'structbay_delivery'];
 
 // ─── POST /api/v1/admin/vendor-orders  ────────────────────────────────────────
 // Assign master order products to a vendor
@@ -196,6 +199,18 @@ const updateVendorOrder = asyncHandler(async (req, res) => {
     throw new AppError('Cannot set status directly on workflow v2 orders. Use workflow endpoints.', 400);
   }
 
+  if (req.body.deliveryType !== undefined) {
+    const dt = String(req.body.deliveryType);
+    if (!VALID_DELIVERY_TYPES.includes(dt)) {
+      throw new AppError('deliveryType must be vendor_delivery or structbay_delivery.', 400);
+    }
+    const locked = new Set(['DISPATCH_APPROVED', 'VENDOR_INVOICE_SUBMITTED', 'SB_INVOICE_SENT', 'DISPATCHED', 'DELIVERED', 'COMPLETED']);
+    if (locked.has(order.status)) {
+      throw new AppError('Delivery type cannot be changed after dispatch has been approved.', 400);
+    }
+    order.deliveryType = dt;
+  }
+
   allowed.forEach((f) => {
     if (req.body[f] !== undefined) order[f] = req.body[f];
   });
@@ -273,32 +288,44 @@ const requestDispatch = asyncHandler(async (req, res) => {
 
 // ─── DELETE /api/v1/admin/vendor-orders/:id  ─────────────────────────────────
 const cancelVendorOrder = asyncHandler(async (req, res) => {
-  const { reason } = req.body;
-  const order = await VendorOrder.findById(req.params.id).populate('vendor', '_id');
+  const order = await VendorOrder.findById(req.params.id);
   if (!order) throw new AppError('Vendor order not found.', 404);
+  await VendorOrder.updateOne({ _id: order._id }, { $set: { isDeleted: true } });
+  return ApiResponse.success(res, 200, 'Vendor order removed.', { id: order._id });
+});
 
-  order.status = 'CANCELLED';
-  order.adminNotes = reason ? `Cancelled: ${reason}` : order.adminNotes;
-  order.statusHistory.push({
-    status: 'CANCELLED',
-    updatedBy: req.user._id,
-    model: 'User',
-    note: reason || 'Cancelled by admin',
-    timestamp: new Date(),
+const BULK_DELETE_MAX = 200;
+
+const bulkDeleteVendorOrders = asyncHandler(async (req, res) => {
+  const raw = req.body?.ids;
+  const ids = Array.isArray(raw) ? raw.map((x) => String(x).trim()).filter(Boolean) : [];
+  if (!ids.length) throw new AppError('No valid vendor order ids provided.', 400);
+  if (ids.length > BULK_DELETE_MAX) {
+    throw new AppError(`Too many ids (max ${BULK_DELETE_MAX}).`, 400);
+  }
+
+  const errors = [];
+  let ok = 0;
+  for (const id of ids) {
+    try {
+      const order = await VendorOrder.findById(id);
+      if (!order) throw new AppError('Vendor order not found.', 404);
+      await VendorOrder.updateOne({ _id: order._id }, { $set: { isDeleted: true } });
+      ok += 1;
+    } catch (e) {
+      errors.push({
+        id,
+        message: e instanceof AppError ? e.message : (e && e.message) || String(e),
+      });
+    }
+  }
+
+  return ApiResponse.success(res, 200, `Removed ${ok} vendor order(s).`, {
+    total: ids.length,
+    succeeded: ok,
+    failed: errors.length,
+    errors,
   });
-  await order.save();
-
-  notifyVendor({
-    vendorId: order.vendor._id,
-    type: 'order_status_change',
-    title: 'Order Cancelled',
-    message: `Order ${order.orderNumber} has been cancelled${reason ? ': ' + reason : ''}.`,
-    priority: 'high',
-    relatedOrder: order._id,
-    createdBy: req.user._id,
-  }).catch(() => {});
-
-  return ApiResponse.success(res, 200, 'Vendor order cancelled.');
 });
 
 // ─── GET /api/v1/admin/vendor-orders/analytics  ──────────────────────────────
@@ -335,6 +362,57 @@ const getVendorOrderAnalytics = asyncHandler(async (req, res) => {
   return ApiResponse.success(res, 200, 'Analytics retrieved.', { byStatus, byVendor, byMonth });
 });
 
+const DISPATCHED_ORDER_STATUSES = ['DISPATCHED', 'DELIVERED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'];
+
+// ─── GET /api/v1/admin/dispatch/vendor-board ─────────────────────────────────
+const getVendorDispatchBoard = asyncHandler(async (req, res) => {
+  const pageNum = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limitNum = Math.min(100, parseInt(req.query.limit, 10) || 50);
+  const skip = (pageNum - 1) * limitNum;
+
+  const orderFilter = { status: { $in: DISPATCHED_ORDER_STATUSES } };
+  if (req.query.status) {
+    const s = String(req.query.status).toUpperCase();
+    if (DISPATCHED_ORDER_STATUSES.includes(s)) orderFilter.status = s;
+  }
+
+  const [orders, total, dispatchedCount, deliveredCount] = await Promise.all([
+    VendorOrder.find(orderFilter)
+      .populate('vendor', 'name companyName')
+      .populate('masterOrder', 'orderNumber')
+      .sort({ updatedAt: -1 })
+      .skip(skip)
+      .limit(limitNum)
+      .lean(),
+    VendorOrder.countDocuments(orderFilter),
+    VendorOrder.countDocuments({ status: 'DISPATCHED' }),
+    VendorOrder.countDocuments({ status: { $in: ['DELIVERED', 'COMPLETED'] } }),
+  ]);
+
+  const dispatches = orders.map((o) => rowFromVendorOrder(o)).filter(Boolean);
+
+  return ApiResponse.success(
+    res,
+    200,
+    'Dispatched vendor orders.',
+    {
+      stats: {
+        dispatched: dispatchedCount,
+        inTransit: 0,
+        delivered: deliveredCount,
+        workflowActive: total,
+      },
+      dispatches,
+    },
+    {
+      total,
+      page: pageNum,
+      limit: limitNum,
+      pages: Math.ceil(total / limitNum) || 1,
+    }
+  );
+});
+
 module.exports = {
   assignOrderToVendor,
   getAllVendorOrders,
@@ -343,5 +421,7 @@ module.exports = {
   requestInvoice,
   requestDispatch,
   cancelVendorOrder,
+  bulkDeleteVendorOrders,
   getVendorOrderAnalytics,
+  getVendorDispatchBoard,
 };

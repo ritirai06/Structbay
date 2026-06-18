@@ -39,6 +39,16 @@ router.post(
   uploadCtrl.imageUploadResult
 );
 
+// Admin — product gallery (customer-facing PDP / listings)
+router.post(
+  '/product-image',
+  protect,
+  requireRole('ADMIN'),
+  ...uploadImage(UPLOAD_FOLDERS.PRODUCT).single('image'),
+  handleUploadError,
+  uploadCtrl.imageUploadResult
+);
+
 // Admin — hero / CMS banner (customer-facing)
 router.post(
   '/banner',
@@ -58,7 +68,15 @@ router.post(
   uploadCtrl.imageUploadResult
 );
 
-// Customer — BOQ / drawing / PDF
+// Guest / customer — BOQ / drawing / PDF for bulk enquiries (no login required)
+router.post(
+  '/enquiry-document',
+  ...uploadDocument(UPLOAD_FOLDERS.CUSTOMER_DOCS).single('document'),
+  handleUploadError,
+  uploadCtrl.documentUploadResult
+);
+
+// Customer — BOQ / drawing / PDF (authenticated)
 router.post(
   '/customer/document',
   protect, requireRole('CUSTOMER'),

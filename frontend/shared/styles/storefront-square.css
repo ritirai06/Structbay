@@ -1,0 +1,37 @@
+/* Square corners — customer storefront only (scoped via .sb-storefront) */
+
+.sb-storefront {
+  --radius-card: 0;
+  --radius-input: 0;
+  --radius-button: 0;
+  --radius-modal: 0;
+}
+
+/* All UI boxes — square; keep intentional circles (avatars, spinners, slider thumbs) */
+.sb-storefront *:not(.rounded-full):not(.animate-spin):not(.sf-dual-range):not(.sf-range-single) {
+  border-radius: 0 !important;
+}
+
+.sb-storefront .sf-dual-range::-webkit-slider-thumb {
+  border-radius: 50% !important;
+}
+
+.sb-storefront .sf-dual-range::-moz-range-thumb {
+  border-radius: 50% !important;
+}
+
+.sb-storefront .sf-range-single::-webkit-slider-thumb {
+  border-radius: 50% !important;
+}
+
+.sb-storefront .sf-range-single::-moz-range-thumb {
+  border-radius: 50% !important;
+}
+
+.sb-storefront .rounded-full {
+  border-radius: 9999px !important;
+}
+
+.sb-storefront .animate-spin {
+  border-radius: 9999px !important;
+}

@@ -1,37 +1,58 @@
 /**
- * StructBay Enterprise Design System — approved palette only.
+ * StructBay Enterprise Design System — approved palette.
  * All UI must reference these tokens (or CSS variables mapped from them).
  */
 export const palette = {
-  orange: "#FE5E00",
-  /** Hover / pressed primary */
-  orangeHover: "#E05200",
-  cream: "#FAF3E1",
-  creamSecondary: "#F5E7C6",
-  black: "#222222",
+  primary: "#E85A00",
+  primaryHover: "#CC4E00",
+  background: "#FFFFFF",
+  surface: "#FFFFFF",
+  card: "#FFFFFF",
+  dark: "#000000",
+  darkSecondary: "#000000",
+  border: "#E5E5E5",
+  textPrimary: "#000000",
+  textSecondary: "#666666",
+  success: "#2E8B57",
+  warning: "#F4A300",
+  danger: "#D64545",
+  white: "#FFFFFF",
 } as const;
 
-/** Text / chrome derived only from the palette (opacity on black or cream). */
+/** Legacy aliases — keep in sync with CSS variable mapping */
+export const legacy = {
+  orange: palette.primary,
+  orangeHover: palette.primaryHover,
+  cream: palette.background,
+  creamSecondary: palette.surface,
+  black: palette.dark,
+} as const;
+
+/** Text / chrome derived from the palette */
 export const derived = {
-  textOnDark: palette.cream,
-  textOnDarkMuted: "rgba(250, 243, 225, 0.65)",
-  textOnLight: palette.black,
-  textOnLightMuted: "rgba(34, 34, 34, 0.58)",
-  borderOnDark: "rgba(250, 243, 225, 0.12)",
-  borderOnLight: "rgba(34, 34, 34, 0.12)",
-  orangeSubtle: "rgba(254, 94, 0, 0.12)",
-  orangeRing: "rgba(254, 94, 0, 0.22)",
+  textOnDark: palette.white,
+  textOnDarkMuted: "rgba(255, 255, 255, 0.72)",
+  textOnLight: palette.textPrimary,
+  textOnLightMuted: palette.textSecondary,
+  borderOnDark: "rgba(255, 255, 255, 0.12)",
+  borderOnLight: palette.border,
+  orangeSubtle: "rgba(232, 90, 0, 0.12)",
+  orangeRing: "rgba(232, 90, 0, 0.22)",
 } as const;
 
-/** Semantic roles → hex (for charts, exports, non-CSS contexts). */
+/** Semantic roles → hex (charts, exports, non-CSS contexts) */
 export const semantic = {
-  brand: palette.orange,
-  pageBackground: palette.cream,
-  surface: palette.cream,
-  surfaceAlt: palette.creamSecondary,
-  chromeDark: palette.black,
-  textPrimary: palette.black,
-  textInverse: palette.cream,
+  brand: palette.primary,
+  pageBackground: palette.background,
+  surface: palette.surface,
+  surfaceAlt: palette.card,
+  chromeDark: palette.dark,
+  textPrimary: palette.textPrimary,
+  textSecondary: palette.textSecondary,
+  textInverse: palette.white,
+  success: palette.success,
+  warning: palette.warning,
+  danger: palette.danger,
 } as const;
 
 export type PaletteKey = keyof typeof palette;

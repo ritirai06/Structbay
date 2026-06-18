@@ -52,7 +52,8 @@ const create = asyncHandler(async (req, res) => {
   const body = { ...req.body };
   delete body.customer;
   if (body.siteAddress && !body.location) body.location = body.siteAddress;
-  const payload = { ...body, rfqNumber, customer: req.user._id };
+  const payload = { ...body, rfqNumber };
+  if (req.user?._id) payload.customer = req.user._id;
   const item = await ConcreteRFQ.create(payload);
   return ApiResponse.created(res, 'RFQ submitted.', item);
 });

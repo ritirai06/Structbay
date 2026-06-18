@@ -13,11 +13,21 @@ const {
   pushEmbeddedHistory,
 } = require('../services/vendorOrderWorkflow.service');
 const { notifyAllAdmins } = require('../services/staffNotification.service');
+const { syncMasterOrderStatusFromVendorOrders } = require('../services/masterOrderStatusSync.service');
 
 // @desc    Upload Vendor Invoice
 // @route   POST /api/v1/vendor/invoices
 exports.uploadInvoice = async (req, res) => {
-  const { orderId, invoiceNumber, invoiceDate, invoiceAmount, gstAmount, vendorRemarks } = req.body;
+  const {
+    orderId,
+    invoiceNumber,
+    invoiceDate,
+    invoiceAmount,
+    gstAmount,
+    vendorRemarks,
+    pickupContactName,
+    pickupContactPhone,
+  } = req.body;
 
   const match = await vendorOrderMatch(req.user);
   const order = await VendorOrder.findOne({ _id: orderId, ...match });
@@ -33,6 +43,23 @@ exports.uploadInvoice = async (req, res) => {
     }
     if (!canTransition(order.status, 'VENDOR_INVOICE_SUBMITTED')) {
       return ApiResponse.badRequest(res, 'Invalid workflow state for invoice upload.');
+    }
+    if (order.deliveryType === 'structbay_delivery') {
+      const name = String(pickupContactName || '').trim();
+      const phone = String(pickupContactPhone || '').trim();
+      if (!name || !phone) {
+        return ApiResponse.badRequest(
+          res,
+          'Pickup contact name and phone are required for StructBay delivery (Type B).'
+        );
+      }
+      order.structbayLogistics = {
+        ...(order.structbayLogistics && order.structbayLogistics.toObject
+          ? order.structbayLogistics.toObject()
+          : order.structbayLogistics || {}),
+        pickupContactName: name,
+        pickupContactPhone: phone,
+      };
     }
   }
 
@@ -88,6 +115,11 @@ exports.uploadInvoice = async (req, res) => {
     });
   }
   await order.save();
+
+  await syncMasterOrderStatusFromVendorOrders(order.masterOrder, {
+    changedBy: req.user._id,
+    note: `Vendor invoice submitted for ${order.orderNumber}.`,
+  });
 
   await VendorActivityLog.create({
     vendor: req.user._id, action: 'invoice_upload',

@@ -8,15 +8,25 @@ const Inventory     = require('../models/Inventory');
 const City          = require('../models/City');
 const Notification  = require('../models/Notification');
 const { sendEmail } = require('../services/email.service');
+const { notifyAllAdmins } = require('../services/staffNotification.service');
 const { resolveUnitPriceFromCityPricing } = require('../services/checkoutPricing.service');
 const { generateMasterOrderNumber, logOrderActivity } = require('../services/order.service');
 const { deliveryCityMatchesSelected } = require('../utils/cityNameMatch');
 
 const genOrderNumber = generateMasterOrderNumber;
 
+function resolveGstPct(productGst, overrideRate) {
+  const allowed = [0, 12, 18];
+  if (overrideRate !== null && allowed.includes(overrideRate)) return overrideRate;
+  const pg = Number(productGst);
+  if (allowed.includes(pg)) return pg;
+  return 18;
+}
+
 // POST /customer/checkout/validate
 exports.validate = asyncHandler(async (req, res) => {
-  const { cityId, addressCity } = req.body;
+  const { cityId, addressCity, gstRate: gstRateRaw } = req.body;
+  const gstRateOverride = [0, 12, 18].includes(Number(gstRateRaw)) ? Number(gstRateRaw) : null;
 
   const cart = await Cart.findOne({ customer: req.user._id })
     .populate('items.product', 'name sku status gstPercentage')
@@ -71,7 +81,8 @@ exports.validate = asyncHandler(async (req, res) => {
 
     const unitPrice = resolveUnitPriceFromCityPricing(pricing, item.quantity);
     const lineTotal = unitPrice * item.quantity;
-    const gstAmt    = (lineTotal * (item.product.gstPercentage || 18)) / 100;
+    const gstPct = resolveGstPct(item.product.gstPercentage, gstRateOverride);
+    const gstAmt = (lineTotal * gstPct) / 100;
 
     subtotal += lineTotal;
     gstTotal += gstAmt;
@@ -83,7 +94,7 @@ exports.validate = asyncHandler(async (req, res) => {
       sku: item.variation?.sku || item.product.sku,
       quantity: item.quantity,
       unitPrice,
-      gstPercentage: item.product.gstPercentage || 18,
+      gstPercentage: gstPct,
       lineTotal,
       vendorUser: item.vendorUser?._id || null,
     });
@@ -101,7 +112,8 @@ exports.validate = asyncHandler(async (req, res) => {
 
 // POST /customer/checkout/place-order
 exports.placeOrder = asyncHandler(async (req, res) => {
-  const { cityId, addressId, shippingAddress, paymentMethod } = req.body;
+  const { cityId, addressId, shippingAddress, paymentMethod, gstRate: gstRateRaw } = req.body;
+  const gstRateOverride = [0, 12, 18].includes(Number(gstRateRaw)) ? Number(gstRateRaw) : null;
 
   if (!cityId || !shippingAddress) {
     throw new AppError('cityId and shippingAddress are required.', 400);
@@ -137,7 +149,8 @@ exports.placeOrder = asyncHandler(async (req, res) => {
 
     const unitPrice = resolveUnitPriceFromCityPricing(pricing, item.quantity);
     const lineTotal = unitPrice * item.quantity;
-    const gstAmt    = (lineTotal * (item.product.gstPercentage || 18)) / 100;
+    const gstPct = resolveGstPct(item.product.gstPercentage, gstRateOverride);
+    const gstAmt = (lineTotal * gstPct) / 100;
     subtotal += lineTotal;
     gstTotal += gstAmt;
 
@@ -148,7 +161,7 @@ exports.placeOrder = asyncHandler(async (req, res) => {
       sku: item.variation?.sku || item.product.sku,
       quantity: item.quantity,
       unitPrice,
-      gstPercentage: item.product.gstPercentage || 18,
+      gstPercentage: gstPct,
       lineTotal,
       vendorUser: item.vendorUser?._id || null,
     });
@@ -194,6 +207,14 @@ exports.placeOrder = asyncHandler(async (req, res) => {
     type: 'ORDER',
     refId: orderNumber,
   });
+
+  notifyAllAdmins({
+    type: 'NEW_ORDER',
+    title: 'New order received',
+    message: `Order ${orderNumber} from ${req.user.name || 'customer'} · ₹${grandTotal.toLocaleString('en-IN')}`,
+    relatedMasterOrder: order._id,
+    metadata: { orderNumber, customerName: req.user.name },
+  }).catch(() => {});
 
   // Send confirmation email (non-blocking)
   sendEmail({

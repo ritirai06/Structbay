@@ -30,15 +30,15 @@ export function Header() {
   const initials = (user?.name ?? user?.companyName ?? "V").charAt(0).toUpperCase();
 
   return (
-    <header className="sticky top-0 z-20 flex shrink-0 items-center justify-between gap-4 border-b border-sb-border-dark bg-sb-ink px-6 py-3">
-      <form onSubmit={handleSearch} className="relative max-w-sm flex-1">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sb-ink/40" />
+    <header className="sb-header sticky top-0 z-20 flex shrink-0 items-center justify-between gap-4 border-b border-sb-border-dark bg-sb-ink px-6">
+      <form onSubmit={handleSearch} className="relative max-w-md flex-1">
+        <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-sb-text-secondary" />
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search orders..."
-          className="w-full rounded-xl border border-sb-border-light bg-sb-cream py-2 pl-9 pr-4 text-sm text-sb-ink placeholder:text-sb-ink/45 transition-colors focus:border-sb-orange focus:outline-none focus:ring-2 focus:ring-sb-orange/20"
+          className="w-full h-11 rounded-input border border-sb-border bg-sb-card py-2 pl-11 pr-4 text-sm text-sb-ink placeholder:text-sb-text-secondary transition-colors focus:border-sb-orange focus:outline-none focus:ring-2 focus:ring-[var(--sb-orange-ring)]"
         />
       </form>
 

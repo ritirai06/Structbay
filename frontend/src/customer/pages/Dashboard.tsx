@@ -6,11 +6,14 @@ import {
   ChevronRight, ArrowRight, Download, RefreshCcw, TrendingUp, Clock,
   Truck, LogOut, Menu, X, Plus, Trash2, CheckCheck, Star,
   ShoppingBag, MessageSquare, ClipboardList, Zap, Home, Building2, MessageCircle,
-  CreditCard, PackageCheck, ClipboardPen, Megaphone, Phone,
+  CreditCard, PackageCheck, ClipboardPen, Megaphone, Phone, XCircle,
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { api } from "../lib/api";
+import { openOrderInvoices } from "../lib/orderInvoices";
+import { canCustomerCancelOrder } from "../lib/orderEligibility";
 import { clearCustomerSession } from "../lib/authStorage";
+import logoImg from "/shared/assets/logos/Structbay-Logo-F-1.png";
 
 const ADDR_STORAGE = "sb_customer_addresses_v1";
 
@@ -21,6 +24,7 @@ type CustomerUiOrder = {
   items: string;
   total: string;
   status: string;
+  apiStatus: string;
   statusClass: string;
 };
 
@@ -55,10 +59,10 @@ const NAV_ITEMS = [
 ];
 
 function mapApiStatus(status: string): { label: string; cls: string } {
-  if (["DELIVERED", "COMPLETED"].includes(status)) return { label: "Delivered", cls: "text-green-400" };
+  if (["DELIVERED", "COMPLETED"].includes(status)) return { label: "Delivered", cls: "text-[#E85A00]" };
   if (status === "CANCELLED") return { label: "Cancelled", cls: "text-red-400" };
-  if (status === "OUT_FOR_DELIVERY") return { label: "Out for Delivery", cls: "text-[#FE5E00]" };
-  return { label: (status || "—").replace(/_/g, " "), cls: "text-sb-ink-muted/70" };
+  if (status === "OUT_FOR_DELIVERY") return { label: "Out for Delivery", cls: "text-[#E85A00]" };
+  return { label: (status || "—").replace(/_/g, " "), cls: "text-gray-500/70" };
 }
 
 function mapApiOrder(o: any): CustomerUiOrder {
@@ -72,6 +76,7 @@ function mapApiOrder(o: any): CustomerUiOrder {
     items: Array.isArray(o.items) ? o.items.map((i: any) => `${i.name} ×${i.quantity}`).join(", ") : "—",
     total: `₹${Number(o.grandTotal || 0).toLocaleString("en-IN")}`,
     status: st.label,
+    apiStatus: o.status || "",
     statusClass: st.cls,
   };
 }
@@ -107,15 +112,15 @@ function Sidebar({ user, active, setActive, close, logout }: {
   logout: () => void;
 }) {
   return (
-    <div className="h-full flex flex-col bg-sb-page">
-      <div className="p-5 border-b border-sb-ink/10">
+    <div className="sf-dash-sidebar h-full flex flex-col border-r">
+      <div className="p-5 border-b border-gray-200">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#FE5E00] flex items-center justify-center text-sb-on-orange font-bold text-lg shrink-0">
+          <div className="w-10 h-10 rounded-full bg-[#E85A00] flex items-center justify-center text-white font-bold text-lg shrink-0">
             {(user?.name?.[0] || "U").toUpperCase()}
           </div>
           <div className="min-w-0">
-            <p className="text-sb-ink font-semibold text-sm truncate">{user?.name || "User"}</p>
-            <p className="text-sb-ink-muted/50 text-xs truncate">{user?.company || "Customer"}</p>
+            <p className="text-black font-semibold text-sm truncate">{user?.name || "User"}</p>
+            <p className="text-gray-500/50 text-xs truncate">{user?.company || "Customer"}</p>
           </div>
         </div>
       </div>
@@ -126,8 +131,8 @@ function Sidebar({ user, active, setActive, close, logout }: {
             onClick={() => { setActive(key); close(); }}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 ${
               active === key
-                ? "bg-[#FE5E00]/15 text-[#FE5E00] font-semibold border-l-2 border-[#FE5E00] pl-[10px]"
-                : "text-sb-ink-muted/70 hover:text-sb-ink hover:bg-sb-surface-2"
+                ? "bg-[#E85A00]/12 text-[#E85A00] font-semibold border-l-2 border-[#E85A00] pl-[10px]"
+                : "text-gray-600 hover:text-black hover:bg-gray-50"
             }`}
           >
             <Icon className="w-4 h-4 shrink-0" />
@@ -135,16 +140,16 @@ function Sidebar({ user, active, setActive, close, logout }: {
           </button>
         ))}
       </nav>
-      <div className="p-3 border-t border-sb-ink/10 space-y-1">
+      <div className="p-3 border-t border-gray-200 space-y-1">
         <Link
           to="/"
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-sb-ink-muted/60 hover:text-sb-ink hover:bg-sb-surface-2 transition-all"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-600 hover:text-black hover:bg-gray-50 transition-all"
         >
           <ShoppingBag className="w-4 h-4" /> Back to Store
         </Link>
         <button
           onClick={logout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-sb-ink-muted/60 hover:text-red-400 hover:bg-red-500/8 transition-all"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 transition-all"
         >
           <LogOut className="w-4 h-4" /> Logout
         </button>
@@ -158,55 +163,55 @@ function DashboardHome({ user, setActive, orders, savedAddrCount }: { user: any;
   const totalOrders = orders.length;
   const pendingOrders = orders.filter(o => !["Delivered", "Cancelled"].includes(o.status)).length;
   const widgets = [
-    { label: "Total Orders",   value: String(totalOrders),    icon: Package,    accent: "bg-[#FE5E00]/15", iconColor: "text-[#FE5E00]" },
-    { label: "Pending Orders", value: String(pendingOrders), icon: Clock,      accent: "bg-[#FE5E00]/15", iconColor: "text-[#FE5E00]" },
-    { label: "Total Spent",    value: totalOrders ? "—" : "₹0", icon: TrendingUp, accent: "bg-green-500/15", iconColor: "text-green-400" },
-    { label: "Active RFQs",    value: "0",     icon: FileText,   accent: "bg-[#C9A227]/15", iconColor: "text-[#C9A227]" },
-    { label: "Bulk Enquiries", value: "0",     icon: MessageSquare, accent: "bg-blue-500/15", iconColor: "text-blue-400" },
-    { label: "Saved Addresses",value: String(savedAddrCount),     icon: MapPin,     accent: "bg-purple-500/15", iconColor: "text-purple-400" },
+    { label: "Total Orders",   value: String(totalOrders),    icon: Package,    accent: "bg-[#E85A00]/12", iconColor: "text-[#E85A00]" },
+    { label: "Pending Orders", value: String(pendingOrders), icon: Clock,      accent: "bg-[#E85A00]/12", iconColor: "text-[#E85A00]" },
+    { label: "Total Spent",    value: totalOrders ? "—" : "₹0", icon: TrendingUp, accent: "bg-[#E85A00]/12", iconColor: "text-[#E85A00]" },
+    { label: "Active RFQs",    value: "0",     icon: FileText,   accent: "bg-[#E85A00]/12", iconColor: "text-[#E85A00]" },
+    { label: "Bulk Enquiries", value: "0",     icon: MessageSquare, accent: "bg-[#E85A00]/12", iconColor: "text-[#E85A00]" },
+    { label: "Saved Addresses",value: String(savedAddrCount),     icon: MapPin,     accent: "bg-black/5", iconColor: "text-black" },
   ];
 
   const quickActions = [
-    { label: "Shop Materials",   icon: ShoppingBag,   to: "/shop",     color: "bg-[#FE5E00]" },
-    { label: "Browse Categories",icon: ClipboardList, to: "/category/cement", color: "bg-[#1A3C5E]" },
-    { label: "Bulk Enquiry",     icon: MessageSquare, to: "/bulk-enquiry", color: "bg-[#C9A227]" },
-    { label: "Concrete RFQ",     icon: Zap,           to: "/rfq",      color: "bg-green-700" },
-    { label: "My Orders",        icon: Package,       onClick: () => setActive("orders"), color: "bg-sb-surface-2 border border-sb-ink/12" },
-    { label: "Download Invoices",icon: Download,      onClick: () => setActive("invoices"), color: "bg-sb-surface-2 border border-sb-ink/12" },
+    { label: "Shop Materials",   icon: ShoppingBag,   to: "/shop",     color: "bg-[#E85A00]", solid: true },
+    { label: "Browse Categories",icon: ClipboardList, to: "/shop", color: "bg-[#E85A00]", solid: true },
+    { label: "Bulk Enquiry",     icon: MessageSquare, to: "/bulk-enquiry", color: "bg-black", solid: true },
+    { label: "Concrete RFQ",     icon: Zap,           to: "/rfq",      color: "bg-[#CC4E00]", solid: true },
+    { label: "My Orders",        icon: Package,       onClick: () => setActive("orders"), color: "bg-white border-2 border-[#E85A00]", solid: false },
+    { label: "Download Invoices",icon: Download,      onClick: () => setActive("invoices"), color: "bg-white border-2 border-gray-200", solid: false },
   ];
 
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-lg font-semibold text-sb-ink">Good day, {user?.name?.split(" ")[0]}!</p>
-        <p className="text-sb-ink-muted/60 text-sm mt-0.5">Here's your procurement activity at a glance.</p>
+        <p className="text-lg font-semibold text-black">Good day, {user?.name?.split(" ")[0]}!</p>
+        <p className="text-gray-500 text-sm mt-0.5">Here's your procurement activity at a glance.</p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {widgets.map(({ label, value, icon: Icon, accent, iconColor }) => (
-          <div key={label} className="bg-sb-surface-2 rounded-xl border border-sb-ink/12 p-4 hover:border-sb-ink/18 transition-colors">
+          <div key={label} className="sf-dash-card rounded-xl p-4 transition-colors">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] text-sb-ink-muted/60 font-semibold uppercase tracking-wider leading-tight">{label}</span>
+              <span className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider leading-tight">{label}</span>
               <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${accent}`}>
                 <Icon className={`w-4 h-4 ${iconColor}`} />
               </div>
             </div>
-            <p className="font-black text-xl text-sb-ink">{value}</p>
+            <p className="font-black text-xl text-black">{value}</p>
           </div>
         ))}
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-sb-surface-2 rounded-xl border border-sb-ink/12 p-5">
-        <h3 className="font-semibold text-sb-ink text-sm mb-4">Quick Actions</h3>
+      <div className="sf-dash-card rounded-xl p-5">
+        <h3 className="font-semibold text-black text-sm mb-4">Quick Actions</h3>
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-          {quickActions.map(({ label, icon: Icon, to, onClick, color }) => {
+          {quickActions.map(({ label, icon: Icon, to, onClick, color, solid }) => {
             const cls = `flex flex-col items-center gap-2 p-3 rounded-xl ${color} hover:opacity-90 transition-opacity cursor-pointer`;
             const inner = (
               <>
-                <Icon className="w-5 h-5 text-sb-cream" />
-                <span className="text-[10px] font-semibold text-sb-cream text-center leading-tight">{label}</span>
+                <Icon className={`w-5 h-5 ${solid ? "text-white" : "text-[#E85A00]"}`} />
+                <span className={`text-[10px] font-semibold text-center leading-tight ${solid ? "text-white" : "text-black"}`}>{label}</span>
               </>
             );
             return to ? (
@@ -219,31 +224,31 @@ function DashboardHome({ user, setActive, orders, savedAddrCount }: { user: any;
       </div>
 
       {/* Recent Orders */}
-      <div className="bg-sb-surface-2 rounded-xl border border-sb-ink/12 overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-sb-ink/10">
-          <h3 className="font-semibold text-sb-ink text-sm">Recent Orders</h3>
-          <button onClick={() => setActive("orders")} className="text-sm font-medium text-[#FE5E00] hover:text-[#E05200] flex items-center gap-1">
+      <div className="sf-dash-card rounded-xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <h3 className="font-semibold text-black text-sm">Recent Orders</h3>
+          <button onClick={() => setActive("orders")} className="text-sm font-medium text-[#E85A00] hover:text-[#CC4E00] flex items-center gap-1">
             View All <ChevronRight className="w-4 h-4" />
           </button>
         </div>
-        <div className="divide-y divide-white/5">
+        <div className="divide-y divide-gray-100">
           {orders.length === 0 ? (
-            <div className="p-8 text-center text-sm text-sb-ink-muted/50">No orders yet. Browse the store and place your first order.</div>
+            <div className="p-8 text-center text-sm text-gray-500">No orders yet. Browse the store and place your first order.</div>
           ) : (
           orders.slice(0, 3).map(order => (
-            <div key={order.id} className="flex items-center justify-between p-4 hover:bg-sb-ink/[0.03]">
+            <div key={order.id} className="flex items-center justify-between p-4 hover:bg-gray-50">
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-[#FE5E00]/15 flex items-center justify-center mt-0.5 shrink-0">
-                  <Package className="w-4 h-4 text-[#FE5E00]" />
+                <div className="w-8 h-8 rounded-lg bg-[#E85A00]/15 flex items-center justify-center mt-0.5 shrink-0">
+                  <Package className="w-4 h-4 text-[#E85A00]" />
                 </div>
                 <div>
-                  <p className="font-semibold text-sm text-sb-ink">{order.id}</p>
-                  <p className="text-xs text-sb-ink-muted/60">{order.items}</p>
-                  <p className="text-xs text-sb-ink-muted/40">{order.date}</p>
+                  <p className="font-semibold text-sm text-black">{order.id}</p>
+                  <p className="text-xs text-gray-500">{order.items}</p>
+                  <p className="text-xs text-gray-400">{order.date}</p>
                 </div>
               </div>
               <div className="text-right">
-                <p className="font-bold text-sm text-sb-ink">{order.total}</p>
+                <p className="font-bold text-sm text-black">{order.total}</p>
                 <span className={`text-xs font-semibold ${order.statusClass}`}>{order.status}</span>
               </div>
             </div>
@@ -253,10 +258,10 @@ function DashboardHome({ user, setActive, orders, savedAddrCount }: { user: any;
       </div>
 
       {/* Quick Reorder */}
-      <div className="bg-sb-surface-2 rounded-xl border border-sb-ink/12 p-5">
-        <h3 className="font-semibold text-sb-ink text-sm mb-4">Quick Reorder</h3>
-        <p className="text-sm text-sb-ink-muted/60">Your frequently ordered items will appear here once you have order history.</p>
-        <Link to="/shop" className="inline-flex mt-4 items-center gap-2 text-[#FE5E00] text-sm font-medium hover:underline">
+      <div className="sf-dash-card rounded-xl p-5">
+        <h3 className="font-semibold text-black text-sm mb-4">Quick Reorder</h3>
+        <p className="text-sm text-gray-500">Your frequently ordered items will appear here once you have order history.</p>
+        <Link to="/shop" className="inline-flex mt-4 items-center gap-2 text-[#E85A00] text-sm font-medium hover:underline">
           Browse shop <ChevronRight className="w-4 h-4" />
         </Link>
       </div>
@@ -265,8 +270,9 @@ function DashboardHome({ user, setActive, orders, savedAddrCount }: { user: any;
 }
 
 /* ─── Section: Orders ───────────────────────────────────── */
-function OrdersSection({ orders }: { orders: CustomerUiOrder[] }) {
+function OrdersSection({ orders, onReload }: { orders: CustomerUiOrder[]; onReload: () => void }) {
   const [filter, setFilter] = useState("all");
+  const [cancelId, setCancelId] = useState<string | null>(null);
   const filtered = filter === "all" ? orders : orders.filter(o => {
     if (filter === "active") return !["Delivered", "Cancelled"].includes(o.status);
     if (filter === "delivered") return o.status === "Delivered";
@@ -274,15 +280,25 @@ function OrdersSection({ orders }: { orders: CustomerUiOrder[] }) {
     return true;
   });
 
-  const openInvoices = async (orderId: string) => {
+  const openInvoices = async (order: CustomerUiOrder) => {
     try {
-      const res = await api.getOrderInvoices(orderId);
-      const list = (res as { data?: { url?: string }[] }).data || [];
-      const pdf = list.find(x => x.url);
-      if (pdf?.url) window.open(pdf.url, "_blank", "noopener,noreferrer");
-      else alert("No invoice PDF is available for this order yet.");
+      await openOrderInvoices(order.dbId, order.id);
     } catch {
       alert("Could not load invoices. Ensure you are signed in with a valid customer session.");
+    }
+  };
+
+  const cancelOrder = async (order: CustomerUiOrder) => {
+    if (!window.confirm(`Cancel order ${order.id}?`)) return;
+    const reason = window.prompt("Reason (optional)") || undefined;
+    setCancelId(order.dbId);
+    try {
+      await api.cancelOrder(order.dbId, reason);
+      onReload();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Could not cancel order");
+    } finally {
+      setCancelId(null);
     }
   };
 
@@ -294,7 +310,7 @@ function OrdersSection({ orders }: { orders: CustomerUiOrder[] }) {
             key={v}
             onClick={() => setFilter(v)}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-              filter === v ? "bg-[#FE5E00] text-sb-on-orange" : "bg-sb-surface-2 text-sb-ink-muted/70 border border-sb-ink/12 hover:border-sb-ink/18"
+              filter === v ? "bg-[#E85A00] text-white" : "bg-white text-gray-500 border border-gray-200 hover:border-gray-300"
             }`}
           >
             {l}
@@ -303,46 +319,56 @@ function OrdersSection({ orders }: { orders: CustomerUiOrder[] }) {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="text-center py-16 text-sb-ink-muted/50 text-sm">No orders to show.</div>
+        <div className="text-center py-16 text-gray-500/50 text-sm">No orders to show.</div>
       ) : (
       <div className="max-h-[min(72vh,800px)] overflow-y-auto space-y-4 pr-1 -mr-1">
       {filtered.map(order => (
-        <div key={order.dbId} className="bg-sb-surface-2 rounded-xl border border-sb-ink/12 p-4 hover:border-sb-ink/18 transition-colors">
+        <div key={order.dbId} className="sf-dash-card rounded-xl border border-gray-200 p-4 hover:border-gray-300 transition-colors">
           <div className="flex items-start justify-between mb-3">
             <div>
-              <p className="font-semibold text-sb-ink">{order.id}</p>
-              <p className="text-sm text-sb-ink-muted/70">{order.items}</p>
-              <p className="text-xs text-sb-ink-muted/40 mt-1">{order.date}</p>
+              <p className="font-semibold text-black">{order.id}</p>
+              <p className="text-sm text-gray-500/70">{order.items}</p>
+              <p className="text-xs text-gray-500/40 mt-1">{order.date}</p>
             </div>
             <div className="text-right">
-              <p className="font-bold text-sb-ink">{order.total}</p>
+              <p className="font-bold text-black">{order.total}</p>
               <span className={`text-sm font-semibold ${order.statusClass}`}>{order.status}</span>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2 pt-3 border-t border-sb-ink/10">
+          <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-100">
             <Link
               to={`/orders/${order.dbId}`}
-              className="flex-1 min-w-[120px] flex items-center justify-center gap-1.5 border border-sb-ink/12 hover:border-[#FE5E00]/40 rounded-xl py-2 text-xs text-sb-ink-muted hover:text-sb-ink transition-all"
+              className="flex-1 min-w-[120px] flex items-center justify-center gap-1.5 border border-gray-200 hover:border-[#E85A00]/40 rounded-xl py-2 text-xs text-gray-500 hover:text-black transition-all"
             >
               <Truck className="w-3.5 h-3.5" /> Track
             </Link>
             <Link
               to={`/orders/${order.dbId}#chat`}
-              className="flex-1 min-w-[120px] flex items-center justify-center gap-1.5 border border-sb-ink/12 hover:border-[#FE5E00]/40 rounded-xl py-2 text-xs text-sb-ink-muted hover:text-sb-ink transition-all"
+              className="flex-1 min-w-[120px] flex items-center justify-center gap-1.5 border border-gray-200 hover:border-[#E85A00]/40 rounded-xl py-2 text-xs text-gray-500 hover:text-black transition-all"
             >
               <MessageCircle className="w-3.5 h-3.5" /> Message StructBay
             </Link>
             <button
               type="button"
-              onClick={() => openInvoices(order.dbId)}
-              className="flex-1 flex items-center justify-center gap-1.5 border border-sb-ink/12 hover:border-[#FE5E00]/40 rounded-xl py-2 text-xs text-sb-ink-muted hover:text-sb-ink transition-all"
+              onClick={() => openInvoices(order)}
+              className="flex-1 flex items-center justify-center gap-1.5 border border-gray-200 hover:border-[#E85A00]/40 rounded-xl py-2 text-xs text-gray-500 hover:text-black transition-all"
             >
               <Download className="w-3.5 h-3.5" /> Invoice PDF
             </button>
+            {!canCustomerCancelOrder(order.apiStatus) ? null : (
+              <button
+                type="button"
+                disabled={cancelId === order.dbId}
+                onClick={() => void cancelOrder(order)}
+                className="flex-1 min-w-[120px] flex items-center justify-center gap-1.5 border border-red-200 text-red-600 hover:bg-red-50 rounded-xl py-2 text-xs font-semibold transition-all disabled:opacity-60"
+              >
+                <XCircle className="w-3.5 h-3.5" /> {cancelId === order.dbId ? "Cancelling…" : "Cancel"}
+              </button>
+            )}
             {order.status === "Delivered" && (
               <Link
                 to="/shop"
-                className="flex-1 flex items-center justify-center gap-1.5 bg-[#FE5E00] hover:bg-[#E05200] text-sb-on-orange font-semibold rounded-xl py-2 text-xs transition-colors"
+                className="flex-1 flex items-center justify-center gap-1.5 bg-[#E85A00] hover:bg-[#CC4E00] text-white font-semibold rounded-xl py-2 text-xs transition-colors"
               >
                 <RefreshCcw className="w-3.5 h-3.5" /> Reorder
               </Link>
@@ -359,85 +385,162 @@ function OrdersSection({ orders }: { orders: CustomerUiOrder[] }) {
 /* ─── Section: Invoices ─────────────────────────────────── */
 function InvoicesSection({ orders }: { orders: CustomerUiOrder[] }) {
   const rows = orders.filter(o => o.status !== "Cancelled");
+  const [downloading, setDownloading] = useState<string | null>(null);
 
-  const openInvoices = async (orderId: string) => {
+  const openInvoices = async (order: CustomerUiOrder) => {
+    setDownloading(order.dbId);
     try {
-      const res = await api.getOrderInvoices(orderId);
-      const list = (res as { data?: { url?: string }[] }).data || [];
-      const pdf = list.find(x => x.url);
-      if (pdf?.url) window.open(pdf.url, "_blank", "noopener,noreferrer");
-      else alert("No invoice PDF is available for this order yet.");
+      await openOrderInvoices(order.dbId, order.id);
     } catch {
-      alert("Could not load invoices. Ensure you are signed in with a valid customer session.");
+      alert("Could not download invoice. Ensure you are signed in with a valid customer session.");
+    } finally {
+      setDownloading(null);
     }
   };
 
   return (
-    <div className="space-y-3">
-      {rows.length === 0 ? (
-        <div className="text-center py-16 text-sb-ink-muted/50 text-sm">No invoices yet.</div>
-      ) : (
-      rows.map(order => (
-        <div key={order.dbId} className="bg-sb-surface-2 rounded-xl border border-sb-ink/12 p-4 flex items-center justify-between hover:border-sb-ink/18 transition-colors">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#FE5E00]/15 flex items-center justify-center shrink-0">
-              <FileText className="w-5 h-5 text-[#FE5E00]" />
-            </div>
-            <div>
-              <p className="font-semibold text-sm text-sb-ink">{order.id}</p>
-              <p className="text-xs text-sb-ink-muted/60">{order.date} · {order.total}</p>
-              <span className={`text-xs font-semibold ${order.statusClass}`}>{order.status}</span>
+    <div className="space-y-4">
+      <div className="sf-dash-card rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-black px-5 py-4 flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3 min-w-0">
+            <img src={logoImg} alt="StructBay" className="h-10 w-auto object-contain shrink-0" />
+            <div className="min-w-0">
+              <p className="text-white font-semibold text-sm">Your Invoices</p>
+              <p className="text-white/60 text-xs">Download order summaries & tax documents as PDF</p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => openInvoices(order.dbId)}
-            className="flex items-center gap-1.5 border border-white/12 hover:border-[#FE5E00]/50 rounded-xl px-3 py-2 text-xs text-sb-ink-muted hover:text-sb-ink transition-all"
-          >
-            <Download className="w-3.5 h-3.5" /> PDF
-          </button>
+          <span className="text-xs font-semibold text-[#E85A00] bg-[#E85A00]/15 px-3 py-1 rounded-full">
+            {rows.length} order{rows.length === 1 ? "" : "s"}
+          </span>
         </div>
-      ))
+      </div>
+
+      {rows.length === 0 ? (
+        <div className="sf-dash-card rounded-xl p-12 text-center">
+          <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-500 text-sm">No invoices yet.</p>
+          <Link to="/shop" className="inline-flex mt-4 items-center gap-2 text-[#E85A00] text-sm font-semibold hover:underline">
+            Start shopping <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
+      ) : (
+        rows.map(order => (
+          <div key={order.dbId} className="sf-dash-card rounded-xl border border-gray-200 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-[#E85A00]/30 transition-colors">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-11 h-11 rounded-xl bg-[#E85A00]/12 flex items-center justify-center shrink-0">
+                <FileText className="w-5 h-5 text-[#E85A00]" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-semibold text-sm text-black">{order.id}</p>
+                <p className="text-xs text-gray-500">{order.date} · {order.total}</p>
+                <span className={`text-xs font-semibold ${order.statusClass}`}>{order.status}</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={downloading === order.dbId}
+              onClick={() => openInvoices(order)}
+              className="flex items-center justify-center gap-2 bg-[#E85A00] hover:bg-[#CC4E00] disabled:opacity-60 text-white font-semibold rounded-xl px-4 py-2.5 text-xs transition-colors shrink-0"
+            >
+              <Download className="w-4 h-4" />
+              {downloading === order.dbId ? "Downloading…" : "Download PDF"}
+            </button>
+          </div>
+        ))
       )}
-      <p className="text-xs text-sb-ink-muted/40 text-center pt-2">StructBay and vendor tax invoices appear here when uploaded. E-way bills show after dispatch.</p>
+      <p className="text-xs text-gray-400 text-center pt-1">
+        StructBay and vendor tax invoices appear here when uploaded. Order summaries download as PDF with the StructBay logo.
+      </p>
     </div>
   );
 }
 
 /* ─── Section: Addresses ────────────────────────────────── */
+function mapApiAddress(a: Record<string, unknown>): CustomerUiAddress {
+  return {
+    id: String(a._id),
+    label: String(a.label || "Home"),
+    name: String(a.name || ""),
+    line1: String(a.line1 || ""),
+    city: String(a.city || ""),
+    state: String(a.state || ""),
+    pincode: String(a.pincode || ""),
+    phone: String(a.phone || ""),
+    isDefault: Boolean(a.isDefault),
+  };
+}
+
 function AddressesSection({ onCountChange }: { onCountChange?: (n: number) => void }) {
   const navigate = useNavigate();
+  const { cart } = useApp();
   const [addresses, setAddresses] = useState<CustomerUiAddress[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ label: "Home", name: "", phone: "", line1: "", city: "Bengaluru", state: "Karnataka", pincode: "" });
   const update = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(ADDR_STORAGE);
-      if (raw) setAddresses(JSON.parse(raw));
-    } catch { /* ignore */ }
-  }, []);
+  const loadAddresses = () => {
+    setLoading(true);
+    api.getAddresses()
+      .then((res: { data?: Record<string, unknown>[] }) => {
+        const list = Array.isArray(res.data) ? res.data.map(mapApiAddress) : [];
+        setAddresses(list);
+      })
+      .catch(() => {
+        try {
+          const raw = localStorage.getItem(ADDR_STORAGE);
+          if (raw) setAddresses(JSON.parse(raw));
+        } catch { /* ignore */ }
+      })
+      .finally(() => setLoading(false));
+  };
 
   useEffect(() => {
-    try {
-      localStorage.setItem(ADDR_STORAGE, JSON.stringify(addresses));
-    } catch { /* ignore */ }
-  }, [addresses]);
+    loadAddresses();
+  }, []);
 
   useEffect(() => {
     onCountChange?.(addresses.length);
   }, [addresses.length, onCountChange]);
 
-  const addAddress = (e: React.FormEvent) => {
+  const addAddress = async (e: React.FormEvent) => {
     e.preventDefault();
-    setAddresses(prev => [...prev, { ...form, id: Date.now().toString(), isDefault: false }]);
-    setShowForm(false);
-    setForm({ label: "Home", name: "", phone: "", line1: "", city: "Bengaluru", state: "Karnataka", pincode: "" });
+    setSaving(true);
+    try {
+      const res = await api.createAddress({
+        label: form.label,
+        name: form.name,
+        phone: form.phone,
+        line1: form.line1,
+        city: form.city,
+        state: form.state,
+        pincode: form.pincode,
+        isDefault: addresses.length === 0,
+      });
+      const created = mapApiAddress((res as { data: Record<string, unknown> }).data);
+      setAddresses(prev => [...prev, created]);
+      setShowForm(false);
+      setForm({ label: "Home", name: "", phone: "", line1: "", city: "Bengaluru", state: "Karnataka", pincode: "" });
+    } catch {
+      setAddresses(prev => [...prev, { ...form, id: Date.now().toString(), isDefault: prev.length === 0 }]);
+      setShowForm(false);
+      setForm({ label: "Home", name: "", phone: "", line1: "", city: "Bengaluru", state: "Karnataka", pincode: "" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeAddress = async (id: string) => {
+    try {
+      await api.deleteAddress(id);
+    } catch { /* ignore */ }
+    setAddresses(prev => prev.filter(a => a.id !== id));
   };
 
   const orderHere = (addr: CustomerUiAddress) => {
     sessionStorage.setItem("sb_checkout_prefill", JSON.stringify({
+      addressId: addr.id,
       name: addr.name,
       phone: addr.phone,
       line1: addr.line1,
@@ -445,115 +548,126 @@ function AddressesSection({ onCountChange }: { onCountChange?: (n: number) => vo
       state: addr.state,
       pincode: addr.pincode,
     }));
-    navigate("/shop");
+    if (cart.length > 0) {
+      navigate("/checkout");
+    } else {
+      navigate("/shop");
+    }
   };
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-sb-ink-muted/50">
-        Use <strong className="text-sb-ink">Order here</strong> to shop with this delivery address pre-filled at checkout (you can still edit it).
+      <p className="text-xs text-gray-500/50">
+        Use <strong className="text-black">Order here</strong> to shop with this delivery address auto-filled at checkout (editable). If your cart already has items, you go straight to checkout.
       </p>
       <div className="flex items-center justify-between">
-        <p className="text-sm text-sb-ink-muted/60">{addresses.length} saved address{addresses.length !== 1 ? "es" : ""}</p>
+        <p className="text-sm text-gray-500/60">
+          {loading ? "Loading…" : `${addresses.length} saved address${addresses.length !== 1 ? "es" : ""}`}
+        </p>
         <button
           onClick={() => setShowForm(v => !v)}
-          className="flex items-center gap-1.5 bg-[#FE5E00] hover:bg-[#E05200] text-sb-on-orange text-xs font-semibold px-3 py-2 rounded-xl transition-colors"
+          className="flex items-center gap-1.5 bg-[#E85A00] hover:bg-[#CC4E00] text-white text-xs font-semibold px-3 py-2 rounded-xl transition-colors"
         >
           <Plus className="w-3.5 h-3.5" /> Add Address
         </button>
       </div>
 
       {showForm && (
-        <div className="bg-sb-surface-2 rounded-xl border border-sb-ink/12 p-5">
-          <h3 className="font-semibold text-sb-ink text-sm mb-4 flex items-center gap-2">
-            <Home className="w-4 h-4 text-[#FE5E00]" /> New Address
+        <div className="sf-dash-card rounded-xl border border-gray-200 p-5">
+          <h3 className="font-semibold text-black text-sm mb-4 flex items-center gap-2">
+            <Home className="w-4 h-4 text-[#E85A00]" /> New Address
           </h3>
           <form onSubmit={addAddress} className="space-y-3">
             <div className="grid sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-sb-ink-muted/70 mb-1">Label</label>
-                <select value={form.label} onChange={e => update("label", e.target.value)} className="w-full bg-sb-surface border border-sb-ink/12 rounded-xl px-3 py-2 text-sm text-sb-ink focus:outline-none">
+                <label className="block text-xs font-medium text-gray-500/70 mb-1">Label</label>
+                <select value={form.label} onChange={e => update("label", e.target.value)} className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-black focus:outline-none">
                   <option>Home</option><option>Office</option><option>Site</option><option>Other</option>
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-sb-ink-muted/70 mb-1">Full Name *</label>
-                <input required value={form.name} onChange={e => update("name", e.target.value)} placeholder="Contact name" className="w-full bg-sb-surface border border-sb-ink/12 rounded-xl px-3 py-2 text-sm text-sb-ink placeholder:text-sb-ink-muted/30 focus:outline-none" />
+                <label className="block text-xs font-medium text-gray-500/70 mb-1">Full Name *</label>
+                <input required value={form.name} onChange={e => update("name", e.target.value)} placeholder="Contact name" className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-black placeholder:text-gray-500/30 focus:outline-none" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-sb-ink-muted/70 mb-1">Phone *</label>
-                <input required value={form.phone} onChange={e => update("phone", e.target.value)} placeholder="+91 98765 43210" className="w-full bg-sb-surface border border-sb-ink/12 rounded-xl px-3 py-2 text-sm text-sb-ink placeholder:text-sb-ink-muted/30 focus:outline-none" />
+                <label className="block text-xs font-medium text-gray-500/70 mb-1">Phone *</label>
+                <input required value={form.phone} onChange={e => update("phone", e.target.value)} placeholder="+91 98765 43210" className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-black placeholder:text-gray-500/30 focus:outline-none" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-sb-ink-muted/70 mb-1">Pincode *</label>
-                <input required value={form.pincode} onChange={e => update("pincode", e.target.value)} placeholder="560001" className="w-full bg-sb-surface border border-sb-ink/12 rounded-xl px-3 py-2 text-sm text-sb-ink placeholder:text-sb-ink-muted/30 focus:outline-none" />
+                <label className="block text-xs font-medium text-gray-500/70 mb-1">Pincode *</label>
+                <input required value={form.pincode} onChange={e => update("pincode", e.target.value)} placeholder="560001" className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-black placeholder:text-gray-500/30 focus:outline-none" />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-sb-ink-muted/70 mb-1">Address Line 1 *</label>
-              <input required value={form.line1} onChange={e => update("line1", e.target.value)} placeholder="Street, locality, landmark" className="w-full bg-sb-surface border border-sb-ink/12 rounded-xl px-3 py-2 text-sm text-sb-ink placeholder:text-sb-ink-muted/30 focus:outline-none" />
+              <label className="block text-xs font-medium text-gray-500/70 mb-1">Address Line 1 *</label>
+              <input required value={form.line1} onChange={e => update("line1", e.target.value)} placeholder="Street, locality, landmark" className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-black placeholder:text-gray-500/30 focus:outline-none" />
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-sb-ink-muted/70 mb-1">City</label>
-                <input value={form.city} onChange={e => update("city", e.target.value)} className="w-full bg-sb-surface border border-sb-ink/12 rounded-xl px-3 py-2 text-sm text-sb-ink focus:outline-none" />
+                <label className="block text-xs font-medium text-gray-500/70 mb-1">City</label>
+                <input value={form.city} onChange={e => update("city", e.target.value)} className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-black focus:outline-none" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-sb-ink-muted/70 mb-1">State</label>
-                <input value={form.state} onChange={e => update("state", e.target.value)} className="w-full bg-sb-surface border border-sb-ink/12 rounded-xl px-3 py-2 text-sm text-sb-ink focus:outline-none" />
+                <label className="block text-xs font-medium text-gray-500/70 mb-1">State</label>
+                <input value={form.state} onChange={e => update("state", e.target.value)} className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-black focus:outline-none" />
               </div>
             </div>
             <div className="flex gap-3 pt-1">
-              <button type="submit" className="flex-1 bg-[#FE5E00] hover:bg-[#E05200] text-sb-on-orange font-semibold rounded-xl py-2.5 text-sm transition-colors">Save Address</button>
-              <button type="button" onClick={() => setShowForm(false)} className="flex-1 bg-sb-surface text-sb-ink-muted/70 border border-sb-ink/12 hover:border-sb-ink/18 rounded-xl py-2.5 text-sm transition-colors">Cancel</button>
+              <button type="submit" disabled={saving} className="flex-1 bg-[#E85A00] hover:bg-[#CC4E00] text-white font-semibold rounded-xl py-2.5 text-sm transition-colors disabled:opacity-60">
+                {saving ? "Saving…" : "Save Address"}
+              </button>
+              <button type="button" onClick={() => setShowForm(false)} className="flex-1 bg-white text-gray-500/70 border border-gray-200 hover:border-gray-300 rounded-xl py-2.5 text-sm transition-colors">Cancel</button>
             </div>
           </form>
         </div>
       )}
 
       {addresses.map(addr => (
-        <div key={addr.id} className={`bg-sb-surface-2 rounded-xl border p-4 hover:border-sb-ink/18 transition-colors ${addr.isDefault ? "border-[#FE5E00]/40" : "border-sb-ink/12"}`}>
+        <div key={addr.id} className={`sf-dash-card rounded-xl border p-4 hover:border-gray-300 transition-colors ${addr.isDefault ? "border-[#E85A00]/40" : "border-gray-200"}`}>
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-[#FE5E00]/15 flex items-center justify-center shrink-0 mt-0.5">
-                {addr.label === "Office" ? <Building2 className="w-4 h-4 text-[#FE5E00]" /> : <Home className="w-4 h-4 text-[#FE5E00]" />}
+              <div className="w-9 h-9 rounded-xl bg-[#E85A00]/15 flex items-center justify-center shrink-0 mt-0.5">
+                {addr.label === "Office" ? <Building2 className="w-4 h-4 text-[#E85A00]" /> : <Home className="w-4 h-4 text-[#E85A00]" />}
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <span className="text-xs font-semibold text-[#FE5E00] bg-[#FE5E00]/10 px-2 py-0.5 rounded-md">{addr.label}</span>
-                  {addr.isDefault && <span className="text-xs font-semibold text-green-400 bg-green-500/10 px-2 py-0.5 rounded-md">Default</span>}
+                  <span className="text-xs font-semibold text-[#E85A00] bg-[#E85A00]/10 px-2 py-0.5 rounded-md">{addr.label}</span>
+                  {addr.isDefault && <span className="text-xs font-semibold text-[#E85A00] bg-[#E85A00]/10 px-2 py-0.5 rounded-md">Default</span>}
                 </div>
-                <p className="font-semibold text-sm text-sb-ink">{addr.name}</p>
-                <p className="text-xs text-sb-ink-muted/60">{addr.line1}</p>
-                <p className="text-xs text-sb-ink-muted/60">{addr.city}, {addr.state} – {addr.pincode}</p>
-                <p className="text-xs text-sb-ink-muted/40 mt-1 flex items-center gap-1.5">
+                <p className="font-semibold text-sm text-black">{addr.name}</p>
+                <p className="text-xs text-gray-500/60">{addr.line1}</p>
+                <p className="text-xs text-gray-500/60">{addr.city}, {addr.state} – {addr.pincode}</p>
+                <p className="text-xs text-gray-500/40 mt-1 flex items-center gap-1.5">
                   <Phone className="w-3 h-3 shrink-0 opacity-70" aria-hidden />
                   {addr.phone}
                 </p>
               </div>
             </div>
             <button
-              onClick={() => setAddresses(prev => prev.filter(a => a.id !== addr.id))}
-              className="text-sb-ink-muted/30 hover:text-red-400 transition-colors shrink-0"
+              onClick={() => removeAddress(addr.id)}
+              className="text-gray-500/30 hover:text-red-400 transition-colors shrink-0"
               type="button"
               aria-label="Remove address"
             >
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
-          <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-sb-ink/10">
+          <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-100">
             <button
               type="button"
               onClick={() => orderHere(addr)}
-              className="flex-1 min-w-[140px] bg-[#FE5E00] hover:bg-[#E05200] text-sb-on-orange text-xs font-bold rounded-xl py-2.5 transition-colors"
+              className="flex-1 min-w-[140px] bg-[#E85A00] hover:bg-[#CC4E00] text-white text-xs font-bold rounded-xl py-2.5 transition-colors"
             >
               Order here
             </button>
             {!addr.isDefault && (
               <button
                 type="button"
-                onClick={() => setAddresses(prev => prev.map(a => ({ ...a, isDefault: a.id === addr.id })))}
-                className="text-xs text-sb-ink-muted/50 hover:text-[#FE5E00] transition-colors px-3 py-2 border border-sb-ink/12 rounded-xl"
+                onClick={() => {
+                  api.setDefaultAddress(addr.id).catch(() => {});
+                  setAddresses(prev => prev.map(a => ({ ...a, isDefault: a.id === addr.id })));
+                }}
+                className="text-xs text-gray-500/50 hover:text-[#E85A00] transition-colors px-3 py-2 border border-gray-200 rounded-xl"
               >
                 Set as Default
               </button>
@@ -620,26 +734,26 @@ function NotificationsSection({ onUnreadChange }: { onUnreadChange?: (n: number)
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <p className="text-sm text-sb-ink-muted/60">{unread > 0 ? `${unread} unread` : "All caught up"}</p>
+        <p className="text-sm text-gray-500/60">{unread > 0 ? `${unread} unread` : "All caught up"}</p>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={load} className="text-xs text-sb-ink-muted/50 hover:text-[#FE5E00] transition-colors px-2 py-1 rounded-lg border border-sb-ink/12">
+          <button type="button" onClick={load} className="text-xs text-gray-500/50 hover:text-[#E85A00] transition-colors px-2 py-1 rounded-lg border border-gray-200">
             Refresh
           </button>
           {unread > 0 && (
-            <button type="button" onClick={markAllRead} className="flex items-center gap-1.5 text-xs text-[#FE5E00] hover:text-[#E05200] transition-colors">
+            <button type="button" onClick={markAllRead} className="flex items-center gap-1.5 text-xs text-[#E85A00] hover:text-[#CC4E00] transition-colors">
               <CheckCheck className="w-3.5 h-3.5" /> Mark All Read
             </button>
           )}
         </div>
       </div>
       {loading && (
-        <div className="text-center py-12 text-sm text-sb-ink-muted/50">Loading…</div>
+        <div className="text-center py-12 text-sm text-gray-500/50">Loading…</div>
       )}
       {err && !loading && (
         <p className="text-sm text-red-400/90 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">{err}</p>
       )}
       {!loading && notifs.length === 0 && !err && (
-        <div className="text-center py-16 text-sb-ink-muted/40">
+        <div className="text-center py-16 text-gray-500/40">
           <Bell className="w-10 h-10 mx-auto mb-3 opacity-30" />
           <p>No notifications</p>
         </div>
@@ -649,25 +763,25 @@ function NotificationsSection({ onUnreadChange }: { onUnreadChange?: (n: number)
         return (
         <div
           key={n.id}
-          className={`bg-sb-surface-2 rounded-xl border p-4 transition-colors ${n.isRead ? "border-sb-ink/10" : "border-[#FE5E00]/30"}`}
+          className={`sf-dash-card rounded-xl border p-4 transition-colors ${n.isRead ? "border-gray-100" : "border-[#E85A00]/30"}`}
         >
           <div className="flex items-start gap-3">
-            <NotifIcon className="w-5 h-5 shrink-0 text-sb-ink-muted/55" aria-hidden />
+            <NotifIcon className="w-5 h-5 shrink-0 text-gray-500/55" aria-hidden />
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
-                <p className={`text-sm font-semibold ${n.isRead ? "text-sb-ink-muted/80" : "text-sb-ink"}`}>{n.title}</p>
-                {!n.isRead && <span className="w-2 h-2 rounded-full bg-[#FE5E00] shrink-0" />}
+                <p className={`text-sm font-semibold ${n.isRead ? "text-gray-500/80" : "text-black"}`}>{n.title}</p>
+                {!n.isRead && <span className="w-2 h-2 rounded-full bg-[#E85A00] shrink-0" />}
               </div>
-              <p className="text-xs text-sb-ink-muted/60 mt-0.5">{n.message}</p>
-              <p className="text-xs text-sb-ink-muted/30 mt-1">{n.time}</p>
+              <p className="text-xs text-gray-500/60 mt-0.5">{n.message}</p>
+              <p className="text-xs text-gray-500/30 mt-1">{n.time}</p>
             </div>
             <div className="flex gap-2 shrink-0">
               {!n.isRead && (
-                <button type="button" onClick={() => markRead(n.id)} className="text-sb-ink-muted/40 hover:text-green-400 transition-colors" aria-label="Mark read">
+                <button type="button" onClick={() => markRead(n.id)} className="text-gray-400 hover:text-[#E85A00] transition-colors" aria-label="Mark read">
                   <CheckCheck className="w-4 h-4" />
                 </button>
               )}
-              <button type="button" onClick={() => remove(n.id)} className="text-sb-ink-muted/40 hover:text-red-400 transition-colors" aria-label="Dismiss">
+              <button type="button" onClick={() => remove(n.id)} className="text-gray-500/40 hover:text-red-400 transition-colors" aria-label="Dismiss">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -692,15 +806,15 @@ function ProfileSection({ user }: { user: any }) {
 
   return (
     <div className="max-w-lg space-y-4">
-      <div className="bg-sb-surface-2 rounded-xl border border-sb-ink/12 p-6">
-        <div className="flex items-center gap-4 pb-4 mb-4 border-b border-sb-ink/10">
-          <div className="w-16 h-16 rounded-2xl bg-[#FE5E00] flex items-center justify-center text-sb-on-orange font-black text-2xl shrink-0">
+      <div className="sf-dash-card rounded-xl border border-gray-200 p-6">
+        <div className="flex items-center gap-4 pb-4 mb-4 border-b border-gray-100">
+          <div className="w-16 h-16 rounded-2xl bg-[#E85A00] flex items-center justify-center text-white font-black text-2xl shrink-0">
             {(user?.name?.[0] || "U").toUpperCase()}
           </div>
           <div>
-            <p className="font-bold text-sb-ink">{user?.name}</p>
-            <p className="text-sb-ink-muted/60 text-sm">{user?.company}</p>
-            <span className="text-xs text-green-400 bg-green-500/10 px-2 py-0.5 rounded-md font-semibold">Verified Customer</span>
+            <p className="font-bold text-black">{user?.name}</p>
+            <p className="text-gray-500/60 text-sm">{user?.company}</p>
+            <span className="text-xs text-[#E85A00] bg-[#E85A00]/10 px-2 py-0.5 rounded-md font-semibold">Verified Customer</span>
           </div>
         </div>
 
@@ -714,17 +828,17 @@ function ProfileSection({ user }: { user: any }) {
               ["GST Number", "gst", "text"],
             ].map(([label, key]) => (
               <div key={key}>
-                <label className="block text-xs font-medium text-sb-ink-muted/70 mb-1">{label}</label>
+                <label className="block text-xs font-medium text-gray-500/70 mb-1">{label}</label>
                 <input
                   value={form[key as keyof typeof form]}
                   onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                  className="w-full bg-sb-surface border border-sb-ink/12 rounded-xl px-3 py-2 text-sm text-sb-ink focus:outline-none focus:border-[#FE5E00]/50"
+                  className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-black focus:outline-none focus:border-[#E85A00]/50"
                 />
               </div>
             ))}
             <div className="flex gap-3 pt-2">
-              <button onClick={() => setEditing(false)} className="flex-1 bg-[#FE5E00] hover:bg-[#E05200] text-sb-on-orange font-semibold rounded-xl py-2.5 text-sm transition-colors">Save Changes</button>
-              <button onClick={() => setEditing(false)} className="flex-1 bg-sb-surface border border-sb-ink/12 text-sb-ink-muted/70 rounded-xl py-2.5 text-sm transition-colors">Cancel</button>
+              <button onClick={() => setEditing(false)} className="flex-1 bg-[#E85A00] hover:bg-[#CC4E00] text-white font-semibold rounded-xl py-2.5 text-sm transition-colors">Save Changes</button>
+              <button onClick={() => setEditing(false)} className="flex-1 bg-white border border-gray-200 text-gray-500/70 rounded-xl py-2.5 text-sm transition-colors">Cancel</button>
             </div>
           </div>
         ) : (
@@ -737,15 +851,15 @@ function ProfileSection({ user }: { user: any }) {
                 ["Phone",      form.phone],
                 ["GST Number", form.gst],
               ].map(([label, value]) => (
-                <div key={label} className="flex justify-between items-center py-1 border-b border-sb-ink/8">
-                  <span className="text-sb-ink-muted/60 text-sm">{label}</span>
-                  <span className="font-medium text-sm text-sb-ink">{value || "—"}</span>
+                <div key={label} className="flex justify-between items-center py-1 border-b border-gray-100">
+                  <span className="text-gray-500/60 text-sm">{label}</span>
+                  <span className="font-medium text-sm text-black">{value || "—"}</span>
                 </div>
               ))}
             </div>
             <button
               onClick={() => setEditing(true)}
-              className="w-full mt-4 py-3 rounded-xl bg-[#FE5E00] hover:bg-[#E05200] text-sb-on-orange font-bold transition-colors"
+              className="w-full mt-4 py-3 rounded-xl bg-[#E85A00] hover:bg-[#CC4E00] text-white font-bold transition-colors"
             >
               Edit Profile
             </button>
@@ -754,13 +868,13 @@ function ProfileSection({ user }: { user: any }) {
       </div>
 
       {/* Preferences */}
-      <div className="bg-sb-surface-2 rounded-xl border border-sb-ink/12 p-5">
-        <h3 className="font-semibold text-sb-ink text-sm mb-4">Notification Preferences</h3>
+      <div className="sf-dash-card rounded-xl border border-gray-200 p-5">
+        <h3 className="font-semibold text-black text-sm mb-4">Notification Preferences</h3>
         <div className="space-y-3">
           {["Order Updates", "Payment Confirmations", "Dispatch Alerts", "Delivery Updates", "Promotional Offers"].map(pref => (
             <label key={pref} className="flex items-center justify-between cursor-pointer">
-              <span className="text-sm text-sb-ink-muted/70">{pref}</span>
-              <div className="w-10 h-5 bg-[#FE5E00] rounded-full relative cursor-pointer">
+              <span className="text-sm text-gray-500/70">{pref}</span>
+              <div className="w-10 h-5 bg-[#E85A00] rounded-full relative cursor-pointer">
                 <div className="w-4 h-4 bg-white rounded-full absolute top-0.5 right-0.5" />
               </div>
             </label>
@@ -789,23 +903,23 @@ export function Dashboard() {
   });
   const [notifUnread, setNotifUnread] = useState(0);
 
+  const loadOrders = () => {
+    if (!isLoggedIn) return;
+    api.getOrders({ limit: "100" })
+      .then((res) => {
+        const raw = Array.isArray(res?.data) ? res.data : [];
+        setOrders(raw.map(mapApiOrder));
+      })
+      .catch(() => setOrders([]));
+  };
+
   useEffect(() => {
     if (section) setActive(section);
   }, [section]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await api.getOrders({ limit: "100" });
-        const raw = Array.isArray(res?.data) ? res.data : [];
-        if (!cancelled) setOrders(raw.map(mapApiOrder));
-      } catch {
-        if (!cancelled) setOrders([]);
-      }
-    })();
-    return () => { cancelled = true; };
+    loadOrders();
   }, [isLoggedIn]);
 
   useEffect(() => {
@@ -821,8 +935,8 @@ export function Dashboard() {
   if (!isLoggedIn) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-20 text-center">
-        <p className="text-sb-ink-muted/70 mb-4">Please login to access your dashboard.</p>
-        <Link to="/login" className="inline-flex items-center gap-2 bg-[#FE5E00] hover:bg-[#E05200] text-sb-on-orange px-6 py-3 rounded-2xl font-bold transition-colors">
+        <p className="text-gray-500/70 mb-4">Please login to access your dashboard.</p>
+        <Link to="/login" className="inline-flex items-center gap-2 bg-[#E85A00] hover:bg-[#CC4E00] text-white px-6 py-3 rounded-2xl font-bold transition-colors">
           Login <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
@@ -848,9 +962,9 @@ export function Dashboard() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-sb-page">
+    <div className="sf-dashboard flex h-screen overflow-hidden">
       {/* Desktop Sidebar */}
-      <div className="hidden lg:flex flex-col w-60 shrink-0 border-r border-sb-ink/10">
+      <div className="hidden lg:flex flex-col w-60 shrink-0 border-r border-gray-200">
         <Sidebar {...sidebarProps} />
       </div>
 
@@ -860,7 +974,7 @@ export function Dashboard() {
           <div className="absolute inset-0 bg-black/70" onClick={() => setSidebarOpen(false)} />
           <div className="relative w-60 h-full shadow-2xl">
             <Sidebar {...sidebarProps} />
-            <button onClick={() => setSidebarOpen(false)} className="absolute top-4 right-4 text-sb-ink-muted/60 hover:text-sb-ink">
+            <button onClick={() => setSidebarOpen(false)} className="absolute top-4 right-4 text-gray-500/60 hover:text-black">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -869,31 +983,31 @@ export function Dashboard() {
 
       {/* Main */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="bg-sb-page border-b border-sb-ink/10 px-4 py-3 flex items-center justify-between shrink-0">
+        <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 rounded-lg hover:bg-sb-surface-2 text-sb-ink-muted transition-colors">
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">
               <Menu className="w-5 h-5" />
             </button>
-            <h2 className="text-sb-ink font-semibold capitalize">{sectionTitle[active] || active}</h2>
+            <h2 className="text-black font-semibold capitalize">{sectionTitle[active] || active}</h2>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setActive("notifications")} className="relative p-2 rounded-lg hover:bg-sb-surface-2 text-sb-ink-muted transition-colors">
+            <button onClick={() => setActive("notifications")} className="relative p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">
               <Bell className="w-4 h-4" />
               {notifUnread > 0 && (
-                <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold bg-[#FE5E00] text-sb-on-orange rounded-full">
+                <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold bg-[#E85A00] text-white rounded-full">
                   {notifUnread > 99 ? "99+" : notifUnread}
                 </span>
               )}
             </button>
-            <Link to="/" className="flex items-center gap-1.5 text-sb-ink-muted hover:text-[#FE5E00] text-xs px-3 py-1.5 rounded-lg border border-sb-ink/12 hover:border-[#FE5E00]/40 transition-all">
+            <Link to="/" className="flex items-center gap-1.5 text-gray-600 hover:text-[#E85A00] text-xs px-3 py-1.5 rounded-lg border border-gray-200 hover:border-[#E85A00]/40 transition-all">
               <ShoppingBag className="w-3 h-3" /> Store
             </Link>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-sb-page">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50">
           {active === "dashboard"     && <DashboardHome user={user} setActive={setActive} orders={orders} savedAddrCount={savedAddrCount} />}
-          {active === "orders"        && <OrdersSection orders={orders} />}
+          {active === "orders"        && <OrdersSection orders={orders} onReload={loadOrders} />}
           {active === "invoices"      && <InvoicesSection orders={orders} />}
           {active === "addresses"     && <AddressesSection onCountChange={setSavedAddrCount} />}
           {active === "notifications" && <NotificationsSection onUnreadChange={setNotifUnread} />}

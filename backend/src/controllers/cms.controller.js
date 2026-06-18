@@ -2,6 +2,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const ApiResponse = require('../utils/apiResponse');
 const AppError = require('../utils/AppError');
 const CMS = require('../models/CMS');
+const { sendContactFormEmail } = require('../services/email.service');
 const Banner = require('../models/Banner');
 const Service = require('../models/Service');
 const Testimonial = require('../models/Testimonial');
@@ -32,6 +33,7 @@ const updateHomepage = asyncHandler(async (req, res) => {
   const allowed = [
     'heroTitle', 'heroSubtitle', 'heroCtaText',
     'brandLogoUrl', 'heroBackgroundImageUrl',
+    'introSection', 'featureCards',
     'contact', 'footer', 'featuredCategories',
     'announcements', 'storefrontPromo',
   ];
@@ -97,7 +99,7 @@ const updateBanner = asyncHandler(async (req, res) => {
   const allowed = [
     'title', 'subtitle', 'description', 'buttonText', 'buttonLink',
     'displayOrder', 'status', 'startDate', 'endDate',
-    'titleColor', 'subtitleColor', 'backgroundColor', 'overlayOpacity',
+    'titleColor', 'subtitleColor', 'backgroundColor', 'overlayOpacity', 'textAlign',
   ];
   allowed.forEach((f) => {
     if (req.body[f] === undefined) return;
@@ -114,9 +116,14 @@ const updateBanner = asyncHandler(async (req, res) => {
     banner[f] = v;
   });
 
-  // Image update
-  if (req.body.imageUrl) {
+  // Image update or clear
+  if (req.body.clearImage === true) {
     if (banner.image?.publicId) await deleteFile(banner.image.publicId).catch(() => {});
+    banner.image = { url: null, publicId: null };
+  } else if (req.body.imageUrl) {
+    if (banner.image?.publicId && req.body.imageUrl !== banner.image.url) {
+      await deleteFile(banner.image.publicId).catch(() => {});
+    }
     banner.image = { url: req.body.imageUrl, publicId: req.body.imagePublicId || null };
   }
 
@@ -559,6 +566,44 @@ const updateContact = asyncHandler(async (req, res) => {
   return ApiResponse.success(res, 200, 'Contact info updated.', cms.contact);
 });
 
+const submitContactMessage = asyncHandler(async (req, res) => {
+  const name = String(req.body.name || '').trim();
+  const fromEmail = String(req.body.email || '').trim().toLowerCase();
+  const subject = String(req.body.subject || '').trim();
+  const message = String(req.body.message || '').trim();
+
+  if (name.length < 2) {
+    return ApiResponse.badRequest(res, 'Please enter your name.');
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fromEmail)) {
+    return ApiResponse.badRequest(res, 'Please enter a valid email address.');
+  }
+  if (message.length < 10) {
+    return ApiResponse.badRequest(res, 'Message must be at least 10 characters.');
+  }
+
+  const cms = await CMS.getOrCreate();
+  const to =
+    String(cms.contact?.supportEmail || '').trim() ||
+    String(cms.contact?.email || '').trim() ||
+    String(cms.footer?.email || '').trim();
+
+  if (!to) {
+    return ApiResponse.error(res, 503, 'Contact email is not configured. Please try again later.');
+  }
+
+  const sent = await sendContactFormEmail({ to, name, fromEmail, subject, message });
+  if (!sent) {
+    return ApiResponse.error(
+      res,
+      503,
+      'We could not send your message right now. Please email us directly or try again shortly.'
+    );
+  }
+
+  return ApiResponse.success(res, 200, 'Thank you! Your message has been sent. We will get back to you soon.');
+});
+
 module.exports = {
   getHomepage, updateHomepage,
   getBanners, createBanner, updateBanner, deleteBanner, toggleBanner,
@@ -568,5 +613,5 @@ module.exports = {
   getAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement,
   getAds, createAd, updateAd, deleteAd, trackImpression, trackClick,
   getSEO, upsertSEO,
-  getContact, updateContact,
+  getContact, updateContact, submitContactMessage,
 };

@@ -51,16 +51,16 @@ export function VerifyEmail() {
       <div className="flex flex-col items-center text-center">
         {status === "loading" && (
           <>
-            <Loader2 className="mb-4 h-10 w-10 animate-spin text-[#FE5E00]" />
-            <h2 className="text-lg font-semibold text-[#222222]">Verifying your email</h2>
-            <p className="mt-2 text-sm text-[#222222]/60">Please wait…</p>
+            <Loader2 className="mb-4 h-10 w-10 animate-spin text-[#E85A00]" />
+            <h2 className="text-lg font-semibold text-[#1A1A1A]">Verifying your email</h2>
+            <p className="mt-2 text-sm text-[#1A1A1A]/60">Please wait…</p>
           </>
         )}
         {status === "ok" && (
           <>
-            <CheckCircle2 className="mb-4 h-12 w-12 text-[#FE5E00]" strokeWidth={1.75} />
-            <h2 className="text-lg font-semibold text-[#222222]">Email verified</h2>
-            <p className="mt-2 text-sm text-[#222222]/65">{message}</p>
+            <CheckCircle2 className="mb-4 h-12 w-12 text-[#E85A00]" strokeWidth={1.75} />
+            <h2 className="text-lg font-semibold text-[#1A1A1A]">Email verified</h2>
+            <p className="mt-2 text-sm text-[#1A1A1A]/65">{message}</p>
             <Button className="mt-8 h-11 px-8 font-semibold" onClick={() => navigate("/login", { replace: true })}>
               Continue to sign in
             </Button>
@@ -68,11 +68,11 @@ export function VerifyEmail() {
         )}
         {status === "err" && (
           <>
-            <XCircle className="mb-4 h-12 w-12 text-[#222222]/50" strokeWidth={1.5} />
-            <h2 className="text-lg font-semibold text-[#222222]">Could not verify</h2>
-            <p className="mt-2 text-sm text-[#222222]/65">{message}</p>
-            <p className="mt-6 text-sm text-[#222222]/55">
-              <Link to="/login" className="font-semibold text-[#FE5E00] hover:underline">
+            <XCircle className="mb-4 h-12 w-12 text-[#1A1A1A]/50" strokeWidth={1.5} />
+            <h2 className="text-lg font-semibold text-[#1A1A1A]">Could not verify</h2>
+            <p className="mt-2 text-sm text-[#1A1A1A]/65">{message}</p>
+            <p className="mt-6 text-sm text-[#1A1A1A]/55">
+              <Link to="/login" className="font-semibold text-[#E85A00] hover:underline">
                 Back to sign in
               </Link>
             </p>

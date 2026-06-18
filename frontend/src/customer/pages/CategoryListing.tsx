@@ -1,21 +1,189 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Link, useParams, useNavigate } from "react-router";
 import {
-  SlidersHorizontal, Star, Shield, Zap, ShoppingCart,
+  SlidersHorizontal, Shield, Zap,
   ChevronRight, FileText, ChevronLeft, ChevronDown, X,
-  ShieldCheck, BadgeCheck, Building2, Package,
-  ArrowRight, BarChart3, Heart, GitCompare, MapPin,
-  Plus, Minus,
+  Package,
+  ArrowRight, BarChart3, MapPin, Loader2,
 } from "lucide-react";
 import { api } from "../lib/api";
+import { fetchNavCategories } from "../lib/navCategories";
 import { useApp } from "../context/AppContext";
+import { ListingProductCard } from "../components/ListingProductCard";
 import {
-  formatVariationLabel,
-  firstImageUrl,
-  topAttributeChipsForListing,
-} from "../lib/productAttributes";
+  listingUnitPrice,
+  listingPriceBounds,
+  productMatchesPriceRange,
+} from "../lib/wholesalePricing";
 
 const PAGE_SIZE = 12;
+
+/** Treat blank / zero min as "no minimum" so filters and API stay in sync. */
+function parsePriceMin(raw: string): number | null {
+  const t = raw.trim();
+  if (!t) return null;
+  const n = Number(t);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return n;
+}
+
+function parsePriceMax(raw: string): number | null {
+  const t = raw.trim();
+  if (!t) return null;
+  const n = Number(t);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return n;
+}
+
+function parseNumericAttr(v: string): number | null {
+  const m = String(v ?? "").match(/-?\d+(?:\.\d+)?/);
+  if (!m) return null;
+  const n = Number(m[0]);
+  return Number.isFinite(n) ? n : null;
+}
+
+function numericBoundsFromOptions(options: any[]): { min: number; max: number } | null {
+  const nums = (options || [])
+    .map((o) => parseNumericAttr(String(o.value ?? o.label ?? "")))
+    .filter((n): n is number => n != null);
+  if (!nums.length) return null;
+  return { min: Math.min(...nums), max: Math.max(...nums) };
+}
+
+interface StackedRangeSliderProps {
+  min: number;
+  max: number;
+  low: number;
+  high: number;
+  onChange: (low: number, high: number) => void;
+  format?: (n: number) => string;
+  lowLabel?: string;
+  highLabel?: string;
+}
+
+/** Two separate sliders — reliable on Windows touch/mouse (no overlapping range inputs). */
+function StackedRangeSlider({
+  min,
+  max,
+  low,
+  high,
+  onChange,
+  format = (n) => String(n),
+  lowLabel = "Minimum",
+  highLabel = "Maximum",
+}: StackedRangeSliderProps) {
+  const trackMax = Math.max(min + 1, max);
+  const lo = Math.min(Math.max(low, min), trackMax);
+  const hi = Math.min(Math.max(high, min), trackMax);
+  const safeLo = Math.min(lo, hi);
+  const safeHi = Math.max(lo, hi);
+
+  if (min >= trackMax) {
+    return (
+      <p className="text-xs text-sb-ink-muted/60 tabular-nums">
+        All items at {format(min)}
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <div className="flex justify-between text-[10px] text-sb-ink-muted/60 mb-1.5">
+          <span>{lowLabel}</span>
+          <span className="tabular-nums font-medium text-sb-ink/70">{format(safeLo)}</span>
+        </div>
+        <input
+          type="range"
+          min={min}
+          max={trackMax}
+          step={1}
+          value={safeLo}
+          onChange={(e) => {
+            const v = Number(e.target.value);
+            onChange(Math.min(v, safeHi), safeHi);
+          }}
+          className="sf-range-single w-full"
+          aria-label={lowLabel}
+        />
+      </div>
+      <div>
+        <div className="flex justify-between text-[10px] text-sb-ink-muted/60 mb-1.5">
+          <span>{highLabel}</span>
+          <span className="tabular-nums font-medium text-sb-ink/70">{format(safeHi)}</span>
+        </div>
+        <input
+          type="range"
+          min={min}
+          max={trackMax}
+          step={1}
+          value={safeHi}
+          onChange={(e) => {
+            const v = Number(e.target.value);
+            onChange(safeLo, Math.max(v, safeLo));
+          }}
+          className="sf-range-single w-full"
+          aria-label={highLabel}
+        />
+      </div>
+    </div>
+  );
+}
+
+function resolveBrandIds(names: string[], map: Record<string, string>): string[] {
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  for (const name of names) {
+    let id = map[name];
+    if (!id) {
+      const lower = name.toLowerCase();
+      for (const [k, v] of Object.entries(map)) {
+        if (k.toLowerCase() === lower) {
+          id = v;
+          break;
+        }
+      }
+    }
+    if (id && !seen.has(id)) {
+      seen.add(id);
+      ids.push(id);
+    }
+  }
+  return ids;
+}
+
+function buildBrandNameMap(brands: any[]): Record<string, string> {
+  const map: Record<string, string> = {};
+  brands.forEach((b: any) => {
+    const id = b?._id ? String(b._id) : "";
+    if (!id) return;
+    if (b.name) map[b.name] = id;
+    if (b.slug) map[b.slug] = id;
+  });
+  return map;
+}
+
+function brandMapFromProducts(data: any[]): Record<string, string> {
+  const map: Record<string, string> = {};
+  data.forEach((p: any) => {
+    const b = p.brand;
+    if (!b) return;
+    const id = typeof b === "object" ? String(b._id || "") : "";
+    const name = typeof b === "object" ? b.name : String(b);
+    if (id && name) map[name] = id;
+    if (id && typeof b === "object" && b.slug) map[b.slug] = id;
+  });
+  return map;
+}
+
+const SORT_API_MAP: Record<string, string> = {
+  default: "default",
+  newest: "newest",
+  priceLow: "price-asc",
+  priceHigh: "price-desc",
+  rating: "default",
+  express: "default",
+};
 
 /** URL param vs API slug (encoding / casing). */
 function categorySlugMatches(routeSlug: string | undefined, cat: { slug?: string }) {
@@ -25,16 +193,6 @@ function categorySlugMatches(routeSlug: string | undefined, cat: { slug?: string
   return a.length > 0 && a === b;
 }
 
-function unitPriceForListingProduct(p: any, variationId: string | null) {
-  if (variationId && p.variationPricing?.length) {
-    const row = p.variationPricing.find((x: any) => String(x.variation) === variationId);
-    if (row) return Number(row.salePrice ?? row.regularPrice ?? 0);
-  }
-  const sale = p.pricing?.salePrice;
-  const reg = p.pricing?.regularPrice;
-  return Number(sale ?? reg ?? p.price ?? 0);
-}
-
 const SORT_OPTIONS = [
   { value: "default",    label: "Most Popular" },
   { value: "newest",     label: "Newest" },
@@ -42,14 +200,6 @@ const SORT_OPTIONS = [
   { value: "priceHigh",  label: "Price: High to Low" },
   { value: "rating",     label: "Top Rated" },
   { value: "express",    label: "Express Delivery" },
-];
-
-const TRUST_BADGES = [
-  { icon: ShieldCheck, label: "StructBay Assured",  desc: "Quality verified",   color: "text-[#C9A227]", bg: "bg-[#C9A227]/10 border-[#C9A227]/20" },
-  { icon: Zap,         label: "Express Delivery",   desc: "In 24-48 hours",     color: "text-[#FE5E00]", bg: "bg-[#FE5E00]/10 border-[#FE5E00]/20" },
-  { icon: BadgeCheck,  label: "GST Billing",        desc: "On every order",     color: "text-green-400", bg: "bg-green-500/10 border-green-500/20" },
-  { icon: Building2,   label: "Verified Vendors",   desc: "Background checked", color: "text-blue-400",  bg: "bg-blue-500/10 border-blue-500/20" },
-  { icon: Package,     label: "Bulk Available",     desc: "No minimum order",   color: "text-purple-400",bg: "bg-purple-500/10 border-purple-500/20" },
 ];
 
 interface AccordionSectionProps {
@@ -74,9 +224,15 @@ function AccordionSection({ title, children, defaultOpen = true }: AccordionSect
   );
 }
 
+function categoryPageTitle(name: string | undefined, isShopAll: boolean): string {
+  if (isShopAll) return "Shop all construction materials at the best prices";
+  const label = (name || "products").trim();
+  return `Buy high-quality ${label.toLowerCase()} at the best prices`;
+}
+
 export function CategoryListing() {
   const { category } = useParams<{ category?: string }>();
-  const { addToCart, updateQty, cart, city, cityId, isWishlisted, addToWishlist, removeFromWishlist, addToCompare } = useApp();
+  const { addToCart, updateQty, cart, city, cityId } = useApp();
   const navigate = useNavigate();
 
   const isShopAll = !category || category === "all";
@@ -90,6 +246,10 @@ export function CategoryListing() {
   const [categoryFilters, setCategoryFilters] = useState<any[]>([]);
   /** Selected attribute values per filter key (multi-select). */
   const [dynAttrSelections, setDynAttrSelections] = useState<Record<string, string[]>>({});
+  /** Per-attribute numeric range (min/max) for RANGE filters. */
+  const [dynRangeSelections, setDynRangeSelections] = useState<Record<string, { min: number; max: number }>>({});
+  /** Catalog price bounds from API (city pricing). */
+  const [catalogPriceBounds, setCatalogPriceBounds] = useState<{ min: number; max: number } | null>(null);
   const [loading, setLoading]       = useState(true);
   const [totalCount, setTotalCount] = useState(0);
 
@@ -101,15 +261,27 @@ export function CategoryListing() {
   const [showAssured, setShowAssured]       = useState(false);
   const [showExpress, setShowExpress]       = useState(false);
   const [inStockOnly, setInStockOnly]       = useState(false);
-  const [minRating, setMinRating]           = useState(0);
+  const [selectedWeights, setSelectedWeights] = useState<string[]>([]);
   const [filterOpen, setFilterOpen]         = useState(false);
   const [page, setPage]                     = useState(1);
   /** Per-product slug → selected variation id for pricing / add-to-cart */
   const [varChoice, setVarChoice]           = useState<Record<string, string>>({});
   /** Category page: maps sidebar brand name → Mongo id for API `brand` filter */
   const brandNameToIdRef = useRef<Record<string, string>>({});
+  const fetchGenRef = useRef(0);
 
-  // ── Reset filters when category changes ───────────────────────────────────
+  const [debouncedPriceMin, setDebouncedPriceMin] = useState("");
+  const [debouncedPriceMax, setDebouncedPriceMax] = useState("");
+
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      setDebouncedPriceMin(priceMin);
+      setDebouncedPriceMax(priceMax);
+    }, 350);
+    return () => window.clearTimeout(t);
+  }, [priceMin, priceMax]);
+
+  // ── Reset filters when category or city changes ───────────────────────────
   useEffect(() => {
     setPage(1);
     setSelectedBrands([]);
@@ -118,29 +290,51 @@ export function CategoryListing() {
     setInStockOnly(false);
     setPriceMin("");
     setPriceMax("");
-    setMinRating(0);
+    setDebouncedPriceMin("");
+    setDebouncedPriceMax("");
+    setSelectedWeights([]);
     setVarChoice({});
     setDynAttrSelections({});
+    setDynRangeSelections({});
+    setCatalogPriceBounds(null);
+    setAllBrands([]);
     brandNameToIdRef.current = {};
-  }, [category]);
+    setProducts([]);
+    setTotalCount(0);
+    setLoading(true);
+  }, [category, cityId]);
+
+  const categoryTitle = useMemo(() => {
+    if (isShopAll) return "Shop All";
+    const fromNav = allCategories.find((c: any) => categorySlugMatches(category, c));
+    return fromNav?.name || catData?.name || decodeURIComponent(String(category || "Category"));
+  }, [isShopAll, allCategories, category, catData?.name]);
 
   // ── Fetch data from API ────────────────────────────────────────────────────
   useEffect(() => {
+    const gen = ++fetchGenRef.current;
     setLoading(true);
     const cid = cityId || undefined;
 
     if (isShopAll) {
       const params: Record<string, any> = {
         limit: 100,
-        sort: sortBy,
+        sort: SORT_API_MAP[sortBy] || sortBy,
         page,
       };
       if (cid) params.cityId = cid;
       if (showAssured) params.assured = "true";
       if (showExpress) params.express = "true";
+      const brandIds = resolveBrandIds(selectedBrands, brandNameToIdRef.current);
+      if (brandIds.length) params.brands = brandIds.join(",");
+      const minP = parsePriceMin(debouncedPriceMin);
+      const maxP = parsePriceMax(debouncedPriceMax);
+      if (minP != null) params.minPrice = String(minP);
+      if (maxP != null) params.maxPrice = String(maxP);
 
       api.getProducts(params)
         .then((res: any) => {
+          if (gen !== fetchGenRef.current) return;
           const data = res.data || [];
           setProducts(data);
           setTotalCount(res.pagination?.total || data.length);
@@ -148,59 +342,75 @@ export function CategoryListing() {
           setCatData({
             name: "Shop All",
             slug: "all",
-            bannerImage: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=1200&h=300&fit=crop",
             longDescription: "Browse all premium construction materials from verified vendors.",
           });
           const brandNames = [...new Set(data.map((p: any) => p.brand?.name || p.brand).filter(Boolean))];
-          setAllBrands(brandNames as string[]);
-          brandNameToIdRef.current = {};
+          setAllBrands((prev) => {
+            const merged = new Set([...(prev.length ? prev : []), ...brandNames]);
+            return [...merged].sort((a, b) => a.localeCompare(b));
+          });
+          brandNameToIdRef.current = {
+            ...brandNameToIdRef.current,
+            ...brandMapFromProducts(data),
+          };
         })
-        .finally(() => setLoading(false));
+        .finally(() => {
+          if (gen === fetchGenRef.current) setLoading(false);
+        });
     } else {
       const qp: Record<string, string> = {
-        sort: sortBy,
+        sort: SORT_API_MAP[sortBy] || sortBy,
         page: String(page),
         limit: String(PAGE_SIZE),
       };
       if (cid) qp.cityId = cid;
       if (showAssured) qp.assured = "true";
       if (showExpress) qp.express = "true";
-      if (priceMin) qp.minPrice = priceMin;
-      if (priceMax) qp.maxPrice = priceMax;
-      const brandIds = selectedBrands.map((n) => brandNameToIdRef.current[n]).filter(Boolean);
+      const minP = parsePriceMin(debouncedPriceMin);
+      const maxP = parsePriceMax(debouncedPriceMax);
+      if (minP != null) qp.minPrice = String(minP);
+      if (maxP != null) qp.maxPrice = String(maxP);
+      const brandIds = resolveBrandIds(selectedBrands, brandNameToIdRef.current);
       if (brandIds.length) qp.brands = brandIds.join(",");
       Object.entries(dynAttrSelections).forEach(([k, vals]) => {
         if (vals?.length) qp[k] = vals.join(",");
       });
+      Object.entries(dynRangeSelections).forEach(([k, range]) => {
+        if (range?.min != null) qp[`${k}_min`] = String(range.min);
+        if (range?.max != null) qp[`${k}_max`] = String(range.max);
+      });
 
       api.getCategoryDetails(category!, qp)
         .then((res: any) => {
+          if (gen !== fetchGenRef.current) return;
           const d = res.data || {};
           setCatData(d.category || null);
           setProducts(d.products || []);
-          setTotalCount(d.pagination?.total || (d.products || []).length);
+          setTotalCount(d.pagination?.total ?? (d.products || []).length);
           setCategoryFilters(Array.isArray(d.filters) ? d.filters : []);
+          if (d.priceBounds?.min != null && d.priceBounds?.max != null) {
+            setCatalogPriceBounds({
+              min: Number(d.priceBounds.min),
+              max: Number(d.priceBounds.max),
+            });
+          } else {
+            setCatalogPriceBounds(null);
+          }
           const brands = d.brands || [];
-          const map: Record<string, string> = {};
-          brands.forEach((b: any) => {
-            if (b?.name) map[b.name] = String(b._id);
-          });
-          brandNameToIdRef.current = map;
-          setAllBrands(brands.map((b: any) => b.name || b.slug || ""));
+          brandNameToIdRef.current = buildBrandNameMap(brands);
+          setAllBrands(brands.map((b: any) => b.name || b.slug || "").filter(Boolean));
           if (!d.category) navigate("/shop", { replace: true });
         })
-        .finally(() => setLoading(false));
+        .finally(() => {
+          if (gen === fetchGenRef.current) setLoading(false);
+        });
     }
-  }, [category, cityId, isShopAll, sortBy, page, showAssured, showExpress, selectedBrands, priceMin, priceMax, JSON.stringify(dynAttrSelections)]);
+  }, [category, cityId, isShopAll, sortBy, page, showAssured, showExpress, selectedBrands, debouncedPriceMin, debouncedPriceMax, JSON.stringify(dynAttrSelections), JSON.stringify(dynRangeSelections), navigate]);
 
-  // Quick-nav pills: API `/category/:slug` does not return sibling list — always load categories.
+  // Quick-nav pills: city-scoped — only categories shoppable in selected city.
   useEffect(() => {
-    const params: Record<string, any> = { status: "ACTIVE", limit: 100 };
-    const cid = cityId || undefined;
-    if (cid) params.cityId = cid;
-    api
-      .getCategories(params)
-      .then((res: any) => setAllCategories(res.data || []))
+    fetchNavCategories({ cityId })
+      .then(setAllCategories)
       .catch(() => setAllCategories([]));
   }, [cityId]);
 
@@ -217,45 +427,147 @@ export function CategoryListing() {
     setPage(1);
   };
 
-  // ── Client-side filters (shop-all: full list; category page: only fields not on server) ───────
+  const setDynRange = (key: string, min: number, max: number) => {
+    setDynRangeSelections((prev) => ({ ...prev, [key]: { min, max } }));
+    setPage(1);
+  };
+
+  const clearDynRange = (key: string) => {
+    setDynRangeSelections((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    setPage(1);
+  };
+
+  const shopAllPriceBounds = useMemo(() => {
+    if (!isShopAll || !products.length) return null;
+    const prices: number[] = [];
+    products.forEach((p: any) => {
+      const { min, max } = listingPriceBounds(p);
+      if (min > 0) prices.push(min);
+      if (max > 0) prices.push(max);
+    });
+    if (!prices.length) return null;
+    return { min: Math.floor(Math.min(...prices)), max: Math.ceil(Math.max(...prices)) };
+  }, [isShopAll, products]);
+
+  const effectivePriceBounds = catalogPriceBounds || shopAllPriceBounds;
+
+  const priceSliderValues = useMemo(() => {
+    if (!effectivePriceBounds) return null;
+    const catalogMin = effectivePriceBounds.min;
+    const catalogMax = effectivePriceBounds.max;
+    const singlePrice = catalogMin === catalogMax;
+    let sliderMin = catalogMin;
+    let sliderMax = catalogMax;
+    if (singlePrice && catalogMin > 0) {
+      const pad = Math.max(50, Math.round(catalogMin * 0.2));
+      sliderMin = Math.max(0, catalogMin - pad);
+      sliderMax = catalogMin + pad;
+    }
+    const hasPriceFilter = priceMin !== "" || priceMax !== "";
+    const low = parsePriceMin(priceMin) ?? (singlePrice && !hasPriceFilter ? sliderMin : catalogMin);
+    const high = parsePriceMax(priceMax) ?? (singlePrice && !hasPriceFilter ? sliderMax : catalogMax);
+    const trackMax = Math.max(sliderMin + 1, sliderMax);
+    return {
+      min: sliderMin,
+      max: trackMax,
+      low: Math.min(Math.max(low, sliderMin), trackMax),
+      high: Math.min(Math.max(high, sliderMin), trackMax),
+      catalogMin,
+      catalogMax,
+      singlePrice,
+    };
+  }, [effectivePriceBounds, priceMin, priceMax]);
+
+  const applyPriceRange = (low: number, high: number) => {
+    if (!effectivePriceBounds || !priceSliderValues) return;
+    const lo = Math.min(low, high);
+    const hi = Math.max(low, high);
+    const atMin = lo <= priceSliderValues.catalogMin;
+    const atMax = hi >= priceSliderValues.catalogMax;
+    setPriceMin(atMin ? "" : String(lo));
+    setPriceMax(atMax ? "" : String(hi));
+    setPage(1);
+  };
+
+  const weightFilterOptions = useMemo(() => {
+    if (!isShopAll) return [];
+    const weights = new Set<string>();
+    products.forEach((p: any) => {
+      for (const v of p.variations || []) {
+        const w = v?.attributes?.weight;
+        if (w != null && String(w).trim()) weights.add(String(w).trim());
+      }
+    });
+    return [...weights].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [products, isShopAll]);
+
+  const toggleWeight = (w: string) => {
+    setSelectedWeights((prev) => (prev.includes(w) ? prev.filter((x) => x !== w) : [...prev, w]));
+    setPage(1);
+  };
+
+  // ── Client-side filters (stock, weight, sort — server handles brand/price/badges when city set) ───────
   let filteredProducts = [...products];
+  const minP = parsePriceMin(priceMin);
+  const maxP = parsePriceMax(priceMax);
+
   if (isShopAll) {
-    if (selectedBrands.length > 0)
+    if (selectedBrands.length > 0 && !cityId) {
       filteredProducts = filteredProducts.filter((p: any) =>
-        selectedBrands.includes(p.brand?.name || p.brand)
+        selectedBrands.some((b) => {
+          const name = p.brand?.name || p.brand || "";
+          return name.toLowerCase() === b.toLowerCase();
+        })
       );
-    if (priceMin)
-      filteredProducts = filteredProducts.filter(
-        (p: any) => (p.pricing?.regularPrice || p.price || 0) >= Number(priceMin)
-      );
-    if (priceMax)
-      filteredProducts = filteredProducts.filter(
-        (p: any) => (p.pricing?.regularPrice || p.price || 0) <= Number(priceMax)
-      );
-    if (inStockOnly) filteredProducts = filteredProducts.filter((p: any) => p.inStock !== false);
-    if (sortBy === "priceLow")
+    }
+    if (!cityId && (minP != null || maxP != null)) {
+      filteredProducts = filteredProducts.filter((p: any) => productMatchesPriceRange(p, minP, maxP));
+    }
+    if (sortBy === "priceLow") {
       filteredProducts = [...filteredProducts].sort(
-        (a, b) => (a.pricing?.regularPrice || a.price || 0) - (b.pricing?.regularPrice || b.price || 0)
+        (a, b) => listingUnitPrice(a) - listingUnitPrice(b)
       );
-    if (sortBy === "priceHigh")
+    }
+    if (sortBy === "priceHigh") {
       filteredProducts = [...filteredProducts].sort(
-        (a, b) => (b.pricing?.regularPrice || b.price || 0) - (a.pricing?.regularPrice || a.price || 0)
+        (a, b) => listingUnitPrice(b) - listingUnitPrice(a)
       );
-    if (sortBy === "express")
+    }
+    if (sortBy === "express") {
       filteredProducts = [...filteredProducts].sort(
-        (a, b) => (b.isExpress ? 1 : 0) - (a.isExpress ? 1 : 0)
+        (a, b) => (b.isExpress || b.isStructbayDelivery ? 1 : 0) - (a.isExpress || a.isStructbayDelivery ? 1 : 0)
       );
-  } else {
-    if (minRating > 0)
-      filteredProducts = filteredProducts.filter((p: any) => Number(p.rating || 0) >= minRating);
-    if (inStockOnly) filteredProducts = filteredProducts.filter((p: any) => p.inStock !== false);
+    }
   }
 
-  const totalPages = isShopAll
+  if (isShopAll && selectedWeights.length) {
+    filteredProducts = filteredProducts.filter((p: any) =>
+      (p.variations || []).some((v: any) =>
+        selectedWeights.includes(String(v?.attributes?.weight ?? "").trim())
+      )
+    );
+  }
+  if (inStockOnly) {
+    filteredProducts = filteredProducts.filter((p: any) => p.inStock !== false);
+  }
+
+  const clientFiltered =
+    inStockOnly ||
+    (isShopAll && selectedWeights.length > 0) ||
+    (isShopAll && !cityId && (minP != null || maxP != null));
+  const effectiveTotal = isShopAll || clientFiltered
+    ? filteredProducts.length
+    : totalCount;
+
+  const totalPages = isShopAll || clientFiltered
     ? Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE))
     : Math.max(1, Math.ceil((totalCount || 0) / PAGE_SIZE));
 
-  const paginated = isShopAll
+  const paginated = isShopAll || clientFiltered
     ? filteredProducts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
     : filteredProducts;
 
@@ -269,27 +581,43 @@ export function CategoryListing() {
     setShowAssured(false);
     setShowExpress(false);
     setInStockOnly(false);
-    setMinRating(0);
+    setSelectedWeights([]);
     setDynAttrSelections({});
+    setDynRangeSelections({});
     setPage(1);
   };
 
   const dynAttrActiveCount = Object.values(dynAttrSelections).reduce((n, a) => n + (a?.length || 0), 0);
+  const dynRangeActiveCount = Object.entries(dynRangeSelections).filter(([key, range]) => {
+    if (!range || !effectivePriceBounds) return false;
+    const f = categoryFilters.find((x: any) => String(x.key).toLowerCase() === key.toLowerCase());
+    const bounds = numericBoundsFromOptions(f?.options || []);
+    if (!bounds) return range.min != null || range.max != null;
+    return range.min > bounds.min || range.max < bounds.max;
+  }).length;
+  const priceFilterActive =
+    (minP != null ? 1 : 0) +
+    (maxP != null ? 1 : 0);
   const activeFilters =
     selectedBrands.length +
     (showAssured ? 1 : 0) +
     (showExpress ? 1 : 0) +
     (inStockOnly ? 1 : 0) +
-    (minRating > 0 ? 1 : 0) +
-    (priceMin || priceMax ? 1 : 0) +
-    dynAttrActiveCount;
+    (isShopAll ? selectedWeights.length : 0) +
+    priceFilterActive +
+    dynAttrActiveCount +
+    dynRangeActiveCount;
 
-  if (!catData && !loading) return null;
+  if (!catData && !loading && !isShopAll) return null;
+
+  const showFullSkeleton = loading && products.length === 0;
+  const isRefreshing = loading && products.length > 0;
+  const displayTotal = showFullSkeleton ? null : effectiveTotal;
 
   const FilterPanel = () => (
     <div>
       {activeFilters > 0 && (
-        <button onClick={clearFilters} className="flex items-center gap-1.5 text-xs text-[#FE5E00] hover:text-[#E05200] font-semibold transition-colors mb-4">
+        <button onClick={clearFilters} className="flex items-center gap-1.5 text-xs text-[#E85A00] hover:text-[#CC4E00] font-semibold transition-colors mb-4">
           <X className="w-3 h-3" /> Clear all ({activeFilters})
         </button>
       )}
@@ -297,17 +625,17 @@ export function CategoryListing() {
       <AccordionSection title="Quick badges">
         <div className="space-y-2.5">
           <label className="flex items-center gap-2.5 cursor-pointer group">
-            <input type="checkbox" checked={showAssured} onChange={e => { setShowAssured(e.target.checked); setPage(1); }} className="w-4 h-4 rounded border-sb-ink/25 accent-[#C9A227]" />
-            <Shield className="w-3.5 h-3.5 text-[#C9A227]" aria-hidden />
+            <input type="checkbox" checked={showAssured} onChange={e => { setShowAssured(e.target.checked); setPage(1); }} className="w-4 h-4 rounded border-sb-ink/25 accent-[#E85A00]" />
+            <Shield className="w-3.5 h-3.5 text-[#E85A00]" aria-hidden />
             <span className="text-sm text-sb-ink-muted/80 group-hover:text-sb-ink">Assured only</span>
           </label>
           <label className="flex items-center gap-2.5 cursor-pointer group">
-            <input type="checkbox" checked={showExpress} onChange={e => { setShowExpress(e.target.checked); setPage(1); }} className="w-4 h-4 rounded border-sb-ink/25 accent-[#FE5E00]" />
-            <Zap className="w-3.5 h-3.5 text-[#FE5E00]" aria-hidden />
+            <input type="checkbox" checked={showExpress} onChange={e => { setShowExpress(e.target.checked); setPage(1); }} className="w-4 h-4 rounded border-sb-ink/25 accent-[#E85A00]" />
+            <Zap className="w-3.5 h-3.5 text-[#E85A00]" aria-hidden />
             <span className="text-sm text-sb-ink-muted/80 group-hover:text-sb-ink">Express delivery</span>
           </label>
           <label className="flex items-center gap-2.5 cursor-pointer group">
-            <input type="checkbox" checked={inStockOnly} onChange={e => { setInStockOnly(e.target.checked); setPage(1); }} className="w-4 h-4 rounded border-sb-ink/25 accent-[#FE5E00]" />
+            <input type="checkbox" checked={inStockOnly} onChange={e => { setInStockOnly(e.target.checked); setPage(1); }} className="w-4 h-4 rounded border-sb-ink/25 accent-[#E85A00]" />
             <Package className="w-3.5 h-3.5 text-emerald-400" aria-hidden />
             <span className="text-sm text-sb-ink-muted/80 group-hover:text-sb-ink">In stock only</span>
           </label>
@@ -318,7 +646,7 @@ export function CategoryListing() {
         <div className="space-y-2">
           {allBrands.map((brand: any) => (
             <label key={brand} className="flex items-center gap-2.5 cursor-pointer group">
-              <input type="checkbox" checked={selectedBrands.includes(brand)} onChange={() => { toggleBrand(brand); setPage(1); }} className="w-4 h-4 rounded accent-[#FE5E00]" />
+              <input type="checkbox" checked={selectedBrands.includes(brand)} onChange={() => { toggleBrand(brand); setPage(1); }} className="w-4 h-4 rounded accent-[#E85A00]" />
               <span className="text-sm text-sb-ink-muted/80 group-hover:text-sb-ink">{brand}</span>
             </label>
           ))}
@@ -332,149 +660,188 @@ export function CategoryListing() {
         categoryFilters
           .filter((f: any) => f?.key && f?.isActive !== false)
           .sort((a: any, b: any) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0))
-          .map((f: any) => (
-            <AccordionSection key={String(f.key)} title={f.label || f.key}>
-              {f.type === "RANGE" ? (
-                <p className="text-xs text-sb-ink-muted/50">Use the price range below. Advanced per-attribute ranges can be enabled from admin.</p>
-              ) : (f.options || []).length > 0 ? (
-                <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-                  {(f.options || []).map((opt: any) => {
-                    const val = String(opt.value ?? opt.label ?? "");
-                    const label = String(opt.label ?? opt.value ?? "");
-                    const checked = (dynAttrSelections[String(f.key)] || []).includes(val);
-                    return (
-                      <label key={`${f.key}:${val}`} className="flex items-center gap-2.5 cursor-pointer group">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleDynFilter(String(f.key), val)}
-                          className="w-4 h-4 rounded accent-[#FE5E00]"
-                        />
-                        <span className="text-sm text-sb-ink-muted/80 group-hover:text-sb-ink">{label}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-xs text-sb-ink-muted/50">
-                  Add options in Admin → Category filters so shoppers can narrow by {f.label || f.key}. Variant values already exist on products.
-                </p>
-              )}
-            </AccordionSection>
-          ))}
+          .map((f: any) => {
+            const fKey = String(f.key);
+            const opts = f.options || [];
+            const rangeBounds = f.type === "RANGE" ? numericBoundsFromOptions(opts) : null;
+            const activeRange = dynRangeSelections[fKey.toLowerCase()] || dynRangeSelections[fKey];
+
+            return (
+              <AccordionSection key={fKey} title={f.label || fKey}>
+                {f.type === "RANGE" && rangeBounds ? (
+                  <div className="space-y-2">
+                    <StackedRangeSlider
+                      min={rangeBounds.min}
+                      max={Math.max(rangeBounds.min + 1, rangeBounds.max)}
+                      low={activeRange?.min ?? rangeBounds.min}
+                      high={activeRange?.max ?? rangeBounds.max}
+                      onChange={(low, high) => setDynRange(fKey.toLowerCase(), low, high)}
+                      format={(n) => `${n}${fKey.toLowerCase() === "weight" ? " kg" : ""}`}
+                    />
+                    {activeRange && (
+                      <button
+                        type="button"
+                        onClick={() => clearDynRange(fKey.toLowerCase())}
+                        className="text-[10px] text-[#E85A00] font-semibold"
+                      >
+                        Reset {f.label || fKey}
+                      </button>
+                    )}
+                  </div>
+                ) : opts.length > 0 ? (
+                  <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                    {opts.map((opt: any) => {
+                      const val = String(opt.value ?? opt.label ?? "");
+                      const label = String(opt.label ?? opt.value ?? "");
+                      const checked = (dynAttrSelections[fKey] || dynAttrSelections[fKey.toLowerCase()] || []).includes(val);
+                      return (
+                        <label key={`${fKey}:${val}`} className="flex items-center gap-2.5 cursor-pointer group">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleDynFilter(fKey.toLowerCase(), val)}
+                            className="w-4 h-4 rounded accent-[#E85A00]"
+                          />
+                          <span className="text-sm text-sb-ink-muted/80 group-hover:text-sb-ink">{label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-sb-ink-muted/50">
+                    No {f.label || fKey} options in this category yet.
+                  </p>
+                )}
+              </AccordionSection>
+            );
+          })}
 
       <AccordionSection title="Price Range (₹)">
-        <div className="flex gap-2">
-          <input type="number" placeholder="Min" value={priceMin}
-            onChange={e => { setPriceMin(e.target.value); setPage(1); }}
-            className="w-full bg-sb-surface border border-white/12 rounded-lg px-2.5 py-1.5 text-sm text-sb-ink placeholder:text-sb-ink-muted/30 focus:outline-none focus:border-[#FE5E00] transition-colors" />
-          <input type="number" placeholder="Max" value={priceMax}
-            onChange={e => { setPriceMax(e.target.value); setPage(1); }}
-            className="w-full bg-sb-surface border border-white/12 rounded-lg px-2.5 py-1.5 text-sm text-sb-ink placeholder:text-sb-ink-muted/30 focus:outline-none focus:border-[#FE5E00] transition-colors" />
-        </div>
+        {priceSliderValues ? (
+          <div className="space-y-2">
+            {priceSliderValues.singlePrice && (
+              <p className="text-xs text-sb-ink-muted/70">
+                Catalog range: ₹{priceSliderValues.catalogMin.toLocaleString("en-IN")}
+                {cityId ? "" : " · select city for live pricing"}
+              </p>
+            )}
+            <StackedRangeSlider
+              min={priceSliderValues.min}
+              max={priceSliderValues.max}
+              low={priceSliderValues.low}
+              high={priceSliderValues.high}
+              onChange={applyPriceRange}
+              format={(n) => `₹${n.toLocaleString("en-IN")}`}
+            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="Min"
+                value={priceMin}
+                onChange={(e) => {
+                  setPriceMin(e.target.value.replace(/[^\d]/g, ""));
+                  setPage(1);
+                }}
+                className="w-full bg-gray-50 border border-sb-ink/15 rounded-lg px-2.5 py-2 text-sm text-sb-ink placeholder:text-sb-ink-muted/40 focus:outline-none focus:border-[#E85A00] focus:ring-1 focus:ring-[#E85A00]/25 transition-colors"
+              />
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="Max"
+                value={priceMax}
+                onChange={(e) => {
+                  setPriceMax(e.target.value.replace(/[^\d]/g, ""));
+                  setPage(1);
+                }}
+                className="w-full bg-gray-50 border border-sb-ink/15 rounded-lg px-2.5 py-2 text-sm text-sb-ink placeholder:text-sb-ink-muted/40 focus:outline-none focus:border-[#E85A00] focus:ring-1 focus:ring-[#E85A00]/25 transition-colors"
+              />
+            </div>
+            {(priceMin || priceMax) && (
+              <button
+                type="button"
+                onClick={() => { setPriceMin(""); setPriceMax(""); setPage(1); }}
+                className="text-[10px] text-[#E85A00] font-semibold"
+              >
+                Reset price
+              </button>
+            )}
+          </div>
+        ) : (
+          <p className="text-xs text-sb-ink-muted/50">
+            {cityId ? "No priced products in this category for your city." : "Select a delivery city to filter by price."}
+          </p>
+        )}
       </AccordionSection>
 
-      <AccordionSection title="Minimum Rating" defaultOpen={false}>
-        <div className="flex gap-1.5">
-          {[3, 3.5, 4, 4.5].map(r => (
-            <button
-              key={r}
-              onClick={() => { setMinRating(minRating === r ? 0 : r); setPage(1); }}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${
-                minRating === r
-                  ? "bg-[#C9A227] text-sb-on-orange border-[#C9A227]"
-                  : "border-sb-ink/15 text-sb-ink-muted/70 hover:border-[#C9A227]/50"
-              }`}
-            >
-              <Star className="w-3 h-3 fill-current" /> {r}+
-            </button>
-          ))}
-        </div>
-      </AccordionSection>
+      {isShopAll && weightFilterOptions.length > 0 && (
+        <AccordionSection title="Weight / Pack">
+          <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+            {weightFilterOptions.map((w) => (
+              <label key={w} className="flex items-center gap-2.5 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={selectedWeights.includes(w)}
+                  onChange={() => toggleWeight(w)}
+                  className="w-4 h-4 rounded accent-[#E85A00]"
+                />
+                <span className="text-sm text-sb-ink-muted/80 group-hover:text-sb-ink">{w}</span>
+              </label>
+            ))}
+          </div>
+        </AccordionSection>
+      )}
     </div>
   );
 
   return (
-    <div className="bg-sb-page min-h-screen">
+    <div className="bg-white min-h-screen">
 
-      {/* ── Category Hero Banner ───────────────────────────────────────────── */}
-      <div className="relative overflow-hidden" style={{ minHeight: 200 }}>
-        <div className="absolute inset-0">
-          <img
-            src={catData?.bannerImage || catData?.image || "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=1200&h=300&fit=crop"}
-            alt={catData?.name || ""}
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-sb-ink via-sb-ink/90 to-sb-ink/40" />
-        </div>
-        <div className="relative max-w-7xl mx-auto px-4 py-10">
-          <nav className="flex items-center gap-1.5 text-xs text-white/65 mb-4 flex-wrap">
-            <Link to="/" className="hover:text-[#FE5E00] transition-colors">Home</Link>
-            <ChevronRight className="w-3 h-3 text-white/40 shrink-0" />
-            <Link to="/shop" className="hover:text-[#FE5E00] transition-colors">Shop</Link>
-            {!isShopAll && (
+      {/* ── Simple category header (no banner image) ───────────────────────── */}
+      <div className="sf-category-head">
+        <div className="max-w-7xl mx-auto px-4">
+          <nav className="sf-category-head__crumbs" aria-label="Breadcrumb">
+            <Link to="/">Home</Link>
+            <span className="text-gray-300">/</span>
+            <Link to="/shop">Shop</Link>
+            {!isShopAll && catData?.name && (
               <>
-                <ChevronRight className="w-3 h-3 text-white/40 shrink-0" />
-                <span className="text-white font-medium">{catData?.name}</span>
+                <span className="text-gray-300">/</span>
+                <span className="text-gray-600">{catData.name}</span>
               </>
             )}
           </nav>
-
-          <div className="flex items-end justify-between gap-6">
-            <div>
-              <h1 className="text-3xl md:text-4xl font-black !text-white mb-2 drop-shadow-sm">{catData?.name}</h1>
-              <p className="text-white/85 max-w-xl text-sm leading-relaxed">
-                {catData?.description || catData?.longDescription || "Browse premium construction materials from verified vendors."}
-              </p>
-              <div className="flex items-center gap-3 mt-4 flex-wrap">
-                <span className="text-xs text-white/95 bg-white/10 border border-white/20 px-3 py-1 rounded-full">
-                  {totalCount}+ Products
-                </span>
-                {city && (
-                  <span className="text-xs text-white/95 bg-white/10 border border-white/20 px-3 py-1 rounded-full flex items-center gap-1">
-                    <MapPin className="w-3 h-3 text-[#FE5E00]" /> Delivering in {city}
-                  </span>
-                )}
-              </div>
-            </div>
-            <Link
-              to="/rfq"
-              className="hidden md:flex items-center gap-2 bg-[#FE5E00] hover:bg-[#E05200] text-sb-on-orange px-5 py-3 rounded-xl font-bold text-sm transition-colors shadow-[0_4px_16px_rgba(254,94,0,0.3)] shrink-0"
-            >
-              <FileText className="w-4 h-4" /> Get Bulk Quote
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Trust badges bar ──────────────────────────────────────────────── */}
-      <div className="bg-sb-surface border-y border-sb-ink/10">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-            {TRUST_BADGES.map(({ icon: Icon, label, desc, color, bg }) => (
-              <div key={label} className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border ${bg}`}>
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${bg}`}>
-                  <Icon className={`w-4 h-4 ${color}`} />
-                </div>
-                <div>
-                  <p className={`text-xs font-bold ${color}`}>{label}</p>
-                  <p className="text-xs text-sb-ink-muted/60">{desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+          <h1 className="sf-category-head__title">
+            {categoryPageTitle(categoryTitle, isShopAll)}
+          </h1>
+          <p className="sf-category-head__meta">
+            {displayTotal == null ? (
+              <span className="text-gray-500">Loading products…</span>
+            ) : (
+              <>
+                <span className="font-semibold text-gray-800">{displayTotal}</span> products
+              </>
+            )}
+            {city ? (
+              <>
+                <span className="mx-1.5 text-gray-300">·</span>
+                <MapPin className="w-3 h-3 inline -mt-0.5 text-[#E85A00]" aria-hidden />
+                {" "}Delivering in {city}
+              </>
+            ) : null}
+          </p>
         </div>
       </div>
 
       {/* ── Category quick-nav ─────────────────────────────────────────────── */}
-      <div className="bg-sb-surface border-b border-sb-ink/10 overflow-x-auto scrollbar-none">
-        <div className="max-w-7xl mx-auto px-4 flex gap-1 py-2.5">
+      <div className="sf-category-tabs border-b border-gray-100 overflow-x-auto scrollbar-none">
+        <div className="max-w-7xl mx-auto px-4 flex gap-1 py-2">
           <Link
             to="/shop"
             className={`text-xs px-3.5 py-1.5 rounded-full whitespace-nowrap font-medium transition-all ${
               isShopAll
-                ? "bg-[#FE5E00] text-sb-on-orange"
-                : "text-sb-ink-muted/60 hover:text-sb-ink hover:bg-sb-surface-2 border border-sb-ink/10"
+                ? "bg-[#E85A00] text-white"
+                : "text-sb-ink-muted/60 hover:text-sb-ink hover:bg-white-2 border border-sb-ink/10"
             }`}
           >
             All
@@ -485,8 +852,8 @@ export function CategoryListing() {
               to={`/category/${cat.slug}`}
               className={`text-xs px-3.5 py-1.5 rounded-full whitespace-nowrap font-medium transition-all ${
                 categorySlugMatches(category, cat)
-                  ? "bg-[#FE5E00] text-sb-on-orange"
-                  : "text-sb-ink-muted/60 hover:text-sb-ink hover:bg-sb-surface-2 border border-sb-ink/10"
+                  ? "bg-[#E85A00] text-white"
+                  : "text-sb-ink-muted/60 hover:text-sb-ink hover:bg-white-2 border border-sb-ink/10"
               }`}
             >
               {cat.name}
@@ -496,18 +863,18 @@ export function CategoryListing() {
       </div>
 
       {/* ── Main content: filters + grid ──────────────────────────────────── */}
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="flex gap-6">
+      <div className="max-w-7xl mx-auto px-4 py-5">
+        <div className="flex gap-6 items-start">
 
           {/* Desktop filter sidebar */}
-          <aside className="hidden lg:block w-56 shrink-0">
-            <div className="bg-sb-surface border border-sb-ink/10 rounded-2xl p-4 sticky top-28">
+          <aside className="sf-category-filters hidden lg:block w-56 shrink-0">
+            <div className="sb-card !rounded-lg">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-sm text-sb-ink flex items-center gap-2">
-                  <SlidersHorizontal className="w-4 h-4 text-[#FE5E00]" /> Filters
+                  <SlidersHorizontal className="w-4 h-4 text-[#E85A00]" /> Filters
                 </h3>
                 {activeFilters > 0 && (
-                  <span className="bg-[#FE5E00] text-sb-on-orange text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                  <span className="bg-[#E85A00] text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
                     {activeFilters}
                   </span>
                 )}
@@ -518,15 +885,24 @@ export function CategoryListing() {
 
           <div className="flex-1 min-w-0">
             {/* Sort + count bar */}
-            <div className="flex items-center justify-between mb-4 bg-sb-surface border border-sb-ink/10 rounded-xl px-4 py-2.5">
-              <span className="text-sm text-sb-ink-muted/60">
-                <span className="font-semibold text-sb-ink">{isShopAll ? filteredProducts.length : totalCount}</span> products
-                {activeFilters > 0 && <span className="ml-1.5 text-[#FE5E00] text-xs">· {activeFilters} filter{activeFilters > 1 ? "s" : ""} applied</span>}
+            <div className={`flex items-center justify-between mb-4 bg-white border border-gray-100 rounded-lg px-4 py-2.5 ${isRefreshing ? "opacity-80" : ""}`}>
+              <span className="text-sm text-gray-500 flex items-center gap-2">
+                {isRefreshing && <Loader2 className="w-3.5 h-3.5 animate-spin text-[#E85A00]" aria-hidden />}
+                <span>
+                  {displayTotal == null ? (
+                    <span className="text-gray-500">Loading products…</span>
+                  ) : (
+                    <>
+                      <span className="font-semibold text-gray-900">{displayTotal}</span> products
+                      {activeFilters > 0 && <span className="ml-1.5 text-[#E85A00] text-xs">· {activeFilters} filter{activeFilters > 1 ? "s" : ""} applied</span>}
+                    </>
+                  )}
+                </span>
               </span>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setFilterOpen(!filterOpen)}
-                  className="lg:hidden flex items-center gap-1.5 text-xs border border-sb-ink/15 rounded-lg px-3 py-1.5 text-sb-ink-muted hover:border-[#FE5E00] transition-colors"
+                  className="lg:hidden flex items-center gap-1.5 text-xs border border-sb-ink/15 rounded-lg px-3 py-1.5 text-sb-ink-muted hover:border-[#E85A00] transition-colors"
                 >
                   <SlidersHorizontal className="w-3.5 h-3.5" />
                   Filters {activeFilters > 0 && `(${activeFilters})`}
@@ -535,7 +911,7 @@ export function CategoryListing() {
                   <select
                     value={sortBy}
                     onChange={e => { setSortBy(e.target.value); setPage(1); }}
-                    className="bg-sb-surface-2 border border-white/12 rounded-lg pl-2.5 pr-7 py-1.5 text-xs text-sb-ink focus:outline-none focus:border-[#FE5E00] appearance-none cursor-pointer transition-colors"
+                    className="bg-white-2 border border-white/12 rounded-lg pl-2.5 pr-7 py-1.5 text-xs text-sb-ink focus:outline-none focus:border-[#E85A00] appearance-none cursor-pointer transition-colors"
                   >
                     {SORT_OPTIONS.map(opt => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -548,16 +924,16 @@ export function CategoryListing() {
 
             {/* Mobile filter */}
             {filterOpen && (
-              <div className="lg:hidden bg-sb-surface border border-sb-ink/10 rounded-2xl p-4 mb-4">
+              <div className="lg:hidden bg-white border border-sb-ink/10 rounded-2xl p-4 mb-4">
                 <FilterPanel />
               </div>
             )}
 
             {/* Loading state */}
-            {loading && (
+            {showFullSkeleton && (
               <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
                 {Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="bg-sb-surface border border-sb-ink/10 rounded-2xl overflow-hidden animate-pulse">
+                  <div key={i} className="bg-white border border-sb-ink/10 rounded-2xl overflow-hidden animate-pulse">
                     <div className="aspect-square bg-white/5" />
                     <div className="p-3 space-y-2">
                       <div className="h-3 bg-white/5 rounded w-2/3" />
@@ -570,206 +946,61 @@ export function CategoryListing() {
             )}
 
             {/* Empty state */}
-            {!loading && paginated.length === 0 && (
-              <div className="text-center py-20 bg-sb-surface border border-sb-ink/10 rounded-2xl">
+            {!loading && paginated.length === 0 && products.length === 0 && (
+              <div className="text-center py-20 bg-white border border-sb-ink/10 rounded-2xl">
                 <BarChart3 className="w-12 h-12 text-sb-ink-muted/20 mx-auto mb-4" />
                 <p className="font-semibold text-sb-ink mb-1">No products found</p>
                 <p className="text-sm text-sb-ink-muted/50 mb-4">Try adjusting your filters</p>
-                <button onClick={clearFilters} className="text-sm text-[#FE5E00] hover:text-[#E05200] font-semibold underline transition-colors">
+                <button onClick={clearFilters} className="text-sm text-[#E85A00] hover:text-[#CC4E00] font-semibold underline transition-colors">
                   Clear all filters
                 </button>
               </div>
             )}
 
             {/* Product grid */}
-            {!loading && paginated.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
+            {paginated.length > 0 && (
+              <div className={`sf-listing-grid transition-opacity duration-200 ${isRefreshing ? "opacity-60 pointer-events-none" : ""}`}>
                 {paginated.map((product: any) => {
                   const variations = product.variations || [];
                   const slug = product.slug || product._id || product.id;
                   const selVid = varChoice[slug] || (variations[0]?._id ? String(variations[0]._id) : "");
-                  const unitP = unitPriceForListingProduct(product, selVid || null);
-                  const regP = Number(product.pricing?.regularPrice ?? product.price ?? unitP);
-                  const discount = regP && unitP < regP ? Math.round((1 - unitP / regP) * 100) : 0;
-                  const image = firstImageUrl(product.images);
-                  const brandName = product.brand?.name || product.brand || "";
-                  const selectedVar = variations.find((v: any) => String(v._id) === selVid);
-                  const attrChips = topAttributeChipsForListing(selectedVar || variations[0], categoryFilters, 5);
-                  const showAssuredBadge = !!(product.isStructbayAssured || product.isAssured || product.displayStructbayAssured);
-                  const showDeliveryBadge = !!(product.isStructbayDelivery || product.isExpress || product.displayStructbayDelivery);
                   const vidForCart = selVid || undefined;
                   const cartId = `${slug}::${vidForCart || "base"}`;
                   const cartLine = cart.find((i) => i.id === cartId);
+                  const brandName = product.brand?.name || product.brand || "";
 
                   return (
-                    <div key={slug} className="bg-sb-surface border border-sb-ink/10 rounded-2xl overflow-hidden hover:border-[#FE5E00]/40 hover:shadow-[0_4px_24px_rgba(254,94,0,0.1)] transition-all duration-300 group flex flex-col">
-                      {/* Image */}
-                      <Link to={`/products/${slug}`} className="relative aspect-square overflow-hidden bg-sb-surface-2 shrink-0 block">
-                        {image ? (
-                          <img src={image} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-sb-ink-muted/35">
-                            <Package className="w-14 h-14" aria-hidden />
-                          </div>
-                        )}
-
-                        {/* Badges */}
-                        <div className="absolute top-2 left-2 flex gap-1 flex-col">
-                          {showAssuredBadge && (
-                            <span className="bg-sb-page/90 text-[#C9A227] border border-[#C9A227]/40 text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1 font-bold">
-                              <Shield className="w-2.5 h-2.5" /> Assured
-                            </span>
-                          )}
-                          {showDeliveryBadge && (
-                            <span className="bg-[#FE5E00] text-sb-on-orange text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1 font-bold">
-                              <Zap className="w-2.5 h-2.5" /> Delivery
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Discount badge */}
-                        {discount > 0 && (
-                          <div className="absolute top-2 right-2 bg-[#C9A227] text-sb-on-orange text-[10px] font-black px-2 py-0.5 rounded-full">
-                            -{discount}%
-                          </div>
-                        )}
-
-                        {/* Wishlist & compare hover */}
-                        <div className="absolute bottom-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={e => { e.preventDefault(); isWishlisted(slug) ? removeFromWishlist(slug) : addToWishlist(slug); }}
-                            className={`w-7 h-7 rounded-full flex items-center justify-center border transition-all ${isWishlisted(slug) ? "bg-red-500/15 border-red-500/40 text-red-400" : "bg-sb-page/70 border-sb-ink/18 text-sb-ink-muted hover:text-red-400"}`}
-                          >
-                            <Heart className={`w-3.5 h-3.5 ${isWishlisted(slug) ? "fill-current" : ""}`} />
-                          </button>
-                          <button
-                            onClick={e => { e.preventDefault(); addToCompare(slug); }}
-                            className="w-7 h-7 rounded-full bg-sb-page/70 border border-sb-ink/18 flex items-center justify-center text-sb-ink-muted hover:text-[#FE5E00] transition-colors"
-                          >
-                            <GitCompare className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </Link>
-
-                      {/* Info */}
-                      <div className="p-3 flex flex-col flex-1">
-                        <p className="text-[10px] text-sb-ink-muted/50 font-medium uppercase tracking-wide">{brandName}</p>
-                        <Link to={`/products/${slug}`}>
-                          <h3 className="text-sm font-medium text-sb-ink line-clamp-2 mt-0.5 leading-snug hover:text-[#FE5E00] transition-colors">{product.name}</h3>
-                        </Link>
-
-                        {/* City tag */}
-                        {city && (
-                          <span className="text-[10px] text-sb-ink-muted/50 flex items-center gap-0.5 mt-1">
-                            <MapPin className="w-2.5 h-2.5" /> {city} price
-                          </span>
-                        )}
-
-                        {attrChips.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1.5">
-                            {attrChips.map((c) => (
-                              <span
-                                key={`${c.label}:${c.value}`}
-                                className="text-[10px] leading-tight px-1.5 py-0.5 rounded-md bg-sb-page border border-sb-ink/10 text-sb-ink-muted"
-                              >
-                                <span className="text-sb-ink-muted/55">{c.label}: </span>
-                                <span className="font-semibold text-sb-ink">{c.value}</span>
-                              </span>
-                            ))}
-                          </div>
-                        )}
-
-                        {variations.length > 0 && (
-                          <label className="block mt-2">
-                            <span className="sr-only">Variant</span>
-                            <select
-                              value={selVid}
-                              onChange={e => setVarChoice(v => ({ ...v, [slug]: e.target.value }))}
-                              className="w-full mt-1 text-[11px] bg-sb-surface-2 border border-white/12 rounded-lg px-2 py-1.5 text-sb-ink focus:outline-none focus:border-[#FE5E00]"
-                            >
-                              {variations.map((v: any) => (
-                                <option key={v._id} value={String(v._id)}>{formatVariationLabel(v)}</option>
-                              ))}
-                            </select>
-                          </label>
-                        )}
-
-                        {/* Price (ex-GST at listing — GST at checkout) */}
-                        <div className="flex items-baseline gap-1.5 mt-1.5">
-                          {discount > 0 ? (
-                            <>
-                              <span className="font-black text-[#FE5E00]">₹{Number(unitP).toLocaleString()}</span>
-                              <span className="text-xs text-sb-ink-muted/40 line-through">₹{Number(regP).toLocaleString()}</span>
-                            </>
-                          ) : (
-                            <span className="font-black text-[#FE5E00]">₹{Number(unitP).toLocaleString()}</span>
-                          )}
-                        </div>
-                        <p className="text-[10px] text-sb-ink-muted/40">per {product.unit || "unit"} · excl. GST</p>
-
-                        {/* Express ETA */}
-                        {product.isExpress && (
-                          <p className="text-[10px] text-[#FE5E00] mt-1 flex items-center gap-1">
-                            <Zap className="w-2.5 h-2.5" /> Delivery in 24-48 hrs
-                          </p>
-                        )}
-
-                        {/* Actions: Add → inline − qty + when line is in cart */}
-                        <div className="mt-auto pt-3 flex gap-1.5 items-stretch">
-                          {cartLine ? (
-                            <div className="flex-1 flex items-stretch rounded-xl border-2 border-[#FE5E00]/60 bg-sb-surface-2 overflow-hidden min-h-[2.25rem]">
-                              <button
-                                type="button"
-                                aria-label="Decrease quantity"
-                                onClick={() => updateQty(cartId, cartLine.qty - 1)}
-                                className="w-9 shrink-0 flex items-center justify-center text-[#FE5E00] hover:bg-[#FE5E00]/15 active:bg-[#FE5E00]/25 transition-colors"
-                              >
-                                <Minus className="w-4 h-4 stroke-[2.5]" />
-                              </button>
-                              <span className="flex-1 min-w-0 flex items-center justify-center text-sm font-black text-sb-ink tabular-nums border-x border-[#FE5E00]/25">
-                                {cartLine.qty}
-                              </span>
-                              <button
-                                type="button"
-                                aria-label="Increase quantity"
-                                onClick={() => updateQty(cartId, cartLine.qty + 1)}
-                                className="w-9 shrink-0 flex items-center justify-center text-[#FE5E00] hover:bg-[#FE5E00]/15 active:bg-[#FE5E00]/25 transition-colors"
-                              >
-                                <Plus className="w-4 h-4 stroke-[2.5]" />
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                addToCart({
-                                  id: cartId,
-                                  productSlug: slug,
-                                  variationId: vidForCart,
-                                  variationLabel: selectedVar ? formatVariationLabel(selectedVar) : undefined,
-                                  name: product.name,
-                                  brand: brandName,
-                                  price: unitP,
-                                  qty: 1,
-                                  unit: product.unit || "unit",
-                                  image: image || "",
-                                });
-                              }}
-                              className="flex-1 py-2 rounded-xl bg-[#FE5E00] hover:bg-[#E05200] text-sb-on-orange text-xs font-bold transition-colors flex items-center justify-center gap-1"
-                            >
-                              <ShoppingCart className="w-3 h-3" /> Add
-                            </button>
-                          )}
-                          <Link
-                            to="/rfq"
-                            className="py-2 px-2.5 rounded-xl border border-sb-ink/15 hover:border-[#FE5E00]/50 text-sb-ink-muted hover:text-[#FE5E00] transition-colors flex items-center justify-center shrink-0"
-                            title="Get RFQ"
-                          >
-                            <FileText className="w-3.5 h-3.5" />
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
+                    <ListingProductCard
+                      key={slug}
+                      product={product}
+                      categoryFilters={categoryFilters}
+                      city={city}
+                      selectedVariationId={selVid}
+                      onVariationChange={(vid) => setVarChoice((v) => ({ ...v, [slug]: vid }))}
+                      cartLine={cartLine}
+                      onAdd={({ qty, variationId, variationLabel, unitPrice, pricingSnapshot, image }) => {
+                        const id = `${slug}::${variationId || "base"}`;
+                        addToCart({
+                          id,
+                          productSlug: slug,
+                          variationId,
+                          variationLabel,
+                          name: product.name,
+                          brand: brandName,
+                          price: unitPrice,
+                          qty,
+                          unit: product.unit || "unit",
+                          image,
+                          pricingSnapshot: pricingSnapshot || undefined,
+                          gstPercentage: Number.isFinite(Number(product.gstPercentage))
+                            ? Number(product.gstPercentage)
+                            : 18,
+                        });
+                      }}
+                      onUpdateQty={(delta) => {
+                        if (cartLine) updateQty(cartId, cartLine.qty + delta);
+                      }}
+                    />
                   );
                 })}
               </div>
@@ -781,7 +1012,7 @@ export function CategoryListing() {
                 <button
                   onClick={() => setPage(p => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm border border-white/12 text-sb-ink-muted hover:border-[#FE5E00] hover:text-[#FE5E00] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm border border-white/12 text-sb-ink-muted hover:border-[#E85A00] hover:text-[#E85A00] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   <ChevronLeft className="w-4 h-4" /> Prev
                 </button>
@@ -791,8 +1022,8 @@ export function CategoryListing() {
                     onClick={() => setPage(p)}
                     className={`w-9 h-9 rounded-lg text-sm font-semibold transition-colors ${
                       p === page
-                        ? "bg-[#FE5E00] text-sb-on-orange"
-                        : "border border-white/12 text-sb-ink-muted hover:border-[#FE5E00] hover:text-[#FE5E00]"
+                        ? "bg-[#E85A00] text-white"
+                        : "border border-white/12 text-sb-ink-muted hover:border-[#E85A00] hover:text-[#E85A00]"
                     }`}
                   >
                     {p}
@@ -801,7 +1032,7 @@ export function CategoryListing() {
                 <button
                   onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
-                  className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm border border-white/12 text-sb-ink-muted hover:border-[#FE5E00] hover:text-[#FE5E00] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm border border-white/12 text-sb-ink-muted hover:border-[#E85A00] hover:text-[#E85A00] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   Next <ChevronRight className="w-4 h-4" />
                 </button>
@@ -809,7 +1040,7 @@ export function CategoryListing() {
             )}
 
             {/* ── Dark RFQ CTA ──────────────────────────────────────────── */}
-            <div className="mt-8 bg-[#1A1A1A] rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 border border-white/10">
+            <div className="mt-8 bg-black rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 border border-white/10">
               <div>
                 <p className="font-black text-white text-lg mb-1">Need {catData?.name} in bulk?</p>
                 <p className="text-sm text-white/85">Get competitive quotes from multiple vendors. No minimum order limit.</p>
@@ -817,13 +1048,13 @@ export function CategoryListing() {
               <div className="flex gap-3 shrink-0">
                 <Link
                   to="/rfq"
-                  className="flex items-center gap-2 bg-[#FE5E00] hover:bg-[#E05200] text-sb-on-orange px-5 py-2.5 rounded-xl font-bold text-sm transition-colors shadow-[0_4px_12px_rgba(254,94,0,0.25)]"
+                  className="flex items-center gap-2 bg-[#E85A00] hover:bg-[#CC4E00] text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-colors shadow-[0_4px_12px_rgba(232, 90, 0,0.25)]"
                 >
                   <FileText className="w-4 h-4" /> Get RFQ
                 </Link>
                 <Link
                   to="/bulk"
-                  className="flex items-center gap-2 border border-white/25 hover:border-[#FE5E00] text-white hover:text-[#FE5E00] px-5 py-2.5 rounded-xl font-semibold text-sm transition-all"
+                  className="flex items-center gap-2 border border-white/25 hover:border-[#E85A00] text-white hover:text-[#E85A00] px-5 py-2.5 rounded-xl font-semibold text-sm transition-all"
                 >
                   Bulk Order <ArrowRight className="w-4 h-4" />
                 </Link>

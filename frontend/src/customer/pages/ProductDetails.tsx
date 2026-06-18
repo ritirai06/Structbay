@@ -1,272 +1,358 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useParams, useNavigate } from "react-router";
-import {
-  Shield, Zap, ShoppingCart, ChevronRight, Plus, Minus,
-  Download, ChevronDown, ChevronUp, Truck, RotateCcw, Phone, MapPin, Package,
-} from "lucide-react";
+import { Zap, Plus, Minus, Download, ChevronDown, Package } from "lucide-react";
 import { api } from "../lib/api";
 import { useApp } from "../context/AppContext";
-import { DeliveryChargesNotice } from "@shared/components/DeliveryChargesNotice";
 import {
   firstImageUrl,
   flattenVariationAttributes,
   formatVariationLabel,
   sortSpecsByCategoryFilterOrder,
 } from "../lib/productAttributes";
+import {
+  axesForVariations,
+  initSelectionsForVariation,
+  resolveVariationFromSelections,
+  uniqueValuesForAxis,
+  lowestBulkSlabPrice,
+} from "../lib/variationSelectors";
+import {
+  pricingSnapshotFromProduct,
+  resolveUnitPriceFromSnapshot,
+  listingUnitPrice,
+  variationIdFromRow,
+} from "../lib/wholesalePricing";
+import { displayUnitFromExGst, displayPriceMeta, productGstPct } from "../lib/displayPricing";
+import { productHref } from "../lib/productRoutes";
+
+function PdpAccordion({
+  title,
+  open,
+  onToggle,
+  children,
+}: {
+  title: string;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="sf-pdp-accordion">
+      <button type="button" className="sf-pdp-accordion__head" onClick={onToggle} aria-expanded={open}>
+        <span>{title}</span>
+        <ChevronDown className={`w-4 h-4 shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && <div className="sf-pdp-accordion__body">{children}</div>}
+    </div>
+  );
+}
+
+function relatedCardPricing(p: any) {
+  const vid = p.variations?.[0]?._id ? String(p.variations[0]._id) : null;
+  const snap = pricingSnapshotFromProduct(p, vid);
+  const unitEx = snap ? resolveUnitPriceFromSnapshot(snap, 1) : listingUnitPrice(p, vid);
+  const unit = displayUnitFromExGst(unitEx, p);
+  const mrpEx = snap?.regularPrice ?? unitEx;
+  const mrp = displayUnitFromExGst(mrpEx, p);
+  const discount = mrp > unit ? Math.round((1 - unit / mrp) * 100) : 0;
+  return { unit, mrp, discount };
+}
 
 export function ProductDetails() {
-  const { slug } = useParams<{ slug: string }>();
+  const { slug, id } = useParams<{ slug?: string; id?: string }>();
+  const productSlug = (slug || id || "").trim();
   const navigate = useNavigate();
   const { addToCart, city, cityId } = useApp();
 
-  const [product, setProduct]   = useState<any>(null);
-  const [loading, setLoading]   = useState(true);
-  const [qty, setQty]           = useState(1);
+  const [product, setProduct] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [qty, setQty] = useState(1);
   const [activeImage, setActiveImage] = useState(0);
-  const [activeTab, setActiveTab]     = useState("description");
-  const [openFaq, setOpenFaq]         = useState<number | null>(null);
+  const [openSection, setOpenSection] = useState<string | null>("highlights");
   const [selectedVid, setSelectedVid] = useState<string | null>(null);
+  const [attrSelections, setAttrSelections] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (!slug) return;
+    if (!productSlug) return;
     setLoading(true);
-    api.getProductDetails(slug, cityId || undefined)
+    api
+      .getProductDetails(productSlug, cityId || undefined)
       .then((res: any) => {
-        if (!res.data) { navigate("/shop", { replace: true }); return; }
+        if (!res.data) {
+          navigate("/shop", { replace: true });
+          return;
+        }
         setProduct(res.data);
       })
       .catch(() => navigate("/shop", { replace: true }))
       .finally(() => setLoading(false));
-  }, [slug, cityId, navigate]);
+  }, [productSlug, cityId, navigate]);
 
   useEffect(() => {
     if (!product) return;
     const vars = product.variations || [];
     setSelectedVid(vars.length ? String(vars[0]._id) : null);
-  }, [product]);
+    setActiveImage(0);
+    setOpenSection("highlights");
+  }, [productSlug, product]);
 
-  const { price, mrp, discount } = useMemo(() => {
-    if (!product) return { price: 0, mrp: 0, discount: 0 };
-    const vp = selectedVid && product.variationPricing?.find((r: any) => String(r.variation) === selectedVid);
-    const p = vp ? Number(vp.salePrice ?? vp.regularPrice ?? 0) : Number(product.pricing?.salePrice || product.pricing?.regularPrice || 0);
-    const m = vp ? Number(vp.regularPrice ?? p) : Number(product.pricing?.regularPrice || p);
-    const d = m && p < m ? Math.round((1 - p / m) * 100) : 0;
-    return { price: p, mrp: m, discount: d };
+  const variations: any[] = product?.variations || [];
+  const axes = useMemo(
+    () => axesForVariations(variations, product?.categoryFilters || []),
+    [variations, product?.categoryFilters]
+  );
+
+  const selectedVar = variations.find((v: any) => String(v._id) === selectedVid);
+
+  useEffect(() => {
+    if (!selectedVar || !axes.length) return;
+    setAttrSelections(initSelectionsForVariation(selectedVar, axes));
+  }, [selectedVid, axes.length]);
+
+  useEffect(() => {
+    if (!product) return;
+    const v = variations.find((x: any) => String(x._id) === selectedVid);
+    const moq = Math.max(1, Math.floor(Number(v?.moq) || 1));
+    setQty((q) => (q < moq ? moq : q));
+  }, [selectedVid, product]);
+
+  const pricingSnap = useMemo(() => {
+    if (!product) return null;
+    return pricingSnapshotFromProduct(product, selectedVid);
   }, [product, selectedVid]);
+
+  const effectiveUnit = useMemo(() => {
+    if (pricingSnap) return resolveUnitPriceFromSnapshot(pricingSnap, qty);
+    const fallback = listingUnitPrice(product, selectedVid);
+    return fallback > 0 ? fallback : 0;
+  }, [pricingSnap, qty, product, selectedVid]);
+
+  const mrp = useMemo(() => {
+    if (!product) return 0;
+    if (pricingSnap) return pricingSnap.regularPrice;
+    const vp =
+      selectedVid &&
+      product.variationPricing?.find((r: any) => variationIdFromRow(r) === selectedVid);
+    if (vp?.regularPrice != null) return Number(vp.regularPrice);
+    const v = variations.find((x: any) => String(x._id) === selectedVid);
+    const varMrp = Number(v?.mrp);
+    if (Number.isFinite(varMrp) && varMrp > 0) return varMrp;
+    return Number(product.pricing?.regularPrice ?? effectiveUnit);
+  }, [product, selectedVid, effectiveUnit, pricingSnap, variations]);
+
+  const gstPct = useMemo(() => productGstPct(product), [product?.gstPercentage]);
+
+  const bulkFrom = lowestBulkSlabPrice(pricingSnap);
+  const displayUnit = displayUnitFromExGst(effectiveUnit, product);
+  const displayMrp = displayUnitFromExGst(mrp, product);
+  const displayBulkFrom = bulkFrom != null ? displayUnitFromExGst(bulkFrom, product) : null;
+
+  const discount = mrp > 0 && effectiveUnit < mrp ? Math.round((1 - effectiveUnit / mrp) * 100) : 0;
 
   const specRowsForPanel = useMemo(() => {
     if (!product) return [];
-    const vars: any[] = product.variations || [];
-    const v = vars.find((x: any) => String(x._id) === selectedVid) || vars[0];
+    const v = variations.find((x: any) => String(x._id) === selectedVid) || variations[0];
     const rows = flattenVariationAttributes(v?.attributes);
     return sortSpecsByCategoryFilterOrder(rows, product.categoryFilters);
-  }, [product, selectedVid]);
+  }, [product, selectedVid, variations]);
 
-  const tabDefs = useMemo(() => {
-    if (!product) return [{ key: "description", label: "Description" }];
-    const tabs: { key: string; label: string }[] = [{ key: "description", label: "Description" }];
-    if (specRowsForPanel.length) tabs.push({ key: "specifications", label: "Specifications" });
-    if (product.documents?.length) tabs.push({ key: "documents", label: "Downloads" });
-    if ((product.faqs || []).length) tabs.push({ key: "faq", label: "FAQ" });
-    return tabs;
-  }, [product, specRowsForPanel]);
+  const setAxis = (key: string, value: string) => {
+    const next = { ...attrSelections, [key]: value };
+    const resolved = resolveVariationFromSelections(variations, next);
+    if (resolved?._id) setSelectedVid(String(resolved._id));
+    setAttrSelections(resolved ? initSelectionsForVariation(resolved, axes) : next);
+  };
 
-  useEffect(() => {
-    setActiveTab("description");
-    setOpenFaq(null);
-  }, [slug]);
+  const toggleSection = (key: string) => {
+    setOpenSection((s) => (s === key ? null : key));
+  };
 
-  useEffect(() => {
-    const keys = tabDefs.map((t) => t.key);
-    if (!keys.includes(activeTab)) setActiveTab(keys[0] || "description");
-  }, [tabDefs, activeTab]);
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-16 text-center bg-white min-h-screen">
+        <div
+          className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin mx-auto"
+          style={{ borderColor: "#E85A00", borderTopColor: "transparent" }}
+        />
+      </div>
+    );
+  }
 
-  if (loading) return (
-    <div className="max-w-7xl mx-auto px-4 py-16 text-center bg-sb-cream min-h-screen">
-      <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin mx-auto" style={{ borderColor: "#FE5E00", borderTopColor: "transparent" }} />
-    </div>
-  );
-
-  if (!product) return (
-    <div className="max-w-7xl mx-auto px-4 py-16 text-center bg-sb-cream min-h-screen">
-      <p className="text-[#D4C4A8]/60 text-lg">Product not found.</p>
-      <Link to="/shop" className="text-[#FE5E00] underline mt-2 inline-block">Browse Shop</Link>
-    </div>
-  );
+  if (!product) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-16 text-center bg-white min-h-screen">
+        <p className="text-gray-500 text-lg">Product not found.</p>
+        <Link to="/shop" className="text-[#E85A00] underline mt-2 inline-block">
+          Browse Shop
+        </Link>
+      </div>
+    );
+  }
 
   const images: string[] = (product.images || [])
     .map((i: any) => (typeof i === "string" ? i : i?.url))
     .filter(Boolean);
-  const variations: any[] = product.variations || [];
   const faqs: any[] = product.faqs || [];
   const related: any[] = product.related || [];
   const brandName = product.brand?.name || product.brand || "";
   const categorySlug = product.category?.slug || "";
   const categoryName = product.category?.name || "";
-
-  const selectedVar = variations.find((v: any) => String(v._id) === selectedVid);
-  const gst = product.gstPercentage || 18;
-
-  const showAssuredBadge = !!(product.isStructbayAssured || product.isAssured || product.displayStructbayAssured);
-  const showDeliveryBadge = !!(product.isStructbayDelivery || product.isExpress || product.displayStructbayDelivery);
+  const moq = Math.max(1, Math.floor(Number(selectedVar?.moq) || 1));
+  const showExpress = !!(product.isExpress || product.isStructbayDelivery || product.displayStructbayDelivery);
+  const inStock = selectedVar?.inStock !== false && product.inStock !== false;
 
   const handleAddToCart = () => {
-    const slug = product.slug || product._id;
+    const pslug = product.slug || product._id;
     const vid = selectedVid || undefined;
-    const cartId = `${slug}::${vid || "base"}`;
+    const cartId = `${pslug}::${vid || "base"}`;
     addToCart({
       id: cartId,
-      productSlug: slug,
+      productSlug: pslug,
       variationId: vid,
       variationLabel: selectedVar ? formatVariationLabel(selectedVar) : undefined,
       name: product.name,
       brand: brandName,
-      price,
+      price: effectiveUnit,
       qty,
       unit: product.unit || "unit",
       image: images[0] || firstImageUrl(product.images) || "",
+      pricingSnapshot: pricingSnap,
+      gstPercentage: gstPct,
     });
   };
 
   return (
-    <div className="bg-sb-page min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 py-6">
+    <div className="bg-white min-h-screen pb-24 lg:pb-12">
+      <div className="max-w-7xl mx-auto px-4 py-5">
         {/* Breadcrumbs */}
-        <nav className="flex items-center gap-2 text-sm text-sb-ink-muted mb-6 flex-wrap">
-          <Link to="/" className="hover:text-[#FE5E00] transition-colors">Home</Link>
-          <ChevronRight className="w-3 h-3 shrink-0 opacity-50" />
+        <nav className="sf-pdp-crumbs mb-5" aria-label="Breadcrumb">
+          <Link to="/">Home</Link>
           {categorySlug && (
             <>
-              <Link to={`/category/${categorySlug}`} className="hover:text-[#FE5E00] transition-colors capitalize">{categoryName}</Link>
-              <ChevronRight className="w-3 h-3 shrink-0 opacity-50" />
+              <span>/</span>
+              <Link to={`/category/${categorySlug}`}>{categoryName}</Link>
             </>
           )}
-          <span className="text-sb-ink font-medium line-clamp-1">{product.name}</span>
+          <span>/</span>
+          <span className="text-gray-700 line-clamp-1">{product.name}</span>
         </nav>
 
-        <div className="grid md:grid-cols-2 gap-8 mb-12">
-          {/* Gallery */}
-          <div>
-            <div className="bg-sb-surface-2 border border-sb-ink/10 rounded-2xl aspect-square overflow-hidden mb-3 flex items-center justify-center">
+        <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-start">
+          {/* Sticky gallery */}
+          <div className="sf-pdp-gallery">
+            <div className="sf-pdp-gallery__main relative">
+              {discount > 0 && (
+                <span className="sf-pdp-gallery__discount">{discount}% OFF</span>
+              )}
               {images[activeImage] ? (
-                <img src={images[activeImage]} alt={product.name} className="w-full h-full object-contain" />
+                <img src={images[activeImage]} alt={product.name} className="sf-pdp-gallery__img" />
               ) : (
-                <Package className="w-20 h-20 text-sb-ink-muted/30" aria-hidden />
+                <div className="sf-pdp-gallery__empty">
+                  <Package className="w-16 h-16 text-gray-300" aria-hidden />
+                </div>
               )}
             </div>
             {images.length > 1 && (
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex gap-2 mt-3 flex-wrap">
                 {images.map((img, i) => (
                   <button
                     key={i}
                     type="button"
                     onClick={() => setActiveImage(i)}
-                    className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-colors ${i === activeImage ? "border-[#FE5E00]" : "border-sb-ink/15 hover:border-sb-ink/30"}`}
+                    className={`sf-pdp-gallery__thumb ${i === activeImage ? "sf-pdp-gallery__thumb--active" : ""}`}
                   >
-                    <img src={img} alt="" className="w-full h-full object-cover" />
+                    <img src={img} alt="" />
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Product Info */}
-          <div>
-            <div className="flex flex-wrap gap-2 mb-3">
-              {showAssuredBadge && (
-                <span className="flex items-center gap-1 rounded-full border border-[#C9A227]/35 bg-[#C9A227]/10 px-2.5 py-1 text-xs font-semibold text-[#9A7B0C]">
-                  <Shield className="w-3 h-3" /> StructBay Assured
-                </span>
-              )}
-              {showDeliveryBadge && (
-                <span className="bg-[#FE5E00] text-white text-xs px-2.5 py-1 rounded-full flex items-center gap-1 font-semibold">
-                  <Zap className="w-3 h-3" /> StructBay Delivery
-                </span>
-              )}
-              {product.isTopSelling && (
-                <span className="rounded-full border border-sb-ink/15 bg-sb-surface px-2.5 py-1 text-xs font-semibold text-sb-ink-muted">Top selling</span>
-              )}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-sb-ink-muted mb-2">
-              <span className="font-semibold text-sb-ink">{brandName}</span>
-              {categoryName ? <span>· {categoryName}</span> : null}
-              {selectedVar?.sku ? <span>· Variant SKU: {selectedVar.sku}</span> : null}
-            </div>
-            <h1 className="text-2xl font-bold text-sb-ink mb-1">{product.name}</h1>
-            <p className="text-xs text-sb-ink-muted mb-2">Parent SKU: {product.sku}</p>
-            {selectedVar && (Number(selectedVar.moq) > 1 || selectedVar.leadTimeDays != null) && (
-              <p className="text-xs text-sb-ink-muted mb-3">
-                MOQ: {selectedVar.moq ?? 1}
-                {selectedVar.leadTimeDays != null && Number.isFinite(Number(selectedVar.leadTimeDays))
-                  ? ` · Lead time ~${selectedVar.leadTimeDays} day(s)`
-                  : ""}
+          {/* Scrollable details */}
+          <div className="sf-pdp-details min-w-0">
+            {showExpress && (
+              <p className="sf-pdp-express">
+                <Zap className="w-3.5 h-3.5" aria-hidden />
+                Delivered in 24–48 hrs
+                {city ? ` · ${city}` : ""}
               </p>
             )}
 
-            {/* Pricing */}
-            <div className="bg-sb-surface border border-sb-ink/10 rounded-2xl p-5 mb-5">
-              {price > 0 ? (
-                <>
-                  <div className="flex items-baseline gap-3">
-                    <span className="text-3xl font-black text-[#FE5E00]">₹{price.toLocaleString()}</span>
-                    {discount > 0 && (
-                      <>
-                        <span className="text-lg text-sb-ink-muted line-through">₹{mrp.toLocaleString()}</span>
-                        <span className="rounded-lg bg-sb-orange px-2 py-0.5 text-sm font-bold text-white">{discount}% OFF</span>
-                      </>
-                    )}
-                  </div>
-                  <p className="text-sm text-sb-ink-muted mt-1">
-                    per {product.unit || "unit"}{city ? ` · ` : ""}
-                    {city && <span className="inline-flex items-center gap-1"><MapPin className="w-3 h-3" />{city} price</span>}
-                    <span className="block text-[11px] text-sb-ink-muted/80 mt-1">Prices exclude GST; GST applied at checkout.</span>
-                  </p>
-                  <div className="mt-3">
-                    <DeliveryChargesNotice />
-                  </div>
-                  <div className="flex gap-4 mt-2 text-sm text-sb-ink-muted">
-                    <span>+ GST ({gst}%): ₹{Math.round(price * gst / 100).toLocaleString()}</span>
-                    <span className="font-semibold text-sb-ink">Total: ₹{Math.round(price * (1 + gst / 100)).toLocaleString()}</span>
-                  </div>
-                </>
-              ) : (
-                <p className="text-sb-ink-muted text-sm">{city ? "Select your city for pricing" : "Price on request"}</p>
-              )}
-            </div>
+            <h1 className="sf-pdp-title">{product.name}</h1>
 
-            {/* Wholesale slabs */}
-            {product.pricing?.wholesaleSlabs?.length > 0 && (
-              <div className="mb-5">
-                <h4 className="font-semibold text-sm text-sb-ink mb-2">Wholesale Pricing</h4>
-                <div className="grid grid-cols-2 gap-2">
-                  {product.pricing.wholesaleSlabs.map((slab: any, i: number) => (
-                    <div key={i} className="flex justify-between bg-sb-surface border border-sb-ink/10 rounded-xl px-3 py-2 text-sm">
-                      <span className="text-sb-ink-muted">{slab.minQty}+ {product.unit || "units"}</span>
-                      <span className="font-semibold text-[#FE5E00]">₹{slab.price?.toLocaleString()}</span>
-                    </div>
-                  ))}
+            <p className={`sf-pdp-stock ${inStock ? "sf-pdp-stock--in" : "sf-pdp-stock--out"}`}>
+              <span className="sf-pdp-stock__dot" aria-hidden />
+              {inStock ? "IN STOCK" : "OUT OF STOCK"}
+            </p>
+
+            {effectiveUnit > 0 ? (
+              <div className="sf-pdp-price-block">
+                <div className="sf-pdp-price-row">
+                  {discount > 0 && (
+                    <span className="sf-pdp-price-was">₹{displayMrp.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                  )}
+                  <span className="sf-pdp-price">
+                    ₹{displayUnit.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </span>
+                  {discount > 0 && <span className="sf-pdp-sale-tag">Sale</span>}
                 </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-xs text-gray-500">
+                    {displayPriceMeta(product)} · Shipping at checkout
+                  </span>
+                </div>
+                {bulkFrom != null && bulkFrom < effectiveUnit && (
+                  <p className="sf-pdp-bulk-hint">
+                    Unlock bulk prices from ₹{displayBulkFrom?.toLocaleString("en-IN")}
+                    {product?.priceIncludesGst ? ` incl. ${gstPct}% GST` : " ex-GST"}
+                  </p>
+                )}
               </div>
+            ) : (
+              <p className="text-sm text-gray-500 mb-4">
+                {cityId ? "Pricing not available for this product in your city" : "Select your city for pricing"}
+              </p>
             )}
 
-            {/* Variations */}
-            {variations.length > 0 && (
-              <div className="mb-5">
-                <h4 className="font-semibold text-sm text-sb-ink mb-2">Variants</h4>
-                <div className="flex flex-wrap gap-2">
+            {/* Variant pills by attribute axis */}
+            {axes.length > 0 &&
+              axes.map((axis) => {
+                const options = uniqueValuesForAxis(variations, axis.key, attrSelections);
+                if (!options.length) return null;
+                return (
+                  <div key={axis.key} className="sf-pdp-variant-group">
+                    <p className="sf-pdp-variant-label">{axis.label}</p>
+                    <div className="sf-pdp-pills">
+                      {options.map((opt) => {
+                        const active = attrSelections[axis.key] === opt;
+                        return (
+                          <button
+                            key={opt}
+                            type="button"
+                            className={`sf-pdp-pill ${active ? "sf-pdp-pill--active" : ""}`}
+                            onClick={() => setAxis(axis.key, opt)}
+                          >
+                            {opt}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+
+            {axes.length === 0 && variations.length > 1 && (
+              <div className="sf-pdp-variant-group">
+                <p className="sf-pdp-variant-label">Size</p>
+                <div className="sf-pdp-pills">
                   {variations.map((v: any) => {
                     const active = String(v._id) === selectedVid;
                     return (
                       <button
                         key={v._id}
                         type="button"
+                        className={`sf-pdp-pill ${active ? "sf-pdp-pill--active" : ""}`}
                         onClick={() => setSelectedVid(String(v._id))}
-                        className={`px-3 py-1.5 rounded-lg border text-xs transition-colors ${
-                          active
-                            ? "border-[#FE5E00] text-[#FE5E00] bg-[#FE5E00]/10"
-                            : "border-sb-ink/15 text-sb-ink-muted hover:border-[#FE5E00]/50"
-                        }`}
                       >
                         {formatVariationLabel(v)}
                       </button>
@@ -277,170 +363,159 @@ export function ProductDetails() {
             )}
 
             {/* Quantity */}
-            <div className="flex items-center gap-3 mb-5">
-              <span className="text-sm font-medium text-sb-ink-muted">Quantity:</span>
-              <div className="flex items-center border border-sb-ink/15 rounded-xl overflow-hidden bg-sb-surface">
-                <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))} className="px-3 py-2 hover:bg-sb-surface-2 transition-colors text-sb-ink-muted"><Minus className="w-4 h-4" /></button>
-                <span className="px-4 py-2 font-semibold text-sm border-x border-sb-ink/10 min-w-[3rem] text-center text-sb-ink">{qty}</span>
-                <button type="button" onClick={() => setQty((q) => q + 1)} className="px-3 py-2 hover:bg-sb-surface-2 transition-colors text-sb-ink-muted"><Plus className="w-4 h-4" /></button>
+            <div className="sf-pdp-variant-group">
+              <p className="sf-pdp-variant-label">Quantity</p>
+              <div className="sf-pdp-qty">
+                <button type="button" aria-label="Decrease" onClick={() => setQty((q) => Math.max(moq, q - 1))}>
+                  <Minus className="w-4 h-4" />
+                </button>
+                <span>{qty}</span>
+                <button type="button" aria-label="Increase" onClick={() => setQty((q) => q + 1)}>
+                  <Plus className="w-4 h-4" />
+                </button>
               </div>
-              <span className="text-sm text-sb-ink-muted">{product.unit || "units"}</span>
             </div>
 
-            {/* Actions */}
-            {price > 0 && (
-              <div className="flex gap-3 mb-6">
-                <button
-                  onClick={handleAddToCart}
-                  className="flex-1 flex items-center justify-center gap-2 border-2 border-[#FE5E00] text-[#FE5E00] rounded-2xl py-3 font-semibold transition-colors hover:bg-[#FE5E00]/10"
-                >
-                  <ShoppingCart className="w-5 h-5" /> Add to Cart
-                </button>
-                <button
-                  onClick={() => { handleAddToCart(); navigate("/cart"); }}
-                  className="flex-1 flex items-center justify-center gap-2 bg-[#FE5E00] hover:bg-[#E05200] text-white rounded-2xl py-3 font-semibold transition-colors"
-                >
-                  <Zap className="w-5 h-5" /> Buy Now
-                </button>
-              </div>
+            {effectiveUnit > 0 && inStock && (
+              <button type="button" className="sf-pdp-add-cart" onClick={handleAddToCart}>
+                Add to cart
+              </button>
             )}
 
-            {/* Delivery info */}
-            <div className="bg-sb-surface border border-sb-ink/10 rounded-2xl p-4 space-y-3">
-              <div className="flex items-center gap-3 text-sm">
-                <Truck className="w-4 h-4 shrink-0 text-[#FE5E00]" />
-                <div>
-                  <span className="font-medium text-sb-ink">Delivery</span>
-                  <span className="text-sb-ink-muted"> — {city || "Select city"} for accurate rates & ETA.</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 text-sm">
-                <RotateCcw className="h-4 w-4 shrink-0 text-sb-orange" />
-                <div><span className="font-medium text-sb-ink">7-day Return Policy</span><span className="text-sb-ink-muted"> for defective products</span></div>
-              </div>
-              <div className="flex items-center gap-3 text-sm">
-                <Phone className="w-4 h-4 shrink-0 text-green-600" />
-                <div><span className="font-medium text-sb-ink">Expert Support</span><span className="text-sb-ink-muted"> +91 70905 70505</span></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="mb-12">
-          <div className="flex border-b border-sb-ink/10 mb-6 overflow-x-auto">
-            {tabDefs.map((tab) => (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => setActiveTab(tab.key)}
-                className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ${
-                  activeTab === tab.key
-                    ? "border-[#FE5E00] text-[#FE5E00]"
-                    : "border-transparent text-sb-ink-muted hover:text-sb-ink"
-                }`}
+            {/* Accordions */}
+            <div className="sf-pdp-accordions mt-6">
+              <PdpAccordion
+                title="Product Highlights"
+                open={openSection === "highlights"}
+                onToggle={() => toggleSection("highlights")}
               >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+                {specRowsForPanel.length > 0 ? (
+                  <ul className="sf-pdp-list">
+                    {specRowsForPanel.map((row) => (
+                      <li key={row.key}>
+                        <strong>{row.label}:</strong> {row.value}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    {product.shortDescription || "Premium quality product from verified StructBay vendors."}
+                  </p>
+                )}
+                {brandName && (
+                  <p className="text-sm text-gray-600 mt-2">
+                    <strong>Brand:</strong> {brandName}
+                  </p>
+                )}
+              </PdpAccordion>
 
-          {activeTab === "description" && (
-            <div className="bg-sb-surface border border-sb-ink/10 rounded-2xl p-6">
-              <p className="text-sb-ink-muted leading-relaxed whitespace-pre-line">
-                {product.description || product.shortDescription || "No description available."}
-              </p>
-            </div>
-          )}
+              <PdpAccordion
+                title="Product Description"
+                open={openSection === "description"}
+                onToggle={() => toggleSection("description")}
+              >
+                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
+                  {product.description || product.shortDescription || "No description available."}
+                </p>
+                {product.documents?.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    {product.documents.map((doc: any, i: number) => (
+                      <a
+                        key={i}
+                        href={doc.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-2 text-sm text-[#E85A00] hover:underline"
+                      >
+                        <Download className="w-4 h-4" />
+                        {doc.name}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </PdpAccordion>
 
-          {activeTab === "specifications" && specRowsForPanel.length > 0 && (
-            <div className="bg-sb-surface border border-sb-ink/10 rounded-2xl overflow-hidden">
-              <table className="w-full text-sm">
-                <tbody>
-                  {specRowsForPanel.map((row) => (
-                    <tr key={row.key} className="border-b border-sb-ink/8 last:border-0">
-                      <th className="text-left font-semibold text-sb-ink bg-sb-surface-2/80 w-[40%] px-4 py-3 align-top">{row.label}</th>
-                      <td className="text-sb-ink-muted px-4 py-3 align-top">{row.value}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {activeTab === "documents" && product.documents?.length > 0 && (
-            <div className="bg-sb-surface border border-sb-ink/10 rounded-2xl p-6">
-              <div className="space-y-3">
-                {product.documents.map((doc: any, i: number) => (
-                  <a key={i} href={doc.url} target="_blank" rel="noreferrer"
-                    className="flex items-center justify-between w-full p-4 border border-sb-ink/10 rounded-xl hover:bg-sb-surface-2 hover:border-[#FE5E00]/30 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-[#FE5E00] flex items-center justify-center">
-                        <Download className="w-4 h-4 text-white" />
-                      </div>
-                      <span className="font-medium text-sm text-sb-ink">{doc.name}</span>
+              <PdpAccordion
+                title="FAQs"
+                open={openSection === "faq"}
+                onToggle={() => toggleSection("faq")}
+              >
+                  {faqs.length > 0 ? (
+                    <div className="space-y-3">
+                      {faqs.map((faq: any, i: number) => (
+                        <div key={i}>
+                          <p className="text-sm font-semibold text-gray-900">{faq.question}</p>
+                          <p className="text-sm text-gray-600 mt-1">{faq.answer}</p>
+                        </div>
+                      ))}
                     </div>
-                    <span className="text-xs text-sb-ink-muted">Download</span>
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
+                  ) : (
+                    <p className="text-sm text-gray-600">
+                      Contact us at +91 70905 70505 for product-specific questions.
+                    </p>
+                )}
+              </PdpAccordion>
 
-          {activeTab === "faq" && faqs.length > 0 && (
-            <div className="space-y-2">
-              {faqs.map((faq: any, i: number) => (
-                <div key={i} className="bg-sb-surface border border-sb-ink/10 rounded-2xl overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                    className="flex items-center justify-between w-full px-5 py-4 text-left"
-                  >
-                    <span className="font-medium text-sm text-sb-ink">{faq.question}</span>
-                    {openFaq === i ? <ChevronUp className="w-4 h-4 text-[#FE5E00]" /> : <ChevronDown className="w-4 h-4 text-sb-ink-muted" />}
-                  </button>
-                  {openFaq === i && (
-                    <div className="px-5 pb-4 text-sm text-sb-ink-muted border-t border-sb-ink/10 pt-3">{faq.answer}</div>
-                  )}
-                </div>
-              ))}
+              <PdpAccordion
+                title="Returns & Exchange Policy"
+                open={openSection === "returns"}
+                onToggle={() => toggleSection("returns")}
+              >
+                <ul className="sf-pdp-list">
+                  <li>7-day replacement for defective or wrong products.</li>
+                  <li>Report issues with order number and site photos within 7 days of delivery.</li>
+                  <li>Refunds processed after verification; GST invoice provided on all orders.</li>
+                </ul>
+              </PdpAccordion>
             </div>
-          )}
+          </div>
         </div>
 
-        {/* Related Products */}
+        {/* You may also like */}
         {related.length > 0 && (
-          <div className="mb-24 md:mb-6">
-            <h2 className="text-sb-ink font-bold text-xl mb-4">Related Products</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          <section className="sf-pdp-related mt-14">
+            <h2 className="sf-pdp-related__title">You may also like</h2>
+            <div className="sf-pdp-related__grid">
               {related.slice(0, 4).map((p: any) => {
                 const img = firstImageUrl(p.images);
+                const { unit, mrp: relMrp, discount: relDisc } = relatedCardPricing(p);
+                const pslug = p.slug || p._id;
                 return (
-                  <Link key={p._id} to={`/products/${p.slug}`} className="bg-sb-surface border border-sb-ink/10 rounded-2xl overflow-hidden hover:border-[#FE5E00]/50 hover:shadow-[0_4px_20px_rgba(254,94,0,0.1)] transition-all group">
-                    <div className="aspect-square overflow-hidden bg-sb-surface-2 flex items-center justify-center">
-                      {img ? <img src={img} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" /> : <Package className="w-10 h-10 text-sb-ink-muted/25" />}
+                  <Link key={p._id || pslug} to={productHref(pslug)} className="sf-pdp-related-card group">
+                    <div className="sf-pdp-related-card__image-wrap">
+                      {relDisc > 0 && (
+                        <span className="sf-pdp-related-card__discount">{relDisc}% OFF</span>
+                      )}
+                      {img ? (
+                        <img src={img} alt={p.name} className="sf-pdp-related-card__image" loading="lazy" />
+                      ) : (
+                        <div className="sf-pdp-related-card__image sf-pdp-related-card__image--empty" />
+                      )}
                     </div>
-                    <div className="p-3">
-                      <p className="text-xs text-sb-ink-muted">{p.brand?.name || p.brand}</p>
-                      <p className="text-sm font-medium text-sb-ink line-clamp-2 mt-0.5">{p.name}</p>
+                    <p className="sf-pdp-related-card__title">{p.name}</p>
+                    <div className="sf-pdp-related-card__price-row">
+                      {relDisc > 0 && (
+                        <span className="sf-pdp-related-card__was">
+                          ₹{relMrp.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                        </span>
+                      )}
+                      <span className="sf-pdp-related-card__price">
+                        ₹{unit.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      </span>
                     </div>
                   </Link>
                 );
               })}
             </div>
-          </div>
+          </section>
         )}
       </div>
 
-      {/* Sticky mobile footer */}
-      {price > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-sb-page border-t border-sb-ink/10 px-4 py-3 md:hidden flex gap-3 z-40">
-          <button onClick={handleAddToCart} className="flex-1 flex items-center justify-center gap-2 border-2 border-[#FE5E00] text-[#FE5E00] rounded-2xl py-3 font-semibold text-sm">
-            <ShoppingCart className="w-4 h-4" /> Add to Cart
-          </button>
-          <button onClick={() => { handleAddToCart(); navigate("/cart"); }} className="flex-1 flex items-center justify-center gap-2 bg-[#FE5E00] hover:bg-[#E05200] text-white rounded-2xl py-3 font-semibold text-sm">
-            Buy Now
+      {/* Mobile sticky add */}
+      {effectiveUnit > 0 && inStock && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 lg:hidden z-40">
+          <button type="button" className="sf-pdp-add-cart w-full" onClick={handleAddToCart}>
+            Add to cart · ₹{(effectiveUnit * qty).toLocaleString("en-IN")}
           </button>
         </div>
       )}

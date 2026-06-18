@@ -1,4 +1,9 @@
-import { getCustomerAccessToken } from "./authStorage";
+import {
+  getCustomerAccessToken,
+  getCustomerRefreshToken,
+  refreshCustomerAccessToken,
+  clearCustomerSession,
+} from "./authStorage";
 
 const BASE = '/api/v1/customer';
 
@@ -10,6 +15,9 @@ function formatApiError(json: unknown): string {
   const j = json as { message?: unknown; errors?: unknown };
   let msg = j?.message ?? 'Request failed';
   if (typeof msg !== 'string') msg = String(msg);
+  if (/no token provided/i.test(msg)) {
+    return 'Your session has expired. Please sign in again to continue.';
+  }
   const errs = j?.errors;
   if (Array.isArray(errs) && errs.length) {
     const parts = errs.map((x) => (typeof x === 'string' ? x : JSON.stringify(x)));
@@ -19,36 +27,87 @@ function formatApiError(json: unknown): string {
 }
 
 async function reqV1<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const headers: Record<string, string> = {};
-  const t = token();
-  if (t) headers.Authorization = `Bearer ${t}`;
-  if (body != null && method !== 'GET') headers['Content-Type'] = 'application/json';
+  const buildHeaders = () => {
+    const headers: Record<string, string> = {};
+    const t = token();
+    if (t) headers.Authorization = `Bearer ${t}`;
+    if (body != null && method !== 'GET') headers['Content-Type'] = 'application/json';
+    return headers;
+  };
   const url = `/api/v1${path.startsWith('/') ? path : `/${path}`}`;
-  const res = await fetch(url, {
-    method,
-    headers,
-    body: body != null && method !== 'GET' ? JSON.stringify(body) : undefined,
-  });
+  const doFetch = () =>
+    fetch(url, {
+      method,
+      headers: buildHeaders(),
+      body: body != null && method !== 'GET' ? JSON.stringify(body) : undefined,
+    });
+  let res = await doFetch();
+  if (res.status === 401 && getCustomerRefreshToken()) {
+    const ok = await refreshCustomerAccessToken();
+    if (ok) res = await doFetch();
+  }
   const json = await res.json();
-  if (!res.ok) throw new Error(formatApiError(json));
+  if (!res.ok) {
+    if (res.status === 401) clearCustomerSession();
+    throw new Error(formatApiError(json));
+  }
   return json as T;
 }
 
 async function req<T>(method: string, path: string, body?: unknown, isForm = false): Promise<T> {
-  const headers: Record<string, string> = {};
-  const t = token();
-  if (t) headers['Authorization'] = `Bearer ${t}`;
-  if (!isForm && body) headers['Content-Type'] = 'application/json';
+  const buildHeaders = () => {
+    const headers: Record<string, string> = {};
+    const t = token();
+    if (t) headers.Authorization = `Bearer ${t}`;
+    if (!isForm && body) headers['Content-Type'] = 'application/json';
+    return headers;
+  };
 
-  const res = await fetch(`${BASE}${path}`, {
-    method,
-    headers,
-    body: isForm ? (body as FormData) : body ? JSON.stringify(body) : undefined,
-  });
+  const doFetch = () =>
+    fetch(`${BASE}${path}`, {
+      method,
+      headers: buildHeaders(),
+      body: isForm ? (body as FormData) : body ? JSON.stringify(body) : undefined,
+    });
+
+  let res = await doFetch();
+  if (res.status === 401 && getCustomerRefreshToken()) {
+    const ok = await refreshCustomerAccessToken();
+    if (ok) res = await doFetch();
+  }
 
   const json = await res.json();
-  if (!res.ok) throw new Error(formatApiError(json));
-  return json;
+  if (!res.ok) {
+    if (res.status === 401) clearCustomerSession();
+    throw new Error(formatApiError(json));
+  }
+  return json as T;
+}
+
+const CMS_HOME_TTL_MS = 2 * 60 * 1000;
+let cmsHomeCache: { at: number; data: Record<string, unknown> } | null = null;
+let cmsHomeInflight: Promise<Record<string, unknown>> | null = null;
+
+async function fetchCmsHomepage(): Promise<Record<string, unknown>> {
+  if (cmsHomeCache && Date.now() - cmsHomeCache.at < CMS_HOME_TTL_MS) {
+    return cmsHomeCache.data;
+  }
+  if (cmsHomeInflight) return cmsHomeInflight;
+
+  cmsHomeInflight = (async () => {
+    const res = await fetch("/api/v1/cms/homepage");
+    const json = (await res.json()) as { success?: boolean; message?: string; data?: Record<string, unknown> };
+    if (!res.ok) throw new Error(json.message || "Failed to load storefront settings");
+    const data = json.data || {};
+    cmsHomeCache = { at: Date.now(), data };
+    return data;
+  })();
+
+  try {
+    return await cmsHomeInflight;
+  } finally {
+    cmsHomeInflight = null;
+  }
 }
 
 export const api = {
@@ -56,12 +115,7 @@ export const api = {
   getCities: () => req<any>('GET', '/cities'),
 
   /** Public homepage / storefront CMS (top bar, promo modal, hero copy). */
-  getCmsHomepage: async (): Promise<Record<string, unknown>> => {
-    const res = await fetch("/api/v1/cms/homepage");
-    const json = (await res.json()) as { success?: boolean; message?: string; data?: Record<string, unknown> };
-    if (!res.ok) throw new Error(json.message || "Failed to load storefront settings");
-    return json.data || {};
-  },
+  getCmsHomepage: () => fetchCmsHomepage(),
 
   /** Public PIN check — no auth. Optional `cityId` = header-selected warehouse city (better Bengaluru coverage). */
   validatePincode: async (code: string, cityId?: string | null) => {
@@ -161,7 +215,7 @@ export const api = {
 
   // ─── CMS ────────────────────────────────────────────────────────────────────
   getActiveBanners: () =>
-    fetch('/api/v1/cms/banners?status=ACTIVE&limit=10').then(r => r.json()),
+    fetch('/api/v1/cms/banners?status=ACTIVE&limit=20').then(r => r.json()),
 
   getTestimonials: () =>
     fetch('/api/v1/cms/testimonials?status=ACTIVE&featured=true&limit=6').then(r => r.json()),
@@ -175,6 +229,13 @@ export const api = {
   // ─── Customer Auth / Profile ────────────────────────────────────────────────
   getProfile: () => req<any>('GET', '/profile'),
   updateProfile: (data: Record<string, unknown>) => req<any>('PATCH', '/profile', data),
+
+  // ─── Saved addresses ───────────────────────────────────────────────────────
+  getAddresses: () => req<any>('GET', '/addresses'),
+  createAddress: (data: Record<string, unknown>) => req<any>('POST', '/addresses', data),
+  updateAddress: (id: string, data: Record<string, unknown>) => req<any>('PATCH', `/addresses/${id}`, data),
+  deleteAddress: (id: string) => req<any>('DELETE', `/addresses/${id}`),
+  setDefaultAddress: (id: string) => req<any>('PATCH', `/addresses/${id}/set-default`),
 
   // ─── Cart ───────────────────────────────────────────────────────────────────
   getCart: () => req<any>('GET', '/cart'),
@@ -206,7 +267,44 @@ export const api = {
     reqV1<any>('POST', `/order-chat/${orderId}/messages`, { text }),
   getOrderInvoices: (id: string) => req<any>('GET', `/orders/${id}/invoices`),
 
-  /** Themed HTML order summary (download). */
+  downloadOrderInvoiceFile: async (orderId: string, index: number) => {
+    const headers: Record<string, string> = {};
+    const t = token();
+    if (t) headers.Authorization = `Bearer ${t}`;
+    const res = await fetch(`${BASE}/orders/${encodeURIComponent(orderId)}/invoices/${index}/file`, { headers });
+    if (!res.ok) {
+      let msg = 'Failed to download invoice file';
+      try {
+        const j = await res.json();
+        msg = formatApiError(j);
+      } catch {
+        /* ignore */
+      }
+      throw new Error(msg);
+    }
+    return res.blob();
+  },
+
+  /** PDF order summary with StructBay logo. */
+  downloadOrderInvoicePdf: async (orderId: string) => {
+    const headers: Record<string, string> = {};
+    const t = token();
+    if (t) headers.Authorization = `Bearer ${t}`;
+    const res = await fetch(`${BASE}/orders/${encodeURIComponent(orderId)}/invoice-pdf`, { headers });
+    if (!res.ok) {
+      let msg = 'Failed to download invoice PDF';
+      try {
+        const j = await res.json();
+        msg = formatApiError(j);
+      } catch {
+        /* ignore */
+      }
+      throw new Error(msg);
+    }
+    return res.blob();
+  },
+
+  /** Themed HTML order summary (download fallback). */
   downloadOrderInvoiceSummaryHtml: async (orderId: string) => {
     const headers: Record<string, string> = {};
     const t = token();
@@ -233,4 +331,56 @@ export const api = {
   markNotificationRead: (id: string) => req<any>('PATCH', `/notifications/${id}/read`),
   markAllNotificationsRead: () => req<any>('PATCH', '/notifications/mark-all-read'),
   removeNotification: (id: string) => req<any>('DELETE', `/notifications/${id}`),
+
+  cancelOrder: (id: string, reason?: string) =>
+    req<any>('PATCH', `/orders/${id}/cancel`, reason ? { reason } : {}),
+
+  uploadEnquiryDocument: async (file: File) => {
+    const fd = new FormData();
+    fd.append('document', file);
+    const headers: Record<string, string> = {};
+    const t = token();
+    if (t) headers.Authorization = `Bearer ${t}`;
+    const res = await fetch('/api/v1/upload/enquiry-document', { method: 'POST', headers, body: fd });
+    const json = await res.json();
+    if (!res.ok) {
+      if (res.status === 401) clearCustomerSession();
+      throw new Error(formatApiError(json));
+    }
+    return json as { data?: { url?: string; publicId?: string } };
+  },
+
+  uploadCustomerDocument: async (file: File) => {
+    const fd = new FormData();
+    fd.append('document', file);
+    const headers: Record<string, string> = {};
+    const t = token();
+    if (t) headers.Authorization = `Bearer ${t}`;
+    const res = await fetch('/api/v1/upload/customer/document', { method: 'POST', headers, body: fd });
+    const json = await res.json();
+    if (!res.ok) {
+      if (res.status === 401) clearCustomerSession();
+      throw new Error(formatApiError(json));
+    }
+    return json as { data?: { url?: string; publicId?: string } };
+  },
+
+  createReplacementRequest: (data: {
+    masterOrderId: string;
+    reason: 'WRONG_PRODUCT' | 'DAMAGED_PRODUCT';
+    description: string;
+    vendorOrderId?: string;
+  }) => reqV1<any>('POST', '/replacements', data),
+
+  getMyReplacementRequests: () => reqV1<any>('GET', '/replacements/my'),
+
+  getLandingPage: async (slug: string) => {
+    const res = await fetch(`/api/v1/cms/landing-pages/${encodeURIComponent(slug)}`);
+    const json = await res.json();
+    if (!res.ok) throw new Error(formatApiError(json));
+    return json;
+  },
+
+  submitBulkEnquiry: (data: Record<string, unknown>) =>
+    reqV1<any>('POST', '/bulk-enquiries', data),
 };

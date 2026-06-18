@@ -1,8 +1,7 @@
-const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const VendorActivityLog = require('../models/VendorActivityLog');
 const ApiResponse = require('../utils/apiResponse');
-const { generateAccessToken } = require('../utils/tokenUtils');
+const { issueTokenPair } = require('../services/auth.service');
 
 // @desc    Vendor Login
 // @route   POST /api/v1/vendor/auth/login
@@ -35,7 +34,7 @@ exports.login = async (req, res) => {
   user.lastLoginIP = req.ip;
   await user.save({ validateBeforeSave: false });
 
-  const token = generateAccessToken({ id: user._id, role: user.role });
+  const { accessToken, refreshToken } = await issueTokenPair(user, req);
 
   await VendorActivityLog.create({
     vendor: user._id,
@@ -45,7 +44,12 @@ exports.login = async (req, res) => {
     userAgent: req.get('user-agent'),
   });
 
-  return ApiResponse.success(res, 200, 'Login successful.', { token, vendor: user });
+  return ApiResponse.success(res, 200, 'Login successful.', {
+    token: accessToken,
+    accessToken,
+    refreshToken,
+    vendor: user,
+  });
 };
 
 // @desc    Vendor Logout

@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Edit, Trash2, ToggleLeft, ToggleRight, Loader2, Save, RefreshCw, Search, Award, Image, Upload } from "lucide-react";
 import { BulkImportCsvModal } from "../components/BulkImportCsvModal";
+import { AdminBulkToolbar } from "../components/AdminBulkToolbar";
+import { AdminDeleteConfirmModal } from "../components/AdminDeleteConfirmModal";
+import { useAdminDeleteFlow } from "../hooks/useAdminDeleteFlow";
+import { adminToast } from "../lib/adminToast";
 import { BRAND_BULK_TEMPLATE, parseBrandBulkCsv } from "../lib/adminBulkCsvParsers";
 import { adminFetch as apiFetch, adminUploadImage } from "../../lib/adminApi";
 
@@ -42,6 +46,12 @@ export function BrandManagement() {
   const [uploading, setUploading] = useState<null | "logo" | "banner">(null);
   const [pagination, setPagination] = useState({ total: 0, pages: 1, page: 1 });
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const deleteFlow = useAdminDeleteFlow();
+
+  const deleteOneBrand = async (id: string) => {
+    await apiFetch(`/brands/${id}`, { method: "DELETE" });
+  };
 
   useEffect(() => {
     apiFetch("/categories?limit=200&sortBy=sortOrder&sortOrder=asc")
@@ -55,7 +65,7 @@ export function BrandManagement() {
     if (search) params.set("search", search);
     if (categoryFilter) params.set("category", categoryFilter);
     apiFetch(`/brands?${params}`)
-      .then(d => { setBrands(d.data || []); setPagination(d.pagination || {}); })
+      .then(d => { setBrands(d.data || []); setPagination(d.pagination || {}); setSelected({}); })
       .catch(() => { setBrands([]); setPagination({ total: 0, pages: 1, page: 1 }); })
       .finally(() => setLoading(false));
   }, [search, categoryFilter]);
@@ -116,22 +126,40 @@ export function BrandManagement() {
   };
 
   const toggle = async (id: string) => {
-    await apiFetch(`/brands/${id}/toggle`, { method: "PATCH" }).catch(e => alert(e.message));
-    load();
+    try {
+      await apiFetch(`/brands/${id}/toggle`, { method: "PATCH" });
+      adminToast.success("Brand status updated");
+      load();
+    } catch (e: any) {
+      adminToast.error(e.message || "Could not update status");
+    }
   };
 
-  const remove = async (id: string, name: string) => {
-    if (!confirm(`Delete "${name}"?`)) return;
-    await apiFetch(`/brands/${id}`, { method: "DELETE" }).catch(e => alert(e.message));
-    load();
+  const selectedIds = brands.filter((b) => selected[String(b._id)]).map((b) => String(b._id));
+  const allSelected = brands.length > 0 && selectedIds.length === brands.length;
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelected({});
+      return;
+    }
+    const next: Record<string, boolean> = {};
+    brands.forEach((b) => {
+      next[String(b._id)] = true;
+    });
+    setSelected(next);
+  };
+
+  const remove = (id: string, name: string) => {
+    deleteFlow.requestDelete({ kind: "single", ids: [id], label: name });
   };
 
   return (
-    <div className="p-6 bg-sb-cream min-h-full">
+    <div className="admin-page">
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-sb-ink">Brand Management</h1>
-          <p className="text-sb-ink/55 text-sm mt-1">
+          <h1 className="admin-page-title text-sb-ink">Brand Management</h1>
+          <p className="admin-page-desc">
             {pagination.total || brands.length} brands — each linked to a category (e.g. several brands under Cement). Upload logo & banner for customers.
           </p>
         </div>
@@ -171,6 +199,29 @@ export function BrandManagement() {
         </button>
       </div>
 
+      <AdminBulkToolbar
+        totalCount={brands.length}
+        selectedCount={selectedIds.length}
+        allSelected={allSelected}
+        onToggleAll={toggleAll}
+        onDeleteSelected={() =>
+          deleteFlow.requestDelete({
+            kind: "bulk",
+            ids: selectedIds,
+            label: `${selectedIds.length} brands`,
+          })
+        }
+        onDeleteAll={() =>
+          deleteFlow.requestDelete({
+            kind: "bulk",
+            ids: brands.map((b) => String(b._id)),
+            label: `all ${brands.length} brands on this page`,
+          })
+        }
+        itemLabel="brands"
+        disabled={deleteFlow.busy || loading}
+      />
+
       {loading ? (
         <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-sb-orange" /></div>
       ) : (
@@ -201,12 +252,22 @@ export function BrandManagement() {
               </div>
 
               <div className="p-4">
-                <div className="mb-2">
+                <div className="mb-2 flex items-start gap-2">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-sb-ink/25 accent-sb-orange"
+                    checked={!!selected[String(brand._id)]}
+                    onChange={() =>
+                      setSelected((s) => ({ ...s, [String(brand._id)]: !s[String(brand._id)] }))
+                    }
+                  />
+                  <div className="min-w-0 flex-1">
                   <p className="font-bold text-sb-ink text-sm">{brand.name}</p>
                   <p className="text-xs text-sb-ink/50">/brands/{brand.slug}</p>
                   {brand.category?.name && (
                     <p className="text-[10px] text-sb-orange mt-1 font-medium">Category: {brand.category.name}</p>
                   )}
+                  </div>
                 </div>
                 {brand.description && (
                   <p className="text-xs text-sb-ink/55 line-clamp-2 mb-3">{brand.description}</p>
@@ -331,6 +392,20 @@ export function BrandManagement() {
           </div>
         </Modal>
       )}
+
+      <AdminDeleteConfirmModal
+        open={!!deleteFlow.pending}
+        title={deleteFlow.modalTitle}
+        description={deleteFlow.modalDescription}
+        busy={deleteFlow.busy}
+        onCancel={deleteFlow.cancelDelete}
+        onConfirm={() =>
+          void deleteFlow.executeDelete(deleteOneBrand, () => {
+            setSelected({});
+            load();
+          })
+        }
+      />
     </div>
   );
 }

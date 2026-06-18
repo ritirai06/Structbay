@@ -3,6 +3,8 @@ import { Link } from "react-router";
 import { Search, History, TrendingUp, X, Loader2, Award, LayoutGrid, ArrowRight } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { api } from "../lib/api";
+import { fetchNavCategories } from "../lib/navCategories";
+import { productHref } from "../lib/productRoutes";
 
 interface SearchDropdownProps {
   query: string;
@@ -39,16 +41,14 @@ export function SearchDropdown({ query, onSelect, onClose }: SearchDropdownProps
       return;
     }
     setLoading(true);
-    const catP: Record<string, string> = { status: "ACTIVE", limit: "8" };
     const brandP: Record<string, string> = { status: "ACTIVE", limit: "10" };
     const prodP: Record<string, string> = { limit: "4", isTopSelling: "true" };
     if (cityId) {
-      catP.cityId = cityId;
       brandP.cityId = cityId;
       prodP.cityId = cityId;
     }
     Promise.all([
-      api.getCategories(catP).then((r: any) => r.data || []),
+      fetchNavCategories({ cityId, max: 8 }),
       api.getBrands(brandP).then((r: any) => r.data || []),
       api.getProducts(prodP).then((r: any) => r.data || []),
     ])
@@ -116,7 +116,7 @@ export function SearchDropdown({ query, onSelect, onClose }: SearchDropdownProps
     return (
       <Link
         key={product._id}
-        to={`/product/${slug}`}
+        to={productHref(slug)}
         onClick={onSelect}
         className="flex gap-3 p-2 rounded-xl hover:bg-sb-surface-2 transition-colors group border border-transparent hover:border-sb-ink/8"
       >
@@ -133,8 +133,8 @@ export function SearchDropdown({ query, onSelect, onClose }: SearchDropdownProps
         </div>
         <div className="min-w-0">
           <p className="text-[10px] text-sb-ink-muted/50 uppercase tracking-wide truncate">{brandName}</p>
-          <p className="text-sm font-medium text-sb-ink line-clamp-2 group-hover:text-[#FE5E00] transition-colors">{product.name}</p>
-          <p className="text-xs font-bold text-[#FE5E00] mt-0.5">₹{price.toLocaleString("en-IN")}</p>
+          <p className="text-sm font-medium text-sb-ink line-clamp-2 group-hover:text-[#E85A00] transition-colors">{product.name}</p>
+          <p className="text-xs font-bold text-[#E85A00] mt-0.5">₹{price.toLocaleString("en-IN")}</p>
         </div>
       </Link>
     );
@@ -163,7 +163,7 @@ export function SearchDropdown({ query, onSelect, onClose }: SearchDropdownProps
                         e.stopPropagation();
                         clearRecentSearches();
                       }}
-                      className="text-xs text-[#FE5E00] hover:text-[#E05200] transition-colors"
+                      className="text-xs text-[#E85A00] hover:text-[#CC4E00] transition-colors"
                     >
                       Clear
                     </button>
@@ -176,7 +176,7 @@ export function SearchDropdown({ query, onSelect, onClose }: SearchDropdownProps
                         onClick={onSelect}
                         className="flex items-center gap-2 px-3 py-2 text-sm text-sb-ink hover:bg-sb-surface-2 rounded-lg transition-colors group"
                       >
-                        <Search className="w-3.5 h-3.5 text-sb-ink-muted/30 group-hover:text-[#FE5E00]" />
+                        <Search className="w-3.5 h-3.5 text-sb-ink-muted/30 group-hover:text-[#E85A00]" />
                         {term}
                       </Link>
                     ))}
@@ -185,11 +185,11 @@ export function SearchDropdown({ query, onSelect, onClose }: SearchDropdownProps
               )}
 
               {city && (
-                <p className="text-[10px] text-[#FE5E00]/85 font-medium">Categories &amp; brands available in {city}</p>
+                <p className="text-[10px] text-[#E85A00]/85 font-medium">Categories &amp; brands available in {city}</p>
               )}
               {loading ? (
                 <div className="flex items-center gap-2 text-xs text-sb-ink-muted/50 py-4">
-                  <Loader2 className="w-4 h-4 animate-spin text-[#FE5E00]" /> Loading…
+                  <Loader2 className="w-4 h-4 animate-spin text-[#E85A00]" /> Loading…
                 </div>
               ) : (
                 <>
@@ -210,16 +210,16 @@ export function SearchDropdown({ query, onSelect, onClose }: SearchDropdownProps
                             key={cat._id || cat.slug}
                             to={`/category/${cat.slug}`}
                             onClick={onSelect}
-                            className="flex items-center gap-2.5 p-2 rounded-xl border border-sb-ink/8 bg-sb-surface-2 hover:border-[#FE5E00]/40 hover:bg-[#2A2A2A] transition-colors group"
+                            className="flex items-center gap-2.5 p-2 rounded-xl border border-sb-ink/8 bg-sb-surface-2 hover:border-[#E85A00]/40 hover:bg-black transition-colors group"
                           >
-                            <div className="w-8 h-8 rounded-lg bg-[#2A2A2A] border border-sb-ink/12 overflow-hidden shrink-0 flex items-center justify-center">
+                            <div className="w-8 h-8 rounded-lg bg-black border border-white/12 overflow-hidden shrink-0 flex items-center justify-center">
                               {cat.image?.url ? (
                                 <img src={cat.image.url} alt="" className="w-full h-full object-cover" />
                               ) : (
                                 <LayoutGrid className="w-4 h-4 text-sb-ink-muted/45" aria-hidden />
                               )}
                             </div>
-                            <span className="text-sm font-medium text-sb-ink group-hover:text-[#FE5E00] transition-colors line-clamp-2">
+                            <span className="text-sm font-medium text-sb-ink group-hover:text-[#E85A00] transition-colors line-clamp-2">
                               {cat.name}
                             </span>
                           </Link>
@@ -241,7 +241,7 @@ export function SearchDropdown({ query, onSelect, onClose }: SearchDropdownProps
                             key={b._id || b.slug}
                             to={`/brand/${b.slug}`}
                             onClick={onSelect}
-                            className="text-xs px-2.5 py-1 rounded-full border border-sb-ink/12 bg-sb-surface-2 text-sb-ink-muted hover:border-[#FE5E00]/50 hover:text-[#FE5E00] transition-colors"
+                            className="text-xs px-2.5 py-1 rounded-full border border-sb-ink/12 bg-sb-surface-2 text-sb-ink-muted hover:border-[#E85A00]/50 hover:text-[#E85A00] transition-colors"
                           >
                             {b.name}
                           </Link>
@@ -259,7 +259,7 @@ export function SearchDropdown({ query, onSelect, onClose }: SearchDropdownProps
               </h4>
               {loading ? (
                 <div className="flex items-center gap-2 text-xs text-sb-ink-muted/50 py-4">
-                  <Loader2 className="w-4 h-4 animate-spin text-[#FE5E00]" />
+                  <Loader2 className="w-4 h-4 animate-spin text-[#E85A00]" />
                 </div>
               ) : products.length === 0 ? (
                 <p className="text-xs text-sb-ink-muted/45">No products to show. Pick a city or add catalogue stock.</p>
@@ -278,7 +278,7 @@ export function SearchDropdown({ query, onSelect, onClose }: SearchDropdownProps
             <div className="space-y-5">
               {taLoading ? (
                 <div className="flex items-center gap-2 text-xs text-sb-ink-muted/50 py-6">
-                  <Loader2 className="w-4 h-4 animate-spin text-[#FE5E00]" /> Searching…
+                  <Loader2 className="w-4 h-4 animate-spin text-[#E85A00]" /> Searching…
                 </div>
               ) : (
                 <>
@@ -317,7 +317,7 @@ export function SearchDropdown({ query, onSelect, onClose }: SearchDropdownProps
                             key={b._id || b.slug}
                             to={`/brand/${b.slug}`}
                             onClick={onSelect}
-                            className="text-xs px-2.5 py-1 rounded-full border border-sb-ink/12 bg-sb-surface-2 text-sb-ink-muted hover:border-[#FE5E00]/50 hover:text-[#FE5E00] transition-colors"
+                            className="text-xs px-2.5 py-1 rounded-full border border-sb-ink/12 bg-sb-surface-2 text-sb-ink-muted hover:border-[#E85A00]/50 hover:text-[#E85A00] transition-colors"
                           >
                             {b.name}
                           </Link>
@@ -332,7 +332,7 @@ export function SearchDropdown({ query, onSelect, onClose }: SearchDropdownProps
               <h4 className="text-xs font-bold uppercase tracking-wider text-sb-ink-muted/40 mb-2">Products</h4>
               {taLoading ? (
                 <div className="flex items-center gap-2 text-xs text-sb-ink-muted/50 py-6">
-                  <Loader2 className="w-4 h-4 animate-spin text-[#FE5E00]" />
+                  <Loader2 className="w-4 h-4 animate-spin text-[#E85A00]" />
                 </div>
               ) : taProducts.length === 0 ? (
                 <p className="text-xs text-sb-ink-muted/45">

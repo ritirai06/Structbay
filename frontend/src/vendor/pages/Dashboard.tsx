@@ -39,8 +39,8 @@ export function Dashboard() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black" style={{ color: SB.color }}>Dashboard</h1>
-          <p className="text-sm mt-0.5" style={{ color: SB.muted }}>
+          <h1 className="vendor-page-title" style={{ color: SB.color }}>Dashboard</h1>
+          <p className="text-sm mt-0.5 font-normal" style={{ color: SB.muted }}>
             Welcome back, {user?.companyName ?? user?.name ?? 'Vendor'}!
           </p>
         </div>
@@ -69,7 +69,7 @@ export function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Quick Actions */}
         <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
-          <h2 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: SB.muted }}>Quick Actions</h2>
+          <h2 className="vendor-section-title mb-4" style={{ color: SB.muted }}>Quick Actions</h2>
           <div className="grid grid-cols-2 gap-3">
             {[
               { to: vendorPath('orders'),       icon: Package,  label: 'View Orders',    sub: 'Assigned to you' },
@@ -87,7 +87,7 @@ export function Dashboard() {
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-2.5 transition-transform group-hover:scale-110" style={{ background: 'var(--sb-orange-subtle)' }}>
                   <Icon className="w-5 h-5" style={{ color: 'var(--sb-orange)' }} />
                 </div>
-                <p className="text-sm font-semibold" style={{ color: SB.color }}>{label}</p>
+                <p className="vendor-quick-action-label" style={{ color: SB.color }}>{label}</p>
                 <p className="text-[11px] mt-0.5" style={{ color: SB.faint }}>{sub}</p>
               </Link>
             ))}
@@ -97,7 +97,7 @@ export function Dashboard() {
         {/* Monthly Summary */}
         <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: SB.muted }}>Monthly Summary</h2>
+            <h2 className="vendor-section-title" style={{ color: SB.muted }}>Monthly Summary</h2>
             <TrendingUp className="w-4 h-4" style={{ color: 'var(--sb-orange)' }} />
           </div>
           {loading ? <div className="py-8"><Spinner /></div> : (
@@ -109,7 +109,7 @@ export function Dashboard() {
                 <div key={label}>
                   <div className="flex justify-between text-xs mb-1.5">
                     <span style={{ color: SB.muted }}>{label}</span>
-                    <span className="font-bold" style={{ color: SB.color }}>{fmt(val)}</span>
+                    <span className="font-semibold" style={{ color: SB.color }}>{fmt(val)}</span>
                   </div>
                   <div className="h-1.5 rounded-full" style={{ background: SB.border }}>
                     <div className="h-full rounded-full" style={{ width: `${(val / max) * 100}%`, background: 'var(--sb-orange)' }} />
@@ -118,14 +118,14 @@ export function Dashboard() {
               ))}
               <div className="mt-4 pt-4 grid grid-cols-2 gap-3 text-center" style={{ borderTop: `1px solid ${SB.border}` }}>
                 <div className="rounded-xl p-3" style={{ background: SB.bg }}>
-                  <p className="text-xl font-black" style={{ color: SB.color }}>
+                  <p className="vendor-metric" style={{ color: SB.color }}>
                     ₹{monthly.totalAmount ? (monthly.totalAmount / 100000).toFixed(1) + 'L' : '0'}
                   </p>
-                  <p className="text-[11px] mt-0.5" style={{ color: SB.faint }}>This Month</p>
+                  <p className="text-[11px] mt-0.5 font-normal" style={{ color: SB.faint }}>This Month</p>
                 </div>
                 <div className="rounded-xl p-3" style={{ background: SB.bg }}>
-                  <p className="text-xl font-black" style={{ color: '#22C55E' }}>{monthly.completedOrders ?? 0}</p>
-                  <p className="text-[11px] mt-0.5" style={{ color: SB.faint }}>Completed</p>
+                  <p className="vendor-metric" style={{ color: '#22C55E' }}>{monthly.completedOrders ?? 0}</p>
+                  <p className="text-[11px] mt-0.5 font-normal" style={{ color: SB.faint }}>Completed</p>
                 </div>
               </div>
             </div>
@@ -135,7 +135,7 @@ export function Dashboard() {
         {/* Recent Activities */}
         <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: SB.muted }}>Recent Activity</h2>
+            <h2 className="vendor-section-title" style={{ color: SB.muted }}>Recent Activity</h2>
             <Activity className="w-4 h-4" style={{ color: 'var(--sb-orange)' }} />
           </div>
           {loading ? <div className="py-8"><Spinner /></div> : (
@@ -162,7 +162,7 @@ export function Dashboard() {
         <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${SB.border}` }}>
           <div className="flex items-center gap-2">
             <Package className="w-4 h-4" style={{ color: 'var(--sb-orange)' }} />
-            <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: SB.muted }}>Recent Assigned Orders</h2>
+            <h2 className="vendor-section-title" style={{ color: SB.muted }}>Recent Assigned Orders</h2>
           </div>
           <Link to={vendorPath('orders')} className="flex items-center gap-1 text-xs font-semibold" style={{ color: 'var(--sb-orange)' }}>
             View All <ArrowRight className="w-3 h-3" />
@@ -183,7 +183,7 @@ export function Dashboard() {
               <tbody>
                 {recentOrders.map((o: any) => (
                   <tr key={o._id} className="transition-colors hover:bg-white/[0.02]" style={{ borderBottom: '1px solid rgba(55,65,81,0.3)' }}>
-                    <td className="py-3.5 px-4 font-bold" style={{ color: 'var(--sb-orange)' }}>{o.orderNumber}</td>
+                    <td className="py-3 px-4 font-semibold" style={{ color: 'var(--sb-orange)' }}>{o.orderNumber}</td>
                     <td className="py-3.5 px-4 max-w-[160px]">
                       <p className="truncate font-medium" style={{ color: SB.color }}>
                         {o.assignedProducts?.[0]?.productName ?? '—'}
@@ -206,7 +206,7 @@ export function Dashboard() {
                     </td>
                     <td className="py-3.5 px-4"><StatusBadge status={o.status as any} /></td>
                     <td className="py-3.5 px-4">
-                      <Link to={vendorPath('orders', String(o._id))} className="inline-flex items-center gap-1 text-xs font-bold" style={{ color: 'var(--sb-orange)' }}>
+                      <Link to={vendorPath('orders', String(o._id))} className="inline-flex items-center gap-1 text-xs font-semibold" style={{ color: 'var(--sb-orange)' }}>
                         View
                         <ArrowRight className="w-3 h-3" aria-hidden />
                       </Link>

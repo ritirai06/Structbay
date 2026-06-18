@@ -95,11 +95,11 @@ export function FinanceLeadsManagement() {
   const approved = sm.APPROVED || 0;
 
   return (
-    <div className="p-6 bg-sb-cream min-h-full">
+    <div className="admin-page">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-sb-ink">Finance Leads</h1>
-          <p className="text-sb-ink/55 text-sm mt-1">
+          <h1 className="admin-page-title text-sb-ink">Finance Leads</h1>
+          <p className="admin-page-desc">
             Builder finance applications from <span className="text-sb-orange">POST /finance/applications</span> and
             this admin console.
           </p>
@@ -141,7 +141,7 @@ export function FinanceLeadsManagement() {
             key={label}
             className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl p-4 text-center"
           >
-            <div className="text-2xl font-black text-sb-ink">{loading ? "—" : val}</div>
+            <div className="admin-page-title text-sb-ink">{loading ? "—" : val}</div>
             <div className="text-xs text-sb-ink/50 mt-1">{label}</div>
           </div>
         ))}

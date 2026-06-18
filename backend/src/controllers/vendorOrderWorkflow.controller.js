@@ -16,6 +16,7 @@ const {
 const { notifyAllAdmins } = require('../services/staffNotification.service');
 const { notifyVendor } = require('../services/vendorNotification.service');
 const { logAction } = require('../services/auditLog.service');
+const { syncMasterOrderStatusFromVendorOrders } = require('../services/masterOrderStatusSync.service');
 
 function wfNotifyVendor(vo, type, title, message) {
   return notifyVendor({
@@ -148,6 +149,11 @@ exports.readyForDispatch = asyncHandler(async (req, res) => {
   await vo.save();
   await appendAudit(vo._id, 'READY_FOR_DISPATCH', remarks, req.user._id, 'User');
 
+  await syncMasterOrderStatusFromVendorOrders(vo.masterOrder, {
+    changedBy: req.user._id,
+    note: `Sub-order ${vo.orderNumber} ready for dispatch.`,
+  });
+
   notifyAllAdmins({
     type: 'READY_FOR_DISPATCH',
     title: 'Vendor ready for dispatch',
@@ -181,6 +187,9 @@ exports.markDispatched = asyncHandler(async (req, res) => {
   const vo = await VendorOrder.findOne({ _id: req.params.id, ...match });
   if (!vo) throw new AppError('Order not found or not assigned to you.', 404);
   if (!isWorkflowVendorOrder(vo)) throw new AppError('Workflow not available for this order.', 400);
+  if (vo.deliveryType === 'structbay_delivery') {
+    throw new AppError('StructBay handles pickup and delivery for this order (Type B). You do not need to mark dispatch.', 400);
+  }
   if (vo.status !== 'SB_INVOICE_SENT') {
     throw new AppError('Dispatch is only allowed after StructBay has approved dispatch and sent invoice & e-way bill.', 400);
   }
@@ -206,6 +215,11 @@ exports.markDispatched = asyncHandler(async (req, res) => {
   pushEmbeddedHistory(vo, 'DISPATCHED', req.user._id, 'User', 'Vendor marked order dispatched.');
   await vo.save();
   await appendAudit(vo._id, 'DISPATCHED', 'Dispatched with LR / transporter details', req.user._id, 'User');
+
+  await syncMasterOrderStatusFromVendorOrders(vo.masterOrder, {
+    changedBy: req.user._id,
+    note: `Sub-order ${vo.orderNumber} dispatched (Type A).`,
+  });
 
   let dispatch = await VendorDispatch.findOne({ vendorOrder: vo._id, vendor: req.user._id });
   const proofDoc = {
@@ -277,6 +291,9 @@ exports.markDelivered = asyncHandler(async (req, res) => {
   const vo = await VendorOrder.findOne({ _id: req.params.id, ...match });
   if (!vo) throw new AppError('Order not found or not assigned to you.', 404);
   if (!isWorkflowVendorOrder(vo)) throw new AppError('Workflow not available for this order.', 400);
+  if (vo.deliveryType === 'structbay_delivery') {
+    throw new AppError('StructBay confirms delivery for Type B orders. Upload POD is not required from vendor.', 400);
+  }
   if (vo.status !== 'DISPATCHED') {
     throw new AppError('Proof of delivery can only be submitted after dispatch.', 400);
   }
@@ -294,6 +311,11 @@ exports.markDelivered = asyncHandler(async (req, res) => {
   pushEmbeddedHistory(vo, 'DELIVERED', req.user._id, 'User', 'Vendor uploaded POD and marked delivered.');
   await vo.save();
   await appendAudit(vo._id, 'DELIVERED', 'POD submitted', req.user._id, 'User');
+
+  await syncMasterOrderStatusFromVendorOrders(vo.masterOrder, {
+    changedBy: req.user._id,
+    note: `Sub-order ${vo.orderNumber} delivered (Type A POD).`,
+  });
 
   const dispatch = await VendorDispatch.findOne({ vendorOrder: vo._id, vendor: req.user._id });
   if (dispatch) {

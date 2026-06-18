@@ -162,8 +162,12 @@ export async function adminFetch<T = unknown>(
 
   if (!res.ok) {
     let msg = data.message || `HTTP ${res.status}`;
-    if (res.status === 401 && /session expired|refresh your token/i.test(msg)) {
-      msg = "Your session has expired. Please sign in again.";
+    if (res.status === 401) {
+      if (/no token provided/i.test(msg)) {
+        msg = "Please log in as admin to continue.";
+      } else if (/session expired|refresh your token/i.test(msg)) {
+        msg = "Your session has expired. Please sign in again.";
+      }
     }
     const detail = formatApiValidationErrors(data.errors);
     if (detail) msg = `${msg}\n\n${detail}`;
@@ -225,10 +229,32 @@ export async function adminUploadImage(
   uploadPath: string,
   file: File
 ): Promise<{ url: string; publicId: string }> {
-  const fd = new FormData();
-  fd.append("image", file);
+  if (!getAdminToken()) {
+    throw new Error("Please log in as admin to upload files.");
+  }
+
   const rel = uploadPath.startsWith("/") ? uploadPath : `/${uploadPath}`;
-  const env = await adminFetch<{ url: string; publicId: string }>(rel, { method: "POST", body: fd });
+
+  const doUpload = async () => {
+    const fd = new FormData();
+    fd.append("image", file);
+    return adminFetch<{ url: string; publicId: string }>(rel, { method: "POST", body: fd });
+  };
+
+  let env: ApiEnvelope<{ url: string; publicId: string }>;
+  try {
+    env = await doUpload();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "";
+    if (/expired|log in|token/i.test(msg) && getAdminRefreshToken()) {
+      const ok = await refreshAdminAccessToken();
+      if (ok) env = await doUpload();
+      else throw err;
+    } else {
+      throw err;
+    }
+  }
+
   const d = env.data as { url?: string; publicId?: string } | undefined;
   if (!d?.url) throw new Error(env.message || "Upload failed");
   return { url: d.url, publicId: d.publicId || "" };

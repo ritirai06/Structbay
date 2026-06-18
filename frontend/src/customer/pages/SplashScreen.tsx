@@ -6,14 +6,14 @@ export function SplashScreen() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const timer = setTimeout(() => navigate("/"), 2800);
+    const timer = setTimeout(() => navigate("/"), 1200);
     return () => clearTimeout(timer);
   }, [navigate]);
 
   return (
     <div
       style={{ backgroundColor: "var(--sb-black)" }}
-      className="fixed inset-0 flex flex-col items-center justify-center overflow-hidden"
+      className="sb-storefront fixed inset-0 flex flex-col items-center justify-center overflow-hidden"
     >
       {/* Background construction pattern */}
       <div className="absolute inset-0 opacity-5">

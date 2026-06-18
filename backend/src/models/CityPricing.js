@@ -32,6 +32,11 @@ const cityPricingSchema = new mongoose.Schema(
 
 cityPricingSchema.index({ product: 1, city: 1 }, { unique: false });
 cityPricingSchema.index({ product: 1, variation: 1, city: 1 }, { unique: true, sparse: true });
-cityPricingSchema.pre(/^find/, function (next) { this.where({ isDeleted: false }); next(); });
+cityPricingSchema.pre(/^find/, function (next) { this.where({ isDeleted: { $ne: true } }); next(); });
+const excludeSoftDeleted = function (next) {
+  this.where({ isDeleted: { $ne: true } });
+  next();
+};
+cityPricingSchema.pre('countDocuments', excludeSoftDeleted);
 
 module.exports = mongoose.model('CityPricing', cityPricingSchema);

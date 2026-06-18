@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const { protect } = require('../middleware/auth.middleware');
+const { protect, optionalAuth } = require('../middleware/auth.middleware');
 const { requireRole } = require('../middleware/role.middleware');
 const ctrl = require('../controllers/concreteRFQ.controller');
 
@@ -11,7 +11,7 @@ router.get('/stats',   ...adminOnly, ctrl.getStats);
 router.post('/bulk-delete', ...adminOnly, ctrl.bulkRemove);
 router.get('/',        ...adminOnly, ctrl.getAll);
 router.get('/:id',     ...adminOnly, ctrl.getById);
-router.post('/',       ...customerOnly, ctrl.create);
+router.post('/',       optionalAuth, ctrl.create);
 router.patch('/:id',   ...adminOnly, ctrl.update);
 router.delete('/:id', ...adminOnly, ctrl.remove);
 

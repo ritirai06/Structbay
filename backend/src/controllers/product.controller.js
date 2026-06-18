@@ -50,7 +50,7 @@ const getAll = asyncHandler(async (req, res) => {
 
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(100, parseInt(limit));
-  const [products, total] = await Promise.all([
+  const [products, total, activeTotal] = await Promise.all([
     Product.find(filter)
       .populate('category', 'name slug')
       .populate('brand', 'name slug logo')
@@ -58,9 +58,10 @@ const getAll = asyncHandler(async (req, res) => {
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum),
     Product.countDocuments(filter),
+    Product.countDocuments({ ...filter, status: 'ACTIVE' }),
   ]);
   return ApiResponse.success(res, 200, 'Products retrieved.', products, {
-    total, page: pageNum, limit: limitNum, pages: Math.ceil(total / limitNum),
+    total, active: activeTotal, page: pageNum, limit: limitNum, pages: Math.ceil(total / limitNum),
   });
 });
 
@@ -85,7 +86,7 @@ const getBySlug = asyncHandler(async (req, res) => {
 const create = asyncHandler(async (req, res) => {
   const {
     name, sku, category, brand, shortDescription, description,
-    gstPercentage, status, isFeatured, isTopSelling, isAssured, isExpress,
+    gstPercentage, priceIncludesGst, status, isFeatured, isTopSelling, isAssured, isExpress,
     isStructbayAssured, isStructbayDelivery, assuredVerifiedAt, assuredVerifiedBy,
     structbayDeliverySupported, structbayDeliveryZones, structbayDeliveryLeadTimeDays,
     displayOrder, seo, faqs, videos, documents,
@@ -95,7 +96,7 @@ const create = asyncHandler(async (req, res) => {
 
   const product = await Product.create({
     name, sku, category, brand, shortDescription, description,
-    gstPercentage, status, isFeatured, isTopSelling, isAssured, isExpress,
+    gstPercentage, priceIncludesGst, status, isFeatured, isTopSelling, isAssured, isExpress,
     isStructbayAssured, isStructbayDelivery, assuredVerifiedAt, assuredVerifiedBy,
     structbayDeliverySupported, structbayDeliveryZones, structbayDeliveryLeadTimeDays,
     displayOrder, seo, faqs, videos, documents,
@@ -115,7 +116,7 @@ const update = asyncHandler(async (req, res) => {
 
   const allowed = [
     'name', 'sku', 'category', 'brand', 'shortDescription', 'description',
-    'gstPercentage', 'status', 'isFeatured', 'isTopSelling', 'isAssured', 'isExpress',
+    'gstPercentage', 'priceIncludesGst', 'status', 'isFeatured', 'isTopSelling', 'isAssured', 'isExpress',
     'isStructbayAssured', 'isStructbayDelivery', 'assuredVerifiedAt', 'assuredVerifiedBy',
     'structbayDeliverySupported', 'structbayDeliveryZones', 'structbayDeliveryLeadTimeDays',
     'displayOrder', 'seo', 'faqs', 'videos', 'documents',
@@ -237,6 +238,7 @@ const bulkImport = asyncHandler(async (req, res) => {
 
       const gstRaw = r.gstPercentage ?? r.gst ?? 18;
       const gst = [0, 5, 12, 18, 28].includes(Number(gstRaw)) ? Number(gstRaw) : 18;
+      const inclGst = boolField(r.priceIncludesGst ?? r.price_includes_gst ?? r.gstIncluded, false);
       const statusRaw = String(r.status || 'DRAFT').toUpperCase();
       const status = ['DRAFT', 'ACTIVE', 'ARCHIVED'].includes(statusRaw) ? statusRaw : 'DRAFT';
 
@@ -250,6 +252,7 @@ const bulkImport = asyncHandler(async (req, res) => {
         shortDescription: r.shortDescription != null ? String(r.shortDescription).trim() : null,
         description: r.description != null ? String(r.description).trim() : null,
         gstPercentage: gst,
+        priceIncludesGst: inclGst,
         status,
         isFeatured: boolField(r.isFeatured, false),
         isTopSelling: boolField(r.isTopSelling, false),
@@ -389,6 +392,7 @@ const getBulkImportTemplate = asyncHandler(async (req, res) => {
       ...baseProductCols,
       ...dynCols,
       { key: 'gstPercentage', label: 'GST %', group: 'product', required: false },
+      { key: 'priceIncludesGst', label: 'Price incl. GST (true|false)', group: 'product', required: false },
       { key: 'status', label: 'Status (DRAFT|ACTIVE|ARCHIVED)', group: 'product', required: false },
       { key: 'isAssured', label: 'Legacy Assured', group: 'badges', required: false },
       { key: 'isExpress', label: 'Legacy Express', group: 'badges', required: false },

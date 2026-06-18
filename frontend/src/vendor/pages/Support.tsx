@@ -66,7 +66,7 @@ export function Support() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black" style={{ color: SB.color }}>Support Center</h1>
+          <h1 className="vendor-page-title" style={{ color: SB.color }}>Support Center</h1>
           <p className="text-sm mt-0.5" style={{ color: SB.muted }}>Get help with your vendor account and operations.</p>
         </div>
         <button
@@ -88,7 +88,7 @@ export function Support() {
 
       {showTicket && (
         <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
-          <h2 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: SB.muted }}>New Support Ticket</h2>
+          <h2 className="vendor-section-title mb-4" style={{ color: SB.muted }}>New Support Ticket</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="md:col-span-2">
@@ -137,7 +137,7 @@ export function Support() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Contact Info — from CMS */}
         <div className="rounded-2xl p-5 space-y-4" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
-          <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: SB.muted }}>Contact StructBay</h2>
+          <h2 className="vendor-section-title" style={{ color: SB.muted }}>Contact StructBay</h2>
           {phone && (
             <div className="flex items-start gap-3 p-3 rounded-xl" style={{ background: SB.bg, border: `1px solid ${SB.border}` }}>
               <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--sb-orange-subtle)' }}>
@@ -180,7 +180,7 @@ export function Support() {
         <div className="lg:col-span-2 space-y-3">
           <div className="flex items-center gap-2">
             <HelpCircle className="w-4 h-4" style={{ color: SB.orange }} />
-            <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: SB.muted }}>Frequently Asked Questions</h2>
+            <h2 className="vendor-section-title" style={{ color: SB.muted }}>Frequently Asked Questions</h2>
           </div>
           {faqs.length === 0 ? (
             <p className="text-sm" style={{ color: SB.faint }}>FAQs are managed by admin in the CMS.</p>

@@ -50,7 +50,7 @@ export function DeliveryWorkflowGuide() {
           <p className="leading-relaxed pt-3">
             Each vendor sub-order is either <strong className="text-sb-ink">Type A — Vendor delivery</strong> (vendor ships) or{" "}
             <strong className="text-sb-ink">Type B — StructBay delivery</strong> (StructBay books Porter/Delhivery and updates vendor + customer).
-            Use the order detail modal to edit <strong className="text-sb-ink">delivery details</strong> shown to the customer and StructBay logistics fields for Type B.
+            Use the <strong className="text-sb-ink">order detail page</strong> (open any order from the list) to edit <strong className="text-sb-ink">delivery details</strong> shown to the customer and StructBay logistics fields for Type B — all steps on one scrollable page.
           </p>
           <div className="grid md:grid-cols-2 gap-3">
             <FlowTable title="Type A — Vendor delivery" rows={VENDOR_DELIVERY_FLOW} />

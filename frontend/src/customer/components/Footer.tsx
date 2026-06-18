@@ -1,27 +1,21 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
-import { Phone, Mail, MapPin, Facebook, Twitter, Instagram, Linkedin, Youtube, Send, Check } from "lucide-react";
+import { Phone, Mail, MapPin, Check, CheckCircle } from "lucide-react";
 import { useFooterCMS } from "@shared/hooks/useFooterCMS";
 import logoImg from "/shared/assets/logos/Structbay-Logo-F-1.png";
 import { useApp } from "../context/AppContext";
-import { api } from "../lib/api";
-
-const SOCIAL_ICONS = [Facebook, Twitter, Instagram, Linkedin, Youtube];
-const SOCIAL_KEYS = ["facebook", "twitter", "instagram", "linkedin", "youtube"] as const;
+import { fetchNavCategories } from "../lib/navCategories";
 
 export function Footer() {
   const { data: cms } = useFooterCMS();
-  const { cityId, city } = useApp();
+  const { cityId } = useApp();
   const [categories, setCategories] = useState<any[]>([]);
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
 
   useEffect(() => {
-    const params: Record<string, string> = { status: "ACTIVE", limit: "8" };
-    if (cityId) params.cityId = cityId;
-    api
-      .getCategories(params)
-      .then((d: any) => setCategories(d.data || []))
+    fetchNavCategories({ cityId, max: 8 })
+      .then(setCategories)
       .catch(() => setCategories([]));
   }, [cityId]);
 
@@ -43,121 +37,82 @@ export function Footer() {
   };
 
   return (
-    <footer className="mt-16 border-t border-sb-border-dark bg-sb-ink text-sb-cream">
-      <div className="h-0.5 w-full bg-sb-orange" />
-
-      <div className="max-w-7xl mx-auto px-4 py-14">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
-
+    <footer className="sf-footer mt-0">
+      <div className="relative max-w-6xl mx-auto px-4 py-14">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           {/* Brand */}
-          <div className="lg:col-span-2">
-            <div className="mb-5">
-              <img src={logoImg} alt="StructBay" className="h-16 w-auto object-contain" />
-            </div>
-            <p className="text-[#D4C4A8]/70 text-sm leading-relaxed mb-5 max-w-xs">
-              {cms.companyDescription}
-            </p>
-            <div className="flex gap-2.5 mb-6">
-              {SOCIAL_ICONS.map((Icon, i) => {
-                const href = cms.socialLinks[SOCIAL_KEYS[i]] || "#";
-                return (
-                  <a
-                    key={i}
-                    href={href}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-sb-border-dark bg-sb-ink text-[var(--sb-chrome-fg-muted)] transition-all hover:border-sb-orange hover:bg-sb-orange hover:text-white"
-                  >
-                    <Icon className="w-4 h-4" />
-                  </a>
-                );
-              })}
-            </div>
-            <div className="space-y-2.5 text-sm text-[#D4C4A8]/70">
-              {cms.phone  && <div className="flex items-center gap-2.5"><Phone  className="w-4 h-4 text-[#FE5E00]" /><span>{cms.phone}</span></div>}
-              {cms.email  && <div className="flex items-center gap-2.5"><Mail   className="w-4 h-4 text-[#FE5E00]" /><span>{cms.email}</span></div>}
-              {cms.address && <div className="flex items-center gap-2.5"><MapPin className="w-4 h-4 text-[#FE5E00]" /><span>{cms.address}</span></div>}
-            </div>
+          <div>
+            <img src={logoImg} alt="StructBay" className="h-14 w-auto object-contain mb-4" />
+            <p className="text-sm text-white/75 leading-relaxed">{cms.companyDescription}</p>
           </div>
 
-          {/* Quick Links — admin-managed */}
+          {/* Quick Links */}
           <div>
-            <h4 className="font-semibold mb-4 text-[#F4E9D8] text-sm uppercase tracking-wider">Quick Links</h4>
-            <ul className="space-y-2.5 text-sm text-[#D4C4A8]/70">
-              {cms.quickLinks.map(link => (
+            <h4>Quick Links</h4>
+            <ul className="space-y-2">
+              {cms.quickLinks.map((link) => (
                 <li key={link._id}>
-                  <Link to={link.href} className="hover:text-[#FE5E00] transition-colors">{link.label}</Link>
+                  <Link to={link.href} className="sf-footer-link">
+                    <CheckCircle className="w-4 h-4 shrink-0 text-white/70" />
+                    {link.label}
+                  </Link>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Categories — same city-scoped catalogue as storefront (pricing ∩ stock) */}
+          {/* Let's Connect */}
           <div>
-            <h4 className="font-semibold mb-4 text-[#F4E9D8] text-sm uppercase tracking-wider">Categories</h4>
-            {city && (
-              <p className="text-[10px] text-[#FE5E00]/80 mb-2 leading-relaxed">
-                With stock in {city}
+            <h4>Let&apos;s Connect</h4>
+            {cms.address && (
+              <p className="sf-footer-link">
+                <MapPin className="w-4 h-4 shrink-0 text-sb-orange" />
+                {cms.address}
               </p>
             )}
-            <ul className="space-y-2.5 text-sm text-[#D4C4A8]/70">
-              {categories.map(cat => (
-                <li key={cat.slug}>
-                  <Link to={`/category/${cat.slug}`} className="hover:text-[#FE5E00] transition-colors">{cat.name}</Link>
-                </li>
-              ))}
-            </ul>
+            {cms.phone && (
+              <p className="sf-footer-link">
+                <Phone className="w-4 h-4 shrink-0 text-sb-orange" />
+                {cms.phone}
+              </p>
+            )}
+            {cms.email && (
+              <p className="sf-footer-link">
+                <Mail className="w-4 h-4 shrink-0 text-sb-orange" />
+                {cms.email}
+              </p>
+            )}
           </div>
 
-          {/* Support + Newsletter */}
+          {/* Newsletter */}
           <div>
-            <h4 className="font-semibold mb-4 text-[#F4E9D8] text-sm uppercase tracking-wider">Support</h4>
-            <ul className="space-y-2.5 text-sm text-[#D4C4A8]/70 mb-6">
-              {[["RFQ", "/rfq"], ["Bulk Enquiry", "/bulk-enquiry"], ["Login", "/login"], ["Register", "/register"]].map(([label, href]) => (
-                <li key={label}>
-                  <Link to={href} className="hover:text-[#FE5E00] transition-colors">{label}</Link>
-                </li>
-              ))}
-            </ul>
-
-            <div>
-              <h4 className="font-semibold mb-2 text-[#F4E9D8] text-sm uppercase tracking-wider">Newsletter</h4>
-              <p className="text-xs text-[#D4C4A8]/60 mb-3">{cms.newsletterText}</p>
-              {subscribed ? (
-                <p className="text-xs text-[#FE5E00] font-semibold flex items-center gap-1.5">
-                  <Check className="w-3.5 h-3.5 shrink-0" strokeWidth={2.5} aria-hidden />
-                  Thanks for subscribing!
-                </p>
-              ) : (
-                <form onSubmit={handleSubscribe} className="flex gap-2">
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="Your email"
-                    required
-                    className="flex-1 bg-[#171717] border border-white/15 rounded-lg px-3 py-2 text-xs text-[#F4E9D8] placeholder:text-[#D4C4A8]/40 focus:outline-none focus:border-[#FE5E00] transition-colors min-w-0"
-                  />
-                  <button type="submit" className="p-2 rounded-lg bg-[#FE5E00] hover:bg-[#E05200] text-white transition-colors shrink-0">
-                    <Send className="w-3.5 h-3.5" />
-                  </button>
-                </form>
-              )}
-            </div>
+            <h4>Subscribe for exciting offers &amp; newsletters</h4>
+            {subscribed ? (
+              <p className="text-sm text-sb-orange font-semibold flex items-center gap-1.5">
+                <Check className="w-4 h-4" /> Thanks for subscribing!
+              </p>
+            ) : (
+              <form onSubmit={handleSubscribe} className="space-y-3">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email Address *"
+                  required
+                  className="w-full px-3 py-2.5 text-sm text-gray-900 bg-white border-0 min-h-0"
+                />
+                <button type="submit" className="w-full bg-white text-gray-900 font-bold text-sm py-2.5 hover:bg-gray-100 transition-colors">
+                  Subscribe!
+                </button>
+              </form>
+            )}
+            <p className="text-xs text-white/50 mt-3">{cms.newsletterText}</p>
           </div>
         </div>
 
-        <hr className="border-white/8 my-10" />
+        <hr className="border-white/10 my-10" />
 
-        <p className="text-xs text-[#D4C4A8]/55 max-w-4xl mb-8 leading-relaxed">
-          <strong className="text-[#F4E9D8]/90">Orders &amp; support:</strong> You may cancel before the order reaches &quot;Out for Delivery&quot;; after dispatch, cancellation is not available online — please call support.
-          Replacements apply for wrong or damaged deliveries only and are coordinated by StructBay; other cases are handled case-by-case with our team.
-          Online checkout uses Zoho Payments for the full order value only (no partial payments). Payment status: Pending, Paid, or Failed.
-        </p>
-
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-[#D4C4A8]/40">
-          <p>{cms.copyrightText}</p>
-        </div>
+        <p className="text-center text-xs text-white/45">{cms.copyrightText}</p>
       </div>
     </footer>
   );

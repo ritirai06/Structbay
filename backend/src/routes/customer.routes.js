@@ -23,6 +23,7 @@ const CategoryFilter   = require('../models/CategoryFilter');
 const Order         = require('../models/Order');
 const marketplaceCity = require('../services/marketplaceCity.service');
 const catalogBrowse = require('../services/catalogBrowse.service');
+const { enrichListingProducts } = require('../services/listingEnrich.service');
 const {
   pinMatchesKarnatakaState,
   pinMatchesTelanganaState,
@@ -49,7 +50,7 @@ router.patch(
   '/profile',
   ...custAuth,
   asyncHandler(async (req, res) => {
-    const allowed = ['name', 'phone', 'companyName', 'gstNumber', 'profileImage'];
+    const allowed = ['name', 'phone', 'companyName', 'gstNumber', 'billingAddress', 'profileImage'];
     const updates = {};
     allowed.forEach((f) => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });
     const user = await User.findByIdAndUpdate(req.user._id, updates, { new: true, runValidators: true });
@@ -84,7 +85,9 @@ router.get   ('/orders/:id',                    ...custAuth, orderCtrl.getMyOrde
 router.get   ('/orders/:id/tracking',           ...custAuth, orderCtrl.getTracking);
 router.get   ('/orders/:id/documents',          ...custAuth, orderCtrl.getDocuments);
 router.get   ('/orders/:id/invoices',           ...custAuth, orderCtrl.getOrderInvoices);
+router.get   ('/orders/:id/invoices/:index/file', ...custAuth, orderCtrl.downloadInvoiceFile);
 router.get   ('/orders/:id/invoice-summary',    ...custAuth, orderCtrl.downloadInvoiceSummary);
+router.get   ('/orders/:id/invoice-pdf',        ...custAuth, orderCtrl.downloadInvoicePdf);
 router.patch ('/orders/:id/cancel',             ...custAuth, orderCtrl.cancelOrder);
 router.patch ('/orders/:id/confirm-delivery',   ...custAuth, orderCtrl.confirmDelivery);
 
@@ -283,14 +286,18 @@ router.get(
   optionalAuth,
   asyncHandler(async (req, res) => {
     const {
-      search, category, brand, cityId, assured, express,
+      search, category, brand, brands: brandsQuery, cityId, assured, express,
       structbayAssured, structbayDelivery,
       isTopSelling, isFeatured, page = 1, limit = 24, sort = 'default',
     } = req.query;
 
     const filter = { status: 'ACTIVE' };
     if (category) filter.category = category;
-    if (brand) filter.brand = brand;
+    const brandTokens = catalogBrowse
+      .parseCommaList(brandsQuery || brand)
+      .filter((t) => mongoose.Types.ObjectId.isValid(String(t)));
+    if (brandTokens.length === 1) filter.brand = brandTokens[0];
+    else if (brandTokens.length > 1) filter.brand = { $in: brandTokens };
     catalogBrowse.applyLegacyAndStructBayBadgeFilters(filter, {
       assured, express, structbayAssured, structbayDelivery,
     });
@@ -329,19 +336,7 @@ router.get(
       Product.countDocuments(filter),
     ]);
 
-    // Attach pricing if cityId provided
-    let enriched = products;
-    if (cityId) {
-      enriched = await Promise.all(
-        products.map(async (p) => {
-          const pricing = await CityPricing.findOne({ product: p._id, city: cityId, variation: null, isDeleted: false })
-            .select('regularPrice salePrice wholesaleSlabs').lean();
-          const variations = await ProductVariation.find({ product: p._id, status: 'ACTIVE' })
-            .select('attributes sku images sortOrder mrp moq leadTimeDays vendorSku weightKg').lean();
-          return { ...p.toJSON(), pricing, variations };
-        })
-      );
-    }
+    const enriched = await enrichListingProducts(products, cityOid);
 
     return ApiResponse.success(res, 200, 'Products retrieved.', enriched, {
       total, page: pageNum, limit: limitNum, pages: Math.ceil(total / limitNum),
@@ -377,9 +372,9 @@ router.get(
     let pricing = null;
     let variationPricing = [];
 
-    if (cityId) {
-      pricing = await CityPricing.findOne({ product: product._id, city: cityId, variation: null, isDeleted: false }).lean();
-      variationPricing = await CityPricing.find({ product: product._id, city: cityId, variation: { $ne: null }, isDeleted: false })
+    if (cityOid) {
+      pricing = await CityPricing.findOne({ product: product._id, city: cityOid, variation: null, isDeleted: false }).lean();
+      variationPricing = await CityPricing.find({ product: product._id, city: cityOid, variation: { $ne: null }, isDeleted: false })
         .select('variation regularPrice salePrice wholesaleSlabs').lean();
     }
 
@@ -415,7 +410,7 @@ router.get(
   '/category/:slug',
   optionalAuth,
   asyncHandler(async (req, res) => {
-    const { cityId, page = 1, limit = 24, sort = 'default', brand, brands, search } = req.query;
+    const { cityId, page = 1, limit = 24, sort = 'default', brand, brands: brandsQuery, search } = req.query;
 
     const category = await Category.findOne({ slug: req.params.slug, status: 'ACTIVE' });
     if (!category) return ApiResponse.notFound(res, 'Category not found.');
@@ -425,7 +420,7 @@ router.get(
 
     const filter = { status: 'ACTIVE', category: category._id };
     const brandTokens = catalogBrowse
-      .parseCommaList(brands || brand)
+      .parseCommaList(brandsQuery || brand)
       .filter((t) => mongoose.Types.ObjectId.isValid(String(t)));
     if (brandTokens.length === 1) filter.brand = brandTokens[0];
     else if (brandTokens.length > 1) filter.brand = { $in: brandTokens };
@@ -467,47 +462,67 @@ router.get(
 
     const pageNum  = Math.max(1, parseInt(page));
     const limitNum = Math.min(100, parseInt(limit));
-    const sortMap  = { 'default': { displayOrder: 1 }, 'newest': { createdAt: -1 } };
+    const sortKey = String(sort || 'default');
+    const sortMap  = {
+      default: { displayOrder: 1, createdAt: -1 },
+      newest: { createdAt: -1 },
+      'price-asc': { displayOrder: 1 },
+      'price-desc': { displayOrder: 1 },
+      priceLow: { displayOrder: 1 },
+      priceHigh: { displayOrder: 1 },
+    };
+    const usePriceSort = sortKey === 'price-asc' || sortKey === 'price-desc' || sortKey === 'priceLow' || sortKey === 'priceHigh';
+    const priceAsc = sortKey === 'price-asc' || sortKey === 'priceLow';
 
-    const [products, total, brands] = await Promise.all([
+    const [products, total, brands, facetProductIds] = await Promise.all([
       Product.find(filter)
         .populate('brand', 'name slug logo')
-        .sort(sortMap[sort] || sortMap['default'])
-        .skip((pageNum - 1) * limitNum)
-        .limit(limitNum),
+        .sort(sortMap[sortKey] || sortMap.default)
+        .skip(usePriceSort ? 0 : (pageNum - 1) * limitNum)
+        .limit(usePriceSort ? 5000 : limitNum),
       Product.countDocuments(filter),
       Brand.find({ _id: { $in: await Product.distinct('brand', brandDistinctFilter) } })
         .select('name slug logo').sort({ sortOrder: 1 }),
+      (async () => {
+        const baseIds = await Product.find({ status: 'ACTIVE', category: category._id }).distinct('_id');
+        if (cityOid) {
+          const sellable = await marketplaceCity.getSellableProductIdsForCity(cityOid);
+          const sellSet = new Set(sellable.map((id) => String(id)));
+          return baseIds.filter((id) => sellSet.has(String(id)));
+        }
+        return baseIds;
+      })(),
     ]);
 
-    let enriched = products;
-    if (cityId) {
-      enriched = await Promise.all(
-        products.map(async (p) => {
-          const pricing = await CityPricing.findOne({ product: p._id, city: cityId, variation: null, isDeleted: false })
-            .select('regularPrice salePrice wholesaleSlabs').lean();
-          const variations = await ProductVariation.find({ product: p._id, status: 'ACTIVE' })
-            .select('attributes sku images sortOrder mrp moq leadTimeDays vendorSku weightKg').lean();
-          const variationPricing = await CityPricing.find({ product: p._id, city: cityId, variation: { $ne: null }, isDeleted: false })
-            .select('variation regularPrice salePrice wholesaleSlabs').lean();
-          return { ...p.toJSON(), pricing, variations, variationPricing };
-        })
-      );
-    } else {
-      enriched = await Promise.all(
-        products.map(async (p) => {
-          const variations = await ProductVariation.find({ product: p._id, status: 'ACTIVE' })
-            .select('attributes sku images sortOrder mrp moq leadTimeDays vendorSku weightKg').lean();
-          return { ...p.toJSON(), pricing: null, variations, variationPricing: [] };
-        })
-      );
+    const enriched = await enrichListingProducts(products, cityOid);
+
+    if (usePriceSort) {
+      enriched = enriched.sort((a, b) => {
+        const pa = catalogBrowse.listingUnitPriceFromEnriched(a);
+        const pb = catalogBrowse.listingUnitPriceFromEnriched(b);
+        return priceAsc ? pa - pb : pb - pa;
+      });
+      enriched = enriched.slice((pageNum - 1) * limitNum, pageNum * limitNum);
     }
+
+    const facets = await catalogBrowse.distinctAttributeValuesForProducts(
+      facetProductIds,
+      filterDefinitions
+    );
+    const enrichedFilters = catalogBrowse.appendDiscoveredAttributeFilters(
+      catalogBrowse.enrichCategoryFilterDefinitions(filterDefinitions, facets),
+      facets
+    );
+    const priceBounds = cityOid
+      ? await catalogBrowse.computeCategoryPriceBounds(cityOid, facetProductIds)
+      : null;
 
     return ApiResponse.success(res, 200, 'Category page retrieved.', {
       category,
       products: enriched,
       brands,
-      filters: filterDefinitions,
+      filters: enrichedFilters,
+      priceBounds,
       pagination: { total, page: pageNum, limit: limitNum, pages: Math.ceil(total / limitNum) },
     });
   })
@@ -562,20 +577,7 @@ router.get(
       }).select('name slug'),
     ]);
 
-    let enriched = products;
-    if (cityId) {
-      enriched = await Promise.all(
-        products.map(async (p) => {
-          const pricing = await CityPricing.findOne({ product: p._id, city: cityId, variation: null, isDeleted: false })
-            .select('regularPrice salePrice wholesaleSlabs').lean();
-          const variations = await ProductVariation.find({ product: p._id, status: 'ACTIVE' })
-            .select('attributes sku images sortOrder mrp moq leadTimeDays vendorSku weightKg').lean();
-          const variationPricing = await CityPricing.find({ product: p._id, city: cityId, variation: { $ne: null }, isDeleted: false })
-            .select('variation regularPrice salePrice wholesaleSlabs').lean();
-          return { ...p.toJSON(), pricing, variations, variationPricing };
-        })
-      );
-    }
+    const enriched = await enrichListingProducts(products, cityOidBrand);
 
     return ApiResponse.success(res, 200, 'Brand page retrieved.', {
       brand, products: enriched, categories,
@@ -699,21 +701,7 @@ router.get(
       brandsOut = brands.filter((b) => allowedBrands.has(String(b._id)));
     }
 
-    // Attach pricing + variations (listing pages — PRD variation before PDP)
-    let enrichedProducts = products;
-    if (cityId) {
-      enrichedProducts = await Promise.all(
-        products.map(async (p) => {
-          const pricing = await CityPricing.findOne({ product: p._id, city: cityId, variation: null, isDeleted: false })
-            .select('regularPrice salePrice wholesaleSlabs').lean();
-          const variations = await ProductVariation.find({ product: p._id, status: 'ACTIVE' })
-            .select('attributes sku images sortOrder mrp moq leadTimeDays vendorSku weightKg').lean();
-          const variationPricing = await CityPricing.find({ product: p._id, city: cityId, variation: { $ne: null }, isDeleted: false })
-            .select('variation regularPrice salePrice wholesaleSlabs').lean();
-          return { ...p.toJSON(), pricing, variations, variationPricing };
-        })
-      );
-    }
+    const enrichedProducts = await enrichListingProducts(products, cityOidSearch);
 
     return ApiResponse.success(res, 200, 'Search results.', { products: enrichedProducts, categories: categoriesOut, brands: brandsOut });
   })

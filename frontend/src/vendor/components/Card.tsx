@@ -11,17 +11,13 @@ interface CardProps {
 export function Card({ title, children, className = "", action, icon }: CardProps) {
   return (
     <div
-      className={`rounded-2xl overflow-hidden ${className}`}
-      style={{ background: "var(--sb-card)", border: "1px solid var(--sb-border)" }}
+      className={`rounded-card overflow-hidden border border-sb-border bg-sb-card ${className}`}
     >
       {title && (
-        <div
-          className="px-5 py-3.5 flex items-center justify-between"
-          style={{ borderBottom: "1px solid var(--sb-border)" }}
-        >
+        <div className="flex items-center justify-between border-b border-sb-border px-5 py-3.5">
           <div className="flex items-center gap-2">
-            {icon && <span style={{ color: "var(--sb-orange)" }}>{icon}</span>}
-            <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--sb-text-muted)" }}>
+            {icon && <span className="text-sb-orange">{icon}</span>}
+            <h2 className="vendor-section-title">
               {title}
             </h2>
           </div>

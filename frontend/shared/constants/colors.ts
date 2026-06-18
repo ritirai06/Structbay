@@ -3,17 +3,23 @@ import { palette, semantic } from "@shared/design-system/design-tokens";
 /**
  * @deprecated Prefer `palette` / `semantic` from `@shared/design-system`.
  */
-export const colors = palette;
+export const colors = {
+  orange: palette.primary,
+  orangeHover: palette.primaryHover,
+  cream: palette.background,
+  creamSecondary: palette.surface,
+  black: palette.dark,
+};
 
-export type ColorToken = keyof typeof palette;
+export type ColorToken = keyof typeof colors;
 
 export { palette, semantic };
 
-/** Recharts-safe color array — brand palette only */
+/** Recharts-safe color array */
 export const chartColors = [
-  palette.orange,
-  palette.black,
-  palette.creamSecondary,
-  palette.orangeHover,
-  palette.cream,
+  palette.primary,
+  palette.dark,
+  palette.surface,
+  palette.primaryHover,
+  palette.card,
 ] as const;

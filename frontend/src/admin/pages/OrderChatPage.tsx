@@ -41,7 +41,7 @@ export function OrderChatPage() {
   };
 
   return (
-    <div className="p-6 bg-sb-cream min-h-full max-w-3xl mx-auto">
+    <div className="admin-page max-w-3xl mx-auto">
       <Link to={adminPath("orders")} className="inline-flex items-center gap-2 text-sm text-sb-ink/55 hover:text-sb-ink mb-4">
         <ArrowLeft className="w-4 h-4" /> Back to orders
       </Link>

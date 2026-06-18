@@ -4,6 +4,11 @@ const VendorActivityLog = require('../models/VendorActivityLog');
 const ApiResponse = require('../utils/apiResponse');
 const { vendorOrderMatch } = require('../utils/vendorOrderAccess');
 const { isWorkflowVendorOrder } = require('../services/vendorOrderWorkflow.service');
+const { enrichDispatchRow, dispatchFromVendorOrder, rowFromVendorOrder } = require('../utils/vendorDispatchEnrich');
+
+const VENDOR_ORDER_DISPATCH_SELECT =
+  'orderNumber status shipmentDispatch deliveryAddress customerInfo deliveryType workflowVersion actualDispatchDate';
+const DISPATCHED_ORDER_STATUSES = ['DISPATCHED', 'DELIVERED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'];
 
 // @desc    Create Dispatch Entry
 // @route   POST /api/v1/vendor/dispatch
@@ -205,33 +210,60 @@ exports.uploadDeliveryProof = async (req, res) => {
 // @route   GET /api/v1/vendor/dispatch/order/:orderId
 exports.getDispatchByOrder = async (req, res) => {
   const match = await vendorOrderMatch(req.user);
-  const vo = await VendorOrder.findOne({ _id: req.params.orderId, ...match });
+  const vo = await VendorOrder.findOne({ _id: req.params.orderId, ...match }).select(
+    VENDOR_ORDER_DISPATCH_SELECT
+  );
   if (!vo) return ApiResponse.notFound(res, 'Order not found or not assigned to you.');
 
   const dispatch = await VendorDispatch.findOne({
-    vendorOrder: vo._id, vendor: req.user._id,
-  }).populate('vendorOrder', 'orderNumber customer deliveryAddress');
+    vendorOrder: vo._id,
+    vendor: req.user._id,
+  }).populate('vendorOrder', VENDOR_ORDER_DISPATCH_SELECT);
 
-  if (!dispatch) return ApiResponse.notFound(res, 'No dispatch found for this order.');
-  return ApiResponse.success(res, 200, 'Dispatch retrieved.', dispatch);
+  if (dispatch) {
+    return ApiResponse.success(res, 200, 'Dispatch retrieved.', enrichDispatchRow(dispatch));
+  }
+
+  if (DISPATCHED_ORDER_STATUSES.includes(String(vo.status || '').toUpperCase())) {
+    const row = rowFromVendorOrder(vo);
+    if (row) return ApiResponse.success(res, 200, 'Dispatch retrieved.', row);
+  }
+
+  const synthetic = dispatchFromVendorOrder(vo);
+  if (synthetic) {
+    return ApiResponse.success(res, 200, 'Dispatch retrieved.', synthetic);
+  }
+
+  return ApiResponse.notFound(res, 'No dispatch found for this order.');
 };
 
 // @desc    Get All Dispatches
 // @route   GET /api/v1/vendor/dispatch
 exports.getAllDispatches = async (req, res) => {
   const { status, page = 1, limit = 20 } = req.query;
-  const query = { vendor: req.user._id };
-  if (status) query.status = status;
+  const match = await vendorOrderMatch(req.user);
+  const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
+  const limitNum = parseInt(limit, 10);
 
-  const skip = (parseInt(page) - 1) * parseInt(limit);
-  const [dispatches, total] = await Promise.all([
-    VendorDispatch.find(query)
-      .populate('vendorOrder', 'orderNumber customer deliveryAddress')
-      .sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit)),
-    VendorDispatch.countDocuments(query),
+  const orderFilter = { ...match, status: { $in: DISPATCHED_ORDER_STATUSES } };
+  if (status === 'dispatched') orderFilter.status = 'DISPATCHED';
+  if (status === 'delivered') orderFilter.status = { $in: ['DELIVERED', 'COMPLETED'] };
+
+  const [orders, total] = await Promise.all([
+    VendorOrder.find(orderFilter)
+      .select(VENDOR_ORDER_DISPATCH_SELECT)
+      .sort({ updatedAt: -1 })
+      .skip(skip)
+      .limit(limitNum),
+    VendorOrder.countDocuments(orderFilter),
   ]);
 
-  return ApiResponse.success(res, 200, 'Dispatches retrieved.', dispatches, {
-    page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / parseInt(limit)),
+  const payload = orders.map((o) => rowFromVendorOrder(o)).filter(Boolean);
+
+  return ApiResponse.success(res, 200, 'Dispatches retrieved.', payload, {
+    page: parseInt(page, 10),
+    limit: limitNum,
+    total,
+    pages: Math.ceil(total / limitNum) || 1,
   });
 };

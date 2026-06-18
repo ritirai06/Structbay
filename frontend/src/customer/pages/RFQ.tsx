@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { ChevronRight, FileText, CheckCircle2, AlertCircle, Phone, Building2, MapPin, Check } from "lucide-react";
+import { FileText, CheckCircle2, AlertCircle, Phone, Building2, MapPin } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { getApiV1Base } from "../../lib/apiBase";
 import { getCustomerAccessToken } from "../lib/authStorage";
+import { UtilityBreadcrumb, UtilityCard, UtilityHero, UtilityPage } from "../components/UtilityPageLayout";
 
 const GRADES = ["M20", "M25", "M30", "M35", "M40", "M45", "M50"];
 const FLOORS = ["Ground Floor", "1st Floor", "2nd Floor", "3rd Floor", "4th Floor", "5th Floor", "Above 5th Floor"];
@@ -20,6 +21,7 @@ export function RFQ() {
     name:        isLoggedIn ? (user?.name || "") : "",
     company:     isLoggedIn ? (user?.company || "") : "",
     phone:       "",
+    email:       isLoggedIn ? (user?.email || "") : "",
     grade:       "M25",
     qty:         "",
     floorLevel:  "",
@@ -41,7 +43,7 @@ export function RFQ() {
       const payload = {
         customerName:  form.name,
         customerPhone: form.phone,
-        customerEmail: user?.email || undefined,
+        customerEmail: form.email || undefined,
         companyName:   form.company || undefined,
         grade:         form.grade,
         quantity:      Number(form.qty),
@@ -54,16 +56,12 @@ export function RFQ() {
         notes:         form.notes || undefined,
       };
 
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
       const token = getCustomerAccessToken();
-      if (!token) {
-        throw new Error("Please sign in with a valid StructBay customer account (session required for concrete RFQ).");
-      }
+      if (token) headers.Authorization = `Bearer ${token}`;
       const res = await fetch(`${getApiV1Base()}/concrete-rfqs`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
         body: JSON.stringify(payload),
       });
 
@@ -80,80 +78,53 @@ export function RFQ() {
 
   if (submitted) {
     return (
-      <div className="max-w-xl mx-auto px-4 py-20 text-center">
-        <div className="w-20 h-20 rounded-full bg-green-500 flex items-center justify-center mx-auto mb-6">
-          <CheckCircle2 className="w-12 h-12 text-sb-cream" />
-        </div>
-        <h2 className="text-foreground mb-2">RFQ Submitted Successfully!</h2>
-        <p className="text-muted-foreground mb-4">
-          Our concrete procurement team will contact you within <strong>2 business hours</strong> with the best competitive quote.
-        </p>
-        {refNumber && (
-          <div className="bg-muted rounded-2xl px-6 py-4 mb-6 inline-block">
-            <p className="text-xs text-muted-foreground mb-1">Your RFQ Reference Number</p>
-            <p className="font-black text-lg" style={{ color: "var(--sb-orange)" }}>{refNumber}</p>
-            <p className="text-xs text-muted-foreground mt-1">Please keep this for your records</p>
+      <UtilityPage width="narrow">
+        <div className="sf-utility-success">
+          <div className="sf-utility-success__icon">
+            <CheckCircle2 aria-hidden />
           </div>
-        )}
-        <div className="flex gap-3 justify-center flex-wrap">
-          <Link to="/" style={{ backgroundColor: "var(--sb-blue)" }} className="inline-flex items-center gap-2 text-sb-cream px-6 py-3 rounded-2xl font-semibold">
-            Back to Home
-          </Link>
-          <button
-            onClick={() => { setSubmitted(false); setRefNumber(""); setForm(f => ({ ...f, qty: "", floorLevel: "", address: "", notes: "" })); }}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl font-semibold border border-border text-foreground hover:bg-muted"
-          >
-            New RFQ
-          </button>
+          <h2>RFQ submitted successfully</h2>
+          <p>
+            Our concrete procurement team will contact you within <strong>2 business hours</strong> with a competitive quote.
+          </p>
+          {refNumber && (
+            <div className="sf-utility-ref">
+              <p className="sf-utility-ref__label">Your RFQ reference</p>
+              <p className="sf-utility-ref__value">{refNumber}</p>
+            </div>
+          )}
+          <div className="sf-utility-actions" style={{ justifyContent: "center" }}>
+            <Link to="/" className="sf-utility-btn-primary">Back to home</Link>
+            <button
+              type="button"
+              onClick={() => {
+                setSubmitted(false);
+                setRefNumber("");
+                setForm((f) => ({ ...f, qty: "", floorLevel: "", address: "", notes: "" }));
+              }}
+              className="sf-utility-btn-secondary"
+            >
+              New RFQ
+            </button>
+          </div>
         </div>
-      </div>
-    );
-  }
-
-  if (!isLoggedIn) {
-    return (
-      <div className="max-w-lg mx-auto px-4 py-16 text-center">
-        <h2 className="text-foreground font-semibold mb-2">Sign in required</h2>
-        <p className="text-muted-foreground text-sm mb-6">
-          Concrete RFQ submissions require a StructBay customer account and an active session (same as bulk enquiry).
-        </p>
-        <Link
-          to="/login"
-          state={{ from: { pathname: "/rfq" } }}
-          style={{ backgroundColor: "var(--sb-blue)" }}
-          className="inline-flex items-center gap-2 text-sb-cream px-6 py-3 rounded-2xl font-semibold"
-        >
-          Sign in to continue
-        </Link>
-      </div>
+      </UtilityPage>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
-      <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-        <Link to="/" className="hover:text-foreground">Home</Link>
-        <ChevronRight className="w-3 h-3" />
-        <span className="text-foreground font-medium">Concrete RFQ</span>
-      </nav>
+    <UtilityPage width="medium">
+      <UtilityBreadcrumb items={[{ label: "Home", to: "/" }, { label: "Concrete RFQ" }]} />
 
-      <div style={{ background: "linear-gradient(135deg, var(--sb-blue) 0%, #2d5fa3 100%)" }} className="rounded-2xl p-6 text-sb-cream mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <FileText className="w-6 h-6" />
-          <h1 className="text-sb-cream">Ready Mix Concrete RFQ</h1>
-        </div>
-        <p className="text-sb-cream/70">Get instant competitive quotes for Ready Mix Concrete from top suppliers in your city.</p>
-        <div className="flex flex-wrap gap-x-6 gap-y-2 mt-3 text-sm text-sb-cream/70">
-          {["Multiple supplier quotes", "Best price guarantee", "IS code certified"].map((label) => (
-            <span key={label} className="inline-flex items-center gap-1.5">
-              <Check className="w-3.5 h-3.5 shrink-0 opacity-90" aria-hidden />
-              {label}
-            </span>
-          ))}
-        </div>
-      </div>
+      <UtilityHero
+        variant="brand"
+        icon={FileText}
+        title="Ready mix concrete RFQ"
+        description="Get competitive quotes for ready mix concrete from top suppliers in your city."
+        features={["Multiple supplier quotes", "Best price guarantee", "IS code certified"]}
+      />
 
-      <div className="bg-white rounded-2xl border border-border p-6">
+      <UtilityCard>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
@@ -178,6 +149,10 @@ export function RFQ() {
                 <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" /> Phone Number *</span>
               </label>
               <input value={form.phone} onChange={e => update("phone", e.target.value)} placeholder="+91 98765 43210" required className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-input-background focus:outline-none" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1.5">Email</label>
+              <input type="email" value={form.email} onChange={e => update("email", e.target.value)} placeholder="email@company.com" className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-input-background focus:outline-none" />
             </div>
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">Concrete Grade *</label>
@@ -238,17 +213,16 @@ export function RFQ() {
           <button
             type="submit"
             disabled={loading}
-            style={{ backgroundColor: "var(--sb-orange)" }}
-            className="w-full py-3.5 rounded-2xl text-sb-cream font-semibold hover:opacity-90 transition-opacity disabled:opacity-60"
+            className="sf-utility-btn-primary w-full justify-center py-3 disabled:opacity-60"
           >
-            {loading ? "Submitting..." : "Submit RFQ — Get Free Quote →"}
+            {loading ? "Submitting..." : "Submit RFQ — get free quote"}
           </button>
 
           <p className="text-xs text-center text-muted-foreground">
             You will receive a reference such as <strong className="text-foreground">RFQCON2606120001</strong> (RFQCON + date + sequence). Our team responds within 2 business hours.
           </p>
         </form>
-      </div>
-    </div>
+      </UtilityCard>
+    </UtilityPage>
   );
 }

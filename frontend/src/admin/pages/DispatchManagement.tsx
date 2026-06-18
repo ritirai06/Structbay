@@ -1,51 +1,24 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link } from "react-router";
-import {
-  Truck,
-  Eye,
-  Loader2,
-  RefreshCw,
-  Package,
-  User,
-  ExternalLink,
-  Save,
-} from "lucide-react";
+import { Truck, Eye, Loader2, RefreshCw, ExternalLink } from "lucide-react";
 import { adminFetch as apiFetch } from "../../lib/adminApi";
+import { useAdminListDelete } from "../hooks/useAdminListDelete";
+import {
+  AdminListDeleteControls,
+  AdminRowDeleteButton,
+  AdminTableSelectCell,
+  AdminTableSelectHeader,
+} from "../components/AdminListDeleteControls";
 
-const SHIPMENT_STATUSES = [
-  "CREATED",
-  "PICKUP_SCHEDULED",
-  "PICKED_UP",
-  "IN_TRANSIT",
-  "OUT_FOR_DELIVERY",
-  "DELIVERED",
-  "FAILED_DELIVERY",
-  "RETURNED",
-  "CANCELLED",
-] as const;
+type DispatchedBoard = {
+  stats: { dispatched: number; delivered: number };
+  dispatches: any[];
+};
 
-function labelForShipmentStatus(s: string) {
-  const map: Record<string, string> = {
-    CREATED: "Ready / created",
-    PICKUP_SCHEDULED: "Pickup scheduled",
-    PICKED_UP: "Picked up",
-    IN_TRANSIT: "In transit",
-    OUT_FOR_DELIVERY: "Out for delivery",
-    DELIVERED: "Delivered",
-    FAILED_DELIVERY: "Failed delivery",
-    RETURNED: "Returned",
-    CANCELLED: "Cancelled",
-  };
-  return map[s] || s;
-}
-
-function fmtEta(d?: string | null) {
+function fmtDispatchDate(d?: string | null) {
   if (!d) return "—";
   try {
-    return new Date(d).toLocaleString(undefined, {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
+    return new Date(d).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
   } catch {
     return String(d);
   }
@@ -67,35 +40,24 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   );
 }
 
-type DispatchBoardData = {
-  stats: {
-    readyForDispatch: number;
-    outForDelivery: number;
-    deliveredToday: number;
-    activeDrivers: number;
-  };
-  shipments: any[];
-};
-
 export function DispatchManagement() {
   const [loading, setLoading] = useState(true);
-  const [board, setBoard] = useState<DispatchBoardData | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [board, setBoard] = useState<DispatchedBoard | null>(null);
   const [pagination, setPagination] = useState({ total: 0, pages: 1, page: 1, limit: 50 });
   const [listPage, setListPage] = useState(1);
   const [selected, setSelected] = useState<any>(null);
-  const [statusDraft, setStatusDraft] = useState("");
-  const [statusNote, setStatusNote] = useState("");
-  const [saving, setSaving] = useState(false);
 
   const load = useCallback(async (page: number) => {
     setLoading(true);
+    setLoadError(null);
     try {
-      const res = await apiFetch<DispatchBoardData>(`/shipments/dispatch-board?page=${page}&limit=50`);
-      const payload = res.data as DispatchBoardData | undefined;
+      const res = await apiFetch<DispatchedBoard>(`/admin/dispatch/vendor-board?page=${page}&limit=50`);
+      const payload = res.data as DispatchedBoard | undefined;
       setBoard(
         payload || {
-          stats: { readyForDispatch: 0, outForDelivery: 0, deliveredToday: 0, activeDrivers: 0 },
-          shipments: [],
+          stats: { dispatched: 0, delivered: 0 },
+          dispatches: [],
         }
       );
       const pg = (res.pagination as { total?: number; pages?: number; page?: number; limit?: number }) || {};
@@ -105,12 +67,10 @@ export function DispatchManagement() {
         page: pg.page ?? page,
         limit: pg.limit ?? 50,
       });
-    } catch {
-      setBoard({
-        stats: { readyForDispatch: 0, outForDelivery: 0, deliveredToday: 0, activeDrivers: 0 },
-        shipments: [],
-      });
+    } catch (e) {
+      setBoard({ stats: { dispatched: 0, delivered: 0 }, dispatches: [] });
       setPagination({ total: 0, pages: 1, page: 1, limit: 50 });
+      setLoadError(e instanceof Error ? e.message : "Failed to load dispatched orders");
     } finally {
       setLoading(false);
     }
@@ -120,37 +80,27 @@ export function DispatchManagement() {
     void load(listPage);
   }, [listPage, load]);
 
-  const openDetail = (s: any) => {
-    setSelected(s);
-    setStatusDraft(s.status || "CREATED");
-    setStatusNote("");
-  };
-
-  const saveStatus = async () => {
-    if (!selected?._id || !statusDraft) return;
-    setSaving(true);
-    try {
-      await apiFetch(`/shipments/${selected._id}/status`, {
-        method: "PATCH",
-        body: JSON.stringify({ status: statusDraft, description: statusNote || undefined }),
-      });
-      setSelected(null);
-      await load(listPage);
-    } catch (e: any) {
-      alert(e.message || "Could not update shipment");
-    }
-    setSaving(false);
-  };
-
+  const dispatches = board?.dispatches || [];
   const stats = board?.stats;
-  const shipments = board?.shipments || [];
+  const visibleIds = useMemo(
+    () => dispatches.map((d) => String(d._id)).filter(Boolean),
+    [dispatches]
+  );
+  const deleteHook = useAdminListDelete({
+    singleDeleteUrl: (id) => `/admin/vendor-orders/${id}`,
+    bulkDeleteUrl: "/admin/vendor-orders/bulk-delete",
+    onSuccess: () => void load(listPage),
+    itemLabel: "dispatch records",
+  });
 
   return (
-    <div className="p-6 bg-sb-cream min-h-full">
+    <div className="admin-page">
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-sb-ink">Dispatch Management</h1>
-          <p className="text-sb-ink/55 text-sm mt-1">Live shipments from logistics — update status as deliveries progress.</p>
+          <h1 className="admin-page-title text-sb-ink">Dispatch Management</h1>
+          <p className="admin-page-desc">
+            Vendor sub-orders marked dispatched — transporter, LR, vehicle and proof.
+          </p>
         </div>
         <button
           type="button"
@@ -162,35 +112,38 @@ export function DispatchManagement() {
         </button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+      {loadError && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          {loadError}
+        </div>
+      )}
+
+      <div className="grid gap-4 sm:grid-cols-2 mb-6 max-w-md">
         {[
-          { label: "Ready for dispatch", value: stats?.readyForDispatch ?? 0, hint: "Master orders at READY_FOR_DISPATCH", color: "text-sb-ink" },
-          { label: "Out for delivery", value: stats?.outForDelivery ?? 0, hint: "Active in-transit shipments", color: "text-sb-ink" },
-          { label: "Delivered today", value: stats?.deliveredToday ?? 0, hint: "Completed since midnight", color: "text-sb-orange" },
-          { label: "Active drivers", value: stats?.activeDrivers ?? 0, hint: "Named drivers on active runs", color: "text-sb-orange" },
+          { label: "Dispatched", value: stats?.dispatched ?? 0 },
+          { label: "Delivered", value: stats?.delivered ?? 0 },
         ].map((c) => (
           <div key={c.label} className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl p-4">
             <p className="text-xs text-sb-ink/50 uppercase tracking-wide font-semibold">{c.label}</p>
-            <p className={`text-3xl font-black mt-1 tabular-nums ${c.color}`}>{c.value}</p>
-            <p className="text-[10px] text-sb-ink/60/35 mt-2 leading-relaxed">{c.hint}</p>
+            <p className="admin-stat-value mt-1 tabular-nums text-sb-ink">{c.value}</p>
           </div>
         ))}
       </div>
+
+      <AdminListDeleteControls
+        deleteHook={deleteHook}
+        visibleIds={visibleIds}
+        disabled={loading}
+        itemLabel="records"
+      />
 
       <div className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl overflow-hidden">
         <div className="px-4 py-3 border-b border-sb-ink/10 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Truck className="h-4 w-4 text-sb-orange" />
-            <h2 className="font-bold text-sb-ink text-sm">Shipments</h2>
+            <h2 className="font-bold text-sb-ink text-sm">Dispatched orders</h2>
           </div>
-          <span className="text-xs text-sb-ink/50">
-            {pagination.total
-              ? `${(pagination.page - 1) * (pagination.limit || 50) + 1}–${Math.min(
-                  pagination.page * (pagination.limit || 50),
-                  pagination.total
-                )} of ${pagination.total}`
-              : "0 total"}
-          </span>
+          <span className="text-xs text-sb-ink/50">{pagination.total} total</span>
         </div>
 
         {loading ? (
@@ -202,63 +155,81 @@ export function DispatchManagement() {
             <table className="w-full text-sm min-w-[900px]">
               <thead>
                 <tr className="border-b border-sb-ink/10 text-left text-xs uppercase tracking-wider text-sb-ink/50">
-                  <th className="py-3 px-4">Shipment</th>
-                  <th className="py-3 px-4">Order</th>
+                  <AdminTableSelectHeader
+                    checked={deleteHook.allVisibleSelected(visibleIds)}
+                    onChange={() => deleteHook.toggleAllVisible(visibleIds)}
+                  />
+                  <th className="py-3 px-4">Sub-order</th>
+                  <th className="py-3 px-4">Master order</th>
                   <th className="py-3 px-4">Customer</th>
-                  <th className="py-3 px-4">Driver / vehicle</th>
+                  <th className="py-3 px-4">Vendor</th>
+                  <th className="py-3 px-4">Transporter</th>
+                  <th className="py-3 px-4">LR / vehicle</th>
+                  <th className="py-3 px-4">Dispatch date</th>
                   <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4">ETA</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {shipments.map((s) => {
-                  const order = s.masterOrder;
-                  const orderNo = order?.orderNumber || "—";
-                  const cust = order?.customer?.name || "—";
+                {dispatches.map((d) => {
+                  const t = d.transport || {};
+                  const rowId = String(d._id);
+                  const vendorName =
+                    d.vendor && typeof d.vendor === "object"
+                      ? d.vendor.companyName || d.vendor.name
+                      : "—";
                   return (
-                    <tr key={s._id} className="border-b border-sb-ink/8 hover:bg-sb-cream-secondary/90">
-                      <td className="py-3 px-4 font-mono text-sb-ink">{s.shipmentNumber || s._id}</td>
-                      <td className="py-3 px-4">
-                        <Link
-                          to={`/orders?search=${encodeURIComponent(orderNo)}`}
-                          className="font-mono text-sb-orange hover:underline inline-flex items-center gap-1"
-                        >
-                          {orderNo}
-                          <ExternalLink className="h-3 w-3 opacity-60" />
-                        </Link>
+                    <tr key={d._id} className="border-b border-sb-ink/8 hover:bg-sb-cream-secondary/90">
+                      <AdminTableSelectCell
+                        checked={deleteHook.isSelected(rowId)}
+                        onChange={() => deleteHook.toggleRow(rowId)}
+                        ariaLabel={`Select dispatch ${d.orderNumber || rowId}`}
+                      />
+                      <td className="py-3 px-4 font-mono text-sb-orange">{d.orderNumber || "—"}</td>
+                      <td className="py-3 px-4 font-mono text-xs text-sb-ink/65">{d.masterOrderNumber || "—"}</td>
+                      <td className="py-3 px-4 text-sb-ink/70">{d.customerName || "—"}</td>
+                      <td className="py-3 px-4 text-sb-ink/70 text-xs">{vendorName}</td>
+                      <td className="py-3 px-4 text-sb-ink/70">{t.transporterName || "—"}</td>
+                      <td className="py-3 px-4 text-xs text-sb-ink/65">
+                        <div>{t.lrNumber || "—"}</div>
+                        <div className="font-mono text-sb-ink/50">{t.vehicleNumber || "—"}</div>
                       </td>
-                      <td className="py-3 px-4 text-sb-ink/70">{cust}</td>
-                      <td className="py-3 px-4 text-sb-ink/65 text-xs">
-                        <div>{s.driverName || "—"}</div>
-                        <div className="font-mono text-sb-ink/50">{s.vehicleNumber || "—"}</div>
-                      </td>
+                      <td className="py-3 px-4 text-xs whitespace-nowrap">{fmtDispatchDate(t.dispatchDate)}</td>
                       <td className="py-3 px-4">
-                        <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs border-sb-ink/15 bg-white/5 text-sb-ink">
-                          <Package className="h-3 w-3 text-sb-orange" />
-                          {labelForShipmentStatus(s.status)}
+                        <span className="inline-flex rounded-full border px-2 py-0.5 text-xs border-sb-ink/15 bg-white/5 text-sb-ink capitalize">
+                          {String(d.vendorOrderStatus || d.status || "").replace(/_/g, " ")}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-sb-ink/65 text-xs whitespace-nowrap">{fmtEta(s.estimatedDelivery)}</td>
                       <td className="py-3 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => openDetail(s)}
-                          className="p-1.5 border border-sb-ink/10 rounded-lg text-sb-ink/55 hover:text-sb-ink hover:border-sb-ink/20 transition-colors inline-flex"
-                          title="View & update"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
+                        <div className="flex justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setSelected(d)}
+                            className="p-1.5 border border-sb-ink/10 rounded-lg text-sb-ink/55 hover:text-sb-ink"
+                            title="View transport details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <AdminRowDeleteButton
+                            onClick={() =>
+                              deleteHook.requestDelete(
+                                [rowId],
+                                `dispatch ${d.orderNumber || rowId}`
+                              )
+                            }
+                            disabled={deleteHook.busy}
+                          />
+                        </div>
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
-            {shipments.length === 0 && (
+            {dispatches.length === 0 && (
               <div className="py-16 text-center text-sb-ink/45 text-sm">
                 <Truck className="h-10 w-10 mx-auto mb-3 opacity-20" />
-                No shipments yet. Create shipments from vendor orders / logistics workflow when orders are ready to leave the warehouse.
+                No dispatched orders yet. They appear here when a vendor marks an order dispatched in the workflow.
               </div>
             )}
           </div>
@@ -270,10 +241,8 @@ export function DispatchManagement() {
                 key={p}
                 type="button"
                 onClick={() => setListPage(p)}
-                className={`min-w-[2.25rem] h-9 px-2 rounded-lg text-sm font-medium transition-colors ${
-                  p === listPage
-                    ? "bg-sb-orange text-black"
-                    : "bg-sb-cream border border-sb-ink/10 text-sb-ink/60 hover:border-sb-orange/50"
+                className={`min-w-[2.25rem] h-9 px-2 rounded-lg text-sm font-medium ${
+                  p === listPage ? "bg-sb-orange text-black" : "bg-sb-cream border border-sb-ink/10 text-sb-ink/60"
                 }`}
               >
                 {p}
@@ -284,80 +253,44 @@ export function DispatchManagement() {
       </div>
 
       {selected && (
-        <Modal title={`Shipment ${selected.shipmentNumber || ""}`} onClose={() => setSelected(null)}>
-          <div className="space-y-4 text-sm">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 bg-sb-cream border border-sb-ink/10 rounded-lg">
-                <p className="text-[10px] text-sb-ink/50 uppercase mb-0.5">Order</p>
-                <p className="font-mono text-sb-ink">{selected.masterOrder?.orderNumber || "—"}</p>
+        <Modal title={`Dispatch · ${selected.orderNumber || ""}`} onClose={() => setSelected(null)}>
+          <div className="space-y-3 text-sm">
+            {[
+              ["Transporter", selected.transport?.transporterName],
+              ["LR / Docket", selected.transport?.lrNumber],
+              ["Vehicle", selected.transport?.vehicleNumber],
+              ["Tracking", selected.transport?.trackingNumber],
+              ["Dispatch date", fmtDispatchDate(selected.transport?.dispatchDate)],
+              ["Status", selected.vendorOrderStatus],
+              ["Customer", selected.customerName],
+              [
+                "Vendor",
+                selected.vendor && typeof selected.vendor === "object"
+                  ? selected.vendor.companyName || selected.vendor.name
+                  : "—",
+              ],
+            ].map(([label, value]) => (
+              <div key={label} className="p-3 bg-sb-cream border border-sb-ink/10 rounded-lg">
+                <p className="text-[10px] text-sb-ink/50 uppercase mb-0.5">{label}</p>
+                <p className="text-sb-ink">{value || "—"}</p>
               </div>
-              <div className="p-3 bg-sb-cream border border-sb-ink/10 rounded-lg">
-                <p className="text-[10px] text-sb-ink/50 uppercase mb-0.5">Customer</p>
-                <p className="text-sb-ink flex items-center gap-1">
-                  <User className="h-3.5 w-3.5 shrink-0 text-sb-ink/45" />
-                  {selected.masterOrder?.customer?.name || "—"}
-                </p>
-              </div>
-              <div className="p-3 bg-sb-cream border border-sb-ink/10 rounded-lg col-span-2">
-                <p className="text-[10px] text-sb-ink/50 uppercase mb-0.5">Logistics</p>
-                <p className="text-sb-ink/70">
-                  {selected.logisticsPartner}
-                  {selected.customPartnerName ? ` · ${selected.customPartnerName}` : ""}
-                </p>
-              </div>
-              <div className="p-3 bg-sb-cream border border-sb-ink/10 rounded-lg">
-                <p className="text-[10px] text-sb-ink/50 uppercase mb-0.5">Driver</p>
-                <p className="text-sb-ink">{selected.driverName || "—"}</p>
-                <p className="text-xs text-sb-ink/50">{selected.driverPhone || ""}</p>
-              </div>
-              <div className="p-3 bg-sb-cream border border-sb-ink/10 rounded-lg">
-                <p className="text-[10px] text-sb-ink/50 uppercase mb-0.5">Vehicle</p>
-                <p className="font-mono text-sb-ink">{selected.vehicleNumber || "—"}</p>
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs text-sb-ink/55 mb-1 block">Update status</label>
-              <select
-                value={statusDraft}
-                onChange={(e) => setStatusDraft(e.target.value)}
-                className="w-full bg-sb-cream border border-sb-ink/15 rounded-lg px-3 py-2 text-sb-ink text-sm"
+            ))}
+            {selected.transport?.proofUrl && (
+              <a
+                href={selected.transport.proofUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-sb-orange font-semibold text-sm"
               >
-                {SHIPMENT_STATUSES.map((st) => (
-                  <option key={st} value={st}>
-                    {labelForShipmentStatus(st)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-sb-ink/55 mb-1 block">Note (optional)</label>
-              <textarea
-                value={statusNote}
-                onChange={(e) => setStatusNote(e.target.value)}
-                rows={2}
-                placeholder="e.g. Customer requested evening slot"
-                className="w-full bg-sb-cream border border-sb-ink/15 rounded-lg px-3 py-2 text-sb-ink text-sm placeholder:text-sb-ink/40"
-              />
-            </div>
-
-            <div className="flex gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => void saveStatus()}
-                disabled={saving}
-                className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 rounded-lg bg-sb-orange text-white font-bold text-sm hover:bg-sb-orange-hover disabled:opacity-50"
-              >
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Save status
-              </button>
-              <Link
-                to={`/orders?search=${encodeURIComponent(selected.masterOrder?.orderNumber || "")}`}
-                className="px-4 py-2.5 rounded-lg border border-sb-ink/15 text-sb-ink/60 text-sm hover:border-sb-orange/40 hover:text-sb-ink inline-flex items-center"
-              >
-                Open order
-              </Link>
-            </div>
+                View dispatch proof
+              </a>
+            )}
+            <Link
+              to={`/orders?search=${encodeURIComponent(selected.masterOrderNumber || selected.orderNumber || "")}`}
+              className="inline-flex items-center gap-1 text-sb-orange text-sm font-medium hover:underline"
+            >
+              Open order in Orders <ExternalLink className="h-3.5 w-3.5" />
+            </Link>
           </div>
         </Modal>
       )}

@@ -89,7 +89,7 @@ export function DocumentCenter() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black" style={{ color: SB.color }}>Document Center</h1>
+          <h1 className="vendor-page-title" style={{ color: SB.color }}>Document Center</h1>
           <p className="text-sm mt-0.5" style={{ color: SB.muted }}>Upload business documents and download StructBay-shared files.</p>
         </div>
         <div className="flex items-center gap-2">
@@ -117,7 +117,7 @@ export function DocumentCenter() {
       {/* Upload Form */}
       {showUpload && (
         <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
-          <h2 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: SB.muted }}>Upload New Document</h2>
+          <h2 className="vendor-section-title mb-4" style={{ color: SB.muted }}>Upload New Document</h2>
           <form onSubmit={handleUpload} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -186,26 +186,25 @@ export function DocumentCenter() {
       )}
 
       {/* Filter */}
-      <div className="flex flex-wrap gap-2">
-        <button onClick={() => setFilterType('')}
-          className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
-          style={!filterType ? { background: 'var(--sb-orange)', color: '#fff' } : { background: SB.card, color: SB.muted, border: `1px solid ${SB.border}` }}>
-          All
-        </button>
-        {DOC_TYPES.map(t => (
-          <button key={t.value} onClick={() => setFilterType(t.value)}
-            className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
-            style={filterType === t.value ? { background: 'var(--sb-orange)', color: '#fff' } : { background: SB.card, color: SB.muted, border: `1px solid ${SB.border}` }}>
-            {t.label}
-          </button>
-        ))}
+      <div className="max-w-xs">
+        <select
+          value={filterType}
+          onChange={e => setFilterType(e.target.value)}
+          className="w-full px-3 py-2.5 rounded-xl text-sm"
+          style={{ background: SB.card, border: `1px solid ${SB.border}`, color: SB.color }}
+        >
+          <option value="">All document types</option>
+          {DOC_TYPES.map(t => (
+            <option key={t.value} value={t.value}>{t.label}</option>
+          ))}
+        </select>
       </div>
 
       {/* Documents Table */}
       <div className="rounded-2xl overflow-hidden" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
         <div className="flex items-center gap-2 px-5 py-4" style={{ borderBottom: `1px solid ${SB.border}` }}>
           <FolderOpen className="w-4 h-4" style={{ color: SB.orange }} />
-          <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: SB.muted }}>Your Documents</h2>
+          <h2 className="vendor-section-title" style={{ color: SB.muted }}>Your Documents</h2>
           <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: SB.bg, color: SB.muted }}>{docs.length}</span>
         </div>
         {loading ? (

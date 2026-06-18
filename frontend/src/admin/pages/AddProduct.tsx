@@ -1,15 +1,31 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams, Link } from "react-router";
-import { ArrowLeft, Plus, Trash2, Loader2, Save, Shield, Zap, TrendingUp, Star, MapPin, Info } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Loader2, Save, Shield, Zap, TrendingUp, Star, MapPin, Info, Upload } from "lucide-react";
 import { adminPath } from "../../lib/portalRoutes";
-import { adminFetch as apiFetch } from "../../lib/adminApi";
+import { adminFetch as apiFetch, adminUploadImage, getAdminToken } from "../../lib/adminApi";
+import { AdminDeleteConfirmModal } from "../components/AdminDeleteConfirmModal";
+import { useAdminDeleteFlow } from "../hooks/useAdminDeleteFlow";
 
-const VARIATION_ATTRS = ["weight", "grade", "size", "color", "finish", "diameter"];
+const VARIATION_ATTRS = ["size", "thickness", "length", "diameter", "weight", "grade", "color", "finish"];
+
+const emptyVariation = {
+  size: "",
+  thickness: "",
+  length: "",
+  diameter: "",
+  weight: "",
+  grade: "",
+  color: "",
+  finish: "",
+  sku: "",
+  customKey: "",
+  customValue: "",
+};
 
 const emptyForm = {
   name: "", sku: "", category: "", brand: "",
   shortDescription: "", description: "",
-  gstPercentage: 18, status: "DRAFT",
+  gstPercentage: 18, priceIncludesGst: false, status: "DRAFT",
   isFeatured: false, isTopSelling: false, isAssured: false, isExpress: false,
   displayOrder: 0,
   seo: { metaTitle: "", metaDescription: "", metaKeywords: [] },
@@ -17,8 +33,6 @@ const emptyForm = {
   videos: [] as { title: string; url: string }[],
   documents: [] as { name: string; url: string }[],
 };
-
-const emptyVariation = { weight: "", grade: "", size: "", color: "", finish: "", diameter: "", sku: "" };
 
 function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
   return (
@@ -45,7 +59,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function Toggle({ checked, onChange, label, icon: Icon, accent = "#FE5E00" }: {
+function Toggle({ checked, onChange, label, icon: Icon, accent = "#E85A00" }: {
   checked: boolean; onChange: (v: boolean) => void; label: string; icon: any; accent?: string;
 }) {
   return (
@@ -76,9 +90,14 @@ export function AddProduct() {
   const [loading, setLoading] = useState(isEdit);
   const [newFaq, setNewFaq] = useState({ question: "", answer: "" });
   const [tab, setTab] = useState<"info" | "media" | "variations" | "seo" | "faqs">("info");
+  const [images, setImages] = useState<{ _id?: string; url: string; publicId?: string }[]>([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [mediaMsg, setMediaMsg] = useState<null | { type: "ok" | "err"; text: string }>(null);
   const [catalogCategories, setCatalogCategories] = useState<{ _id: string; name: string }[]>([]);
   /** `categoryId` = brand's linked category (Brands admin); null = legacy / any category */
   const [catalogBrands, setCatalogBrands] = useState<{ _id: string; name: string; categoryId: string | null }[]>([]);
+  const variationDelete = useAdminDeleteFlow();
+  const imageDelete = useAdminDeleteFlow();
 
   useEffect(() => {
     apiFetch("/categories?limit=200&status=ACTIVE")
@@ -129,12 +148,16 @@ export function AddProduct() {
           name: p.name, sku: p.sku, category: p.category?._id || p.category,
           brand: p.brand?._id || p.brand, shortDescription: p.shortDescription || "",
           description: p.description || "", gstPercentage: p.gstPercentage,
+          priceIncludesGst: !!p.priceIncludesGst,
           status: p.status, isFeatured: p.isFeatured, isTopSelling: p.isTopSelling,
           isAssured: p.isAssured, isExpress: p.isExpress, displayOrder: p.displayOrder,
           seo: p.seo || { metaTitle: "", metaDescription: "", metaKeywords: [] },
           faqs: p.faqs || [], videos: p.videos || [], documents: p.documents || [],
         });
         setVariations(p.variations || []);
+        setImages((p.images || []).map((img: { _id?: string; url: string; publicId?: string }) => ({
+          _id: img._id, url: img.url, publicId: img.publicId,
+        })));
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -161,25 +184,83 @@ export function AddProduct() {
   const addVariation = async () => {
     if (!isEdit) return alert("Save product first to add variations.");
     try {
+      const { sku, customKey, customValue, ...attrFields } = newVar;
+      const attributes: Record<string, unknown> = {};
+      for (const [k, val] of Object.entries(attrFields)) {
+        if (val != null && String(val).trim()) attributes[k] = String(val).trim();
+      }
+      if (customKey?.trim() && customValue?.trim()) {
+        attributes.custom = [{ key: customKey.trim(), value: customValue.trim() }];
+      }
       const v = await apiFetch(`/products/${id}/variations`, {
         method: "POST",
-        body: JSON.stringify({ attributes: newVar, sku: newVar.sku || undefined }),
+        body: JSON.stringify({ attributes, sku: sku?.trim() || undefined }),
       });
       setVariations(prev => [...prev, v.data]);
-      setNewVar(emptyVariation);
+      setNewVar({ ...emptyVariation });
     } catch (e: any) { alert(e.message); }
   };
 
-  const deleteVariation = async (varId: string) => {
-    if (!confirm("Delete this variation?")) return;
-    await apiFetch(`/products/${id}/variations/${varId}`, { method: "DELETE" }).catch(e => alert(e.message));
-    setVariations(prev => prev.filter(v => v._id !== varId));
+  const deleteVariation = (varId: string) => {
+    variationDelete.requestDelete({ kind: "single", ids: [varId], label: "this variation" });
+  };
+
+  const removeProductImage = (imageId: string) => {
+    if (!isEdit) return;
+    imageDelete.requestDelete({ kind: "single", ids: [imageId], label: "this image" });
   };
 
   const addFaq = () => {
     if (!newFaq.question || !newFaq.answer) return;
     set("faqs", [...form.faqs, { ...newFaq }]);
     setNewFaq({ question: "", answer: "" });
+  };
+
+  const onPickProductImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    if (!files.length) return;
+    if (!getAdminToken()) {
+      alert("Please log in as admin to upload images.");
+      navigate("/admin/login", { state: { from: window.location.pathname } });
+      return;
+    }
+    if (!isEdit) return alert("Save the product first to upload images.");
+    setMediaMsg(null);
+    setUploadingImages(true);
+    try {
+      const uploaded: { url: string; publicId: string }[] = [];
+      for (const file of files) {
+        const { url, publicId } = await adminUploadImage("/upload/product-image", file);
+        uploaded.push({ url, publicId });
+      }
+      const res = await apiFetch(`/products/${id}/images`, {
+        method: "POST",
+        body: JSON.stringify({ images: uploaded }),
+      });
+      const next = (res.data as { images?: typeof images })?.images || [];
+      setImages(next.map(img => ({ _id: img._id, url: img.url, publicId: img.publicId })));
+      setMediaMsg({
+        type: "ok",
+        text: `${uploaded.length} image${uploaded.length > 1 ? "s" : ""} saved. They will show on the product page and listings.`,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Image upload failed";
+      setMediaMsg({ type: "err", text: msg });
+      if (/log in|token|expired/i.test(msg)) {
+        navigate("/admin/login", { state: { from: window.location.pathname } });
+      } else {
+        alert(msg);
+      }
+    } finally {
+      setUploadingImages(false);
+    }
+  };
+
+  const executeRemoveImage = async (imageId: string) => {
+    const res = await apiFetch(`/products/${id}/images/${imageId}`, { method: "DELETE" });
+    const next = (res.data as { images?: typeof images })?.images || [];
+    setImages(next.map(img => ({ _id: img._id, url: img.url, publicId: img.publicId })));
   };
 
   const TABS = [
@@ -193,7 +274,7 @@ export function AddProduct() {
   if (loading) return <div className="flex justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-sb-orange" /></div>;
 
   return (
-    <div className="p-6 bg-sb-cream min-h-full">
+    <div className="admin-page">
       {/* Header */}
       <div className="mb-6">
         <button onClick={() => navigate(adminPath("products"))}
@@ -202,8 +283,8 @@ export function AddProduct() {
         </button>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-black text-sb-ink">{isEdit ? "Edit Product" : "Add Product"}</h1>
-            <p className="text-sb-ink/55 text-sm mt-1">Admin-only product management</p>
+            <h1 className="admin-page-title text-sb-ink">{isEdit ? "Edit Product" : "Add Product"}</h1>
+            <p className="admin-page-desc">Admin-only product management</p>
           </div>
           <div className="flex gap-3">
             <button onClick={() => { set("status", "DRAFT"); save(); }}
@@ -248,7 +329,19 @@ export function AddProduct() {
                   </select>
                 </Field>
               </div>
-              <p className="text-xs text-sb-ink/50 -mt-2">List and storefront prices are excluding GST; GST is applied at checkout using this rate.</p>
+              <Field label="Storefront price display">
+                <select
+                  className={sel}
+                  value={form.priceIncludesGst ? "incl" : "excl"}
+                  onChange={e => set("priceIncludesGst", e.target.value === "incl")}
+                >
+                  <option value="excl">Excluding GST (default)</option>
+                  <option value="incl">Including GST</option>
+                </select>
+              </Field>
+              <p className="text-xs text-sb-ink/50 -mt-2">
+                City prices in Pricing Management are stored ex-GST. Choose whether customers see prices with or without GST on listing and product pages.
+              </p>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Category" required>
                   <select className={sel} value={form.category} onChange={e => set("category", e.target.value)}>
@@ -307,10 +400,57 @@ export function AddProduct() {
           {tab === "media" && (
             <Section title="Product Media">
               <Field label="Product Images">
-                <div className="border-2 border-dashed border-sb-ink/15 rounded-lg p-8 text-center hover:border-sb-orange/40 transition-colors">
-                  <p className="text-sm text-sb-ink/55 mb-3">Use the Upload endpoint to get Cloudinary URLs, then attach them to the product</p>
-                  <Link to={adminPath("cms")} className="text-sb-orange text-sm hover:underline">Open CMS / media →</Link>
-                </div>
+                {!isEdit && (
+                  <p className="text-xs text-sb-ink/50 bg-sb-cream-secondary border border-sb-ink/10 rounded-lg p-3 flex items-start gap-2 mb-3">
+                    <Info className="w-4 h-4 shrink-0 text-sb-orange mt-0.5" aria-hidden />
+                    <span>Save the product first, then upload images here.</span>
+                  </p>
+                )}
+                {images.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+                    {images.map(img => (
+                      <div key={img._id || img.url} className="relative group rounded-lg overflow-hidden border border-sb-ink/10 bg-[#111] aspect-square">
+                        <img src={img.url} alt="" className="w-full h-full object-cover" />
+                        {img._id && (
+                          <button type="button" onClick={() => removeProductImage(img._id!)}
+                            className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600/90">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <label className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors flex flex-col items-center gap-3 ${
+                  isEdit ? "border-sb-ink/15 hover:border-sb-orange/40 cursor-pointer" : "border-sb-ink/10 opacity-60 cursor-not-allowed"
+                }`}>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/jpg"
+                    multiple
+                    className="hidden"
+                    disabled={!isEdit || uploadingImages}
+                    onChange={onPickProductImages}
+                  />
+                  {uploadingImages
+                    ? <Loader2 className="w-8 h-8 animate-spin text-sb-orange" />
+                    : <Upload className="w-8 h-8 text-sb-ink/40" />}
+                  <div>
+                    <p className="text-sm text-sb-ink/70 font-medium">
+                      {uploadingImages ? "Uploading…" : "Click to upload product images"}
+                    </p>
+                    <p className="text-xs text-sb-ink/45 mt-1">JPEG, PNG or WebP — first image is used as the main thumbnail on the storefront</p>
+                  </div>
+                </label>
+                {mediaMsg && (
+                  <p className={`text-xs mt-3 rounded-lg px-3 py-2 border ${
+                    mediaMsg.type === "ok"
+                      ? "text-green-800 bg-green-50 border-green-200"
+                      : "text-red-800 bg-red-50 border-red-200"
+                  }`}>
+                    {mediaMsg.text}
+                  </p>
+                )}
               </Field>
               <Field label="Product Videos">
                 {form.videos.map((v, i) => (
@@ -375,6 +515,13 @@ export function AddProduct() {
                             {k}: {val as string}
                           </span>
                         ))}
+                        {(v.attributes?.custom || []).map((c: { key?: string; value?: string }, i: number) => (
+                          c?.key && c?.value ? (
+                            <span key={`${c.key}-${i}`} className="text-xs bg-sb-cream-secondary border border-sb-ink/10 text-sb-ink/60 px-2 py-0.5 rounded-full">
+                              {c.key}: {c.value}
+                            </span>
+                          ) : null
+                        ))}
                         {v.sku && <span className="text-xs font-mono text-sb-ink/50">{v.sku}</span>}
                       </div>
                       <span className={`text-xs px-2 py-0.5 rounded-full border ${v.status === "ACTIVE" ? "bg-sb-orange/12 text-sb-orange border-sb-orange/22" : "bg-sb-cream-secondary text-sb-ink/55 border-sb-ink/12"}`}>{v.status}</span>
@@ -401,6 +548,19 @@ export function AddProduct() {
                       <input className={inp} placeholder="Variant SKU" value={newVar.sku} onChange={e => setNewVar(v => ({ ...v, sku: e.target.value }))} />
                     </div>
                   </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-sb-ink/50 mb-1 block">Custom label (optional)</label>
+                      <input className={inp} placeholder="e.g. Coil Size" value={newVar.customKey} onChange={e => setNewVar(v => ({ ...v, customKey: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-sb-ink/50 mb-1 block">Custom value</label>
+                      <input className={inp} placeholder="e.g. 90 Meters" value={newVar.customValue} onChange={e => setNewVar(v => ({ ...v, customValue: e.target.value }))} />
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-sb-ink/45 leading-relaxed">
+                    Add at least <strong>2 variations</strong> with different size/thickness/color (or custom labels) so customers see dropdowns on category and shop pages.
+                  </p>
                   <button onClick={addVariation} className="flex items-center gap-2 bg-sb-orange/15 hover:bg-sb-orange/25 text-sb-orange font-medium px-4 py-2 rounded-lg text-sm transition-colors">
                     <Plus className="w-4 h-4" /> Add Variation
                   </button>
@@ -496,6 +656,29 @@ export function AddProduct() {
           </div>
         </div>
       </div>
+
+      <AdminDeleteConfirmModal
+        open={!!variationDelete.pending}
+        title={variationDelete.modalTitle}
+        description={variationDelete.modalDescription}
+        busy={variationDelete.busy}
+        onCancel={variationDelete.cancelDelete}
+        onConfirm={() =>
+          void variationDelete.executeDelete(async (varId) => {
+            await apiFetch(`/products/${id}/variations/${varId}`, { method: "DELETE" });
+            setVariations((prev) => prev.filter((v) => v._id !== varId));
+          })
+        }
+      />
+
+      <AdminDeleteConfirmModal
+        open={!!imageDelete.pending}
+        title={imageDelete.modalTitle}
+        description={imageDelete.modalDescription}
+        busy={imageDelete.busy}
+        onCancel={imageDelete.cancelDelete}
+        onConfirm={() => void imageDelete.executeDelete(executeRemoveImage)}
+      />
     </div>
   );
 }

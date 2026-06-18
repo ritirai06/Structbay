@@ -287,4 +287,50 @@ const getStats = asyncHandler(async (req, res) => {
   return ApiResponse.success(res, 200, 'Inventory stats.', { total, lowStock, outOfStock });
 });
 
-module.exports = { getAll, adjust, bulkImport, getLogs, getStats };
+const BULK_DELETE_MAX = 500;
+
+const bulkDelete = asyncHandler(async (req, res) => {
+  const raw = req.body?.ids;
+  const ids = Array.isArray(raw) ? raw.map((x) => String(x).trim()).filter(Boolean) : [];
+  const objectIds = ids.filter((id) => mongoose.Types.ObjectId.isValid(id));
+  if (!objectIds.length) throw new AppError('No valid inventory ids provided.', 400);
+  if (objectIds.length > BULK_DELETE_MAX) {
+    throw new AppError(`Too many ids (max ${BULK_DELETE_MAX}).`, 400);
+  }
+
+  const errors = [];
+  let ok = 0;
+
+  for (const id of objectIds) {
+    try {
+      const inv = await Inventory.findById(id).select('reserved product city quantity').lean();
+      if (!inv) throw new AppError('Inventory row not found.', 404);
+      if (Number(inv.reserved) > 0) {
+        throw new AppError(`${inv.reserved} unit(s) reserved for orders — release or fulfill first.`, 400);
+      }
+      await Inventory.updateOne({ _id: id }, { $set: { isDeleted: true, updatedBy: req.user._id } });
+      ok += 1;
+    } catch (e) {
+      const message = e instanceof AppError ? e.message : (e && e.message) || String(e);
+      errors.push({ id, message });
+    }
+  }
+
+  await logAction({
+    adminId: req.user._id,
+    action: 'DELETE',
+    module: 'Inventory',
+    targetId: objectIds.slice(0, 20).join(','),
+    description: `Bulk deleted ${ok} inventory row(s)${errors.length ? `; ${errors.length} failed` : ''}`,
+    ipAddress: req.ip,
+  });
+
+  return ApiResponse.success(res, 200, `Deleted ${ok} inventory row(s).`, {
+    total: objectIds.length,
+    succeeded: ok,
+    failed: errors.length,
+    errors,
+  });
+});
+
+module.exports = { getAll, adjust, bulkImport, bulkDelete, getLogs, getStats };

@@ -141,7 +141,7 @@ export function Profile() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-black" style={{ color: SB.color }}>Vendor Profile</h1>
+        <h1 className="vendor-page-title" style={{ color: SB.color }}>Vendor Profile</h1>
         <p className="text-sm mt-0.5" style={{ color: SB.muted }}>Manage your company information and account settings.</p>
       </div>
 
@@ -160,7 +160,7 @@ export function Profile() {
             <div className="relative mb-4">
               {user?.profileImage?.url
                 ? <img src={user.profileImage.url} className="w-20 h-20 rounded-2xl object-cover" alt="" />
-                : <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-white font-black text-2xl" style={{ background: 'var(--sb-orange)' }}>{initials}</div>
+                : <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-white font-semibold text-xl" style={{ background: 'var(--sb-orange)' }}>{initials}</div>
               }
               <button onClick={() => imgRef.current?.click()}
                 className="absolute -bottom-2 -right-2 w-7 h-7 rounded-lg flex items-center justify-center transition-all"
@@ -169,7 +169,7 @@ export function Profile() {
               </button>
               <input ref={imgRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
             </div>
-            <p className="font-black text-base" style={{ color: SB.color }}>{companyName || profile?.companyName || 'Vendor'}</p>
+            <p className="font-semibold text-base" style={{ color: SB.color }}>{companyName || profile?.companyName || 'Vendor'}</p>
             <p className="text-sm mt-0.5" style={{ color: SB.muted }}>{profile?.email}</p>
             <div className="flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full text-xs font-semibold"
               style={{ background: 'rgba(34,197,94,0.1)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.2)' }}>
@@ -179,7 +179,7 @@ export function Profile() {
           </div>
 
           <div className="rounded-2xl p-4 space-y-3" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
-            <p className="text-xs font-bold uppercase tracking-widest" style={{ color: SB.muted }}>Account Info</p>
+            <p className="vendor-section-title" style={{ color: SB.muted }}>Account Info</p>
             {[
               ['Role', profile?.role ?? '—'],
               ['Joined', profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) : '—'],
@@ -213,7 +213,7 @@ export function Profile() {
           {tab === 'profile' && (
             <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
               <div className="flex items-center justify-between mb-5">
-                <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: SB.muted }}>Company Information</h2>
+                <h2 className="vendor-section-title" style={{ color: SB.muted }}>Company Information</h2>
                 {!editing && (
                   <button onClick={() => setEditing(true)}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
@@ -259,7 +259,7 @@ export function Profile() {
                   </Field>
                 </div>
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: SB.muted }}>Office Address</p>
+                  <p className="vendor-section-title mb-3" style={{ color: SB.muted }}>Office Address</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Field label="Street">
                       <input value={officeAddress.street} onChange={e => setOfficeAddress(a => ({ ...a, street: e.target.value }))} disabled={!editing}
@@ -309,7 +309,7 @@ export function Profile() {
           {/* Bank Tab */}
           {tab === 'bank' && (
             <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
-              <h2 className="text-xs font-bold uppercase tracking-widest mb-5" style={{ color: SB.muted }}>Bank Details</h2>
+              <h2 className="vendor-section-title mb-5" style={{ color: SB.muted }}>Bank Details</h2>
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Field label="Account Holder Name">
@@ -346,7 +346,7 @@ export function Profile() {
           {/* Notifications Tab */}
           {tab === 'notifications' && (
             <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
-              <h2 className="text-xs font-bold uppercase tracking-widest mb-5" style={{ color: SB.muted }}>Notification Preferences</h2>
+              <h2 className="vendor-section-title mb-5" style={{ color: SB.muted }}>Notification Preferences</h2>
               <div className="space-y-3">
                 {[
                   ['email', 'Email Notifications'],
@@ -384,7 +384,7 @@ export function Profile() {
           {/* Security Tab */}
           {tab === 'security' && (
             <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
-              <h2 className="text-xs font-bold uppercase tracking-widest mb-5" style={{ color: SB.muted }}>Change Password</h2>
+              <h2 className="vendor-section-title mb-5" style={{ color: SB.muted }}>Change Password</h2>
               <div className="space-y-4 max-w-md">
                 <Field label="Current Password" required>
                   <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)}

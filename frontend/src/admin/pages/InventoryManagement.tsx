@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router";
-import { Plus, Warehouse, AlertCircle, Loader2, RefreshCw, Search, History, TrendingUp, TrendingDown, RotateCcw, Upload, Download } from "lucide-react";
+import { Plus, Warehouse, AlertCircle, Loader2, RefreshCw, Search, History, TrendingUp, TrendingDown, RotateCcw, Upload, Download, Trash2 } from "lucide-react";
 import { adminFetch as apiFetch } from "../../lib/adminApi";
+import { AdminBulkToolbar } from "../components/AdminBulkToolbar";
+import { AdminDeleteConfirmModal } from "../components/AdminDeleteConfirmModal";
 
 type AdjustType = "ADD" | "DEDUCT" | "ADJUST";
 
@@ -156,6 +158,9 @@ export function InventoryManagement() {
   const [bulkFileName, setBulkFileName] = useState<string | null>(null);
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
   const [bulkResult, setBulkResult] = useState<BulkImportResult | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [pendingDelete, setPendingDelete] = useState<{ ids: string[]; label: string } | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -361,6 +366,54 @@ export function InventoryManagement() {
     return true;
   });
 
+  const filteredIds = useMemo(() => filtered.map((item) => String(item._id)), [filtered]);
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const allFilteredSelected =
+    filteredIds.length > 0 && filteredIds.every((id) => selectedSet.has(id));
+
+  const toggleRow = (id: string) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const toggleSelectAllFiltered = () => {
+    if (allFilteredSelected) {
+      setSelectedIds((prev) => prev.filter((id) => !filteredIds.includes(id)));
+    } else {
+      setSelectedIds((prev) => [...new Set([...prev, ...filteredIds])]);
+    }
+  };
+
+  const runConfirmedDelete = async () => {
+    if (!pendingDelete?.ids.length) return;
+    setDeleteBusy(true);
+    try {
+      const env = await apiFetch<{
+        succeeded: number;
+        failed: number;
+        errors: { id: string; message: string }[];
+      }>("/inventory/bulk-delete", {
+        method: "POST",
+        body: JSON.stringify({ ids: pendingDelete.ids }),
+      });
+      const d = env.data;
+      const removed = new Set(pendingDelete.ids);
+      setSelectedIds((prev) => prev.filter((id) => !removed.has(id)));
+      setPendingDelete(null);
+      load();
+      loadLogs();
+      if (d?.failed && d.failed > 0) {
+        const detail = d.errors?.[0]?.message;
+        alert(
+          `Deleted ${d.succeeded ?? 0} row(s). ${d.failed} could not be removed.${detail ? `\n\n${detail}` : ""}`
+        );
+      }
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
   const cityLabel = (item: any) => {
     if (item.city?.name) {
       const st = item.city.state;
@@ -371,11 +424,11 @@ export function InventoryManagement() {
   };
 
   return (
-    <div className="p-6 bg-sb-cream min-h-full">
+    <div className="admin-page">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-black text-sb-ink">Inventory Management</h1>
-          <p className="text-sb-ink/55 text-sm mt-1">City-wise stock tracking with full audit logs</p>
+          <h1 className="admin-page-title text-sb-ink">Inventory Management</h1>
+          <p className="admin-page-desc">City-wise stock tracking with full audit logs</p>
           {loadError && (
             <p className="text-sb-ink/70 text-xs mt-2">{loadError}</p>
           )}
@@ -413,15 +466,15 @@ export function InventoryManagement() {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl p-4 text-center">
-          <div className="text-3xl font-black text-sb-ink">{stats.total ?? 0}</div>
+          <div className="admin-stat-value text-sb-ink">{stats.total ?? 0}</div>
           <div className="text-xs text-sb-ink/50 mt-1">Total SKUs</div>
         </div>
         <div className="bg-sb-cream-secondary border border-sb-orange/20 rounded-xl p-4 text-center cursor-pointer hover:border-sb-orange/40 transition-colors" onClick={() => { setShowLow(!showLow); setShowOut(false); }}>
-          <div className="text-3xl font-black text-sb-orange">{stats.lowStock ?? 0}</div>
+          <div className="admin-stat-value text-sb-orange">{stats.lowStock ?? 0}</div>
           <div className="text-xs text-sb-ink/50 mt-1">Low Stock {showLow && "▼"}</div>
         </div>
         <div className="bg-sb-cream-secondary border border-sb-ink/18 rounded-xl p-4 text-center cursor-pointer hover:border-sb-orange/30 transition-colors" onClick={() => { setShowOut(!showOut); setShowLow(false); }}>
-          <div className="text-3xl font-black text-sb-ink/55">{stats.outOfStock ?? 0}</div>
+          <div className="admin-stat-value text-sb-ink/55">{stats.outOfStock ?? 0}</div>
           <div className="text-xs text-sb-ink/50 mt-1">Out of Stock {showOut && "▼"}</div>
         </div>
       </div>
@@ -465,6 +518,27 @@ export function InventoryManagement() {
             </button>
           </div>
 
+          <AdminBulkToolbar
+            totalCount={filtered.length}
+            selectedCount={selectedIds.length}
+            allSelected={allFilteredSelected}
+            onToggleAll={toggleSelectAllFiltered}
+            onDeleteSelected={() =>
+              setPendingDelete({
+                ids: selectedIds,
+                label: `${selectedIds.length} inventory row(s)`,
+              })
+            }
+            onDeleteAll={() =>
+              setPendingDelete({
+                ids: filteredIds,
+                label: `all ${filteredIds.length} visible inventory row(s)`,
+              })
+            }
+            itemLabel="rows"
+            disabled={deleteBusy || loading}
+          />
+
           {loading ? (
             <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-sb-orange" /></div>
           ) : (
@@ -472,6 +546,15 @@ export function InventoryManagement() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-sb-ink/10">
+                    <th className="w-10 py-3 px-2">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-sb-ink/25 accent-sb-orange"
+                        checked={allFilteredSelected}
+                        onChange={toggleSelectAllFiltered}
+                        aria-label="Select all visible rows"
+                      />
+                    </th>
                     {["Product", "City", "Total Stock", "Reserved", "Available", "Status", "Actions"].map(h => (
                       <th key={h} className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wider text-sb-ink/50">{h}</th>
                     ))}
@@ -482,8 +565,18 @@ export function InventoryManagement() {
                     const avail = available(item);
                     const low = isLow(item);
                     const out = isOut(item);
+                    const rowId = String(item._id);
                     return (
                       <tr key={item._id} className="border-b border-sb-ink/8 hover:bg-sb-cream-secondary/90 transition-colors">
+                        <td className="py-3.5 px-2">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-sb-ink/25 accent-sb-orange"
+                            checked={selectedSet.has(rowId)}
+                            onChange={() => toggleRow(rowId)}
+                            aria-label={`Select ${item.product?.name || "inventory row"}`}
+                          />
+                        </td>
                         <td className="py-3.5 px-4">
                           <p className="font-medium text-sb-ink">{item.product?.name}</p>
                           <p className="text-xs font-mono text-sb-ink/50">{item.product?.sku}</p>
@@ -522,6 +615,19 @@ export function InventoryManagement() {
                             <button onClick={() => openAdjust(item, "ADJUST")} title="Set Stock"
                               className="p-1.5 bg-sb-orange/10 border border-sb-orange/20 rounded-lg text-sb-orange hover:bg-sb-orange/20 transition-colors">
                               <RotateCcw className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              title="Delete row"
+                              onClick={() =>
+                                setPendingDelete({
+                                  ids: [rowId],
+                                  label: `${item.product?.name || "inventory row"} (${cityLabel(item)})`,
+                                })
+                              }
+                              className="p-1.5 bg-red-50 border border-red-200 rounded-lg text-red-600 hover:bg-red-100 transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </td>
@@ -664,7 +770,7 @@ export function InventoryManagement() {
           {bulkRows.length > 0 && (
             <div className="mb-4 max-h-56 overflow-auto rounded-lg border border-sb-ink/10">
               <table className="w-full text-xs">
-                <thead className="sticky top-0 z-10 border-b border-sb-border-dark bg-sb-ink text-sb-cream">
+                <thead className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50 text-gray-500">
                   <tr>
                     {["sku / product_id", "city / city_id", "qty", "type", "reason"].map((h) => (
                       <th key={h} className="text-left py-2 px-2 text-sb-ink/50 font-semibold">
@@ -853,6 +959,28 @@ export function InventoryManagement() {
           </div>
         </Modal>
       )}
+
+      <AdminDeleteConfirmModal
+        open={!!pendingDelete}
+        title={
+          pendingDelete && pendingDelete.ids.length > 1
+            ? `Delete ${pendingDelete.ids.length} inventory rows?`
+            : "Delete this inventory row?"
+        }
+        description={
+          pendingDelete
+            ? pendingDelete.ids.length > 1
+              ? `You are about to remove ${pendingDelete.ids.length} stock records (${pendingDelete.label}). Rows with reserved stock for open orders will be skipped. You can re-add stock later with Add / initialize stock.`
+              : `Remove stock record for "${pendingDelete.label}". Rows with reserved units cannot be deleted until orders are fulfilled.`
+            : undefined
+        }
+        confirmLabel="Delete"
+        busy={deleteBusy}
+        onCancel={() => {
+          if (!deleteBusy) setPendingDelete(null);
+        }}
+        onConfirm={() => void runConfirmedDelete()}
+      />
     </div>
   );
 }

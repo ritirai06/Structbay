@@ -34,34 +34,22 @@ export function BlogListing() {
   const rest     = blogs.filter(b => !b.isFeatured);
 
   return (
-    <div className="bg-sb-page min-h-screen">
-      <div className="bg-sb-surface border-b border-sb-ink/10">
-        <div className="max-w-7xl mx-auto px-4 py-10">
-          <nav className="flex items-center gap-2 text-sm text-sb-ink-muted/50 mb-4">
-            <Link to="/" className="hover:text-[#FE5E00]">Home</Link>
+    <div className="min-h-screen">
+      <div className="sb-card mx-4 mt-6 max-w-7xl lg:mx-auto border-0 bg-sb-surface/80">
+        <div className="px-4 py-10 sm:px-8">
+          <nav className="flex items-center gap-2 text-sm text-sb-text-secondary mb-4">
+            <Link to="/" className="hover:text-sb-orange transition-colors">Home</Link>
             <ChevronRight className="w-3 h-3" />
-            <span className="text-sb-ink font-medium">Blog</span>
+            <span className="text-sb-ink font-semibold">Blog</span>
           </nav>
-          <div className="text-center">
-            <h1 className="text-sb-ink font-black text-4xl mb-2">Construction Guides & Insights</h1>
-            <p className="text-sb-ink-muted/60">Expert knowledge to help you make smarter procurement decisions</p>
+          <div className="text-center max-w-2xl mx-auto">
+            <h1 className="text-sb-ink font-bold text-3xl sm:text-4xl mb-3">Construction Guides & Insights</h1>
+            <p className="text-sb-text-secondary">Expert knowledge to help you make smarter procurement decisions</p>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="max-w-3xl mx-auto mb-8 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-[#FE5E00]/25 bg-[#FE5E00]/5 px-5 py-4">
-          <p className="text-sm text-sb-ink-muted text-center sm:text-left leading-relaxed">
-            Browse articles below, or jump to our <strong className="text-sb-ink">quantity tools</strong> when you are sizing a pour or slab.
-          </p>
-          <Link
-            to="/tools/cement-estimator"
-            className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-[#FE5E00] px-4 py-2.5 text-xs font-bold text-sb-on-orange hover:bg-[#E05200] transition-colors"
-          >
-            Open cement calculator <ChevronRight className="w-4 h-4" />
-          </Link>
-        </div>
-
         {/* Search */}
         <div className="relative max-w-lg mx-auto mb-6">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sb-ink-muted/40" />
@@ -70,7 +58,7 @@ export function BlogListing() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search articles..."
-            className="w-full pl-10 pr-4 py-2.5 bg-sb-surface border border-sb-ink/12 rounded-2xl text-sm text-sb-ink placeholder:text-sb-ink-muted/40 focus:outline-none focus:border-[#FE5E00] transition-colors"
+            className="w-full pl-10 pr-4 py-2.5 bg-sb-surface border border-sb-ink/12 rounded-2xl text-sm text-sb-ink placeholder:text-sb-ink-muted/40 focus:outline-none focus:border-[#E85A00] transition-colors"
           />
         </div>
 
@@ -79,7 +67,7 @@ export function BlogListing() {
           <div className="flex gap-2 flex-wrap justify-center mb-8">
             <button
               onClick={() => setSelectedTag("")}
-              className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${!selectedTag ? "bg-[#FE5E00] text-sb-on-orange" : "bg-sb-surface border border-sb-ink/10 text-sb-ink-muted hover:border-[#FE5E00]/50"}`}
+              className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${!selectedTag ? "bg-[#E85A00] text-sb-on-orange" : "bg-sb-surface border border-sb-ink/10 text-sb-ink-muted hover:border-[#E85A00]/50"}`}
             >
               All
             </button>
@@ -87,7 +75,7 @@ export function BlogListing() {
               <button
                 key={tag}
                 onClick={() => setSelectedTag(tag === selectedTag ? "" : tag)}
-                className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${selectedTag === tag ? "bg-[#FE5E00] text-sb-on-orange" : "bg-sb-surface border border-sb-ink/10 text-sb-ink-muted hover:border-[#FE5E00]/50"}`}
+                className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${selectedTag === tag ? "bg-[#E85A00] text-sb-on-orange" : "bg-sb-surface border border-sb-ink/10 text-sb-ink-muted hover:border-[#E85A00]/50"}`}
               >
                 {tag}
               </button>
@@ -140,7 +128,7 @@ function BlogCard({ blog, large = false }: { blog: any; large?: boolean }) {
   return (
     <Link
       to={`/blogs/${blog.slug}`}
-      className="bg-sb-surface border border-sb-ink/10 rounded-2xl overflow-hidden hover:border-[#FE5E00]/40 hover:shadow-[0_4px_24px_rgba(254,94,0,0.1)] transition-all group"
+      className="bg-sb-surface border border-sb-ink/10 rounded-2xl overflow-hidden hover:border-[#E85A00]/40 hover:shadow-[0_4px_24px_rgba(232, 90, 0,0.1)] transition-all group"
     >
       <div className={`overflow-hidden ${large ? "aspect-video" : "aspect-video"}`}>
         {blog.featuredImage?.url
@@ -149,7 +137,7 @@ function BlogCard({ blog, large = false }: { blog: any; large?: boolean }) {
         }
       </div>
       <div className="p-4">
-        {blog.category && <span className="text-xs font-bold uppercase tracking-wide text-[#FE5E00]">{blog.category}</span>}
+        {blog.category && <span className="text-xs font-bold uppercase tracking-wide text-[#E85A00]">{blog.category}</span>}
         <h3 className={`font-semibold text-sb-ink mt-1.5 mb-2 leading-snug ${large ? "text-base" : "text-sm"} line-clamp-2`}>{blog.title}</h3>
         {large && blog.description && <p className="text-sb-ink-muted/60 text-sm line-clamp-2 mb-3">{blog.description}</p>}
         <div className="flex items-center gap-3 text-xs text-sb-ink-muted/50">
@@ -201,7 +189,7 @@ export function BlogDetails() {
 
   if (loading) return (
     <div className="min-h-screen bg-sb-page flex items-center justify-center">
-      <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#FE5E00", borderTopColor: "transparent" }} />
+      <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#E85A00", borderTopColor: "transparent" }} />
     </div>
   );
 
@@ -215,14 +203,14 @@ export function BlogDetails() {
     <div className="bg-sb-page min-h-screen">
       <div className="max-w-3xl mx-auto px-4 py-8">
         <nav className="flex items-center gap-2 text-sm text-sb-ink-muted/50 mb-6">
-          <Link to="/" className="hover:text-[#FE5E00]">Home</Link>
+          <Link to="/" className="hover:text-[#E85A00]">Home</Link>
           <ChevronRight className="w-3 h-3" />
-          <Link to="/blogs" className="hover:text-[#FE5E00]">Blog</Link>
+          <Link to="/blogs" className="hover:text-[#E85A00]">Blog</Link>
           <ChevronRight className="w-3 h-3" />
           <span className="text-sb-ink line-clamp-1">{blog.title}</span>
         </nav>
 
-        {blog.category && <span className="text-sm font-bold uppercase text-[#FE5E00]">{blog.category}</span>}
+        {blog.category && <span className="text-sm font-bold uppercase text-[#E85A00]">{blog.category}</span>}
         <h1 className="text-sb-ink font-black text-3xl mt-2 mb-4 leading-tight">{blog.title}</h1>
 
         <div className="flex items-center gap-4 text-sm text-sb-ink-muted/50 mb-6">
@@ -250,7 +238,7 @@ export function BlogDetails() {
             <h2 className="text-sb-ink font-bold text-xl mb-4">Related Articles</h2>
             <div className="grid sm:grid-cols-3 gap-4">
               {related.map((b: any) => (
-                <Link key={b._id} to={`/blogs/${b.slug}`} className="bg-sb-surface rounded-xl border border-sb-ink/10 overflow-hidden hover:border-[#FE5E00]/40 transition-all group">
+                <Link key={b._id} to={`/blogs/${b.slug}`} className="bg-sb-surface rounded-xl border border-sb-ink/10 overflow-hidden hover:border-[#E85A00]/40 transition-all group">
                   <div className="aspect-video overflow-hidden">
                     {b.featuredImage?.url
                       ? <img src={b.featuredImage.url} alt={b.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
@@ -258,7 +246,7 @@ export function BlogDetails() {
                     }
                   </div>
                   <div className="p-3">
-                    {b.category && <span className="text-xs font-bold uppercase text-[#FE5E00]">{b.category}</span>}
+                    {b.category && <span className="text-xs font-bold uppercase text-[#E85A00]">{b.category}</span>}
                     <p className="text-sm font-medium text-sb-ink mt-1 line-clamp-2">{b.title}</p>
                   </div>
                 </Link>

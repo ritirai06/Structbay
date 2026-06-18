@@ -195,8 +195,8 @@ export function parseCityPricingBulkCsv(text: string): Record<string, string>[] 
 }
 
 /** Products → POST /products/bulk-import */
-export const PRODUCT_BULK_TEMPLATE = `name,sku,categorySlug,brandName,status,gstPercentage,shortDescription,description,displayOrder,isFeatured,isTopSelling,isAssured,isExpress
-Sample Product,SKU-DEMO-001,cement,UltraTech,DRAFT,18,Short text,,0,false,false,false,false`;
+export const PRODUCT_BULK_TEMPLATE = `name,sku,categorySlug,brandName,status,gstPercentage,priceIncludesGst,shortDescription,description,displayOrder,isFeatured,isTopSelling,isAssured,isExpress
+Sample Product,SKU-DEMO-001,cement,UltraTech,DRAFT,18,false,Short text,,0,false,false,false,false`;
 
 export function parseProductBulkCsv(text: string): Record<string, string>[] {
   const lines = parseLines(text);
@@ -214,6 +214,7 @@ export function parseProductBulkCsv(text: string): Record<string, string>[] {
   }
   const iStatus = headerIndex(header, ["status"]);
   const iGst = headerIndex(header, ["gstpercentage", "gst_percentage", "gst"]);
+  const iInclGst = headerIndex(header, ["priceincludesgst", "price_includes_gst", "gstincluded", "gst_included"]);
   const iShort = headerIndex(header, ["shortdescription", "short_description"]);
   const iDesc = headerIndex(header, ["description"]);
   const iDisp = headerIndex(header, ["displayorder", "display_order"]);
@@ -242,6 +243,8 @@ export function parseProductBulkCsv(text: string): Record<string, string>[] {
     if (st) row.status = st;
     const gst = get(iGst);
     if (gst !== "") row.gstPercentage = gst;
+    const incl = get(iInclGst);
+    if (incl !== "") row.priceIncludesGst = incl;
     const sh = get(iShort);
     if (sh) row.shortDescription = sh;
     const d = get(iDesc);

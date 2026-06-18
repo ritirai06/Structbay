@@ -4,6 +4,11 @@ const AppError = require('../utils/AppError');
 const BulkEnquiry = require('../models/BulkEnquiry');
 const { logAction } = require('../services/auditLog.service');
 const { generateRefNumber } = require('../services/refNumber.service');
+const {
+  buildBulkEnquiryExcelBuffer,
+  buildBulkEnquiryPdfBuffer,
+} = require('../services/bulkEnquiryTemplate.service');
+const { BULK_ENQUIRY_TEXT_EXAMPLE } = require('../constants/bulkEnquiryTemplate');
 
 const genNumber = () => generateRefNumber('BULK_ENQUIRY');
 
@@ -40,7 +45,8 @@ const create = asyncHandler(async (req, res) => {
     throw new AppError('Either requirement message or document attachment is required.', 400);
   }
   const enquiryNumber = await genNumber();
-  const payload = { ...req.body, enquiryNumber, customer: req.user._id };
+  const payload = { ...req.body, enquiryNumber };
+  if (req.user?._id) payload.customer = req.user._id;
   const item = await BulkEnquiry.create(payload);
   return ApiResponse.created(res, 'Bulk enquiry submitted.', item);
 });
@@ -67,4 +73,42 @@ const getStats = asyncHandler(async (req, res) => {
   return ApiResponse.success(res, 200, 'Stats.', { total, new: newEnq, inProgress, quoted, converted });
 });
 
-module.exports = { getAll, getById, create, update, getStats };
+const downloadExcelTemplate = asyncHandler(async (req, res) => {
+  const buffer = await buildBulkEnquiryExcelBuffer();
+  res.setHeader(
+    'Content-Type',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  );
+  res.setHeader(
+    'Content-Disposition',
+    'attachment; filename="structbay-bulk-enquiry-template.xlsx"'
+  );
+  res.send(Buffer.from(buffer));
+});
+
+const downloadPdfTemplate = asyncHandler(async (req, res) => {
+  const buffer = await buildBulkEnquiryPdfBuffer();
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader(
+    'Content-Disposition',
+    'attachment; filename="structbay-bulk-enquiry-template.pdf"'
+  );
+  res.send(buffer);
+});
+
+const getTextExample = asyncHandler(async (req, res) => {
+  return ApiResponse.success(res, 200, 'Bulk enquiry text example.', {
+    example: BULK_ENQUIRY_TEXT_EXAMPLE,
+  });
+});
+
+module.exports = {
+  getAll,
+  getById,
+  create,
+  update,
+  getStats,
+  downloadExcelTemplate,
+  downloadPdfTemplate,
+  getTextExample,
+};

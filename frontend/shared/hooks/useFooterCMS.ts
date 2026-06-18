@@ -24,6 +24,8 @@ export interface FooterData {
   };
 }
 
+import { FOOTER_QUICK_LINKS } from "@shared/constants/footerQuickLinks";
+
 const DEFAULTS: FooterData = {
   companyDescription:
     "StructBay combines the reliability of branded materials, the power of affordable pricing, and the ease of single-window sourcing — everything you need to finish projects faster and better.",
@@ -32,12 +34,12 @@ const DEFAULTS: FooterData = {
   email: "hello@structbay.com",
   newsletterText: "Subscribe for exciting offers & newsletters",
   copyrightText: "© 2026 StructBay. All Rights Reserved. Developed By HSDA Digital.",
-  quickLinks: [
-    { _id: "1", label: "Privacy Policy",            href: "/privacy",  sortOrder: 0 },
-    { _id: "2", label: "Terms & Conditions",         href: "/terms",    sortOrder: 1 },
-    { _id: "3", label: "Return & Refund Policy",     href: "/returns",  sortOrder: 2 },
-    { _id: "4", label: "Shipping & Delivery Policy", href: "/shipping", sortOrder: 3 },
-  ],
+  quickLinks: FOOTER_QUICK_LINKS.map((l, i) => ({
+    _id: String(i + 1),
+    label: l.label,
+    href: l.href,
+    sortOrder: l.sortOrder,
+  })),
   socialLinks: {
     facebook:  "#",
     twitter:   "#",
@@ -59,8 +61,12 @@ export function useFooterCMS() {
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then(json => {
         if (!cancelled && json?.data) {
-          // Merge API data over defaults so any missing fields still show
-          setData(prev => ({ ...prev, ...json.data }));
+          const api = json.data as Partial<FooterData>;
+          const quickLinks =
+            Array.isArray(api.quickLinks) && api.quickLinks.length > 0
+              ? api.quickLinks
+              : DEFAULTS.quickLinks;
+          setData((prev) => ({ ...prev, ...api, quickLinks }));
         }
       })
       .catch(() => { /* silently use defaults */ })

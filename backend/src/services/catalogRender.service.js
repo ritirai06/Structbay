@@ -2,11 +2,25 @@ const PDFDocument = require('pdfkit');
 const ExcelJS = require('exceljs');
 const QRCode = require('qrcode');
 const axios = require('axios');
+const { normalizeWholesaleSlabsForResolve } = require('./checkoutPricing.service');
 
 const storefrontOrigin = () =>
   (process.env.CUSTOMER_URL || process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
 
-const productUrl = (slug) => (slug ? `${storefrontOrigin()}/products/${encodeURIComponent(slug)}` : '');
+const productUrl = (slug) => (slug ? `${storefrontOrigin()}/product/${encodeURIComponent(slug)}` : '');
+
+function formatWholesaleTiersForCatalog(pr) {
+  if (!pr) return '';
+  const slabs = normalizeWholesaleSlabsForResolve(pr.wholesaleSlabs);
+  if (!slabs.length) return '';
+  const base = pr.salePrice ?? pr.regularPrice;
+  const bits = [`Base: ₹${base}`];
+  for (const s of slabs) {
+    const maxLabel = s.maxQty == null ? '+' : `–${s.maxQty}`;
+    bits.push(`${s.minQty}${maxLabel} u: ₹${s.price}`);
+  }
+  return bits.join(' · ');
+}
 
 const MAX_PDF_PRODUCTS = 60;
 
@@ -64,9 +78,13 @@ function flatRowsFromBundles(bundles, includePricing) {
       const moq = v?.moq != null ? String(v.moq) : '';
       const lead = v?.leadTimeDays != null ? String(v.leadTimeDays) : '';
       let sell = '';
+      let wholesaleText = '';
       if (includePricing && b.pricingFor) {
         const pr = b.pricingFor(v);
-        if (pr) sell = String(pr.salePrice ?? pr.regularPrice ?? '');
+        if (pr) {
+          sell = String(pr.salePrice ?? pr.regularPrice ?? '');
+          wholesaleText = formatWholesaleTiersForCatalog(pr);
+        }
       }
       rows.push({
         productName: p.name,
@@ -77,6 +95,7 @@ function flatRowsFromBundles(bundles, includePricing) {
         variantAttributes: attrs,
         variantMrp: mrp,
         sellingPrice: sell,
+        wholesaleTiers: wholesaleText,
         variantMoq: moq,
         variantLeadDays: lead,
         gstPercent: p.gstPercentage ?? '',
@@ -285,6 +304,7 @@ async function renderXlsxBuffer({ bundles, catalogName, coverMeta, options }) {
     { header: 'Variant attributes', key: 'attrs', width: 40 },
     { header: 'MRP', key: 'mrp', width: 10 },
     { header: 'Selling price', key: 'price', width: 12 },
+    { header: 'Wholesale tiers (ex-GST)', key: 'wholesale', width: 42 },
     { header: 'MOQ', key: 'moq', width: 8 },
     { header: 'Lead days', key: 'lead', width: 10 },
     { header: 'GST %', key: 'gst', width: 8 },
@@ -299,6 +319,7 @@ async function renderXlsxBuffer({ bundles, catalogName, coverMeta, options }) {
     for (const v of vars) {
       const pr = includePricing && b.pricingFor ? b.pricingFor(v) : null;
       const sell = pr ? pr.salePrice ?? pr.regularPrice : '';
+      const wholesale = pr ? formatWholesaleTiersForCatalog(pr) : '';
       ws.addRow({
         product: p.name,
         sku: p.sku,
@@ -308,6 +329,7 @@ async function renderXlsxBuffer({ bundles, catalogName, coverMeta, options }) {
         attrs: v ? formatAttrs(v.attributes) : '',
         mrp: v?.mrp ?? '',
         price: sell,
+        wholesale,
         moq: v?.moq ?? '',
         lead: v?.leadTimeDays ?? '',
         gst: p.gstPercentage ?? '',
@@ -340,6 +362,7 @@ function renderCsvBuffer({ bundles, options }) {
     'Variant Attributes',
     'MRP',
     'Selling Price',
+    'Wholesale / bulk tiers (ex-GST)',
     'MOQ',
     'Lead Time (days)',
     'GST %',
@@ -359,6 +382,7 @@ function renderCsvBuffer({ bundles, options }) {
         r.variantAttributes,
         r.variantMrp,
         r.sellingPrice,
+        r.wholesaleTiers,
         r.variantMoq,
         r.variantLeadDays,
         r.gstPercent,
@@ -383,14 +407,14 @@ function renderHtmlBuffer({ bundles, catalogName, coverMeta, options }) {
   const body = rows
     .map(
       (r) =>
-        `<tr><td>${esc(r.productName)}</td><td>${esc(r.productSku)}</td><td>${esc(r.brand)}</td><td>${esc(r.category)}</td><td>${esc(r.variantSku)}</td><td>${esc(r.variantAttributes)}</td><td>${esc(r.variantMrp)}</td><td>${esc(r.sellingPrice)}</td><td>${esc(r.variantMoq)}</td><td>${esc(r.variantLeadDays)}</td><td>${esc(r.gstPercent)}</td><td>${esc(r.badges)}</td><td><a href="${esc(r.productUrl)}">${esc(r.productUrl)}</a></td></tr>`
+        `<tr><td>${esc(r.productName)}</td><td>${esc(r.productSku)}</td><td>${esc(r.brand)}</td><td>${esc(r.category)}</td><td>${esc(r.variantSku)}</td><td>${esc(r.variantAttributes)}</td><td>${esc(r.variantMrp)}</td><td>${esc(r.sellingPrice)}</td><td>${esc(r.wholesaleTiers)}</td><td>${esc(r.variantMoq)}</td><td>${esc(r.variantLeadDays)}</td><td>${esc(r.gstPercent)}</td><td>${esc(r.badges)}</td><td><a href="${esc(r.productUrl)}">${esc(r.productUrl)}</a></td></tr>`
     )
     .join('');
   return Buffer.from(
     `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${esc(catalogName)}</title>
 <style>body{font-family:system-ui;margin:0;background:#faf8f5} .c{background:linear-gradient(120deg,#0f172a,#431407);color:#fff;padding:2rem} .o{color:#FE5E00;font-weight:700} table{border-collapse:collapse;width:100%;background:#fff;font-size:12px} th,td{border:1px solid #e5e7eb;padding:6px}</style></head><body>
 <div class="c"><div class="o">STRUCTBAY</div><h1>${esc(catalogName)}</h1><p>Products: ${coverMeta.totalProducts} · ${new Date().toLocaleString('en-IN')}</p></div>
-<table><thead><tr>${['Product', 'SKU', 'Brand', 'Category', 'Var SKU', 'Attributes', 'MRP', 'Price', 'MOQ', 'Lead', 'GST', 'Badges', 'URL'].map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></body></html>`,
+<table><thead><tr>${['Product', 'SKU', 'Brand', 'Category', 'Var SKU', 'Attributes', 'MRP', 'Price', 'Wholesale', 'MOQ', 'Lead', 'GST', 'Badges', 'URL'].map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></body></html>`,
     'utf8'
   );
 }

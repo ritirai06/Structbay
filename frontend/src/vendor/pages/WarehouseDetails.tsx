@@ -108,7 +108,7 @@ export function WarehouseDetails() {
           <ArrowLeft className="w-4 h-4" />
         </Link>
         <div>
-          <h1 className="text-xl font-black" style={{ color: SB.color }}>Pickup / Warehouse Details</h1>
+          <h1 className="vendor-page-title" style={{ color: SB.color }}>Pickup / Warehouse Details</h1>
           <p className="text-sm" style={{ color: SB.muted }}>Order: {order.orderNumber} · StructBay Pickup</p>
         </div>
       </div>
@@ -185,7 +185,7 @@ export function WarehouseDetails() {
         {/* Sidebar */}
         <div className="space-y-4">
           <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
-            <h3 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: SB.muted }}>Order Summary</h3>
+            <h3 className="vendor-section-title mb-4" style={{ color: SB.muted }}>Order Summary</h3>
             <div className="space-y-3">
               {[
                 ['Order #', order.orderNumber],

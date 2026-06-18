@@ -8,15 +8,17 @@ exports.listMine = asyncHandler(async (req, res) => {
   const limit = Math.min(50, parseInt(req.query.limit, 10) || 30);
   const skip = (page - 1) * limit;
   const q = { user: req.user._id };
-  const [rows, total] = await Promise.all([
+  const [rows, total, unreadCount] = await Promise.all([
     StaffNotification.find(q).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
     StaffNotification.countDocuments(q),
+    StaffNotification.countDocuments({ user: req.user._id, isRead: false }),
   ]);
   return ApiResponse.success(res, 200, 'Staff notifications retrieved.', rows, {
     total,
     page,
     limit,
     pages: Math.ceil(total / limit) || 1,
+    unreadCount,
   });
 });
 

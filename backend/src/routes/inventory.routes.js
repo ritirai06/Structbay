@@ -9,6 +9,7 @@ router.get('/',        ...adminOnly, ctrl.getAll);
 router.get('/stats',   ...adminOnly, ctrl.getStats);
 router.get('/logs',    ...adminOnly, ctrl.getLogs);
 router.post('/bulk-import', ...adminOnly, ctrl.bulkImport);
+router.post('/bulk-delete', ...adminOnly, ctrl.bulkDelete);
 router.post('/adjust', ...adminOnly, ctrl.adjust);
 
 module.exports = router;

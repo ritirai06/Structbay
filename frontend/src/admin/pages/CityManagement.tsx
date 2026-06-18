@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Edit, Trash2, ToggleLeft, ToggleRight, MapPin, Loader2, Save, RefreshCw, Search, Copy, Check, X, Upload, ListPlus, Download } from "lucide-react";
 import { BulkImportCsvModal } from "../components/BulkImportCsvModal";
+import { AdminBulkToolbar } from "../components/AdminBulkToolbar";
+import { AdminDeleteConfirmModal } from "../components/AdminDeleteConfirmModal";
+import { useAdminDeleteFlow } from "../hooks/useAdminDeleteFlow";
+import { adminToast } from "../lib/adminToast";
 import { CITY_BULK_TEMPLATE, CITY_PIN_BULK_TEMPLATE, parseCityBulkCsv } from "../lib/adminBulkCsvParsers";
 import { adminFetch as apiFetch } from "../../lib/adminApi";
 
@@ -56,11 +60,17 @@ export function CityManagement() {
   const [pinRaw, setPinRaw] = useState("");
   const [pinMode, setPinMode] = useState<"append" | "replace">("append");
   const [pinSaving, setPinSaving] = useState(false);
+  const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const deleteFlow = useAdminDeleteFlow();
+
+  const deleteOneCity = async (id: string) => {
+    await apiFetch(`/cities/${id}`, { method: "DELETE" });
+  };
 
   const load = useCallback(() => {
     setLoading(true);
     apiFetch(`/cities?limit=200`)
-      .then(d => { setCities(d.data || []); setPagination(d.pagination || {}); })
+      .then(d => { setCities(d.data || []); setPagination(d.pagination || {}); setSelected({}); })
       .catch(() => { setCities([]); setPagination({ total: 0, pages: 1, page: 1 }); })
       .finally(() => setLoading(false));
   }, []);
@@ -86,14 +96,34 @@ export function CityManagement() {
   };
 
   const toggle = async (id: string) => {
-    await apiFetch(`/cities/${id}/toggle`, { method: "PATCH" }).catch(e => alert(e.message));
-    load();
+    try {
+      await apiFetch(`/cities/${id}/toggle`, { method: "PATCH" });
+      adminToast.success("City status updated");
+      load();
+    } catch (e: any) {
+      adminToast.error(e.message || "Could not update status");
+    }
   };
 
-  const remove = async (id: string, name: string) => {
-    if (!confirm(`Delete "${name}"?`)) return;
-    await apiFetch(`/cities/${id}`, { method: "DELETE" }).catch(e => alert(e.message));
-    load();
+  const filtered = cities.filter(c => !search || c.name.toLowerCase().includes(search.toLowerCase()) || c.state.toLowerCase().includes(search.toLowerCase()));
+  const active = filtered.filter(c => c.status === "ACTIVE").length;
+  const selectedIds = filtered.filter((c) => selected[String(c._id)]).map((c) => String(c._id));
+  const allSelected = filtered.length > 0 && selectedIds.length === filtered.length;
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelected({});
+      return;
+    }
+    const next: Record<string, boolean> = {};
+    filtered.forEach((c) => {
+      next[String(c._id)] = true;
+    });
+    setSelected(next);
+  };
+
+  const remove = (id: string, name: string) => {
+    deleteFlow.requestDelete({ kind: "single", ids: [id], label: name });
   };
 
   const downloadPinTemplate = () => {
@@ -136,15 +166,12 @@ export function CityManagement() {
     }
   };
 
-  const filtered = cities.filter(c => !search || c.name.toLowerCase().includes(search.toLowerCase()) || c.state.toLowerCase().includes(search.toLowerCase()));
-  const active = filtered.filter(c => c.status === "ACTIVE").length;
-
   return (
-    <div className="p-6 bg-sb-cream min-h-full">
+    <div className="admin-page">
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-sb-ink">City Management</h1>
-          <p className="text-sb-ink/55 text-sm mt-1">{active} active / {filtered.length} total cities</p>
+          <h1 className="admin-page-title text-sb-ink">City Management</h1>
+          <p className="admin-page-desc">{active} active / {filtered.length} total cities</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -168,7 +195,7 @@ export function CityManagement() {
           { label: "Serviceable", value: cities.filter(c => c.isServiceable).length, color: "text-sb-orange" },
         ].map(s => (
           <div key={s.label} className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl p-4 text-center">
-            <div className={`text-3xl font-black ${s.color}`}>{s.value}</div>
+            <div className={`admin-stat-value ${s.color}`}>{s.value}</div>
             <div className="text-xs text-sb-ink/50 mt-1">{s.label}</div>
           </div>
         ))}
@@ -186,6 +213,29 @@ export function CityManagement() {
         </button>
       </div>
 
+      <AdminBulkToolbar
+        totalCount={filtered.length}
+        selectedCount={selectedIds.length}
+        allSelected={allSelected}
+        onToggleAll={toggleAll}
+        onDeleteSelected={() =>
+          deleteFlow.requestDelete({
+            kind: "bulk",
+            ids: selectedIds,
+            label: `${selectedIds.length} cities`,
+          })
+        }
+        onDeleteAll={() =>
+          deleteFlow.requestDelete({
+            kind: "bulk",
+            ids: filtered.map((c) => String(c._id)),
+            label: `all ${filtered.length} visible cities`,
+          })
+        }
+        itemLabel="cities"
+        disabled={deleteFlow.busy || loading}
+      />
+
       {loading ? (
         <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-sb-orange" /></div>
       ) : (
@@ -193,6 +243,14 @@ export function CityManagement() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-sb-ink/10">
+                <th className="w-10 py-3 px-2">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-sb-ink/25 accent-sb-orange"
+                    checked={allSelected}
+                    onChange={toggleAll}
+                  />
+                </th>
                 {["City", "City ID", "State", "PINs", "Priority", "Sort", "Serviceable", "Status", "Actions"].map(h => (
                   <th key={h} className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wider text-sb-ink/50">{h}</th>
                 ))}
@@ -201,6 +259,16 @@ export function CityManagement() {
             <tbody>
               {filtered.map(c => (
                 <tr key={c._id} className="border-b border-sb-ink/8 hover:bg-sb-cream-secondary/90 transition-colors">
+                  <td className="py-3.5 px-2">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-sb-ink/25 accent-sb-orange"
+                      checked={!!selected[String(c._id)]}
+                      onChange={() =>
+                        setSelected((s) => ({ ...s, [String(c._id)]: !s[String(c._id)] }))
+                      }
+                    />
+                  </td>
                   <td className="py-3.5 px-4">
                     <div className="flex items-center gap-2">
                       <MapPin className="w-4 h-4 text-sb-orange shrink-0" />
@@ -441,6 +509,20 @@ export function CityManagement() {
           </div>
         </Modal>
       )}
+
+      <AdminDeleteConfirmModal
+        open={!!deleteFlow.pending}
+        title={deleteFlow.modalTitle}
+        description={deleteFlow.modalDescription}
+        busy={deleteFlow.busy}
+        onCancel={deleteFlow.cancelDelete}
+        onConfirm={() =>
+          void deleteFlow.executeDelete(deleteOneCity, () => {
+            setSelected({});
+            load();
+          })
+        }
+      />
     </div>
   );
 }

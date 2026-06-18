@@ -25,7 +25,12 @@ brandSchema.pre('save', function (next) {
   if (this.isModified('name')) this.slug = slugify(this.name, { lower: true, strict: true });
   next();
 });
-brandSchema.pre(/^find/, function (next) { this.where({ isDeleted: false }); next(); });
+const excludeSoftDeleted = function (next) {
+  this.where({ isDeleted: { $ne: true } });
+  next();
+};
+brandSchema.pre(/^find/, excludeSoftDeleted);
+brandSchema.pre('countDocuments', excludeSoftDeleted);
 brandSchema.index({ status: 1, isDeleted: 1, sortOrder: 1 });
 brandSchema.index({ category: 1, status: 1 });
 

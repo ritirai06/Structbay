@@ -35,6 +35,8 @@ export function UploadInvoice() {
   const [invoiceAmount, setInvoiceAmount] = useState('');
   const [gstAmount, setGstAmount] = useState('');
   const [vendorRemarks, setVendorRemarks] = useState('');
+  const [pickupContactName, setPickupContactName] = useState('');
+  const [pickupContactPhone, setPickupContactPhone] = useState('');
   const [file, setFile] = useState<File | null>(null);
 
   const total = (parseFloat(invoiceAmount || '0') + parseFloat(gstAmount || '0')).toFixed(2);
@@ -46,7 +48,12 @@ export function UploadInvoice() {
           api.getOrder(orderId!),
           api.getInvoiceByOrder(orderId!),
         ]);
-        if (oRes.status === 'fulfilled') setOrder(oRes.value.data);
+        if (oRes.status === 'fulfilled') {
+          setOrder(oRes.value.data);
+          const lg = oRes.value.data?.structbayLogistics;
+          if (lg?.pickupContactName) setPickupContactName(lg.pickupContactName);
+          if (lg?.pickupContactPhone) setPickupContactPhone(lg.pickupContactPhone);
+        }
         if (iRes.status === 'fulfilled') setExistingInvoice(iRes.value.data);
       } finally { setLoading(false); }
     }
@@ -56,6 +63,10 @@ export function UploadInvoice() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!file) { setError('Please select an invoice PDF.'); return; }
+    if (order?.deliveryType === 'structbay_delivery' && (!pickupContactName.trim() || !pickupContactPhone.trim())) {
+      setError('Pickup contact name and phone are required for StructBay delivery (Type B).');
+      return;
+    }
     setSubmitting(true); setError('');
     try {
       const form = new FormData();
@@ -66,6 +77,10 @@ export function UploadInvoice() {
       form.append('invoiceAmount', invoiceAmount);
       form.append('gstAmount', gstAmount);
       form.append('vendorRemarks', vendorRemarks);
+      if (order?.deliveryType === 'structbay_delivery') {
+        form.append('pickupContactName', pickupContactName.trim());
+        form.append('pickupContactPhone', pickupContactPhone.trim());
+      }
 
       if (existingInvoice && existingInvoice.status !== 'replaced') {
         await api.replaceInvoice(existingInvoice._id, form);
@@ -86,6 +101,7 @@ export function UploadInvoice() {
   );
 
   const isReplace = existingInvoice && existingInvoice.status !== 'replaced';
+  const typeB = order?.deliveryType === 'structbay_delivery';
 
   return (
     <div className="space-y-5">
@@ -94,7 +110,7 @@ export function UploadInvoice() {
           <ArrowLeft className="w-4 h-4" />
         </Link>
         <div>
-          <h1 className="text-xl font-black" style={{ color: SB.color }}>{isReplace ? 'Replace Invoice' : 'Upload Invoice'}</h1>
+          <h1 className="vendor-page-title" style={{ color: SB.color }}>{isReplace ? 'Replace Invoice' : 'Upload Invoice'}</h1>
           <p className="text-sm" style={{ color: SB.muted }}>Order: {order?.orderNumber ?? orderId}</p>
         </div>
       </div>
@@ -186,6 +202,25 @@ export function UploadInvoice() {
                   className={inputCls} style={inputStyle} />
               </Field>
 
+              {typeB && (
+                <div className="rounded-xl p-4 space-y-4" style={{ background: 'rgba(249,115,22,0.06)', border: '1px solid var(--sb-orange-border)' }}>
+                  <p className="text-xs font-bold uppercase tracking-wider" style={{ color: SB.orange }}>
+                    Pickup contact (Type B — StructBay delivery)
+                  </p>
+                  <p className="text-xs" style={{ color: SB.muted }}>
+                    StructBay will use this contact when booking Porter/Delhivery pickup from your warehouse.
+                  </p>
+                  <Field label="Contact name" required>
+                    <input type="text" value={pickupContactName} onChange={e => setPickupContactName(e.target.value)} required
+                      placeholder="Warehouse / dispatch person" className={inputCls} style={inputStyle} />
+                  </Field>
+                  <Field label="Contact phone" required>
+                    <input type="tel" value={pickupContactPhone} onChange={e => setPickupContactPhone(e.target.value)} required
+                      placeholder="10-digit mobile" className={inputCls} style={inputStyle} />
+                  </Field>
+                </div>
+              )}
+
               <button type="submit" disabled={submitting || success}
                 className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all disabled:opacity-60"
                 style={{ background: 'var(--sb-orange)', color: '#0D0D0D', boxShadow: '0 4px 16px var(--sb-orange-glow)' }}>
@@ -201,7 +236,7 @@ export function UploadInvoice() {
         {/* Sidebar */}
         <div className="space-y-4">
           <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
-            <h3 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: SB.muted }}>Order Summary</h3>
+            <h3 className="vendor-section-title mb-4" style={{ color: SB.muted }}>Order Summary</h3>
             <div className="space-y-3">
               {[
                 ['Order #', order?.orderNumber],
@@ -220,7 +255,7 @@ export function UploadInvoice() {
           </div>
 
           <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
-            <h3 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: SB.muted }}>Invoice Status</h3>
+            <h3 className="vendor-section-title mb-3" style={{ color: SB.muted }}>Invoice Status</h3>
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${order?.invoiceStatus === 'pending' ? 'bg-red-400' : 'bg-yellow-400'}`} />
               <span className="text-sm capitalize" style={{ color: SB.color }}>{order?.invoiceStatus ?? 'Pending Upload'}</span>

@@ -8,11 +8,16 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default: "border-transparent bg-sb-orange text-white",
-        secondary: "border-sb-ink/12 bg-sb-cream-secondary text-sb-ink",
-        destructive: "border-sb-ink/20 bg-sb-cream-secondary text-sb-ink",
-        outline: "border-sb-ink/18 bg-transparent text-sb-ink",
-        gold: "border-sb-orange/25 bg-sb-orange/12 text-sb-orange",
-        success: "border-sb-orange/22 bg-sb-orange/10 text-sb-orange",
+        secondary: "border-sb-border bg-sb-surface text-sb-ink",
+        destructive: "badge-cancelled",
+        outline: "border-sb-border bg-transparent text-sb-ink",
+        gold: "badge-processing",
+        success: "badge-completed",
+        warning: "badge-pending",
+        pending: "badge-pending",
+        processing: "badge-processing",
+        completed: "badge-completed",
+        cancelled: "badge-cancelled",
       },
     },
     defaultVariants: {

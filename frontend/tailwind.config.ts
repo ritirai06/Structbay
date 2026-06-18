@@ -2,30 +2,48 @@ import type { Config } from "tailwindcss";
 
 /**
  * StructBay Tailwind theme extension (v4).
- * Source of truth for hex values is `shared/design-system/design-tokens.ts`;
- * keep these colors in sync when the palette changes.
+ * Source of truth for hex values is `shared/design-system/design-tokens.ts`.
  */
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}", "./shared/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
       colors: {
-        "sb-orange": "#FE5E00",
-        "sb-orange-hover": "#E05200",
-        "sb-cream": "#FAF3E1",
-        "sb-cream-secondary": "#F5E7C6",
-        "sb-ink": "#222222",
-        "sb-page": "#FAF3E1",
-        "sb-surface": "#F5E7C6",
-        "sb-surface-2": "#FAF3E1",
-        "sb-nav": "#222222",
+        "sb-orange": "#E85A00",
+        "sb-orange-hover": "#CC4E00",
+        "sb-cream": "#FFFFFF",
+        "sb-cream-secondary": "#F5F5F5",
+        "sb-card": "#FFFFFF",
+        "sb-ink": "#000000",
+        "sb-dark-secondary": "#000000",
+        "sb-page": "#FFFFFF",
+        "sb-surface": "#FFFFFF",
+        "sb-surface-2": "#FFFFFF",
+        "sb-nav": "#000000",
         "sb-on-orange": "#ffffff",
-        "sb-border-dark": "rgba(250, 243, 225, 0.12)",
-        "sb-border-light": "rgba(34, 34, 34, 0.12)",
-        "sb-orange-subtle": "rgba(254, 94, 0, 0.12)",
+        "sb-border": "#E5E5E5",
+        "sb-border-dark": "rgba(255, 255, 255, 0.12)",
+        "sb-border-light": "#E2D5BC",
+        "sb-orange-subtle": "rgba(232, 90, 0, 0.12)",
+        "sb-success": "#2E8B57",
+        "sb-warning": "#F4A300",
+        "sb-danger": "#D64545",
+        "sb-text-secondary": "#666666",
+        "sb-ink-muted": "#666666",
+        "sb-surface-elevated": "#F9F3E7",
       },
       fontFamily: {
-        sans: ["Inter", "Segoe UI", "system-ui", "sans-serif"],
+        sans: ["Inter", "Poppins", "system-ui", "sans-serif"],
+      },
+      borderRadius: {
+        card: "16px",
+        input: "12px",
+        button: "12px",
+        modal: "20px",
+      },
+      height: {
+        header: "72px",
+        input: "48px",
       },
     },
   },

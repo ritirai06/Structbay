@@ -50,24 +50,24 @@ export function CustomerManagement() {
   const activeCount = customers.filter(c => c.status === "ACTIVE").length;
 
   return (
-    <div className="p-6 bg-sb-cream min-h-full">
+    <div className="admin-page">
       <div className="mb-6">
-        <h1 className="text-2xl font-black text-sb-ink">Customer Management</h1>
-        <p className="text-sb-ink/55 text-sm mt-1">View, manage and monitor all registered customers</p>
+        <h1 className="admin-page-title text-sb-ink">Customer Management</h1>
+        <p className="admin-page-desc">View, manage and monitor all registered customers</p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl p-4 text-center">
-          <div className="text-3xl font-black text-sb-ink">{totalCustomers}</div>
+          <div className="admin-stat-value text-sb-ink">{totalCustomers}</div>
           <div className="text-xs text-sb-ink/50 mt-1">Total Customers</div>
         </div>
         <div className="bg-sb-cream-secondary border border-sb-orange/22 rounded-xl p-4 text-center">
-          <div className="text-3xl font-black text-sb-orange">{activeCount}</div>
+          <div className="admin-stat-value text-sb-orange">{activeCount}</div>
           <div className="text-xs text-sb-ink/50 mt-1">Active</div>
         </div>
         <div className="bg-sb-cream-secondary border border-sb-orange/20 rounded-xl p-4 text-center">
-          <div className="text-3xl font-black text-sb-orange">{customers.filter(c => c.status === "PENDING").length}</div>
+          <div className="admin-stat-value text-sb-orange">{customers.filter(c => c.status === "PENDING").length}</div>
           <div className="text-xs text-sb-ink/50 mt-1">Pending Verification</div>
         </div>
       </div>

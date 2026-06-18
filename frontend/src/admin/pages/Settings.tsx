@@ -9,7 +9,7 @@ export function Settings() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-black text-sb-ink">Settings</h1>
+        <h1 className="admin-page-title text-sb-ink">Settings</h1>
         <p className="text-sb-ink/55">Configure system settings and preferences</p>
       </div>
 

@@ -36,11 +36,11 @@ export function AdminUsers() {
   }, [load]);
 
   return (
-    <div className="p-6 bg-sb-cream min-h-full">
+    <div className="admin-page">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-sb-ink">Admin users</h1>
-          <p className="text-sb-ink/55 text-sm mt-1">
+          <h1 className="admin-page-title text-sb-ink">Admin users</h1>
+          <p className="admin-page-desc">
             Accounts with role <span className="text-sb-orange">ADMIN</span> from the database (not
             demo data).
           </p>

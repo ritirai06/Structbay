@@ -17,11 +17,11 @@ export function Layout() {
   if (!user) return <Navigate to="/vendor/login" replace />;
 
   return (
-    <div className="flex h-screen" style={{ background: 'var(--sb-bg)' }}>
+    <div className="vendor-portal flex h-screen" style={{ background: 'var(--sb-bg)' }}>
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
-        <main className="flex-1 overflow-y-auto p-6" style={{ background: 'var(--sb-bg)' }}>
+        <main className="flex-1 overflow-y-auto p-5 md:p-6" style={{ background: 'var(--sb-bg)' }}>
           <Outlet />
         </main>
       </div>

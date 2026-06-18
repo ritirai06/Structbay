@@ -6,6 +6,10 @@ import {
 } from "lucide-react";
 import { BulkImportCsvModal } from "../components/BulkImportCsvModal";
 import { CatalogGenerateModal, type CatalogModalScope } from "../components/CatalogGenerateModal";
+import { AdminBulkToolbar } from "../components/AdminBulkToolbar";
+import { AdminDeleteConfirmModal } from "../components/AdminDeleteConfirmModal";
+import { useAdminDeleteFlow } from "../hooks/useAdminDeleteFlow";
+import { adminToast } from "../lib/adminToast";
 import { parseProductBulkCsv, PRODUCT_BULK_TEMPLATE } from "../lib/adminBulkCsvParsers";
 import { adminPath } from "../../lib/portalRoutes";
 import {
@@ -25,8 +29,8 @@ import {
 
 const statusBadge = (status: string) =>
   status === "ACTIVE"
-    ? "bg-sb-orange/12 text-sb-orange border border-sb-orange/22"
-    : "bg-sb-cream-secondary text-sb-ink/55 border border-sb-ink/12";
+    ? "admin-badge admin-badge--active"
+    : "admin-badge admin-badge--muted";
 
 function Spinner() {
   return (
@@ -76,7 +80,7 @@ export function ProductList() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [pagination, setPagination] = useState({ total: 0, pages: 1, page: 1 });
+  const [pagination, setPagination] = useState({ total: 0, active: 0, pages: 1, page: 1 });
   const [bulkOpen, setBulkOpen] = useState(false);
 
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -86,6 +90,12 @@ export function ProductList() {
 
   const [historyJobs, setHistoryJobs] = useState<CatalogJobRow[]>([]);
   const [historyBusy, setHistoryBusy] = useState(false);
+  const deleteFlow = useAdminDeleteFlow();
+  const catalogDeleteFlow = useAdminDeleteFlow();
+
+  const deleteOneProduct = async (id: string) => {
+    await apiFetch(`/products/${id}`, { method: "DELETE" });
+  };
 
   const load = useCallback(
     (page = 1) => {
@@ -97,17 +107,22 @@ export function ProductList() {
         .then((d) => {
           setLoadError(null);
           setProducts(d.data || []);
-          const pg = d.pagination as { total?: number; pages?: number; page?: number } | undefined;
+          const pg = d.pagination as { total?: number; active?: number; pages?: number; page?: number } | undefined;
           setPagination(
             pg && typeof pg.total === "number"
-              ? { total: pg.total, pages: pg.pages ?? 1, page: pg.page ?? page }
-              : { total: (d.data as unknown[])?.length ?? 0, pages: 1, page: 1 }
+              ? {
+                  total: pg.total,
+                  active: typeof pg.active === "number" ? pg.active : 0,
+                  pages: pg.pages ?? 1,
+                  page: pg.page ?? page,
+                }
+              : { total: (d.data as unknown[])?.length ?? 0, active: 0, pages: 1, page: 1 }
           );
         })
         .catch((e: Error) => {
           setLoadError(e.message || "Could not load products");
           setProducts([]);
-          setPagination({ total: 0, pages: 1, page: 1 });
+          setPagination({ total: 0, active: 0, pages: 1, page: 1 });
         })
         .finally(() => setLoading(false));
     },
@@ -138,14 +153,8 @@ export function ProductList() {
     setSelected({});
   }, [pagination.page, search, statusFilter]);
 
-  const remove = async (id: string, name: string) => {
-    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
-    try {
-      await apiFetch(`/products/${id}`, { method: "DELETE" });
-      load(pagination.page);
-    } catch (e) {
-      alert(e instanceof Error ? e.message : "Delete failed");
-    }
+  const remove = (id: string, name: string) => {
+    deleteFlow.requestDelete({ kind: "single", ids: [id], label: name });
   };
 
   const filtered = products.filter((p) => {
@@ -231,14 +240,8 @@ export function ProductList() {
     }
   };
 
-  const onDeleteJob = async (id: string) => {
-    if (!confirm("Delete this catalog record and file?")) return;
-    try {
-      await apiFetch(`/admin/catalog/jobs/${id}`, { method: "DELETE" });
-      void loadHistory();
-    } catch (e) {
-      alert(e instanceof Error ? e.message : "Delete failed");
-    }
+  const onDeleteJob = (id: string) => {
+    catalogDeleteFlow.requestDelete({ kind: "single", ids: [id], label: "catalog PDF record" });
   };
 
   const onArchiveJob = async (id: string, archived: boolean) => {
@@ -271,19 +274,19 @@ export function ProductList() {
   };
 
   return (
-    <div className="p-6 bg-sb-cream min-h-full">
+    <div className="admin-page">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-sb-ink">Product Management</h1>
+          <h1 className="admin-page-title text-sb-ink">Product Management</h1>
           <p className="text-sb-ink/55 text-sm mt-0.5">
-            {pagination.total || filtered.length} products — Admin-only catalog control
+            {pagination.total || filtered.length} products · {pagination.active} active — Admin-only catalog control
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => setBulkOpen(true)}
-            className="flex items-center gap-2 border border-sb-ink/15 bg-sb-cream-secondary hover:border-sb-orange/40 text-sb-ink font-medium px-4 py-2.5 rounded-lg text-sm transition-colors"
+            className="admin-btn-outline"
           >
             <Upload className="w-4 h-4 text-sb-orange" /> Import products
           </button>
@@ -291,23 +294,20 @@ export function ProductList() {
             type="button"
             onClick={exportProductsCsv}
             disabled={!filtered.length}
-            className="flex items-center gap-2 border border-sb-ink/15 bg-sb-cream-secondary hover:border-sb-orange/40 text-sb-ink font-medium px-4 py-2.5 rounded-lg text-sm transition-colors disabled:opacity-45"
+            className="admin-btn-outline disabled:opacity-45"
           >
             <FileDown className="w-4 h-4 text-sb-orange" /> Export products
           </button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="flex items-center gap-2 border border-sb-ink/15 bg-sb-cream-secondary hover:border-sb-orange/40 text-sb-ink font-medium px-4 py-2.5 rounded-lg text-sm transition-colors"
-              >
+              <button type="button" className="admin-btn-outline">
                 <BookOpen className="w-4 h-4 text-sb-orange" />
                 Generate catalog
                 <ChevronDown className="w-4 h-4 opacity-60" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-sb-cream border border-sb-ink/15 text-sb-ink min-w-[220px]">
+            <DropdownMenuContent align="end" className="bg-white border border-gray-200 text-black min-w-[220px] shadow-lg">
               <DropdownMenuItem className="cursor-pointer" onSelect={() => openCatalog("ALL")}>
                 All products catalog
               </DropdownMenuItem>
@@ -327,10 +327,7 @@ export function ProductList() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Link
-            to={adminPath("products", "create")}
-            className="flex items-center gap-2 bg-sb-orange hover:bg-sb-orange-hover text-white font-medium px-4 py-2.5 rounded-lg text-sm transition-colors shadow-[0_4px_12px_rgba(254,94,0,0.2)]"
-          >
+          <Link to={adminPath("products", "create")} className="admin-btn-primary">
             <Plus className="w-4 h-4" /> Add product
           </Link>
         </div>
@@ -342,20 +339,20 @@ export function ProductList() {
         </div>
       )}
 
-      <div className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl p-4 mb-5 flex flex-col sm:flex-row gap-3">
+      <div className="admin-toolbar flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sb-ink/45" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             placeholder="Search products or SKU..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-sb-cream-secondary border border-sb-ink/10 rounded-lg text-sm text-sb-ink placeholder:text-sb-ink/40 focus:outline-none focus:border-sb-orange focus:ring-1 focus:ring-sb-orange/20 transition-colors"
+            className="admin-input"
           />
         </div>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="bg-sb-cream-secondary border border-sb-ink/10 rounded-lg text-sm text-sb-ink px-3 py-2 focus:outline-none focus:border-sb-orange transition-colors cursor-pointer min-w-[130px]"
+          className="border border-gray-200 rounded-lg text-sm text-black px-3 py-2 bg-white focus:outline-none focus:border-sb-orange min-w-[130px]"
         >
           <option value="">All Status</option>
           <option value="ACTIVE">Active</option>
@@ -365,31 +362,56 @@ export function ProductList() {
         <button
           type="button"
           onClick={() => load()}
-          className="p-2 bg-sb-cream-secondary border border-sb-ink/10 rounded-lg text-sb-ink/55 hover:text-sb-ink hover:border-sb-orange/50 transition-colors"
+          className="p-2 border border-gray-200 rounded-lg text-gray-500 hover:text-black hover:border-sb-orange/50 bg-white transition-colors"
         >
           <RefreshCw className="w-4 h-4" />
         </button>
       </div>
 
-      <div className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-sb-ink/10 flex items-center justify-between">
+      <div className="admin-panel">
+        <div className="admin-panel-header flex items-center justify-between">
           <div>
-            <h3 className="font-semibold text-sb-ink text-sm">
-              Products <span className="text-sb-ink/45 font-normal ml-1">({filtered.length})</span>
+            <h3 className="font-medium text-black text-sm">
+              Products <span className="text-gray-400 font-normal ml-1">({filtered.length})</span>
             </h3>
-            <p className="text-[11px] text-sb-ink/45 mt-1">
+            <p className="text-[11px] text-gray-400 mt-1">
               Checkboxes apply to this page only. Use search/status to narrow the list, then select and run a selected-products catalog.
             </p>
           </div>
+        </div>
+
+        <div className="px-4 pt-3">
+          <AdminBulkToolbar
+            totalCount={filtered.length}
+            selectedCount={selectedIds.length}
+            allSelected={allSelected}
+            onToggleAll={toggleAll}
+            onDeleteSelected={() =>
+              deleteFlow.requestDelete({
+                kind: "bulk",
+                ids: selectedIds,
+                label: `${selectedIds.length} products`,
+              })
+            }
+            onDeleteAll={() =>
+              deleteFlow.requestDelete({
+                kind: "bulk",
+                ids: filtered.map((p) => String(p._id)),
+                label: `all ${filtered.length} products on this page`,
+              })
+            }
+            itemLabel="products"
+            disabled={deleteFlow.busy || loading}
+          />
         </div>
 
         {loading ? (
           <Spinner />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full admin-data-table">
               <thead>
-                <tr className="border-b border-sb-ink/10">
+                <tr>
                   <th className="w-10 py-3 px-2">
                     <input
                       type="checkbox"
@@ -400,15 +422,13 @@ export function ProductList() {
                     />
                   </th>
                   {["Product", "Product ID", "SKU", "Category", "Brand", "Badges", "Status", "Order", ""].map((h) => (
-                    <th key={h} className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wider text-sb-ink/50">
-                      {h}
-                    </th>
+                    <th key={h}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((p) => (
-                  <tr key={p._id} className="border-b border-sb-ink/8 hover:bg-sb-cream-secondary/90 transition-colors">
+                  <tr key={p._id} className="transition-colors">
                     <td className="py-3.5 px-2 align-middle">
                       <input
                         type="checkbox"
@@ -431,7 +451,7 @@ export function ProductList() {
                           </div>
                         )}
                         <div>
-                          <span className="font-medium text-sb-ink text-sm">{p.name}</span>
+                          <span className="font-normal text-black text-sm">{p.name}</span>
                           {p.isFeatured && (
                             <span className="ml-2 text-[10px] font-medium text-sb-orange uppercase tracking-wide">Featured</span>
                           )}
@@ -473,7 +493,7 @@ export function ProductList() {
                       </div>
                     </td>
                     <td className="py-3.5 px-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusBadge(p.status)}`}>
+                      <span className={`${statusBadge(p.status)}`}>
                         {p.status}
                       </span>
                     </td>
@@ -715,6 +735,36 @@ export function ProductList() {
         selectedProductIds={selectedIds}
         singleProductId={singleProductId}
         onComplete={() => void loadHistory()}
+      />
+
+      <AdminDeleteConfirmModal
+        open={!!deleteFlow.pending}
+        title={deleteFlow.modalTitle}
+        description={deleteFlow.modalDescription}
+        busy={deleteFlow.busy}
+        onCancel={deleteFlow.cancelDelete}
+        onConfirm={() =>
+          void deleteFlow.executeDelete(deleteOneProduct, () => {
+            setSelected({});
+            load(pagination.page);
+          })
+        }
+      />
+
+      <AdminDeleteConfirmModal
+        open={!!catalogDeleteFlow.pending}
+        title={catalogDeleteFlow.modalTitle}
+        description="This removes the generated catalog file and job record from admin history."
+        busy={catalogDeleteFlow.busy}
+        onCancel={catalogDeleteFlow.cancelDelete}
+        onConfirm={() =>
+          void catalogDeleteFlow.executeDelete(
+            async (id) => {
+              await apiFetch(`/admin/catalog/jobs/${id}`, { method: "DELETE" });
+            },
+            () => void loadHistory()
+          )
+        }
       />
     </div>
   );

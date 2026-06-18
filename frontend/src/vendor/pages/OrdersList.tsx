@@ -1,28 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { vendorPath } from '../../lib/portalRoutes';
-import { Search, Filter, FileText, Upload, Package, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Search, Filter, FileText, Upload, Package, ChevronLeft, ChevronRight, CheckCircle2, Download } from 'lucide-react';
 import { StatusBadge } from '../components/StatusBadge';
 import { api } from '../lib/api';
-
-const STATUS_OPTIONS = [
-  { value: '', label: 'All Status' },
-  { value: 'NEW_ASSIGNED,ASSIGNED', label: 'Assigned' },
-  { value: 'ACCEPTED', label: 'Accepted' },
-  { value: 'READY_FOR_DISPATCH', label: 'Ready for dispatch' },
-  { value: 'CHANGES_REQUESTED', label: 'Changes requested' },
-  { value: 'DISPATCH_APPROVED', label: 'Dispatch approved' },
-  { value: 'VENDOR_INVOICE_SUBMITTED', label: 'Vendor invoice' },
-  { value: 'SB_INVOICE_SENT', label: 'SB docs sent' },
-  { value: 'DISPATCHED', label: 'Dispatched' },
-  { value: 'DELIVERED', label: 'Delivered' },
-  { value: 'COMPLETED', label: 'Completed' },
-  { value: 'ASSIGNED', label: 'Legacy: New' },
-  { value: 'INVOICE_UPLOADED', label: 'Legacy: Invoice' },
-  { value: 'DISPATCH_CONFIRMED', label: 'Legacy: Dispatch OK' },
-  { value: 'IN_TRANSIT', label: 'In transit' },
-  { value: 'OUT_FOR_DELIVERY', label: 'Out for delivery' },
-];
+import { VENDOR_ORDER_STATUS_FILTERS, vendorStatusFilterToApi } from '../lib/orderStatusFilters';
 
 const SB = { color: 'var(--sb-text-primary)', muted: 'var(--sb-text-muted)', faint: 'var(--sb-text-faint)', orange: 'var(--sb-orange)', card: 'var(--sb-card)', border: 'var(--sb-border)', bg: 'var(--sb-bg-section)' };
 
@@ -41,9 +23,10 @@ export function OrdersList() {
     setLoading(true);
     try {
       const params: Record<string, string> = { page: String(page), limit: String(limit) };
-      if (search)       params.search        = search;
-      if (status)       params.status        = status;
-      if (invoiceStatus)params.invoiceStatus = invoiceStatus;
+      if (search) params.search = search;
+      const apiStatus = vendorStatusFilterToApi(status);
+      if (apiStatus) params.status = apiStatus;
+      if (invoiceStatus) params.invoiceStatus = invoiceStatus;
       const res = await api.getOrders(params);
       setOrders(res.data ?? []);
       setTotal(res.pagination?.total ?? 0);
@@ -53,31 +36,23 @@ export function OrdersList() {
 
   useEffect(() => { load(); }, [load]);
 
+  const handleDownloadInvoice = async (orderId: string) => {
+    try {
+      const res = await api.getInvoiceByOrder(orderId);
+      if (res.data?.invoiceUrl) window.open(res.data.invoiceUrl, '_blank', 'noopener,noreferrer');
+      else alert('No invoice uploaded for this order yet.');
+    } catch {
+      alert('Could not download invoice.');
+    }
+  };
+
   const pages = Math.ceil(total / limit);
 
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-black" style={{ color: SB.color }}>Assigned Orders</h1>
+        <h1 className="vendor-page-title" style={{ color: SB.color }}>Assigned Orders</h1>
         <p className="text-sm mt-0.5" style={{ color: SB.muted }}>Only orders assigned to you by StructBay are shown here.</p>
-      </div>
-
-      {/* Status chips */}
-      <div className="flex flex-wrap gap-2">
-        {STATUS_OPTIONS.map(s => {
-          const active = status === s.value;
-          return (
-            <button key={s.value} onClick={() => { setStatus(s.value); setPage(1); }}
-              className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
-              style={active
-                ? { background: 'var(--sb-orange)', color: '#fff', boxShadow: '0 4px 12px var(--sb-orange-glow)' }
-                : { background: SB.card, color: SB.muted, border: `1px solid ${SB.border}` }
-              }
-            >
-              {s.label}
-            </button>
-          );
-        })}
       </div>
 
       <div className="rounded-2xl overflow-hidden" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
@@ -93,7 +68,20 @@ export function OrdersList() {
             />
           </div>
           <div className="relative">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: SB.faint }} />
+            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: SB.faint }} />
+            <select
+              value={status}
+              onChange={e => { setStatus(e.target.value); setPage(1); }}
+              className="pl-9 pr-8 py-2.5 rounded-xl text-sm appearance-none"
+              style={{ background: SB.bg, border: `1px solid ${SB.border}`, color: SB.color, minWidth: 200 }}
+            >
+              {VENDOR_ORDER_STATUS_FILTERS.map(s => (
+                <option key={s.value || 'all'} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="relative">
+            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: SB.faint }} />
             <select value={invoiceStatus} onChange={e => { setInvoiceStatus(e.target.value); setPage(1); }}
               className="pl-9 pr-8 py-2.5 rounded-xl text-sm appearance-none"
               style={{ background: SB.bg, border: `1px solid ${SB.border}`, color: SB.color, minWidth: 180 }}
@@ -156,6 +144,11 @@ export function OrdersList() {
                         <Link to={vendorPath('orders', String(o._id), 'invoice')} className="p-1.5 rounded-lg" title="Upload Invoice" style={{ color: SB.muted }}>
                           <Upload className="w-4 h-4" />
                         </Link>
+                      )}
+                      {String(o.invoiceStatus || '').toUpperCase() !== 'PENDING' && (
+                        <button type="button" onClick={() => handleDownloadInvoice(String(o._id))} className="p-1.5 rounded-lg" title="Download Invoice" style={{ color: SB.muted, background: SB.bg, border: `1px solid ${SB.border}` }}>
+                          <Download className="w-4 h-4" />
+                        </button>
                       )}
                     </div>
                   </td>

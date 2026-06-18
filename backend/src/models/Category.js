@@ -48,9 +48,11 @@ categorySchema.pre('save', function (next) {
   next();
 });
 
-categorySchema.pre(/^find/, function (next) {
-  this.where({ isDeleted: false });
+const excludeSoftDeleted = function (next) {
+  this.where({ isDeleted: { $ne: true } });
   next();
-});
+};
+categorySchema.pre(/^find/, excludeSoftDeleted);
+categorySchema.pre('countDocuments', excludeSoftDeleted);
 
 module.exports = mongoose.model('Category', categorySchema);

@@ -1,5 +1,13 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { api } from '../lib/api';
+import {
+  clearVendorSession,
+  getVendorAccessToken,
+  getVendorRefreshToken,
+  refreshVendorAccessToken,
+  setVendorSession,
+  VENDOR_TOKEN_KEY,
+} from '../lib/authStorage';
 
 interface VendorUser {
   _id: string;
@@ -26,12 +34,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   async function refresh() {
-    if (!localStorage.getItem('vendor_token')) { setLoading(false); return; }
+    let t = getVendorAccessToken();
+    if (!t && getVendorRefreshToken()) {
+      const ok = await refreshVendorAccessToken();
+      if (ok) t = getVendorAccessToken();
+    }
+    if (!t) {
+      setUser(null);
+      setLoading(false);
+      return;
+    }
     try {
       const res = await api.me();
       setUser(res.data);
     } catch {
-      localStorage.removeItem('vendor_token');
+      clearVendorSession();
       setUser(null);
     } finally {
       setLoading(false);
@@ -40,15 +57,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { refresh(); }, []);
 
+  useEffect(() => {
+    const onSessionCleared = () => setUser(null);
+    window.addEventListener('vendor-session-cleared', onSessionCleared);
+    return () => window.removeEventListener('vendor-session-cleared', onSessionCleared);
+  }, []);
+
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === VENDOR_TOKEN_KEY && !e.newValue) setUser(null);
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
   async function login(email: string, password: string) {
     const res = await api.login(email, password);
-    localStorage.setItem('vendor_token', res.data.token);
+    const accessToken = res.data.accessToken ?? res.data.token;
+    const refreshToken = res.data.refreshToken;
+    if (!accessToken) throw new Error('Login response was incomplete.');
+    setVendorSession({ accessToken, refreshToken });
     setUser(res.data.vendor);
   }
 
   async function logout() {
     try { await api.logout(); } catch { /* ignore */ }
-    localStorage.removeItem('vendor_token');
+    clearVendorSession();
     setUser(null);
   }
 

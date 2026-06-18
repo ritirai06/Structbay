@@ -12,7 +12,7 @@ export function humanizeAttrKey(key: string): string {
 
 export type AttributeRow = { key: string; label: string; value: string };
 
-const FIXED_KEYS = ["weight", "grade", "size", "color", "finish", "diameter"] as const;
+const FIXED_KEYS = ["weight", "grade", "size", "thickness", "length", "color", "finish", "diameter"] as const;
 
 export function flattenVariationAttributes(attrs: Record<string, unknown> | null | undefined): AttributeRow[] {
   const rows: AttributeRow[] = [];

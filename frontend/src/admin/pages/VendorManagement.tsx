@@ -1,6 +1,13 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Search, RefreshCw, Eye, CheckCircle, XCircle, Loader2, Users, Plus } from "lucide-react";
 import { adminFetch as apiFetch } from "../../lib/adminApi";
+import { useAdminListDelete } from "../hooks/useAdminListDelete";
+import {
+  AdminListDeleteControls,
+  AdminRowDeleteButton,
+  AdminTableSelectCell,
+  AdminTableSelectHeader,
+} from "../components/AdminListDeleteControls";
 
 const VS_COLORS: Record<string, string> = {
   PENDING_APPROVAL: "bg-sb-orange/12 text-sb-orange border-sb-orange/25",
@@ -110,12 +117,20 @@ export function VendorManagement() {
   const approvedCount = vendors.filter(v => v.vendorStatus === "APPROVED").length;
   const pendingCount = vendors.filter(v => v.vendorStatus === "PENDING_APPROVAL").length;
 
+  const visibleIds = useMemo(() => filtered.map((v) => String(v._id)), [filtered]);
+  const deleteHook = useAdminListDelete({
+    singleDeleteUrl: (id) => `/admin/vendors/${id}`,
+    bulkDeleteUrl: "/admin/vendors/bulk-delete",
+    onSuccess: load,
+    itemLabel: "vendors",
+  });
+
   return (
-    <div className="p-6 bg-sb-cream min-h-full">
+    <div className="admin-page">
       <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-sb-ink">Vendor Management</h1>
-          <p className="mt-1 text-sm text-sb-ink/55">Onboard vendors here; public self-registration is off unless the server enables it.</p>
+          <h1 className="admin-page-title text-sb-ink">Vendor Management</h1>
+          <p className="admin-page-desc">Onboard vendors here; public self-registration is off unless the server enables it.</p>
         </div>
         <button
           type="button"
@@ -129,15 +144,15 @@ export function VendorManagement() {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl p-4 text-center">
-          <div className="text-3xl font-black text-sb-ink">{totalVendors}</div>
+          <div className="admin-stat-value text-sb-ink">{totalVendors}</div>
           <div className="text-xs text-sb-ink/50 mt-1">Total Vendors</div>
         </div>
         <div className="bg-sb-cream-secondary border border-sb-orange/22 rounded-xl p-4 text-center">
-          <div className="text-3xl font-black text-sb-ink">{approvedCount}</div>
+          <div className="admin-stat-value text-sb-ink">{approvedCount}</div>
           <div className="text-xs text-sb-ink/50 mt-1">Approved</div>
         </div>
         <div className="bg-sb-cream-secondary border-b border-sb-ink/10 border border-sb-orange/20 rounded-xl p-4 text-center cursor-pointer hover:border-sb-orange/40 transition-colors" onClick={() => setStatusFilter("PENDING_APPROVAL")}>
-          <div className="text-3xl font-black text-sb-orange">{pendingCount}</div>
+          <div className="admin-stat-value text-sb-orange">{pendingCount}</div>
           <div className="text-xs text-sb-ink/50 mt-1">Pending Approval ▼</div>
         </div>
       </div>
@@ -162,22 +177,40 @@ export function VendorManagement() {
         </button>
       </div>
 
+      <AdminListDeleteControls
+        deleteHook={deleteHook}
+        visibleIds={visibleIds}
+        disabled={loading || deleteHook.busy}
+        itemLabel="vendors"
+      />
+
       {loading ? <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-sb-orange" /></div> : (
         <div className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-sb-ink/10">
-                {["Vendor", "Company", "Contact", "GST", "Vendor Status", "Account", "Joined", ""].map(h => (
+                <AdminTableSelectHeader
+                  checked={deleteHook.allVisibleSelected(visibleIds)}
+                  onChange={() => deleteHook.toggleAllVisible(visibleIds)}
+                />
+                {["Vendor", "Company", "Contact", "GST", "Vendor Status", "Account", "Joined", "Actions"].map(h => (
                   <th key={h} className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wider text-sb-ink/50">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {filtered.map(v => (
+              {filtered.map(v => {
+                const rowId = String(v._id);
+                return (
                 <tr key={v._id} className="border-b border-sb-ink/8 hover:bg-sb-cream-secondary/90 transition-colors">
+                  <AdminTableSelectCell
+                    checked={deleteHook.isSelected(rowId)}
+                    onChange={() => deleteHook.toggleRow(rowId)}
+                    ariaLabel={`Select vendor ${v.name}`}
+                  />
                   <td className="py-3.5 px-4">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-sb-orange/15 flex items-center justify-center text-sb-orange font-black text-xs shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-sb-orange/15 flex items-center justify-center text-sb-orange font-semibold text-xs shrink-0">
                         {v.name[0]}
                       </div>
                       <p className="font-medium text-sb-ink">{v.name}</p>
@@ -215,10 +248,16 @@ export function VendorManagement() {
                           </button>
                         </>
                       )}
+                      <AdminRowDeleteButton
+                        onClick={() =>
+                          deleteHook.requestDelete([rowId], v.companyName || v.name)
+                        }
+                        disabled={deleteHook.busy}
+                      />
                     </div>
                   </td>
                 </tr>
-              ))}
+              );})}
             </tbody>
           </table>
           {filtered.length === 0 && (

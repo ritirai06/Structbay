@@ -50,8 +50,11 @@ export function Login() {
   const authPath = useAuthPath();
   const { setIsLoggedIn, setUser } = useApp();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const nextPath = searchParams.get("next")?.trim() || "";
+  const fromPath =
+    (location.state as { from?: { pathname?: string } } | null)?.from?.pathname?.trim() || "";
   const resetToken = searchParams.get("token")?.trim() || "";
 
   const [mode, setMode] = useState<"email" | "otp">("email");
@@ -201,7 +204,12 @@ export function Login() {
       });
       setIsLoggedIn(true);
 
-      const dest = nextPath.startsWith("/") ? nextPath : "/account";
+      const returnPath = nextPath.startsWith("/")
+        ? nextPath
+        : fromPath.startsWith("/")
+          ? fromPath
+          : "/";
+      const dest = returnPath === "/dashboard" ? "/" : returnPath;
       queueMicrotask(() => navigate(dest));
     } catch (err) {
       const m = err instanceof Error ? err.message : "Network error";
@@ -308,29 +316,29 @@ export function Login() {
   return (
     <CustomerAuthLayout visualVariant="login">
       <div className="space-y-1 mb-6">
-        <h2 className="text-xl font-semibold tracking-tight text-[#222222]">{title}</h2>
-        <p className="text-sm text-[#222222]/60">{subtitle}</p>
+        <h2 className="text-xl font-semibold tracking-tight text-[#1A1A1A]">{title}</h2>
+        <p className="text-sm text-[#1A1A1A]/60">{subtitle}</p>
       </div>
 
       {authPath === "forgot" && (
         <form onSubmit={handleForgot} className="space-y-4">
           {loginError && (
-            <div className="rounded-lg border border-[#222222]/15 bg-[#FAF3E1] px-3 py-2 text-sm text-[#222222]/85">
+            <div className="rounded-lg border border-[#1A1A1A]/15 bg-gray-50 px-3 py-2 text-sm text-[#1A1A1A]/85">
               {loginError}
             </div>
           )}
           {forgotDone ? (
-            <p className="text-sm text-[#222222]/75 leading-relaxed">
+            <p className="text-sm text-[#1A1A1A]/75 leading-relaxed">
               If an account exists with that email, a reset link has been sent. Check your inbox and spam folder.
             </p>
           ) : (
             <>
               <div className="space-y-2">
-                <Label htmlFor="forgot-email" className="text-xs font-semibold uppercase tracking-wider text-[#222222]/55">
+                <Label htmlFor="forgot-email" className="text-xs font-semibold uppercase tracking-wider text-[#1A1A1A]/55">
                   Email
                 </Label>
                 <div className="relative">
-                  <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#222222]/40" />
+                  <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#1A1A1A]/40" />
                   <Input
                     id="forgot-email"
                     type="email"
@@ -338,7 +346,7 @@ export function Login() {
                     value={forgotEmail}
                     onChange={e => setForgotEmail(e.target.value)}
                     placeholder="you@company.com"
-                    className="h-11 border-[#222222]/12 bg-[#FAF3E1] pl-10 text-[#222222] placeholder:text-[#222222]/40 focus-visible:border-[#FE5E00] focus-visible:ring-[#FE5E00]/25"
+                    className="h-11 border-[#1A1A1A]/12 bg-gray-50 pl-10 text-[#1A1A1A] placeholder:text-[#1A1A1A]/40 focus-visible:border-[#E85A00] focus-visible:ring-[#E85A00]/25"
                   />
                 </div>
               </div>
@@ -348,8 +356,8 @@ export function Login() {
               </Button>
             </>
           )}
-          <p className="text-center text-sm text-[#222222]/55">
-            <Link to="/login" className="font-semibold text-[#FE5E00] hover:text-[#E05200]">
+          <p className="text-center text-sm text-[#1A1A1A]/55">
+            <Link to="/login" className="font-semibold text-[#E85A00] hover:text-[#CC4E00]">
               Back to sign in
             </Link>
           </p>
@@ -359,14 +367,14 @@ export function Login() {
       {authPath === "reset" && (
         <form onSubmit={handleReset} className="space-y-4">
           {loginError && (
-            <div className="rounded-lg border border-[#222222]/15 bg-[#FAF3E1] px-3 py-2 text-sm text-[#222222]/85">
+            <div className="rounded-lg border border-[#1A1A1A]/15 bg-gray-50 px-3 py-2 text-sm text-[#1A1A1A]/85">
               {loginError}
             </div>
           )}
           {!resetToken && (
-            <p className="text-sm text-[#222222]/70">
+            <p className="text-sm text-[#1A1A1A]/70">
               Open the reset link from your email, or{" "}
-              <Link to="/forgot-password" className="font-semibold text-[#FE5E00] hover:underline">
+              <Link to="/forgot-password" className="font-semibold text-[#E85A00] hover:underline">
                 request a new link
               </Link>
               .
@@ -375,37 +383,37 @@ export function Login() {
           {!!resetToken && (
             <>
               <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-[#222222]/55">New password</Label>
+                <Label className="text-xs font-semibold uppercase tracking-wider text-[#1A1A1A]/55">New password</Label>
                 <div className="relative">
-                  <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#222222]/40" />
+                  <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#1A1A1A]/40" />
                   <Input
                     type={showPass ? "text" : "password"}
                     autoComplete="new-password"
                     value={newPass}
                     onChange={e => setNewPass(e.target.value)}
                     placeholder="Min. 8 characters, mixed case, number, symbol"
-                    className="h-11 border-[#222222]/12 bg-[#FAF3E1] pl-10 pr-10 text-[#222222] placeholder:text-[#222222]/35 focus-visible:border-[#FE5E00] focus-visible:ring-[#FE5E00]/25"
+                    className="h-11 border-[#1A1A1A]/12 bg-gray-50 pl-10 pr-10 text-[#1A1A1A] placeholder:text-[#1A1A1A]/35 focus-visible:border-[#E85A00] focus-visible:ring-[#E85A00]/25"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPass(!showPass)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#222222]/45 hover:text-[#222222]"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#1A1A1A]/45 hover:text-[#1A1A1A]"
                   >
                     {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-[#222222]/55">Confirm password</Label>
+                <Label className="text-xs font-semibold uppercase tracking-wider text-[#1A1A1A]/55">Confirm password</Label>
                 <div className="relative">
-                  <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#222222]/40" />
+                  <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#1A1A1A]/40" />
                   <Input
                     type={showPass ? "text" : "password"}
                     autoComplete="new-password"
                     value={confirmPass}
                     onChange={e => setConfirmPass(e.target.value)}
                     placeholder="Repeat password"
-                    className="h-11 border-[#222222]/12 bg-[#FAF3E1] pl-10 text-[#222222] placeholder:text-[#222222]/35 focus-visible:border-[#FE5E00] focus-visible:ring-[#FE5E00]/25"
+                    className="h-11 border-[#1A1A1A]/12 bg-gray-50 pl-10 text-[#1A1A1A] placeholder:text-[#1A1A1A]/35 focus-visible:border-[#E85A00] focus-visible:ring-[#E85A00]/25"
                   />
                 </div>
               </div>
@@ -415,8 +423,8 @@ export function Login() {
               </Button>
             </>
           )}
-          <p className="text-center text-sm text-[#222222]/55">
-            <Link to="/login" className="font-semibold text-[#FE5E00] hover:text-[#E05200]">
+          <p className="text-center text-sm text-[#1A1A1A]/55">
+            <Link to="/login" className="font-semibold text-[#E85A00] hover:text-[#CC4E00]">
               Back to sign in
             </Link>
           </p>
@@ -425,14 +433,14 @@ export function Login() {
 
       {authPath === "login" && (
         <>
-          <p className="text-sm text-[#222222]/65 mb-5">
+          <p className="text-sm text-[#1A1A1A]/65 mb-5">
             Don&apos;t have an account?{" "}
-            <Link to="/register" className="font-semibold text-[#FE5E00] hover:text-[#E05200]">
+            <Link to="/register" className="font-semibold text-[#E85A00] hover:text-[#CC4E00]">
               Register
             </Link>
           </p>
 
-          <div className="mb-6 flex rounded-xl border border-[#222222]/10 bg-[#FAF3E1] p-1">
+          <div className="mb-6 flex rounded-xl border border-[#1A1A1A]/10 bg-gray-50 p-1">
             {(["email", "otp"] as const).map(m => (
               <button
                 key={m}
@@ -445,8 +453,8 @@ export function Login() {
                 className={cn(
                   "flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all",
                   mode === m
-                    ? "bg-[#FE5E00] text-white shadow-sm"
-                    : "text-[#222222]/55 hover:text-[#222222]"
+                    ? "bg-[#E85A00] text-white shadow-sm"
+                    : "text-[#1A1A1A]/55 hover:text-[#1A1A1A]"
                 )}
               >
                 {m === "email" ? (
@@ -464,7 +472,7 @@ export function Login() {
 
           <form onSubmit={handleLogin} className="space-y-4">
             {loginError && (
-              <div className="rounded-lg border border-[#222222]/15 bg-[#FAF3E1] px-3 py-2 text-sm text-[#222222]/85">
+              <div className="rounded-lg border border-[#1A1A1A]/15 bg-gray-50 px-3 py-2 text-sm text-[#1A1A1A]/85">
                 {loginError}
               </div>
             )}
@@ -472,11 +480,11 @@ export function Login() {
             {mode === "email" ? (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-xs font-semibold uppercase tracking-wider text-[#222222]/55">
+                  <Label htmlFor="email" className="text-xs font-semibold uppercase tracking-wider text-[#1A1A1A]/55">
                     Email
                   </Label>
                   <div className="relative">
-                    <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#222222]/40" />
+                    <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#1A1A1A]/40" />
                     <Input
                       id="email"
                       type="email"
@@ -484,21 +492,21 @@ export function Login() {
                       onChange={e => setEmail(e.target.value)}
                       placeholder="you@company.com"
                       autoComplete="email"
-                      className="h-11 border-[#222222]/12 bg-[#FAF3E1] pl-10 text-[#222222] placeholder:text-[#222222]/40 focus-visible:border-[#FE5E00] focus-visible:ring-[#FE5E00]/25"
+                      className="h-11 border-[#1A1A1A]/12 bg-gray-50 pl-10 text-[#1A1A1A] placeholder:text-[#1A1A1A]/40 focus-visible:border-[#E85A00] focus-visible:ring-[#E85A00]/25"
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="password" className="text-xs font-semibold uppercase tracking-wider text-[#222222]/55">
+                    <Label htmlFor="password" className="text-xs font-semibold uppercase tracking-wider text-[#1A1A1A]/55">
                       Password
                     </Label>
-                    <Link to="/forgot-password" className="text-xs font-semibold text-[#FE5E00] hover:text-[#E05200]">
+                    <Link to="/forgot-password" className="text-xs font-semibold text-[#E85A00] hover:text-[#CC4E00]">
                       Forgot password?
                     </Link>
                   </div>
                   <div className="relative">
-                    <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#222222]/40" />
+                    <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#1A1A1A]/40" />
                     <Input
                       id="password"
                       type={showPass ? "text" : "password"}
@@ -506,12 +514,12 @@ export function Login() {
                       onChange={e => setPassword(e.target.value)}
                       placeholder="Enter password"
                       autoComplete="current-password"
-                      className="h-11 border-[#222222]/12 bg-[#FAF3E1] pl-10 pr-10 text-[#222222] placeholder:text-[#222222]/40 focus-visible:border-[#FE5E00] focus-visible:ring-[#FE5E00]/25"
+                      className="h-11 border-[#1A1A1A]/12 bg-gray-50 pl-10 pr-10 text-[#1A1A1A] placeholder:text-[#1A1A1A]/40 focus-visible:border-[#E85A00] focus-visible:ring-[#E85A00]/25"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPass(!showPass)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#222222]/45 hover:text-[#222222]"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#1A1A1A]/45 hover:text-[#1A1A1A]"
                     >
                       {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -519,18 +527,18 @@ export function Login() {
                 </div>
 
                 {isUnverifiedCustomerError(loginError) && (
-                  <div className="rounded-lg border border-[#FE5E00]/25 bg-[#FFF7ED] px-3 py-3 text-sm text-[#222222]/90 space-y-2">
-                    <p className="leading-relaxed text-[#222222]/85">
+                  <div className="rounded-lg border border-[#E85A00]/25 bg-[#FFF7ED] px-3 py-3 text-sm text-[#1A1A1A]/90 space-y-2">
+                    <p className="leading-relaxed text-[#1A1A1A]/85">
                       ईमेल में लिंक नहीं मिला? Spam देखें, या नीचे Resend दबाएँ।
                     </p>
                     {verifyResendMsg ? (
-                      <p className="text-xs whitespace-pre-line text-[#222222]/80">{verifyResendMsg}</p>
+                      <p className="text-xs whitespace-pre-line text-[#1A1A1A]/80">{verifyResendMsg}</p>
                     ) : null}
                     <Button
                       type="button"
                       variant="outline"
                       disabled={verifyResendLoading}
-                      className="w-full h-10 border-[#222222]/20 text-[#222222]"
+                      className="w-full h-10 border-[#1A1A1A]/20 text-[#1A1A1A]"
                       onClick={() => void handleResendVerification()}
                     >
                       {verifyResendLoading ? (
@@ -548,16 +556,16 @@ export function Login() {
             ) : (
               <>
                 <div className="space-y-2">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-[#222222]/55">Mobile</Label>
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-[#1A1A1A]/55">Mobile</Label>
                   <div className="flex gap-2">
                     <div className="relative flex-1">
-                      <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#222222]/40" />
+                      <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#1A1A1A]/40" />
                       <Input
                         type="tel"
                         value={phone}
                         onChange={e => setPhone(e.target.value)}
                         placeholder="+91 98765 43210"
-                        className="h-11 border-[#222222]/12 bg-[#FAF3E1] pl-10 text-[#222222] placeholder:text-[#222222]/40 focus-visible:border-[#FE5E00] focus-visible:ring-[#FE5E00]/25"
+                        className="h-11 border-[#1A1A1A]/12 bg-gray-50 pl-10 text-[#1A1A1A] placeholder:text-[#1A1A1A]/40 focus-visible:border-[#E85A00] focus-visible:ring-[#E85A00]/25"
                       />
                     </div>
                     <Button
@@ -572,14 +580,14 @@ export function Login() {
                 </div>
                 {otpSent && (
                   <div className="space-y-2">
-                    <Label className="text-xs font-semibold uppercase tracking-wider text-[#222222]/55">OTP</Label>
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-[#1A1A1A]/55">OTP</Label>
                     <Input
                       type="text"
                       value={otp}
                       onChange={e => setOtp(e.target.value)}
                       placeholder="6-digit code"
                       maxLength={6}
-                      className="h-11 border-[#222222]/12 bg-[#FAF3E1] text-center tracking-[0.35em] text-[#222222] focus-visible:border-[#FE5E00] focus-visible:ring-[#FE5E00]/25"
+                      className="h-11 border-[#1A1A1A]/12 bg-gray-50 text-center tracking-[0.35em] text-[#1A1A1A] focus-visible:border-[#E85A00] focus-visible:ring-[#E85A00]/25"
                     />
                   </div>
                 )}
@@ -593,13 +601,13 @@ export function Login() {
             </Button>
           </form>
 
-          <p className="mt-8 text-center text-xs text-[#222222]/45">
+          <p className="mt-8 text-center text-xs text-[#1A1A1A]/45">
             By signing in you agree to our{" "}
-            <a href="/blogs" className="font-medium text-[#222222]/55 underline-offset-2 hover:text-[#FE5E00] hover:underline">
+            <a href="/terms" className="font-medium text-[#1A1A1A]/55 underline-offset-2 hover:text-[#E85A00] hover:underline">
               Terms
             </a>{" "}
             and{" "}
-            <a href="/blogs" className="font-medium text-[#222222]/55 underline-offset-2 hover:text-[#FE5E00] hover:underline">
+            <a href="/privacy" className="font-medium text-[#1A1A1A]/55 underline-offset-2 hover:text-[#E85A00] hover:underline">
               Privacy
             </a>
             .

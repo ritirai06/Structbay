@@ -1,7 +1,14 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link } from "react-router";
 import { Download, Eye, Loader2, RefreshCw, FileText, ExternalLink } from "lucide-react";
 import { adminFetch as apiFetch } from "../../lib/adminApi";
+import { useAdminListDelete } from "../hooks/useAdminListDelete";
+import {
+  AdminListDeleteControls,
+  AdminRowDeleteButton,
+  AdminTableSelectCell,
+  AdminTableSelectHeader,
+} from "../components/AdminListDeleteControls";
 
 function formatInr(n: number) {
   if (n >= 10000000) return `₹${(n / 10000000).toFixed(1)}Cr`;
@@ -35,6 +42,8 @@ type Summary = {
   ordersWithPdf: number;
   pendingPaymentAmount: number;
   totalCollectedAmount: number;
+  pendingOrderCount?: number;
+  paidOrderCount?: number;
 };
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
@@ -93,13 +102,23 @@ export function InvoiceManagement() {
   const totalRows = summary?.totalRows ?? pagination.total ?? 0;
   const pending = summary?.pendingPaymentAmount ?? 0;
   const collected = summary?.totalCollectedAmount ?? 0;
+  const pendingCount = summary?.pendingOrderCount ?? 0;
+  const paidCount = summary?.paidOrderCount ?? 0;
+
+  const visibleIds = useMemo(() => rows.map((r) => String(r._id)), [rows]);
+  const deleteHook = useAdminListDelete({
+    singleDeleteUrl: (id) => `/orders/${id}`,
+    bulkDeleteUrl: "/orders/bulk-delete",
+    onSuccess: () => void load(listPage),
+    itemLabel: "invoice records",
+  });
 
   return (
-    <div className="p-6 bg-sb-cream min-h-full">
+    <div className="admin-page">
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-sb-ink">Invoice Management</h1>
-          <p className="text-sb-ink/55 text-sm mt-1">Orders with payment or invoice documents — amounts from live orders.</p>
+          <h1 className="admin-page-title text-sb-ink">Invoice Management</h1>
+          <p className="admin-page-desc">Orders with payment or invoice documents — amounts from live orders.</p>
         </div>
         <button
           type="button"
@@ -114,22 +133,33 @@ export function InvoiceManagement() {
       <div className="grid gap-4 md:grid-cols-3 mb-6">
         <div className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl p-4">
           <p className="text-xs text-sb-ink/50 uppercase font-semibold">Records</p>
-          <p className="text-3xl font-black text-sb-ink mt-1 tabular-nums">{totalRows}</p>
-          <p className="text-[10px] text-sb-ink/45 mt-2">Paid or invoice-linked orders (excl. cancelled)</p>
+          <p className="admin-stat-value text-sb-ink mt-1 tabular-nums">{totalRows}</p>
+          <p className="text-[10px] text-sb-ink/45 mt-2">Active billable orders (excl. cancelled & refunded)</p>
         </div>
         <div className="bg-sb-cream-secondary border border-sb-orange/20 rounded-xl p-4">
           <p className="text-xs text-sb-ink/50 uppercase font-semibold">Pending payment</p>
-          <p className="text-3xl font-black text-sb-orange mt-1 tabular-nums">{formatInr(pending)}</p>
-          <p className="text-[10px] text-sb-ink/45 mt-2">Sum of grand total where payment is still pending</p>
+          <p className="admin-stat-value text-sb-orange mt-1 tabular-nums">{formatInr(pending)}</p>
+          <p className="text-[10px] text-sb-ink/45 mt-2">
+            {pendingCount > 0 ? `${pendingCount} order${pendingCount === 1 ? "" : "s"} · ` : ""}
+            Sum of grand total where payment is still pending
+          </p>
         </div>
         <div className="bg-sb-cream-secondary border border-sb-orange/22 rounded-xl p-4">
           <p className="text-xs text-sb-ink/50 uppercase font-semibold">Collected (paid)</p>
-          <p className="text-3xl font-black text-sb-orange mt-1 tabular-nums">{formatInr(collected)}</p>
+          <p className="admin-stat-value text-sb-orange mt-1 tabular-nums">{formatInr(collected)}</p>
           <p className="text-[10px] text-sb-ink/45 mt-2">
+            {paidCount > 0 ? `${paidCount} order${paidCount === 1 ? "" : "s"} · ` : ""}
             Sum of grand total for orders marked paid. Upload PDFs on the order record where applicable.
           </p>
         </div>
       </div>
+
+      <AdminListDeleteControls
+        deleteHook={deleteHook}
+        visibleIds={visibleIds}
+        disabled={loading}
+        itemLabel="records"
+      />
 
       <div className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl overflow-hidden">
         <div className="px-4 py-3 border-b border-sb-ink/10 flex flex-wrap items-center justify-between gap-2">
@@ -156,6 +186,10 @@ export function InvoiceManagement() {
             <table className="w-full text-sm min-w-[880px]">
               <thead>
                 <tr className="border-b border-sb-ink/10 text-left text-xs uppercase tracking-wider text-sb-ink/50">
+                  <AdminTableSelectHeader
+                    checked={deleteHook.allVisibleSelected(visibleIds)}
+                    onChange={() => deleteHook.toggleAllVisible(visibleIds)}
+                  />
                   <th className="py-3 px-4">Invoice / ref</th>
                   <th className="py-3 px-4">Order</th>
                   <th className="py-3 px-4">Customer</th>
@@ -168,8 +202,15 @@ export function InvoiceManagement() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => (
+                {rows.map((r) => {
+                  const rowId = String(r._id);
+                  return (
                   <tr key={r._id} className="border-b border-sb-ink/8 hover:bg-sb-cream-secondary/90">
+                    <AdminTableSelectCell
+                      checked={deleteHook.isSelected(rowId)}
+                      onChange={() => deleteHook.toggleRow(rowId)}
+                      ariaLabel={`Select invoice ${r.invoiceLabel}`}
+                    />
                     <td className="py-3 px-4 font-mono text-sb-ink">{r.invoiceLabel}</td>
                     <td className="py-3 px-4">
                       <Link
@@ -219,10 +260,16 @@ export function InvoiceManagement() {
                             <Download className="h-4 w-4" />
                           </span>
                         )}
+                        <AdminRowDeleteButton
+                          onClick={() =>
+                            deleteHook.requestDelete([rowId], `invoice ${r.invoiceLabel}`)
+                          }
+                          disabled={deleteHook.busy}
+                        />
                       </div>
                     </td>
                   </tr>
-                ))}
+                );})}
               </tbody>
             </table>
             {rows.length === 0 && (

@@ -17,6 +17,7 @@ const {
 } = require('../validators/cms.validator');
 const cms = require('../controllers/cms.controller');
 const { logAction } = require('../services/auditLog.service');
+const { ensureCmsDefaults, policyForResponse, landingPageForResponse, DEFAULT_FOOTER_QUICK_LINKS } = require('../services/cmsDefaults.service');
 
 const adminOnly = [protect, requireRole('ADMIN')];
 
@@ -78,13 +79,18 @@ router.put('/seo',       ...adminOnly, seoValidator, validate, cms.upsertSEO);
 
 // ─── CONTACT ──────────────────────────────────────────────────────────────────
 router.get('/contact',       cms.getContact);                     // Public
+router.post('/contact/message', cms.submitContactMessage);       // Public — homepage form
 router.patch('/contact',     ...adminOnly, cms.updateContact);
 router.put('/contact',       ...adminOnly, cms.updateContact);
 
 // ─── FOOTER ──────────────────────────────────────────────────────────────────
 router.get('/footer', asyncHandler(async (req, res) => {
   const cms = await CMS.getOrCreate();
-  return ApiResponse.success(res, 200, 'Footer retrieved.', cms.footer);
+  const footer = cms.footer?.toObject?.() ?? { ...cms.footer };
+  if (!Array.isArray(footer.quickLinks) || footer.quickLinks.length === 0) {
+    footer.quickLinks = DEFAULT_FOOTER_QUICK_LINKS;
+  }
+  return ApiResponse.success(res, 200, 'Footer retrieved.', footer);
 }));
 
 router.patch('/footer', ...adminOnly, asyncHandler(async (req, res) => {
@@ -141,6 +147,185 @@ router.delete('/footer/quick-links/:id', ...adminOnly, asyncHandler(async (req, 
   doc.lastUpdatedBy = req.user._id;
   await doc.save();
   return ApiResponse.success(res, 200, 'Quick link deleted.', doc.footer.quickLinks);
+}));
+
+// ─── POLICIES (footer legal pages) ───────────────────────────────────────────
+router.get('/policies', asyncHandler(async (req, res) => {
+  const cms = await CMS.getOrCreate();
+  const list = (cms.policies || [])
+    .filter((p) => p.isActive !== false)
+    .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
+    .map((p) => policyForResponse(p));
+  return ApiResponse.success(res, 200, 'Policies retrieved.', list);
+}));
+
+router.get('/policies/all', ...adminOnly, asyncHandler(async (req, res) => {
+  const cms = await CMS.getOrCreate();
+  const list = [...(cms.policies || [])]
+    .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
+    .map((p) => policyForResponse(p));
+  return ApiResponse.success(res, 200, 'Policies retrieved.', list);
+}));
+
+router.get('/policies/:slug', asyncHandler(async (req, res) => {
+  const cms = await CMS.getOrCreate();
+  const slug = String(req.params.slug || '').trim().toLowerCase();
+  const policy = (cms.policies || []).find((p) => String(p.slug).toLowerCase() === slug);
+  if (!policy || policy.isActive === false) {
+    return ApiResponse.notFound(res, 'Policy not found.');
+  }
+  return ApiResponse.success(res, 200, 'Policy retrieved.', policyForResponse(policy));
+}));
+
+router.post('/policies', ...adminOnly, asyncHandler(async (req, res) => {
+  const { slug, title, subtitle, lastUpdated, sections, isActive = true, sortOrder = 0 } = req.body;
+  if (!slug || !title) return ApiResponse.badRequest(res, 'slug and title are required.');
+  const doc = await CMS.getOrCreate();
+  const normalized = String(slug).trim().toLowerCase();
+  if ((doc.policies || []).some((p) => String(p.slug).toLowerCase() === normalized)) {
+    return ApiResponse.badRequest(res, 'A policy with this slug already exists.');
+  }
+  doc.policies.push({
+    slug: normalized,
+    title: String(title).trim(),
+    subtitle: subtitle != null ? String(subtitle).trim() : '',
+    lastUpdated: lastUpdated != null ? String(lastUpdated).trim() : '',
+    sections: Array.isArray(sections) ? sections : [],
+    isActive: isActive !== false,
+    sortOrder: Number(sortOrder) || 0,
+  });
+  doc.policies.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  doc.lastUpdatedBy = req.user._id;
+  await doc.save();
+  await logAction({
+    adminId: req.user._id, action: 'CREATE', module: 'Policy',
+    description: `Created policy ${normalized}`, ipAddress: req.ip,
+  });
+  return ApiResponse.created(res, 'Policy created.', doc.policies);
+}));
+
+router.patch('/policies/:id', ...adminOnly, asyncHandler(async (req, res) => {
+  const doc = await CMS.getOrCreate();
+  const policy = doc.policies.id(req.params.id);
+  if (!policy) return ApiResponse.notFound(res, 'Policy not found.');
+  const { slug, title, subtitle, lastUpdated, sections, isActive, sortOrder } = req.body;
+  if (slug !== undefined) {
+    const normalized = String(slug).trim().toLowerCase();
+    const clash = doc.policies.some(
+      (p) => p._id.toString() !== policy._id.toString() && String(p.slug).toLowerCase() === normalized
+    );
+    if (clash) return ApiResponse.badRequest(res, 'Another policy already uses this slug.');
+    policy.slug = normalized;
+  }
+  if (title !== undefined) policy.title = String(title).trim();
+  if (subtitle !== undefined) policy.subtitle = String(subtitle).trim();
+  if (lastUpdated !== undefined) policy.lastUpdated = String(lastUpdated).trim();
+  if (sections !== undefined) policy.sections = Array.isArray(sections) ? sections : [];
+  if (isActive !== undefined) policy.isActive = !!isActive;
+  if (sortOrder !== undefined) policy.sortOrder = Number(sortOrder) || 0;
+  doc.policies.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  doc.lastUpdatedBy = req.user._id;
+  await doc.save();
+  await logAction({
+    adminId: req.user._id, action: 'UPDATE', module: 'Policy',
+    description: `Updated policy ${policy.slug}`, ipAddress: req.ip,
+  });
+  return ApiResponse.success(res, 200, 'Policy updated.', policyForResponse(policy));
+}));
+
+router.delete('/policies/:id', ...adminOnly, asyncHandler(async (req, res) => {
+  const doc = await CMS.getOrCreate();
+  const policy = doc.policies.id(req.params.id);
+  if (!policy) return ApiResponse.notFound(res, 'Policy not found.');
+  const slug = policy.slug;
+  doc.policies = doc.policies.filter((p) => p._id.toString() !== req.params.id);
+  doc.lastUpdatedBy = req.user._id;
+  await doc.save();
+  await logAction({
+    adminId: req.user._id, action: 'DELETE', module: 'Policy',
+    description: `Deleted policy ${slug}`, ipAddress: req.ip,
+  });
+  return ApiResponse.success(res, 200, 'Policy deleted.', doc.policies);
+}));
+
+// ─── LANDING PAGES ───────────────────────────────────────────────────────────
+router.get('/landing-pages', asyncHandler(async (req, res) => {
+  const doc = await CMS.getOrCreate();
+  await ensureCmsDefaults(doc);
+  const list = (doc.landingPages || [])
+    .filter((p) => p.isActive !== false)
+    .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
+    .map(landingPageForResponse);
+  return ApiResponse.success(res, 200, 'Landing pages retrieved.', list);
+}));
+
+router.get('/landing-pages/all', ...adminOnly, asyncHandler(async (req, res) => {
+  const doc = await CMS.getOrCreate();
+  await ensureCmsDefaults(doc);
+  const list = [...(doc.landingPages || [])].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  return ApiResponse.success(res, 200, 'All landing pages.', list);
+}));
+
+router.get('/landing-pages/:slug', asyncHandler(async (req, res) => {
+  const doc = await CMS.getOrCreate();
+  await ensureCmsDefaults(doc);
+  const slug = String(req.params.slug || '').toLowerCase();
+  const page = (doc.landingPages || []).find((p) => String(p.slug).toLowerCase() === slug && p.isActive !== false);
+  if (!page) return ApiResponse.notFound(res, 'Landing page not found.');
+  return ApiResponse.success(res, 200, 'Landing page retrieved.', landingPageForResponse(page));
+}));
+
+router.post('/landing-pages', ...adminOnly, asyncHandler(async (req, res) => {
+  const { slug, title, subtitle, pageType, calculatorType, sections, isActive, sortOrder } = req.body;
+  if (!slug || !title) return ApiResponse.badRequest(res, 'slug and title are required.');
+  const doc = await CMS.getOrCreate();
+  const normalized = String(slug).trim().toLowerCase();
+  if ((doc.landingPages || []).some((p) => String(p.slug).toLowerCase() === normalized)) {
+    return ApiResponse.badRequest(res, 'A landing page with this slug already exists.');
+  }
+  doc.landingPages.push({
+    slug: normalized,
+    title: String(title).trim(),
+    subtitle: subtitle || '',
+    pageType: 'content',
+    calculatorType: 'none',
+    sections: Array.isArray(sections) ? sections : [],
+    isActive: isActive !== false,
+    sortOrder: Number(sortOrder) || 0,
+  });
+  doc.landingPages.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  doc.lastUpdatedBy = req.user._id;
+  await doc.save();
+  return ApiResponse.created(res, 'Landing page created.', doc.landingPages);
+}));
+
+router.patch('/landing-pages/:id', ...adminOnly, asyncHandler(async (req, res) => {
+  const doc = await CMS.getOrCreate();
+  const page = doc.landingPages.id(req.params.id);
+  if (!page) return ApiResponse.notFound(res, 'Landing page not found.');
+  if (req.body.slug !== undefined) {
+    const normalized = String(req.body.slug).trim().toLowerCase();
+    const clash = doc.landingPages.some(
+      (p) => p._id.toString() !== req.params.id && String(p.slug).toLowerCase() === normalized
+    );
+    if (clash) return ApiResponse.badRequest(res, 'Slug already in use.');
+    page.slug = normalized;
+  }
+  ['title', 'subtitle', 'pageType', 'calculatorType', 'sections', 'isActive', 'sortOrder'].forEach((f) => {
+    if (req.body[f] !== undefined) page[f] = req.body[f];
+  });
+  doc.landingPages.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  doc.lastUpdatedBy = req.user._id;
+  await doc.save();
+  return ApiResponse.success(res, 200, 'Landing page updated.', landingPageForResponse(page));
+}));
+
+router.delete('/landing-pages/:id', ...adminOnly, asyncHandler(async (req, res) => {
+  const doc = await CMS.getOrCreate();
+  doc.landingPages = (doc.landingPages || []).filter((p) => p._id.toString() !== req.params.id);
+  doc.lastUpdatedBy = req.user._id;
+  await doc.save();
+  return ApiResponse.success(res, 200, 'Landing page deleted.', doc.landingPages);
 }));
 
 // ─── VENDOR FAQS ─────────────────────────────────────────────────────────────

@@ -190,6 +190,10 @@ if (process.env.NODE_ENV !== 'production') {
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => {
+  if (isDev) {
+    const frontendDev = process.env.FRONTEND_DEV_URL || 'http://localhost:3000';
+    return res.redirect(302, frontendDev);
+  }
   res.json({
     success: true,
     message: 'StructBay API is running',

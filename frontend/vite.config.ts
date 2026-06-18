@@ -30,5 +30,24 @@ export default defineConfig(({ mode }) => {
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) {
+            if (id.includes("/src/admin/")) return "admin";
+            if (id.includes("/src/vendor/")) return "vendor";
+            if (id.includes("/src/customer/pages/Dashboard")) return "customer-account";
+            if (id.includes("/src/customer/pages/Checkout")) return "customer-checkout";
+            if (id.includes("/src/customer/pages/ProductDetails")) return "customer-pdp";
+            return undefined;
+          }
+          if (id.includes("lucide-react")) return "icons";
+          if (id.includes("recharts")) return "charts";
+          return "vendor-libs";
+        },
+      },
+    },
+  },
   }
 })

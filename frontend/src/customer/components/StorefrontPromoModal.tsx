@@ -132,7 +132,7 @@ export function StorefrontPromoModal({
                   className="max-h-[140px] w-auto object-contain drop-shadow-lg"
                 />
               ) : (
-                <div className="h-28 w-44 rounded-lg bg-gradient-to-br from-[#FE5E00]/20 to-[#FE5E00]/5 border border-[#FE5E00]/30 flex items-center justify-center text-xs font-semibold text-[#FE5E00] px-2 text-center">
+                <div className="h-28 w-44 rounded-lg bg-gradient-to-br from-[#E85A00]/20 to-[#E85A00]/5 border border-[#E85A00]/30 flex items-center justify-center text-xs font-semibold text-[#E85A00] px-2 text-center">
                   Upload a hero image in Admin → CMS → Homepage
                 </div>
               )}

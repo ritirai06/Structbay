@@ -13,21 +13,21 @@ import { adminPath } from "../../lib/portalRoutes";
 import { adminFetch as apiFetch } from "../../lib/adminApi";
 
 /** Brand-only chart fills */
-const CHART_COLORS = ["#FE5E00", "#222222", "#F5E7C6", "#E05200", "#FAF3E1", "#FE5E00", "#222222", "#F5E7C6"];
+const CHART_COLORS = ["#E85A00", "#111111", "#E5E5E5", "#CC4E00", "#F5F5F5", "#E85A00", "#666666", "#FFFFFF"];
 const MONTH_NAMES = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function StatCard({ title, value, icon: Icon, sub, subColor = "text-sb-ink/50", to }: {
   title: string; value: string | number; icon: any; sub: string; subColor?: string; to?: string;
 }) {
   const content = (
-    <div className="h-full cursor-default rounded-xl border border-sb-ink/10 bg-sb-cream-secondary p-5 transition-colors hover:border-sb-ink/20">
+    <div className="h-full cursor-default rounded-card border border-sb-border bg-sb-card p-5 transition-all hover:border-sb-orange/40 hover:shadow-md">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-semibold uppercase tracking-wider text-sb-ink/55">{title}</span>
-        <div className="w-8 h-8 rounded-lg bg-sb-orange/15 flex items-center justify-center">
+        <span className="text-xs font-medium uppercase tracking-wider text-sb-text-secondary">{title}</span>
+        <div className="w-10 h-10 rounded-xl bg-sb-orange-subtle flex items-center justify-center">
           <Icon className="h-4 w-4 text-sb-orange" />
         </div>
       </div>
-      <div className="text-2xl font-black text-sb-ink">{value}</div>
+      <div className="sb-stat-value">{value}</div>
       <p className={`text-xs mt-1.5 ${subColor}`}>{sub}</p>
     </div>
   );
@@ -36,9 +36,9 @@ function StatCard({ title, value, icon: Icon, sub, subColor = "text-sb-ink/50", 
 
 function Panel({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-sb-ink/10 bg-sb-cream-secondary">
-      <div className="flex items-center justify-between border-b border-sb-ink/10 px-5 py-4">
-        <h3 className="font-semibold text-sb-ink text-sm">{title}</h3>
+    <div className="overflow-hidden rounded-card border border-sb-border bg-sb-card">
+      <div className="flex items-center justify-between border-b border-sb-border px-5 py-4">
+        <h3 className="font-medium text-sb-ink text-sm">{title}</h3>
         {action}
       </div>
       <div className="p-5">{children}</div>
@@ -110,10 +110,10 @@ export function Dashboard() {
   const d = data || {};
 
   return (
-    <div className="p-6 bg-sb-cream min-h-full">
+    <div className="p-6 min-h-full">
       <div className="mb-7 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black text-sb-ink">Admin Dashboard</h1>
+          <h1 className="admin-page-title text-sb-ink">Admin Dashboard</h1>
           <p className="text-sb-ink/55 text-sm mt-1">StructBay Control Center — Master System</p>
           {loadError && <p className="mt-2 text-xs text-sb-ink/70">{loadError}</p>}
         </div>
@@ -158,13 +158,14 @@ export function Dashboard() {
               <YAxis stroke="rgba(34,34,34,0.35)" tick={{ fill: "rgba(34,34,34,0.55)", fontSize: 11 }} />
               <Tooltip
                 contentStyle={{
-                  background: "#FAF3E1",
-                  border: "1px solid rgba(34,34,34,0.12)",
+                  background: "#FFFFFF",
+                  border: "1px solid #E5E5E5",
                   borderRadius: "8px",
-                  color: "#222222",
+                  color: "#111111",
+                  fontSize: "13px",
                 }}
               />
-              <Line type="monotone" dataKey="revenue" stroke="#FE5E00" strokeWidth={2.5} dot={{ fill: "#FE5E00", r: 4 }} />
+              <Line type="monotone" dataKey="revenue" stroke="#E85A00" strokeWidth={2.5} dot={{ fill: "#E85A00", r: 4 }} />
             </LineChart>
           </ResponsiveContainer>
           )}
@@ -183,10 +184,11 @@ export function Dashboard() {
               </Pie>
               <Tooltip
                 contentStyle={{
-                  background: "#FAF3E1",
-                  border: "1px solid rgba(34,34,34,0.12)",
+                  background: "#FFFFFF",
+                  border: "1px solid #E5E5E5",
                   borderRadius: "8px",
-                  color: "#222222",
+                  color: "#111111",
+                  fontSize: "13px",
                 }}
               />
             </PieChart>
@@ -202,7 +204,7 @@ export function Dashboard() {
           {d.recentActivity?.length > 0 ? (
             <div className="space-y-2.5">
               {d.recentActivity.slice(0, 6).map((log: any) => (
-                <div key={log._id} className="flex items-start gap-3 rounded-lg border border-sb-ink/10 bg-sb-cream p-3">
+                <div key={log._id} className="flex items-start gap-3 rounded-lg border border-sb-ink/10 bg-white p-3">
                   <div className="w-7 h-7 rounded-lg bg-sb-orange/15 flex items-center justify-center shrink-0 mt-0.5">
                     <TrendingUp className="w-3.5 h-3.5 text-sb-orange" />
                   </div>
@@ -234,8 +236,8 @@ export function Dashboard() {
             ].map(({ label, to, primary }) => (
               <Link key={label} to={to}
                 className={`flex items-center justify-center py-2.5 px-3 rounded-lg text-sm font-medium transition-all ${primary
-                  ? "bg-sb-orange hover:bg-sb-orange-hover text-white font-bold"
-                  : "border border-sb-ink/12 text-sb-ink/65 hover:border-sb-orange/40 hover:text-sb-orange"
+                  ? "bg-sb-orange hover:bg-sb-orange-hover text-white"
+                  : "border border-sb-ink/12 text-sb-ink/65 hover:border-sb-orange/40 hover:text-sb-orange bg-white"
                 }`}>
                 {label}
               </Link>
@@ -243,12 +245,12 @@ export function Dashboard() {
           </div>
 
           <div className="mt-4 pt-4 border-t border-sb-ink/10">
-            <p className="text-xs font-semibold text-sb-ink/50 uppercase tracking-wider mb-3">System Badges</p>
+            <p className="text-xs font-medium text-sb-ink/50 uppercase tracking-wider mb-3">System Badges</p>
             <div className="flex gap-2 flex-wrap">
-              <span className="flex items-center gap-1.5 rounded-full border border-sb-orange/25 bg-sb-orange/12 px-3 py-1.5 text-xs font-bold text-sb-orange">
+              <span className="flex items-center gap-1.5 rounded-full border border-sb-orange/25 bg-sb-orange/12 px-3 py-1.5 text-xs font-medium text-sb-orange">
                 <Shield className="h-3 w-3" /> StructBay Assured
               </span>
-              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-sb-orange/15 text-sb-orange border border-sb-orange/20">
+              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-sb-orange/15 text-sb-orange border border-sb-orange/20">
                 <Zap className="w-3 h-3" /> StructBay Express
               </span>
             </div>

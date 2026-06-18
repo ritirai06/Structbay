@@ -1,74 +1,38 @@
+import { Suspense } from "react";
 import { createBrowserRouter, RouterProvider, Outlet, useLocation, Navigate, useParams } from "react-router";
-
-// --- CUSTOMER PORTAL ---
 import { AppProvider } from "./customer/context/AppContext";
+import { BulkEnquiryModalProvider } from "./customer/context/BulkEnquiryModalContext";
 import { Header as CustomerHeader } from "./customer/components/Header";
 import { Footer as CustomerFooter } from "./customer/components/Footer";
 import { SplashScreen } from "./customer/pages/SplashScreen";
 import { CitySelection } from "./customer/pages/CitySelection";
 import { Homepage } from "./customer/pages/Homepage";
 import { CategoryListing } from "./customer/pages/CategoryListing";
-import { ProductDetails } from "./customer/pages/ProductDetails";
 import { Cart } from "./customer/pages/Cart";
-import { Checkout } from "./customer/pages/Checkout";
 import { OrderSuccess } from "./customer/pages/OrderSuccess";
 import { OrderTracking } from "./customer/pages/OrderTracking";
+import { TrackOrder } from "./customer/pages/TrackOrder";
+import { LandingPage } from "./customer/pages/LandingPage";
 import { Login as CustomerLogin } from "./customer/pages/Login";
 import { Register } from "./customer/pages/Register";
 import { VerifyEmail } from "./customer/pages/VerifyEmail";
-import { Dashboard as CustomerDashboard } from "./customer/pages/Dashboard";
 import { RFQ } from "./customer/pages/RFQ";
 import { BulkEnquiry } from "./customer/pages/BulkEnquiry";
+import { ToolsQuantityEstimator } from "./customer/pages/ToolsQuantityEstimator";
 import { Finance } from "./customer/pages/Finance";
 import { BlogListing, BlogDetails } from "./customer/pages/Blog";
 import { SearchResults } from "./customer/pages/SearchResults";
 import { BrandLanding } from "./customer/pages/BrandLanding";
+import {
+  PrivacyPolicyPage,
+  TermsPage,
+  ReturnsPolicyPage,
+  ShippingPolicyPage,
+  DynamicPolicyPage,
+} from "./customer/pages/PolicyPage";
+import { adminRoutes } from "./routes/adminRoutes";
+import { vendorRoutes } from "./routes/vendorRoutes";
 
-// --- ADMIN PORTAL ---
-import { LoginPage as AdminLogin } from "./admin/pages/LoginPage";
-import { DashboardLayout as AdminLayout } from "./admin/components/DashboardLayout";
-import { Dashboard as AdminDashboard } from "./admin/pages/Dashboard";
-import { ProductList as AdminProductList } from "./admin/pages/ProductList";
-import { AddProduct as AdminAddProduct } from "./admin/pages/AddProduct";
-import { CategoryManagement as AdminCategories } from "./admin/pages/CategoryManagement";
-import { BrandManagement as AdminBrands } from "./admin/pages/BrandManagement";
-import { CityManagement as AdminCities } from "./admin/pages/CityManagement";
-import { PricingManagement as AdminPricing } from "./admin/pages/PricingManagement";
-import { InventoryManagement as AdminInventory } from "./admin/pages/InventoryManagement";
-import { VendorManagement as AdminVendors } from "./admin/pages/VendorManagement";
-import { OrderManagement as AdminOrders } from "./admin/pages/OrderManagement";
-import { OrderChatPage as AdminOrderChat } from "./admin/pages/OrderChatPage";
-import { DispatchManagement as AdminDispatch } from "./admin/pages/DispatchManagement";
-import { InvoiceManagement as AdminInvoices } from "./admin/pages/InvoiceManagement";
-import { RFQManagement as AdminRFQs } from "./admin/pages/RFQManagement";
-import { BulkEnquiryManagement as AdminBulkEnquiries } from "./admin/pages/BulkEnquiryManagement";
-import { FinanceLeadsManagement as AdminFinanceLeads } from "./admin/pages/FinanceLeadsManagement";
-import { CustomerManagement as AdminCustomers } from "./admin/pages/CustomerManagement";
-import { CMSManagement as AdminCMS } from "./admin/pages/CMSManagement";
-import { ReportsAnalytics as AdminReports } from "./admin/pages/ReportsAnalytics";
-import { AuditLogs as AdminAuditLogs } from "./admin/pages/AuditLogs";
-import { Settings as AdminSettings } from "./admin/pages/Settings";
-import { AdminUsers as AdminUsersPage } from "./admin/pages/AdminUsers";
-
-// --- VENDOR PORTAL ---
-import { AuthProvider as VendorAuthProvider } from "./vendor/context/AuthContext";
-import { Login as VendorLogin } from "./vendor/pages/Login";
-import { Layout as VendorLayout } from "./vendor/components/Layout";
-import { Dashboard as VendorDashboard } from "./vendor/pages/Dashboard";
-import { OrdersList as VendorOrders } from "./vendor/pages/OrdersList";
-import { OrderDetails as VendorOrderDetails } from "./vendor/pages/OrderDetails";
-import { UploadInvoice as VendorUploadInvoice } from "./vendor/pages/UploadInvoice";
-import { WarehouseDetails as VendorWarehouse } from "./vendor/pages/WarehouseDetails";
-import { ReadyDispatch as VendorReadyDispatch } from "./vendor/pages/ReadyDispatch";
-import { DocumentCenter as VendorDocuments } from "./vendor/pages/DocumentCenter";
-import { DispatchManagement as VendorDispatch } from "./vendor/pages/DispatchManagement";
-import { Notifications as VendorNotifications } from "./vendor/pages/Notifications";
-import { Profile as VendorProfile } from "./vendor/pages/Profile";
-import { Support as VendorSupport } from "./vendor/pages/Support";
-import { Analytics as VendorAnalytics } from "./vendor/pages/Analytics";
-import { OrderHistory as VendorOrderHistory } from "./vendor/pages/OrderHistory";
-
-// --- FULLSCREEN routes (no header/footer) ---
 const FULLSCREEN_ROUTES = [
   "/city-selection",
   "/login",
@@ -78,6 +42,14 @@ const FULLSCREEN_ROUTES = [
   "/verify-email",
   "/account",
 ];
+
+function RouteFallback() {
+  return (
+    <div className="min-h-[40vh] flex items-center justify-center bg-white" role="status" aria-label="Loading">
+      <div className="h-9 w-9 animate-spin rounded-full border-2 border-sb-orange border-t-transparent" />
+    </div>
+  );
+}
 
 function LegacyBlogSlugRedirect() {
   const { slug } = useParams();
@@ -91,30 +63,35 @@ function MarketplaceLayout() {
     (r) => location.pathname === r || location.pathname.startsWith("/account")
   );
 
-  if (isFullscreen) return <Outlet />;
+  if (isFullscreen) {
+    return (
+      <div className="sb-storefront min-h-screen">
+        <Suspense fallback={<RouteFallback />}>
+          <Outlet />
+        </Suspense>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <CustomerHeader />
-      <main className="flex-1">
-        <Outlet />
-      </main>
-      <CustomerFooter />
-    </div>
+    <BulkEnquiryModalProvider>
+      <div className="sb-storefront min-h-screen flex flex-col">
+        <CustomerHeader />
+        <main className="flex-1">
+          <Suspense fallback={<RouteFallback />}>
+            <Outlet />
+          </Suspense>
+        </main>
+        <CustomerFooter />
+      </div>
+    </BulkEnquiryModalProvider>
   );
 }
 
-/**
- * RR7's `RouterProvider` does not reliably expose parent React context to route
- * components. Keep customer `AppProvider` + vendor auth here so hooks like `useApp`
- * work on every route (e.g. `/login`).
- */
 function RootLayout() {
   return (
     <AppProvider>
-      <VendorAuthProvider>
-        <Outlet />
-      </VendorAuthProvider>
+      <Outlet />
     </AppProvider>
   );
 }
@@ -124,143 +101,156 @@ const router = createBrowserRouter([
     id: "root",
     Component: RootLayout,
     children: [
-  // ─── SPLASH ───────────────────────────────────────────────
-  { path: "/splash", Component: SplashScreen },
+      { path: "/splash", Component: SplashScreen },
+      ...adminRoutes,
+      ...vendorRoutes,
+      {
+        path: "/",
+        Component: MarketplaceLayout,
+        children: [
+          { index: true, Component: Homepage },
+          { path: "city-selection", Component: CitySelection },
+          { path: "login", Component: CustomerLogin },
+          { path: "register", Component: Register },
+          { path: "forgot-password", Component: CustomerLogin },
+          { path: "reset-password", Component: CustomerLogin },
+          { path: "verify-email", Component: VerifyEmail },
 
-  // ─── ADMIN ────────────────────────────────────────────────
-  { path: "/admin/login", Component: AdminLogin },
-  {
-    path: "/admin",
-    Component: AdminLayout,
-    children: [
-      { index: true, Component: AdminDashboard },
-      { path: "dashboard", Component: AdminDashboard },
-      // Products
-      { path: "products", Component: AdminProductList },
-      { path: "products/create", Component: AdminAddProduct },
-      { path: "products/:id/edit", Component: AdminAddProduct },
-      // Catalogue
-      { path: "categories", Component: AdminCategories },
-      { path: "brands", Component: AdminBrands },
-      // Operations
-      { path: "cities", Component: AdminCities },
-      { path: "pricing", Component: AdminPricing },
-      { path: "inventory", Component: AdminInventory },
-      // Vendors
-      { path: "vendors", Component: AdminVendors },
-      { path: "vendor-assignment", Component: AdminVendors },
-      // Orders & Fulfillment
-      { path: "orders", Component: AdminOrders },
-      { path: "orders/:orderId/chat", Component: AdminOrderChat },
-      { path: "orders/:id", Component: AdminOrders },
-      { path: "dispatch", Component: AdminDispatch },
-      // Documents
-      { path: "invoices", Component: AdminInvoices },
-      { path: "eway-bills", Component: AdminInvoices },
-      { path: "shipping-labels", Component: AdminInvoices },
-      // Enquiries
-      { path: "rfqs", Component: AdminRFQs },
-      { path: "bulk-enquiries", Component: AdminBulkEnquiries },
-      { path: "finance-leads", Component: AdminFinanceLeads },
-      // CRM
-      { path: "customers", Component: AdminCustomers },
-      // Content
-      { path: "blogs", Component: AdminCMS },
-      { path: "landing-pages", Component: AdminCMS },
-      { path: "cms", Component: AdminCMS },
-      // System
-      { path: "reports", Component: AdminReports },
-      { path: "audit-logs", Component: AdminAuditLogs },
-      { path: "settings", Component: AdminSettings },
-      { path: "admin-users", Component: AdminUsersPage },
-    ],
-  },
+          { path: "shop", Component: CategoryListing },
+          { path: "category/:category", Component: CategoryListing },
+          { path: "categories/:category", Component: CategoryListing },
+          { path: "products", Component: CategoryListing },
+          {
+            path: "products/:slug",
+            lazy: async () => {
+              const { ProductDetails } = await import("./customer/pages/ProductDetails");
+              return { Component: ProductDetails };
+            },
+          },
+          {
+            path: "product/:slug",
+            lazy: async () => {
+              const { ProductDetails } = await import("./customer/pages/ProductDetails");
+              return { Component: ProductDetails };
+            },
+          },
+          { path: "brands", Component: BrandLanding },
+          { path: "brands/:slug", Component: BrandLanding },
+          { path: "search", Component: SearchResults },
+          { path: "cart", Component: Cart },
+          {
+            path: "checkout",
+            lazy: async () => {
+              const { Checkout } = await import("./customer/pages/Checkout");
+              return { Component: Checkout };
+            },
+          },
+          { path: "order-success", Component: OrderSuccess },
+          { path: "orders/:id", Component: OrderTracking },
+          { path: "rfq", Component: RFQ },
+          { path: "bulk-enquiry", Component: BulkEnquiry },
+          { path: "finance", Component: Finance },
+          { path: "blogs", Component: BlogListing },
+          { path: "blogs/:slug", Component: BlogDetails },
+          { path: "privacy", Component: PrivacyPolicyPage },
+          { path: "terms", Component: TermsPage },
+          { path: "returns", Component: ReturnsPolicyPage },
+          { path: "shipping", Component: ShippingPolicyPage },
+          { path: "policy/:slug", Component: DynamicPolicyPage },
+          { path: "lp/:slug", Component: LandingPage },
+          { path: "tools/cement-calculator", Component: ToolsQuantityEstimator },
+          { path: "tools/cement-estimator", element: <Navigate to="/tools/cement-calculator" replace /> },
 
-  // ─── VENDOR ───────────────────────────────────────────────
-  { path: "/vendor/login", Component: VendorLogin },
-  {
-    path: "/vendor",
-    Component: VendorLayout,
-    children: [
-      { index: true, Component: VendorDashboard },
-      { path: "dashboard", Component: VendorDashboard },
-      { path: "orders", Component: VendorOrders },
-      { path: "orders/:orderId", Component: VendorOrderDetails },
-      { path: "orders/:orderId/invoice", Component: VendorUploadInvoice },
-      { path: "orders/:orderId/warehouse", Component: VendorWarehouse },
-      { path: "orders/:orderId/ready-dispatch", Component: VendorReadyDispatch },
-      { path: "dispatch", Component: VendorDispatch },
-      { path: "documents", Component: VendorDocuments },
-      { path: "notifications", Component: VendorNotifications },
-      { path: "history", Component: VendorOrderHistory },
-      { path: "analytics", Component: VendorAnalytics },
-      { path: "profile", Component: VendorProfile },
-      { path: "support", Component: VendorSupport },
-    ],
-  },
+          {
+            path: "account",
+            lazy: async () => {
+              const { Dashboard } = await import("./customer/pages/Dashboard");
+              return { Component: Dashboard };
+            },
+          },
+          {
+            path: "account/orders",
+            lazy: async () => {
+              const { Dashboard } = await import("./customer/pages/Dashboard");
+              return { Component: Dashboard };
+            },
+          },
+          {
+            path: "account/orders/:id",
+            lazy: async () => {
+              const { Dashboard } = await import("./customer/pages/Dashboard");
+              return { Component: Dashboard };
+            },
+          },
+          {
+            path: "account/invoices",
+            lazy: async () => {
+              const { Dashboard } = await import("./customer/pages/Dashboard");
+              return { Component: Dashboard };
+            },
+          },
+          {
+            path: "account/addresses",
+            lazy: async () => {
+              const { Dashboard } = await import("./customer/pages/Dashboard");
+              return { Component: Dashboard };
+            },
+          },
+          {
+            path: "account/profile",
+            lazy: async () => {
+              const { Dashboard } = await import("./customer/pages/Dashboard");
+              return { Component: Dashboard };
+            },
+          },
+          {
+            path: "account/notifications",
+            lazy: async () => {
+              const { Dashboard } = await import("./customer/pages/Dashboard");
+              return { Component: Dashboard };
+            },
+          },
+          {
+            path: "account/rfqs",
+            lazy: async () => {
+              const { Dashboard } = await import("./customer/pages/Dashboard");
+              return { Component: Dashboard };
+            },
+          },
+          {
+            path: "account/enquiries",
+            lazy: async () => {
+              const { Dashboard } = await import("./customer/pages/Dashboard");
+              return { Component: Dashboard };
+            },
+          },
+          {
+            path: "account/finance",
+            lazy: async () => {
+              const { Dashboard } = await import("./customer/pages/Dashboard");
+              return { Component: Dashboard };
+            },
+          },
 
-  // ─── MARKETPLACE (Customer) ───────────────────────────────
-  {
-    path: "/",
-    Component: MarketplaceLayout,
-    children: [
-      // Public
-      { index: true, Component: Homepage },
-      { path: "city-selection", Component: CitySelection },
-      { path: "login", Component: CustomerLogin },
-      { path: "register", Component: Register },
-      { path: "forgot-password", Component: CustomerLogin },
-      { path: "reset-password", Component: CustomerLogin },
-      { path: "verify-email", Component: VerifyEmail },
+          { path: "city", element: <Navigate to="/city-selection" replace /> },
+          { path: "blog", element: <Navigate to="/blogs" replace /> },
+          { path: "blog/:slug", element: <LegacyBlogSlugRedirect /> },
+          { path: "bulk", element: <Navigate to="/bulk-enquiry" replace /> },
+          { path: "track", Component: TrackOrder },
+          { path: "dashboard", element: <Navigate to="/account" replace /> },
+          { path: "dashboard/:section", element: <Navigate to="/account" replace /> },
 
-      // Marketplace
-      { path: "shop", Component: CategoryListing },
-      { path: "category/:category", Component: CategoryListing },
-      { path: "categories/:category", Component: CategoryListing }, // legacy
-      { path: "products", Component: CategoryListing },
-      { path: "products/:slug", Component: ProductDetails },
-      { path: "brands", Component: BrandLanding },
-      { path: "brands/:slug", Component: BrandLanding },
-      { path: "search", Component: SearchResults },
-      { path: "cart", Component: Cart },
-      { path: "checkout", Component: Checkout },
-      { path: "order-success", Component: OrderSuccess },
-      { path: "orders/:id", Component: OrderTracking },
-      { path: "rfq", Component: RFQ },
-      { path: "bulk-enquiry", Component: BulkEnquiry },
-      { path: "finance", Component: Finance },
-      { path: "blogs", Component: BlogListing },
-      { path: "blogs/:slug", Component: BlogDetails },
-
-      // Customer Dashboard (account)
-      { path: "account", Component: CustomerDashboard },
-      { path: "account/orders", Component: CustomerDashboard },
-      { path: "account/orders/:id", Component: CustomerDashboard },
-      { path: "account/invoices", Component: CustomerDashboard },
-      { path: "account/addresses", Component: CustomerDashboard },
-      { path: "account/profile", Component: CustomerDashboard },
-      { path: "account/notifications", Component: CustomerDashboard },
-      { path: "account/rfqs", Component: CustomerDashboard },
-      { path: "account/enquiries", Component: CustomerDashboard },
-      { path: "account/finance", Component: CustomerDashboard },
-
-      // Legacy redirects
-      { path: "city", element: <Navigate to="/city-selection" replace /> },
-      { path: "blog", element: <Navigate to="/blogs" replace /> },
-      { path: "blog/:slug", element: <LegacyBlogSlugRedirect /> },
-      { path: "bulk", element: <Navigate to="/bulk-enquiry" replace /> },
-      { path: "track", element: <Navigate to="/" replace /> },
-      { path: "dashboard", element: <Navigate to="/account" replace /> },
-      { path: "dashboard/:section", element: <Navigate to="/account" replace /> },
-
-      // Unmatched paths under `/` only (admin/vendor use their own route trees above).
-      { path: "*", Component: Homepage },
-    ],
-  },
+          { path: "*", Component: Homepage },
+        ],
+      },
     ],
   },
 ]);
 
 export default function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <Suspense fallback={<RouteFallback />}>
+      <RouterProvider router={router} />
+    </Suspense>
+  );
 }

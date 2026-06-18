@@ -5,7 +5,7 @@ const Table = React.forwardRef<
   HTMLTableElement,
   React.HTMLAttributes<HTMLTableElement>
 >(({ className, ...props }, ref) => (
-  <div className="relative w-full overflow-auto rounded-xl border border-sb-ink/10 bg-sb-cream">
+  <div className="sb-table-wrap relative w-full overflow-auto">
     <table
       ref={ref}
       className={cn("w-full caption-bottom text-sm text-sb-ink", className)}
@@ -21,7 +21,7 @@ const TableHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <thead
     ref={ref}
-    className={cn("bg-sb-ink text-sb-cream [&_tr]:border-b [&_tr]:border-sb-border-dark", className)}
+    className={cn("bg-gray-50 text-gray-500 [&_tr]:border-b [&_tr]:border-gray-200", className)}
     {...props}
   />
 ));
@@ -33,7 +33,7 @@ const TableBody = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <tbody
     ref={ref}
-    className={cn("bg-sb-cream [&_tr:last-child]:border-0", className)}
+    className={cn("bg-sb-card [&_tr:last-child]:border-0", className)}
     {...props}
   />
 ));
@@ -46,7 +46,7 @@ const TableFooter = React.forwardRef<
   <tfoot
     ref={ref}
     className={cn(
-      "border-t border-sb-ink/10 bg-sb-cream-secondary font-medium text-sb-ink [&_tr]:last-child:border-0",
+      "border-t border-sb-border bg-sb-surface font-medium text-sb-ink [&_tr]:last-child:border-0",
       className
     )}
     {...props}
@@ -61,7 +61,7 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      "border-b border-sb-ink/8 transition-colors hover:bg-sb-cream-secondary/90 data-[state=selected]:shadow-[inset_0_0_0_1px_var(--sb-orange)]",
+      "border-b border-sb-border transition-colors hover:bg-sb-cream data-[state=selected]:shadow-[inset_0_0_0_1px_var(--primary)]",
       className
     )}
     {...props}
@@ -76,7 +76,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-11 px-3 text-left align-middle text-xs font-semibold uppercase tracking-wider text-sb-cream/90 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+      "h-11 px-4 text-left align-middle text-[11px] font-medium uppercase tracking-wider text-gray-500 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
       className
     )}
     {...props}
@@ -91,7 +91,7 @@ const TableCell = React.forwardRef<
   <td
     ref={ref}
     className={cn(
-      "p-3 align-middle text-sb-ink [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+      "p-4 align-middle text-sb-ink bg-sb-card [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
       className
     )}
     {...props}
@@ -105,7 +105,7 @@ const TableCaption = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <caption
     ref={ref}
-    className={cn("mt-4 text-sm text-sb-ink/55", className)}
+    className={cn("mt-4 text-sm text-sb-text-secondary", className)}
     {...props}
   />
 ));

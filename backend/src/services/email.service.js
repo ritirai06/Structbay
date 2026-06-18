@@ -224,6 +224,53 @@ const sendWelcomeEmail = async ({ to, name }) => {
   });
 };
 
+const escapeHtml = (s) =>
+  String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
+// ─── Email: Contact form (homepage) ───────────────────────────────────────────
+const sendContactFormEmail = async ({ to, name, fromEmail, subject, message }) => {
+  const safeName = escapeHtml(name);
+  const safeEmail = escapeHtml(fromEmail);
+  const safeSubject = escapeHtml(subject || 'StructBay enquiry');
+  const safeMessage = escapeHtml(message).replace(/\n/g, '<br />');
+
+  const transporter = getTransporter();
+  if (!transporter) {
+    logger.warn(`Contact form skipped (SMTP not configured). From: ${fromEmail}`);
+    return null;
+  }
+
+  try {
+    const fromAddr = defaultFrom();
+    const mail = {
+      from: `"StructBay" <${fromAddr}>`,
+      to,
+      replyTo: fromEmail,
+      subject: `[Contact] ${subject || 'StructBay enquiry'}`,
+      text: `Name: ${name}\nEmail: ${fromEmail}\nSubject: ${subject || 'StructBay enquiry'}\n\n${message}`,
+      html: baseTemplate(`
+        <p><strong>New contact form message</strong></p>
+        <p><strong>Name:</strong> ${safeName}<br />
+        <strong>Email:</strong> <a href="mailto:${safeEmail}">${safeEmail}</a><br />
+        <strong>Subject:</strong> ${safeSubject}</p>
+        <p style="white-space:pre-wrap;line-height:1.6">${safeMessage}</p>
+        <p style="font-size:12px;color:#888">Reply directly to this email to reach the customer.</p>
+      `),
+    };
+    const info = await transporter.sendMail(mail);
+    logger.info(`Contact form email sent to ${to}: ${info.messageId}`);
+    return info;
+  } catch (err) {
+    const extra = err.responseCode ? ` SMTP ${err.responseCode}` : '';
+    logger.error(`Contact form email failed to ${to}: ${err.message}${extra}`);
+    return null;
+  }
+};
+
 module.exports = {
   sendEmail,
   sendVerificationEmail,
@@ -232,4 +279,5 @@ module.exports = {
   sendVendorApprovedEmail,
   sendVendorRejectedEmail,
   sendWelcomeEmail,
+  sendContactFormEmail,
 };

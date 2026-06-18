@@ -12,6 +12,7 @@ const bannerCreateValidator = [
   body('subtitleColor').optional().isString().trim().isLength({ max: 40 }),
   body('backgroundColor').optional().isString().trim().isLength({ max: 40 }),
   body('overlayOpacity').optional().isInt({ min: 0, max: 100 }).withMessage('overlayOpacity must be 0–100'),
+  body('textAlign').optional().isIn(['left', 'center', 'right']).withMessage('textAlign must be left, center, or right'),
   body('startDate').optional().isISO8601().withMessage('startDate must be a valid date'),
   body('endDate').optional().isISO8601().withMessage('endDate must be a valid date'),
 ];

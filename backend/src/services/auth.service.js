@@ -63,12 +63,13 @@ const issueTokenPair = async (user, req) => {
 };
 
 // ─── Register Customer ────────────────────────────────────────────────────────
-const registerCustomer = async ({ name, email, phone, password }, req) => {
+const registerCustomer = async ({ name, email, phone, password, companyName, gstNumber, billingAddress }, req) => {
   email = normalizeEmail(email);
   const existing = await User.findOne({ email });
   if (existing) throw new AppError('An account with this email already exists.', 409);
 
   const referenceNumber = await generateRefNumber('CUSTOMER');
+  const gst = gstNumber ? String(gstNumber).trim().toUpperCase() : null;
 
   const user = await User.create({
     name,
@@ -79,6 +80,9 @@ const registerCustomer = async ({ name, email, phone, password }, req) => {
     status: USER_STATUS.PENDING,
     isEmailVerified: false,
     referenceNumber,
+    companyName: companyName?.trim() || null,
+    gstNumber: gst || null,
+    billingAddress: billingAddress?.trim() || null,
   });
 
   // Email verification token
@@ -385,6 +389,7 @@ module.exports = {
   registerVendor,
   createVendorByAdmin,
   login,
+  issueTokenPair,
   refreshAccessToken,
   logout,
   logoutAll,

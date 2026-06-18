@@ -16,7 +16,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  new_order_alert: '#FE5E00', ready_for_dispatch: '#A855F7', vendor_invoice_sent: '#F59E0B',
+  new_order_alert: '#E85A00', ready_for_dispatch: '#A855F7', vendor_invoice_sent: '#F59E0B',
   dispatched: '#818CF8', pickup_scheduled: '#22D3EE', material_handed_over: '#818CF8',
   in_transit: '#6366F1', material_delivered: '#22C55E', delivery_confirmed: '#22C55E',
   completed: '#22C55E', cancelled: '#EF4444',
@@ -32,12 +32,12 @@ function StatBlock({ label, value, icon: Icon, color = SB.orange }: { label: str
   return (
     <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
       <div className="flex items-start justify-between mb-3">
-        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: SB.muted }}>{label}</p>
+        <p className="vendor-section-title" style={{ color: SB.muted }}>{label}</p>
         <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${color}18`, border: `1px solid ${color}40` }}>
           <Icon className="w-4 h-4" style={{ color }} />
         </div>
       </div>
-      <p className="text-3xl font-black" style={{ color: SB.color }}>{value}</p>
+      <p className="vendor-metric" style={{ color: SB.color }}>{value}</p>
     </div>
   );
 }
@@ -103,7 +103,7 @@ export function Analytics() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black" style={{ color: SB.color }}>Performance Analytics</h1>
+          <h1 className="vendor-page-title" style={{ color: SB.color }}>Performance Analytics</h1>
           <p className="text-sm mt-0.5" style={{ color: SB.muted }}>Fulfillment and dispatch performance metrics.</p>
         </div>
         <div className="flex items-center gap-2">
@@ -148,7 +148,7 @@ export function Analytics() {
           {/* Orders Over Time */}
           {dateData.length > 0 && (
             <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
-              <h2 className="text-xs font-bold uppercase tracking-widest mb-5" style={{ color: SB.muted }}>Orders Over Time</h2>
+              <h2 className="vendor-section-title mb-5" style={{ color: SB.muted }}>Orders Over Time</h2>
               <ResponsiveContainer width="100%" height={220}>
                 <LineChart data={dateData}>
                   <CartesianGrid strokeDasharray="3 3" stroke={SB.border} />
@@ -167,7 +167,7 @@ export function Analytics() {
             {/* Order Status Breakdown */}
             {statusData.length > 0 && (
               <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
-                <h2 className="text-xs font-bold uppercase tracking-widest mb-5" style={{ color: SB.muted }}>Order Status Breakdown</h2>
+                <h2 className="vendor-section-title mb-5" style={{ color: SB.muted }}>Order Status Breakdown</h2>
                 <ResponsiveContainer width="100%" height={200}>
                   <PieChart>
                     <Pie data={statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} strokeWidth={0}>
@@ -195,7 +195,7 @@ export function Analytics() {
             {/* Invoice Status */}
             {invoiceData.length > 0 && (
               <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
-                <h2 className="text-xs font-bold uppercase tracking-widest mb-5" style={{ color: SB.muted }}>Invoice Compliance</h2>
+                <h2 className="vendor-section-title mb-5" style={{ color: SB.muted }}>Invoice Compliance</h2>
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={invoiceData} barCategoryGap="30%">
                     <CartesianGrid strokeDasharray="3 3" stroke={SB.border} vertical={false} />
@@ -210,7 +210,7 @@ export function Analytics() {
                   </BarChart>
                 </ResponsiveContainer>
                 <div className="mt-3 text-center">
-                  <p className="text-2xl font-black" style={{ color: invoiceCompliance >= 80 ? '#22C55E' : '#F59E0B' }}>{invoiceCompliance}%</p>
+                  <p className="vendor-page-title" style={{ color: invoiceCompliance >= 80 ? '#22C55E' : '#F59E0B' }}>{invoiceCompliance}%</p>
                   <p className="text-xs mt-0.5" style={{ color: SB.faint }}>Invoice Upload Compliance</p>
                 </div>
               </div>
@@ -219,7 +219,7 @@ export function Analytics() {
             {/* Dispatch Status */}
             {dispatchData.length > 0 && (
               <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
-                <h2 className="text-xs font-bold uppercase tracking-widest mb-5" style={{ color: SB.muted }}>Dispatch Performance</h2>
+                <h2 className="vendor-section-title mb-5" style={{ color: SB.muted }}>Dispatch Performance</h2>
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={dispatchData} layout="vertical" barCategoryGap="25%">
                     <CartesianGrid strokeDasharray="3 3" stroke={SB.border} horizontal={false} />
@@ -231,7 +231,7 @@ export function Analytics() {
                 </ResponsiveContainer>
                 <div className="mt-3 text-center">
                   <p className="text-xs" style={{ color: SB.faint }}>Avg Fulfillment Time</p>
-                  <p className="text-2xl font-black mt-0.5" style={{ color: avgHrs > 0 && avgHrs <= 48 ? '#22C55E' : SB.color }}>{avgHrs}h</p>
+                  <p className="vendor-metric mt-0.5" style={{ color: avgHrs > 0 && avgHrs <= 48 ? '#22C55E' : SB.color }}>{avgHrs}h</p>
                 </div>
               </div>
             )}

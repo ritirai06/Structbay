@@ -17,16 +17,17 @@ const getAll = asyncHandler(async (req, res) => {
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(100, parseInt(limit));
 
-  const [categories, total] = await Promise.all([
+  const [categories, total, activeTotal] = await Promise.all([
     Category.find(filter)
       .sort({ [sortBy]: sortOrder === 'desc' ? -1 : 1 })
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum),
     Category.countDocuments(filter),
+    Category.countDocuments({ ...filter, status: 'ACTIVE' }),
   ]);
 
   return ApiResponse.success(res, 200, 'Categories retrieved.', categories, {
-    total, page: pageNum, limit: limitNum, pages: Math.ceil(total / limitNum),
+    total, active: activeTotal, page: pageNum, limit: limitNum, pages: Math.ceil(total / limitNum),
   });
 });
 

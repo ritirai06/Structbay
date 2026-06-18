@@ -42,7 +42,7 @@ export function OrderHistory() {
           <History className="w-5 h-5" style={{ color: SB.orange }} />
         </div>
         <div>
-          <h1 className="text-2xl font-black" style={{ color: SB.color }}>Order History</h1>
+          <h1 className="vendor-page-title" style={{ color: SB.color }}>Order History</h1>
           <p className="text-sm mt-0.5" style={{ color: SB.muted }}>Completed and confirmed delivery orders.</p>
         </div>
         <span className="ml-auto text-sm font-semibold px-3 py-1.5 rounded-xl" style={{ background: SB.card, color: SB.muted, border: `1px solid ${SB.border}` }}>

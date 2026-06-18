@@ -79,7 +79,7 @@ export function Notifications() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black" style={{ color: SB.color }}>Notifications</h1>
+          <h1 className="vendor-page-title" style={{ color: SB.color }}>Notifications</h1>
           <p className="text-sm mt-0.5" style={{ color: SB.muted }}>
             {unreadCount > 0 ? <><span className="font-bold" style={{ color: SB.orange }}>{unreadCount}</span> unread notifications</> : 'All caught up!'}
           </p>
@@ -99,17 +99,19 @@ export function Notifications() {
         </div>
       </div>
 
-      {/* Filter tabs */}
-      <div className="flex flex-wrap gap-2">
-        {(['all', 'unread', 'read', 'archived'] as const).map(f => (
-          <button key={f} onClick={() => { setFilter(f); setPage(1); }}
-            className="px-4 py-2 rounded-xl text-xs font-semibold capitalize transition-all"
-            style={filter === f
-              ? { background: 'var(--sb-orange)', color: '#fff' }
-              : { background: SB.card, color: SB.muted, border: `1px solid ${SB.border}` }}>
-            {f}{f === 'unread' && unreadCount > 0 ? ` (${unreadCount})` : ''}
-          </button>
-        ))}
+      {/* Filter */}
+      <div className="max-w-xs">
+        <select
+          value={filter}
+          onChange={e => { setFilter(e.target.value as typeof filter); setPage(1); }}
+          className="w-full px-3 py-2.5 rounded-xl text-sm capitalize"
+          style={{ background: SB.card, border: `1px solid ${SB.border}`, color: SB.color }}
+        >
+          <option value="all">All notifications</option>
+          <option value="unread">Unread{unreadCount > 0 ? ` (${unreadCount})` : ''}</option>
+          <option value="read">Read</option>
+          <option value="archived">Archived</option>
+        </select>
       </div>
 
       {/* Notifications List */}

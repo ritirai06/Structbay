@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/card";
 import { Button } from "@shared/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@shared/components/ui/tabs";
@@ -40,6 +41,26 @@ export function ReportsAnalytics() {
   const [paySummary, setPaySummary] = useState<any>(null);
   const [invoiceAgg, setInvoiceAgg] = useState<any[]>([]);
   const [delivery, setDelivery] = useState<any>(null);
+  const [orderSummary, setOrderSummary] = useState<any>(null);
+  const [invoiceStatusRows, setInvoiceStatusRows] = useState<any[]>([]);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  const appendRange = useCallback((path: string) => {
+    if (!dateFrom && !dateTo) return path;
+    const p = new URLSearchParams();
+    if (dateFrom) p.set("dateFrom", dateFrom);
+    if (dateTo) p.set("dateTo", dateTo);
+    return `${path}${path.includes("?") ? "&" : "?"}${p.toString()}`;
+  }, [dateFrom, dateTo]);
+
+  const rangeQs = useMemo(() => {
+    const p = new URLSearchParams();
+    if (dateFrom) p.set("dateFrom", dateFrom);
+    if (dateTo) p.set("dateTo", dateTo);
+    const s = p.toString();
+    return s ? `&${s}` : "";
+  }, [dateFrom, dateTo]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -59,20 +80,24 @@ export function ReportsAnalytics() {
         payRes,
         invRes,
         delRes,
+        ordSumRes,
+        invStatRes,
       ] = await Promise.all([
         adminFetch("/analytics/kpi"),
-        adminFetch("/analytics/sales/summary"),
+        adminFetch(appendRange("/analytics/sales/summary")),
         adminFetch("/analytics/sales/trend?period=monthly"),
-        adminFetch("/analytics/sales/top-products?limit=10"),
-        adminFetch("/analytics/brands?limit=12"),
-        adminFetch("/analytics/categories?limit=12"),
-        adminFetch("/analytics/cities"),
+        adminFetch(appendRange("/analytics/sales/top-products?limit=10")),
+        adminFetch(appendRange("/analytics/brands?limit=12")),
+        adminFetch(appendRange("/analytics/categories?limit=12")),
+        adminFetch(appendRange("/analytics/cities")),
         adminFetch("/analytics/vendors/summary"),
-        adminFetch("/analytics/vendors/ranking?limit=10"),
+        adminFetch(appendRange("/analytics/vendors/ranking?limit=10")),
         adminFetch("/analytics/payments/gst?period=monthly"),
-        adminFetch("/analytics/payments/summary"),
+        adminFetch(appendRange("/analytics/payments/summary")),
         adminFetch("/analytics/payments/invoices"),
         adminFetch("/analytics/delivery/summary"),
+        adminFetch(appendRange("/reports/orders/summary")),
+        adminFetch("/reports/orders/invoice-status"),
       ]);
       setKpi(kpiRes.data);
       setSalesSummary(sumRes.data);
@@ -87,12 +112,14 @@ export function ReportsAnalytics() {
       setPaySummary(payRes.data);
       setInvoiceAgg(Array.isArray(invRes.data) ? invRes.data : []);
       setDelivery(delRes.data);
+      setOrderSummary(ordSumRes.data);
+      setInvoiceStatusRows(Array.isArray(invStatRes.data) ? invStatRes.data : []);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed to load reports");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [appendRange]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -102,24 +129,37 @@ export function ReportsAnalytics() {
   }));
 
   return (
-    <div className="p-6 bg-sb-cream min-h-full">
+    <div className="admin-page">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-sb-ink">Reports</h1>
+          <h1 className="admin-page-title text-sb-ink">Reports</h1>
           <p className="text-sb-ink/55 text-sm mt-1">
             Live data from analytics APIs: sales, GST, payments, invoices, delivery, vendors, brands, categories, and cities.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 items-end">
+          <div>
+            <label className="text-[10px] text-sb-ink/50 uppercase font-semibold block mb-1">From</label>
+            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+              className="bg-sb-cream-secondary border border-sb-ink/10 rounded-lg px-2 py-1.5 text-sm text-sb-ink" />
+          </div>
+          <div>
+            <label className="text-[10px] text-sb-ink/50 uppercase font-semibold block mb-1">To</label>
+            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+              className="bg-sb-cream-secondary border border-sb-ink/10 rounded-lg px-2 py-1.5 text-sm text-sb-ink" />
+          </div>
           <Button variant="outline" size="sm" onClick={load} disabled={loading}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
           </Button>
-          <Button variant="outline" size="sm" onClick={() => downloadCsv("/analytics/export/orders?format=csv", "orders.csv")}>
+          <Button variant="outline" size="sm" onClick={() => downloadCsv(`/analytics/export/orders?format=csv${rangeQs}`, "orders.csv")}>
             <FileSpreadsheet className="mr-2 h-4 w-4" /> Orders CSV
           </Button>
-          <Button variant="outline" size="sm" onClick={() => downloadCsv("/analytics/export/vendor-orders?format=csv", "vendor-orders.csv")}>
+          <Button variant="outline" size="sm" onClick={() => downloadCsv(`/analytics/export/vendor-orders?format=csv${rangeQs}`, "vendor-orders.csv")}>
             <Download className="mr-2 h-4 w-4" /> Vendor orders CSV
           </Button>
+          <Link to="/admin/invoices" className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-sb-ink/10 bg-sb-cream-secondary text-sm text-sb-orange hover:underline">
+            Invoice reports →
+          </Link>
         </div>
       </div>
 
@@ -144,19 +184,19 @@ export function ReportsAnalytics() {
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <Card className="border-sb-ink/10 bg-sb-cream-secondary">
                 <CardHeader className="pb-2"><CardTitle className="text-sm text-sb-ink/55">Total sales revenue (paid orders, all time)</CardTitle></CardHeader>
-                <CardContent><div className="text-2xl font-bold text-sb-ink">{money(kpi?.totalRevenue)}</div></CardContent>
+                <CardContent><div className="admin-stat-value text-sb-ink">{money(kpi?.totalRevenue)}</div></CardContent>
               </Card>
               <Card className="border-sb-ink/10 bg-sb-cream-secondary">
                 <CardHeader className="pb-2"><CardTitle className="text-sm text-sb-ink/55">Pending master orders</CardTitle></CardHeader>
-                <CardContent><div className="text-2xl font-bold text-sb-orange">{kpi?.pendingOrders ?? "—"}</div></CardContent>
+                <CardContent><div className="admin-stat-value text-sb-orange">{kpi?.pendingOrders ?? "—"}</div></CardContent>
               </Card>
               <Card className="border-sb-ink/10 bg-sb-cream-secondary">
                 <CardHeader className="pb-2"><CardTitle className="text-sm text-sb-ink/55">Vendor sub-orders assigned</CardTitle></CardHeader>
-                <CardContent><div className="text-2xl font-bold text-sb-ink">{kpi?.vendorOrdersAssigned ?? "—"}</div></CardContent>
+                <CardContent><div className="admin-stat-value text-sb-ink">{kpi?.vendorOrdersAssigned ?? "—"}</div></CardContent>
               </Card>
               <Card className="border-sb-ink/10 bg-sb-cream-secondary">
                 <CardHeader className="pb-2"><CardTitle className="text-sm text-sb-ink/55">Shipments pending pickup</CardTitle></CardHeader>
-                <CardContent><div className="text-2xl font-bold text-sb-ink">{delivery?.pending ?? "—"}</div></CardContent>
+                <CardContent><div className="admin-stat-value text-sb-ink">{delivery?.pending ?? "—"}</div></CardContent>
               </Card>
             </div>
             <Card className="border-sb-ink/10 bg-sb-cream-secondary">
@@ -286,7 +326,7 @@ export function ReportsAnalytics() {
                       <XAxis dataKey="label" tick={{ fill: "rgba(34,34,34,0.5)", fontSize: 10 }} />
                       <YAxis tick={{ fill: "rgba(34,34,34,0.5)", fontSize: 11 }} />
                       <Tooltip contentStyle={{ background: "#111", border: "1px solid #333" }} />
-                      <Bar dataKey="gst" fill="#FE5E00" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="gst" fill="#E85A00" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -304,14 +344,47 @@ export function ReportsAnalytics() {
           </TabsContent>
 
           <TabsContent value="ops" className="space-y-4">
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+              <Card className="border-sb-ink/10 bg-sb-cream-secondary">
+                <CardHeader><CardTitle className="text-sm text-sb-ink">Pending orders</CardTitle></CardHeader>
+                <CardContent className="text-sm text-sb-ink/70 space-y-1">
+                  <p className="admin-stat-value text-sb-orange tabular-nums">
+                    {(orderSummary?.byStatus?.PENDING ?? 0) + (orderSummary?.byStatus?.VENDOR_ASSIGNMENT_PENDING ?? 0) + (orderSummary?.byStatus?.PROCESSING ?? 0)}
+                  </p>
+                  <p>PENDING: <strong>{orderSummary?.byStatus?.PENDING ?? 0}</strong></p>
+                  <p>VENDOR_ASSIGNMENT: <strong>{orderSummary?.byStatus?.VENDOR_ASSIGNMENT_PENDING ?? 0}</strong></p>
+                  <p>PROCESSING: <strong>{orderSummary?.byStatus?.PROCESSING ?? 0}</strong></p>
+                  <Link to="/admin/orders" className="text-xs text-sb-orange hover:underline inline-block mt-2">Open order management →</Link>
+                </CardContent>
+              </Card>
+              <Card className="border-sb-ink/10 bg-sb-cream-secondary">
+                <CardHeader><CardTitle className="text-sm text-sb-ink">Pending dispatch</CardTitle></CardHeader>
+                <CardContent className="text-sm text-sb-ink/70 space-y-1">
+                  <p className="admin-stat-value text-sb-orange tabular-nums">{delivery?.pending ?? 0}</p>
+                  <p>Ready for dispatch: <strong>{orderSummary?.byStatus?.READY_FOR_DISPATCH ?? 0}</strong></p>
+                  <p>Partially dispatched: <strong>{orderSummary?.byStatus?.PARTIALLY_DISPATCHED ?? 0}</strong></p>
+                  <Link to="/admin/dispatch" className="text-xs text-sb-orange hover:underline inline-block mt-2">Open dispatch →</Link>
+                </CardContent>
+              </Card>
               <Card className="border-sb-ink/10 bg-sb-cream-secondary">
                 <CardHeader><CardTitle className="text-sm text-sb-ink">Delivery / dispatch</CardTitle></CardHeader>
                 <CardContent className="text-sm text-sb-ink/70 space-y-1">
                   <p>Total shipments: <strong className="text-sb-ink">{delivery?.total ?? 0}</strong></p>
                   <p>In transit: <strong className="text-sb-ink">{delivery?.inTransit ?? 0}</strong></p>
-                  <p>Pending pickup: <strong className="text-sb-orange">{delivery?.pending ?? 0}</strong></p>
                   <p>Delivered: <strong className="text-sb-orange">{delivery?.delivered ?? 0}</strong></p>
+                </CardContent>
+              </Card>
+            </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              <Card className="border-sb-ink/10 bg-sb-cream-secondary">
+                <CardHeader><CardTitle className="text-sm text-sb-ink">Vendor invoice status</CardTitle></CardHeader>
+                <CardContent className="text-sm space-y-2 max-h-56 overflow-y-auto">
+                  {invoiceStatusRows.length === 0 ? <p className="text-sb-ink/50">No data.</p> : invoiceStatusRows.map((row: any) => (
+                    <div key={String(row._id)} className="flex justify-between border-b border-sb-ink/8 pb-2">
+                      <span className="text-sb-ink/70 capitalize">{String(row._id || "unknown").toLowerCase()}</span>
+                      <span className="font-semibold text-sb-ink">{row.count}</span>
+                    </div>
+                  ))}
                 </CardContent>
               </Card>
               <Card className="border-sb-ink/10 bg-sb-cream-secondary">

@@ -32,6 +32,45 @@ const cmsSchema = new mongoose.Schema(
     /** Optional: hero section background image URL. */
     heroBackgroundImageUrl: { type: String, default: null, trim: true },
 
+    /** Intro block below hero (title, tagline, body). */
+    introSection: {
+      title: {
+        type: String,
+        default: 'Smart Construction Starts With Smarter Sourcing',
+        trim: true,
+      },
+      tagline: {
+        type: String,
+        default: 'Built for Contractors, Backed by Brands.',
+        trim: true,
+      },
+      body: {
+        type: String,
+        default:
+          'StructBay combines the reliability of branded materials, the power of affordable pricing, and the ease of single-window sourcing — everything you need to finish projects faster and better.',
+        trim: true,
+      },
+    },
+
+    /** Three homepage feature cards (image + copy + CTA). */
+    featureCards: [
+      {
+        title: { type: String, trim: true },
+        description: { type: String, trim: true },
+        imageUrl: { type: String, default: null, trim: true },
+        imagePublicId: { type: String, default: null, trim: true },
+        buttonText: { type: String, default: 'Shop Now', trim: true },
+        buttonLink: { type: String, default: '/shop', trim: true },
+        icon: {
+          type: String,
+          enum: ['box', 'lightbulb', 'shapes', 'shield', 'package', 'building'],
+          default: 'box',
+        },
+        isActive: { type: Boolean, default: true },
+        sortOrder: { type: Number, default: 0 },
+      },
+    ],
+
     // ─── Homepage Banners ──────────────────────────────
     homepageBanners: [
       {
@@ -184,6 +223,43 @@ const cmsSchema = new mongoose.Schema(
       },
     },
 
+    // ─── Storefront policy pages (footer quick links) ───
+    policies: [
+      {
+        slug: { type: String, trim: true, required: true, lowercase: true },
+        title: { type: String, trim: true, required: true },
+        subtitle: { type: String, default: '', trim: true },
+        lastUpdated: { type: String, default: '', trim: true },
+        sections: [
+          {
+            title: { type: String, trim: true, required: true },
+            body: [{ type: String, trim: true }],
+          },
+        ],
+        isActive: { type: Boolean, default: true },
+        sortOrder: { type: Number, default: 0 },
+      },
+    ],
+
+    /** Marketing / utility landing pages (e.g. quantity calculators). */
+    landingPages: [
+      {
+        slug: { type: String, trim: true, required: true, lowercase: true },
+        title: { type: String, trim: true, required: true },
+        subtitle: { type: String, default: '', trim: true },
+        pageType: { type: String, enum: ['content', 'calculator'], default: 'content' },
+        calculatorType: { type: String, enum: ['cement', 'none'], default: 'none' },
+        sections: [
+          {
+            title: { type: String, trim: true, required: true },
+            body: [{ type: String, trim: true }],
+          },
+        ],
+        isActive: { type: Boolean, default: true },
+        sortOrder: { type: Number, default: 0 },
+      },
+    ],
+
     // ─── Vendor FAQs ────────────────────────────────────
     vendorFaqs: [
       {
@@ -221,6 +297,8 @@ cmsSchema.statics.getOrCreate = async function () {
   if (!cms) {
     cms = await this.create({ key: 'HOMEPAGE' });
   }
+  const { ensureCmsDefaults } = require('../services/cmsDefaults.service');
+  await ensureCmsDefaults(cms);
   return cms;
 };
 

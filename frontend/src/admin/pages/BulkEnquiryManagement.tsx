@@ -66,10 +66,10 @@ export function BulkEnquiryManagement() {
   });
 
   return (
-    <div className="p-6 bg-sb-cream min-h-full">
+    <div className="admin-page">
       <div className="mb-6">
-        <h1 className="text-2xl font-black text-sb-ink">Bulk Enquiry Management</h1>
-        <p className="text-sb-ink/55 text-sm mt-1">Large-scale project enquiries with document uploads</p>
+        <h1 className="admin-page-title text-sb-ink">Bulk Enquiry Management</h1>
+        <p className="admin-page-desc">Large-scale project enquiries with document uploads</p>
       </div>
 
       {loadError && (
@@ -89,7 +89,7 @@ export function BulkEnquiryManagement() {
           { label: "Converted", value: stats.converted, color: "text-sb-orange" },
         ].map(s => (
           <div key={s.label} className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl p-4 text-center">
-            <div className={`text-2xl font-black ${s.color}`}>{s.value}</div>
+            <div className={`admin-stat-value ${s.color}`}>{s.value}</div>
             <div className="text-xs text-sb-ink/50 mt-1">{s.label}</div>
           </div>
         ))}

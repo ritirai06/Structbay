@@ -122,6 +122,8 @@ router.get('/vendors',                  ...adminOnly, adminUserController.getAll
 router.post('/vendors',                 ...adminOnly, adminCreateVendorValidator, validate, adminUserController.createVendor);
 router.put('/vendors/:id/approve',      ...adminOnly, adminUserController.approveVendor);
 router.put('/vendors/:id/reject',       ...adminOnly, rejectVendorValidator, validate, adminUserController.rejectVendor);
+router.delete('/vendors/:id',           ...adminOnly, adminUserController.deleteVendor);
+router.post('/vendors/bulk-delete',   ...adminOnly, adminUserController.bulkDeleteVendors);
 
 // ─── Order Activity Logs ─────────────────────────────────────────────────────
 const OrderActivityLog = require('../models/OrderActivityLog');
@@ -141,7 +143,9 @@ const sbDocsUpload = uploadDocumentFields(UPLOAD_FOLDERS.INVOICE, [
   { name: 'ewayBill', maxCount: 1 },
 ]);
 router.get ('/vendor-orders/analytics',          ...adminOnly, asyncHandler(adminVendorOrderCtrl.getVendorOrderAnalytics));
+router.get ('/dispatch/vendor-board',           ...adminOnly, asyncHandler(adminVendorOrderCtrl.getVendorDispatchBoard));
 router.get ('/vendor-orders',                    ...adminOnly, asyncHandler(adminVendorOrderCtrl.getAllVendorOrders));
+router.post('/vendor-orders/bulk-delete',        ...adminOnly, asyncHandler(adminVendorOrderCtrl.bulkDeleteVendorOrders));
 router.post('/vendor-orders',                    ...adminOnly, asyncHandler(adminVendorOrderCtrl.assignOrderToVendor));
 router.get ('/vendor-orders/:id',                ...adminOnly, asyncHandler(adminVendorOrderCtrl.getVendorOrderById));
 router.put ('/vendor-orders/:id',                ...adminOnly, asyncHandler(adminVendorOrderCtrl.updateVendorOrder));
@@ -159,6 +163,8 @@ router.post(
   asyncHandler(adminVendorWorkflowCtrl.sendStructbayDocs)
 );
 router.post('/vendor-orders/:id/workflow/confirm-delivery', ...adminOnly, asyncHandler(adminVendorWorkflowCtrl.confirmDelivery));
+router.post('/vendor-orders/:id/workflow/mark-sb-dispatched', ...adminOnly, asyncHandler(adminVendorWorkflowCtrl.markStructbayDispatched));
+router.post('/vendor-orders/:id/workflow/mark-sb-delivered', ...adminOnly, asyncHandler(adminVendorWorkflowCtrl.markStructbayDelivered));
 
 router.get('/inbox/notifications', ...adminOnly, asyncHandler(staffNotificationCtrl.listMine));
 router.put('/inbox/notifications/read-all', ...adminOnly, asyncHandler(staffNotificationCtrl.markAllRead));

@@ -4,7 +4,8 @@ const AppError = require('../utils/AppError');
 const User = require('../models/User');
 const RefreshToken = require('../models/tokens/RefreshToken');
 const Session = require('../models/Session');
-const { USER_STATUS, VENDOR_STATUS, PAGINATION } = require('../config/constants');
+const { ROLES, USER_STATUS, VENDOR_STATUS, PAGINATION } = require('../config/constants');
+const { logAction } = require('../services/auditLog.service');
 const {
   sendVendorApprovedEmail,
   sendVendorRejectedEmail,
@@ -181,7 +182,7 @@ const getAllVendors = asyncHandler(async (req, res) => {
   const limitNum = Math.min(parseInt(limit), PAGINATION.MAX_LIMIT);
   const skip = (pageNum - 1) * limitNum;
 
-  const filter = { role: 'VENDOR' };
+  const filter = { role: 'VENDOR', status: { $ne: USER_STATUS.DELETED } };
   const andParts = [];
 
   /** Dropdowns (e.g. order assignment) use APPROVED — include legacy rows with null vendorStatus but active account. */
@@ -241,6 +242,69 @@ const createVendor = asyncHandler(async (req, res) => {
   );
 });
 
+const BULK_DELETE_MAX = 200;
+
+const deleteVendor = asyncHandler(async (req, res) => {
+  const vendor = await User.findOne({ _id: req.params.id, role: ROLES.VENDOR });
+  if (!vendor) throw new AppError('Vendor not found.', 404);
+  vendor.status = USER_STATUS.DELETED;
+  await vendor.save({ validateBeforeSave: false });
+  await RefreshToken.revokeAllForUser(vendor._id);
+  await Session.updateMany({ user: vendor._id, isActive: true }, { isActive: false, logoutAt: new Date() });
+  await logAction({
+    adminId: req.user._id,
+    action: 'DELETE',
+    module: 'Vendor',
+    targetId: vendor._id.toString(),
+    description: `Deleted vendor ${vendor.companyName || vendor.name}`,
+    ipAddress: req.ip,
+  });
+  return ApiResponse.success(res, 200, 'Vendor deleted successfully.');
+});
+
+const bulkDeleteVendors = asyncHandler(async (req, res) => {
+  const raw = req.body?.ids;
+  const ids = Array.isArray(raw) ? raw.map((x) => String(x).trim()).filter(Boolean) : [];
+  if (!ids.length) throw new AppError('No valid vendor ids provided.', 400);
+  if (ids.length > BULK_DELETE_MAX) {
+    throw new AppError(`Too many ids (max ${BULK_DELETE_MAX}).`, 400);
+  }
+
+  const errors = [];
+  let ok = 0;
+  for (const id of ids) {
+    try {
+      const vendor = await User.findOne({ _id: id, role: ROLES.VENDOR });
+      if (!vendor) throw new AppError('Vendor not found.', 404);
+      vendor.status = USER_STATUS.DELETED;
+      await vendor.save({ validateBeforeSave: false });
+      await RefreshToken.revokeAllForUser(vendor._id);
+      ok += 1;
+    } catch (e) {
+      errors.push({
+        id,
+        message: e instanceof AppError ? e.message : (e && e.message) || String(e),
+      });
+    }
+  }
+
+  await logAction({
+    adminId: req.user._id,
+    action: 'DELETE',
+    module: 'Vendor',
+    targetId: ids.slice(0, 20).join(','),
+    description: `Bulk deleted ${ok} vendor(s)${errors.length ? `; ${errors.length} failed` : ''}`,
+    ipAddress: req.ip,
+  });
+
+  return ApiResponse.success(res, 200, `Deleted ${ok} vendor(s).`, {
+    total: ids.length,
+    succeeded: ok,
+    failed: errors.length,
+    errors,
+  });
+});
+
 module.exports = {
   getAllUsers,
   getUserById,
@@ -250,4 +314,6 @@ module.exports = {
   rejectVendor,
   getAllVendors,
   createVendor,
+  deleteVendor,
+  bulkDeleteVendors,
 };

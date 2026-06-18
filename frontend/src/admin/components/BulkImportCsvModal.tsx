@@ -176,7 +176,7 @@ export function BulkImportCsvModal({
           {rows.length > 0 && previewKeys.length > 0 && (
             <div className="mb-4 max-h-56 overflow-auto rounded-lg border border-sb-ink/10">
               <table className="w-full text-xs">
-                <thead className="sticky top-0 z-[1] border-b border-sb-border-dark bg-sb-ink text-sb-cream">
+                <thead className="sticky top-0 z-[1] border-b border-gray-200 bg-gray-50 text-gray-500">
                   <tr>
                     {previewKeys.map((h) => (
                       <th key={h} className="text-left py-2 px-2 text-sb-ink/50 font-semibold">

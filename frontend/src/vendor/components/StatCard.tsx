@@ -12,37 +12,35 @@ interface StatCardProps {
 export function StatCard({ title, value, icon: Icon, accent, trend, trendUp }: StatCardProps) {
   return (
     <div
-      className="rounded-2xl p-5 transition-all duration-300 hover:-translate-y-1"
-      style={{
-        background: accent
-          ? "linear-gradient(135deg, var(--sb-orange) 0%, var(--sb-orange-hover) 100%)"
-          : "var(--sb-card)",
-        border: accent ? "none" : "1px solid var(--sb-border)",
-        boxShadow: accent ? "0 8px 24px var(--sb-orange-glow)" : "0 2px 8px rgba(0,0,0,0.12)",
-      }}
+      className={`rounded-card p-4 transition-all duration-200 hover:-translate-y-0.5 ${
+        accent
+          ? "vendor-stat-card--accent bg-gradient-to-br from-sb-orange to-sb-orange-hover text-white shadow-md shadow-sb-orange/20"
+          : "border border-sb-border bg-sb-card shadow-sm hover:shadow-md"
+      }`}
     >
-      <div className="flex items-start justify-between mb-3">
+      <div className="mb-2.5 flex items-start justify-between gap-2">
         <p
-          className="text-xs font-bold uppercase tracking-widest"
-          style={{ color: accent ? "rgba(255,255,255,0.75)" : "var(--sb-text-muted)" }}
+          className={`vendor-stat-label ${
+            accent ? "text-white/80" : "text-sb-text-secondary"
+          }`}
         >
           {title}
         </p>
         <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-          style={{
-            background: accent ? "rgba(255,255,255,0.2)" : "var(--sb-orange-subtle)",
-            border: accent ? "none" : "1px solid var(--sb-orange-border)",
-          }}
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+            accent
+              ? "bg-white/20"
+              : "border border-sb-orange/25 bg-sb-orange-subtle"
+          }`}
         >
-          <Icon className="w-4 h-4" style={{ color: accent ? "#fff" : "var(--sb-orange)" }} />
+          <Icon className={`h-3.5 w-3.5 ${accent ? "text-white" : "text-sb-orange"}`} />
         </div>
       </div>
-      <p className="text-3xl font-black" style={{ color: accent ? "#fff" : "var(--sb-text-primary)" }}>
+      <p className={`sb-stat-value ${accent ? "text-white" : ""}`}>
         {value}
       </p>
       {trend && (
-        <p className="text-xs mt-1.5 font-semibold" style={{ color: trendUp ? "var(--sb-green)" : accent ? "rgba(255,255,255,0.6)" : "var(--sb-text-faint)" }}>
+        <p className={`mt-1 text-[11px] font-medium ${trendUp ? "text-sb-success" : accent ? "text-white/55" : "text-sb-text-secondary"}`}>
           {trend}
         </p>
       )}

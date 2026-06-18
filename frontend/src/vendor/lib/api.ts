@@ -1,22 +1,75 @@
+import {
+  getVendorAccessToken,
+  getVendorRefreshToken,
+  refreshVendorAccessToken,
+  clearVendorSession,
+} from "./authStorage";
+
 const BASE = '/api/v1/vendor';
 
 function token() {
-  return localStorage.getItem('vendor_token') ?? '';
+  return getVendorAccessToken();
+}
+
+function formatApiError(json: unknown): string {
+  const j = json as { message?: unknown; errors?: unknown };
+  let msg = j?.message ?? 'Request failed';
+  if (typeof msg !== 'string') msg = String(msg);
+  if (/no token provided/i.test(msg)) {
+    return 'Please sign in to the vendor portal to continue.';
+  }
+  if (/session expired|refresh your token/i.test(msg)) {
+    return 'Your session has expired. Please sign in again.';
+  }
+  const errs = j?.errors;
+  if (Array.isArray(errs) && errs.length) {
+    const parts = errs.map((x) => (typeof x === 'string' ? x : JSON.stringify(x)));
+    return `${msg} ${parts.join('; ')}`;
+  }
+  return msg;
 }
 
 async function req<T>(method: string, path: string, body?: unknown, isForm = false): Promise<T> {
-  const headers: Record<string, string> = { Authorization: `Bearer ${token()}` };
-  if (!isForm && body) headers['Content-Type'] = 'application/json';
+  const buildHeaders = () => {
+    const headers: Record<string, string> = {};
+    const t = token();
+    if (t) headers.Authorization = `Bearer ${t}`;
+    if (!isForm && body) headers['Content-Type'] = 'application/json';
+    return headers;
+  };
 
-  const res = await fetch(`${BASE}${path}`, {
-    method,
-    headers,
-    body: isForm ? (body as FormData) : body ? JSON.stringify(body) : undefined,
-  });
+  const doFetch = () =>
+    fetch(`${BASE}${path}`, {
+      method,
+      headers: buildHeaders(),
+      body: isForm ? (body as FormData) : body ? JSON.stringify(body) : undefined,
+    });
 
-  const json = await res.json();
-  if (!res.ok) throw new Error(json.message ?? 'Request failed');
-  return json;
+  let res = await doFetch();
+  if (res.status === 401 && getVendorRefreshToken() && !path.includes('/auth/login')) {
+    const ok = await refreshVendorAccessToken();
+    if (ok) res = await doFetch();
+  }
+
+  const text = await res.text();
+  let json: unknown = null;
+  if (text.trim()) {
+    try {
+      json = JSON.parse(text);
+    } catch {
+      if (!res.ok) throw new Error(text.slice(0, 200) || `Request failed (${res.status})`);
+      throw new Error('Server returned invalid JSON.');
+    }
+  } else if (!res.ok) {
+    if (res.status === 401) clearVendorSession();
+    throw new Error(`Request failed (${res.status}). The server returned an empty response.`);
+  }
+
+  if (!res.ok) {
+    if (res.status === 401) clearVendorSession();
+    throw new Error(formatApiError(json));
+  }
+  return (json ?? { success: true }) as T;
 }
 
 export const api = {

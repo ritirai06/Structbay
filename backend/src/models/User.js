@@ -82,6 +82,8 @@ const userSchema = new mongoose.Schema(
     },
     companyName: { type: String, trim: true, default: null },
     contactPerson: { type: String, trim: true, default: null },
+    /** Customer billing address (pre-fills checkout). */
+    billingAddress: { type: String, trim: true, default: null },
     gstNumber: {
       type: String,
       trim: true,

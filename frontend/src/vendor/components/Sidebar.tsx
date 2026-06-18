@@ -31,15 +31,15 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-r border-sb-border-dark bg-sb-ink">
-      <div className="border-b border-sb-border-dark p-5">
-        <img src={logoImg} alt="StructBay" className="mb-2 h-11 w-auto object-contain" />
-        <span className="inline-block rounded-full border border-sb-orange/25 bg-sb-orange/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-sb-orange">
+    <aside className="sb-sidebar flex w-60 shrink-0 flex-col border-r border-sb-border-dark">
+      <div className="flex h-[72px] flex-col justify-center border-b border-sb-border-dark px-5">
+        <img src={logoImg} alt="StructBay" className="h-9 w-auto object-contain" />
+        <span className="vendor-portal-badge mt-1 inline-block uppercase text-sb-orange">
           Vendor Portal
         </span>
       </div>
 
-      <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
+      <nav className="flex-1 space-y-1 overflow-y-auto p-3">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive =
@@ -51,13 +51,11 @@ export function Sidebar() {
               key={item.to}
               to={item.to}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-150",
-                isActive
-                  ? "border-l-2 border-sb-orange bg-sb-cream pl-[10px] font-semibold text-sb-ink"
-                  : "border-l-2 border-transparent pl-[10px] text-[var(--sb-chrome-fg-muted)] hover:bg-[var(--sb-chrome-hover)] hover:text-[var(--sb-chrome-fg)]"
+                "sb-sidebar-link",
+                isActive && "sb-sidebar-link--active"
               )}
             >
-              <Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-sb-orange" : "text-[var(--sb-chrome-fg-muted)]")} />
+              <Icon className="h-4 w-4 shrink-0" />
               <span>{item.label}</span>
             </Link>
           );
@@ -68,7 +66,7 @@ export function Sidebar() {
         <button
           type="button"
           onClick={handleLogout}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[var(--sb-chrome-fg-muted)] transition-colors hover:bg-[var(--sb-chrome-hover)] hover:text-[var(--sb-chrome-fg)]"
+          className="sb-sidebar-link w-full text-white/70 hover:text-white"
         >
           <LogOut className="h-4 w-4 shrink-0" />
           <span>Logout</span>

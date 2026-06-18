@@ -1,0 +1,122 @@
+/**
+ * Vendor portal — refined typography & spacing (professional B2B dashboard).
+ * Scoped under `.vendor-portal` on the layout shell.
+ */
+
+.vendor-portal {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* ── Page & section headings ───────────────────────────────────────────── */
+.vendor-portal .vendor-page-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+  color: var(--sb-text-primary);
+}
+
+.vendor-portal .vendor-section-title {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sb-text-muted);
+}
+
+.vendor-portal .vendor-metric {
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+/* Soften legacy utility combos still used in some spots */
+.vendor-portal h1.text-2xl,
+.vendor-portal h1.text-xl,
+.vendor-portal .text-2xl.font-black,
+.vendor-portal .text-xl.font-black {
+  font-size: 1.25rem !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.02em;
+}
+
+.vendor-portal .text-xl.font-black:not(h1) {
+  font-size: 1.125rem !important;
+  font-weight: 600 !important;
+}
+
+.vendor-portal .text-xs.font-bold.uppercase,
+.vendor-portal h2.text-xs.font-bold,
+.vendor-portal h3.text-xs.font-bold {
+  font-size: 0.6875rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.06em !important;
+}
+
+.vendor-portal .font-black {
+  font-weight: 600 !important;
+}
+
+/* ── Stat cards ──────────────────────────────────────────────────────── */
+.vendor-portal .sb-stat-value {
+  font-size: 1.375rem !important;
+  font-weight: 600 !important;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.vendor-portal .vendor-stat-card--accent .sb-stat-value {
+  font-size: 1.625rem !important;
+}
+
+.vendor-portal .vendor-stat-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1.35;
+}
+
+/* ── Sidebar & chrome ────────────────────────────────────────────────── */
+.vendor-portal .sb-sidebar-link {
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.vendor-portal .sb-sidebar-link--active {
+  font-weight: 600;
+}
+
+.vendor-portal .vendor-portal-badge {
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+/* ── Tables ────────────────────────────────────────────────────────────── */
+.vendor-portal table {
+  font-size: 0.8125rem;
+}
+
+.vendor-portal table th {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.vendor-portal table td.font-bold {
+  font-weight: 600 !important;
+}
+
+/* ── Cards & panels ───────────────────────────────────────────────────── */
+.vendor-portal .rounded-2xl.p-5 {
+  padding: 1.125rem;
+}
+
+.vendor-portal .vendor-quick-action-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+}

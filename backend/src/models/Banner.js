@@ -14,6 +14,8 @@ const bannerSchema = new mongoose.Schema(
     backgroundColor: { type: String, trim: true, default: null },
     /** 0–100: darkness of left overlay on top of hero image (higher = more contrast for text). */
     overlayOpacity: { type: Number, min: 0, max: 100, default: null },
+    /** Hero headline block alignment on the storefront carousel. */
+    textAlign: { type: String, enum: ['left', 'center', 'right'], default: 'right' },
     image: {
       url: { type: String, default: null },
       publicId: { type: String, default: null },

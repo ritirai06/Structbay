@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router";
 import { CheckCircle2, Download, Package, ArrowRight, AlertTriangle } from "lucide-react";
+import { openOrderInvoices } from "../lib/orderInvoices";
 import { api } from "../lib/api";
+import { formatPaymentMethod, formatPaymentStatus } from "../../lib/paymentLabels";
 
 const LAST_ORDER_KEY = "sb_last_placed_order";
 
@@ -35,6 +37,8 @@ export function OrderSuccess() {
   const [invError, setInvError] = useState<string | null>(null);
   const [invBusy, setInvBusy] = useState(false);
   const [fetchedNumber, setFetchedNumber] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
 
   const queryOrderId = useMemo(() => {
     const q = searchParams.get("orderId")?.trim();
@@ -75,10 +79,12 @@ export function OrderSuccess() {
     let cancelled = false;
     void api
       .getOrder(orderId)
-      .then((r: { data?: { orderNumber?: string } }) => {
-        const n = r?.data?.orderNumber;
-        if (cancelled || !n) return;
-        setFetchedNumber(String(n));
+      .then((r: { data?: { orderNumber?: string; paymentMethod?: string; paymentStatus?: string } }) => {
+        const d = r?.data;
+        if (cancelled || !d) return;
+        if (d.orderNumber) setFetchedNumber(String(d.orderNumber));
+        if (d.paymentMethod) setPaymentMethod(String(d.paymentMethod));
+        if (d.paymentStatus) setPaymentStatus(String(d.paymentStatus));
       })
       .catch(() => {
         /* wrong id / session */
@@ -98,16 +104,7 @@ export function OrderSuccess() {
     setInvBusy(true);
     setInvError(null);
     try {
-      const blob = await api.downloadOrderInvoiceSummaryHtml(orderId);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `StructBay-order-${orderNumber ?? orderId}.html`;
-      a.rel = "noopener";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      await openOrderInvoices(orderId, orderNumber ?? undefined);
     } catch (e: unknown) {
       setInvError(e instanceof Error ? e.message : "Download failed.");
     } finally {
@@ -122,7 +119,7 @@ export function OrderSuccess() {
           style={{ backgroundColor: "var(--sb-orange)" }}
           className="w-24 h-24 rounded-full flex items-center justify-center mx-auto"
         >
-          <CheckCircle2 className="w-14 h-14 text-sb-cream" />
+          <CheckCircle2 className="w-14 h-14 text-white" />
         </div>
         <div className="absolute inset-0 flex items-center justify-center">
           <div
@@ -137,15 +134,20 @@ export function OrderSuccess() {
         Your order has been confirmed. You will receive updates on your registered email and phone number.
       </p>
 
-      <div style={{ backgroundColor: "var(--sb-blue)" }} className="rounded-2xl p-6 text-sb-cream mb-4">
-        <p className="text-sb-cream/70 text-sm mb-1">Order Number</p>
+      <div className="bg-black rounded-2xl p-6 text-white mb-4 border border-gray-200">
+        <p className="text-white/70 text-sm mb-1">Order Number</p>
         <p className="font-bold text-2xl tracking-wide">{orderNumber ?? "—"}</p>
         {!orderNumber && (
-          <p className="text-sb-cream/80 text-sm mt-1">
+          <p className="text-white/80 text-sm mt-1">
             Your StructBay order reference was sent to your registered email and phone.
           </p>
         )}
-        <p className="text-sb-cream/70 text-sm mt-2">Expected Delivery: 2–4 Business Days</p>
+        <p className="text-white/70 text-sm mt-2">Expected Delivery: 2–4 Business Days</p>
+        {(paymentMethod || paymentStatus) && (
+          <p className="text-white/80 text-sm mt-3 pt-3 border-t border-white/20">
+            Payment: {formatPaymentMethod(paymentMethod)} · {formatPaymentStatus(paymentStatus)}
+          </p>
+        )}
       </div>
 
       <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-6 text-sm text-amber-800 text-left">
@@ -166,10 +168,9 @@ export function OrderSuccess() {
           ].map((item) => (
             <div key={item.step} className="flex items-start gap-3">
               <div
-                style={{
-                  backgroundColor: item.done ? "var(--sb-orange)" : "var(--sb-blue)",
-                }}
-                className="w-6 h-6 rounded-full flex items-center justify-center text-sb-cream text-xs font-bold shrink-0 mt-0.5"
+                className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 ${
+                  item.done ? "bg-[#E85A00] text-white" : "bg-gray-100 text-gray-600"
+                }`}
               >
                 {item.step}
               </div>
@@ -193,21 +194,19 @@ export function OrderSuccess() {
           type="button"
           disabled={invBusy}
           onClick={() => void handleDownloadInvoice()}
-          className="flex-1 flex items-center justify-center gap-2 border-2 border-[#FE5E00] text-[#FE5E00] bg-white rounded-2xl py-3 text-sm font-semibold hover:bg-[#FE5E00]/5 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+          className="flex-1 flex items-center justify-center gap-2 border-2 border-[#E85A00] text-[#E85A00] bg-white rounded-2xl py-3 text-sm font-semibold hover:bg-[#E85A00]/5 transition-colors disabled:opacity-50 disabled:pointer-events-none"
         >
-          <Download className="w-4 h-4" /> {invBusy ? "Preparing…" : "Download Invoice"}
+          <Download className="w-4 h-4" /> {invBusy ? "Preparing…" : "Download PDF Invoice"}
         </button>
         <Link
-          to="/track"
-          style={{ backgroundColor: "var(--sb-blue)" }}
-          className="flex-1 flex items-center justify-center gap-2 text-sb-cream rounded-2xl py-3 text-sm font-semibold hover:opacity-90"
+          to={orderId ? `/orders/${encodeURIComponent(orderId)}` : "/track"}
+          className="flex-1 flex items-center justify-center gap-2 bg-[#E85A00] hover:bg-[#CC4E00] text-white rounded-2xl py-3 text-sm font-semibold transition-colors"
         >
           <Package className="w-4 h-4" /> Track Order
         </Link>
         <Link
           to="/"
-          style={{ backgroundColor: "var(--sb-orange)" }}
-          className="flex-1 flex items-center justify-center gap-2 text-sb-cream rounded-2xl py-3 text-sm font-semibold hover:opacity-90"
+          className="flex-1 flex items-center justify-center gap-2 bg-black hover:bg-gray-900 text-white rounded-2xl py-3 text-sm font-semibold transition-colors"
         >
           Continue Shopping <ArrowRight className="w-4 h-4" />
         </Link>

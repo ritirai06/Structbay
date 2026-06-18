@@ -1,20 +1,59 @@
-import { useState, useEffect, useRef } from "react";
-import { NavLink, Link, useNavigate } from "react-router";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { NavLink, Link, useNavigate, useLocation } from "react-router";
 import {
-  Search, ShoppingCart, User, MapPin, ChevronDown, Menu, X,
-  Bell, LogOut, Phone, FileText, TrendingUp, ChevronRight,
+  Search, User, MapPin, ChevronDown, Menu, X,
+  Bell, LogOut, Phone, FileText, TrendingUp, ChevronRight, ChevronLeft,
   Zap,
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { api } from "../lib/api";
-import { clearCustomerSession } from "../lib/authStorage";
+import { fetchNavCategories } from "../lib/navCategories";
+import { clearCustomerSession, getCustomerAccessToken } from "../lib/authStorage";
 import { CitySelection } from "../pages/CitySelection";
 import { SearchDropdown } from "./SearchDropdown";
 import { StorefrontPromoModal, shouldShowStorefrontPromoModal } from "./StorefrontPromoModal";
+import { isLocationOnboardingComplete, hasOnboardingGatePassed, ONBOARDING_GATE_EVENT } from "../lib/locationOnboarding";
+import { useBulkEnquiryModal } from "../context/BulkEnquiryModalContext";
+import { FloatingCityPill } from "./FloatingCityPill";
+import {
+  buildContextualNotices,
+  contextualPanelTitle,
+  type ContextualNotice,
+} from "../lib/contextualNotifications";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@shared/components/ui/dropdown-menu";
 import logoImg from "/shared/assets/logos/Structbay-Logo-F-1.png";
 
-/** After user picks a city, skips location, or closes the onboarding popup — do not auto-open again. */
-const LOCATION_ONBOARDING_DONE_KEY = "sb_location_choice_made";
+type CustomerNotification = {
+  _id: string;
+  title: string;
+  message: string;
+  type: string;
+  refId?: string | null;
+  isRead: boolean;
+  createdAt: string;
+};
+
+function timeAgo(iso: string): string {
+  const sec = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (sec < 60) return "Just now";
+  if (sec < 3600) return `${Math.floor(sec / 60)}m ago`;
+  if (sec < 86400) return `${Math.floor(sec / 3600)}h ago`;
+  return new Date(iso).toLocaleDateString();
+}
+
+function notificationPath(n: CustomerNotification): string {
+  if (n.refId && ["ORDER", "PAYMENT", "DISPATCH", "DELIVERY", "INVOICE"].includes(n.type)) {
+    return `/orders/${encodeURIComponent(n.refId)}`;
+  }
+  if (n.type === "RFQ") return "/rfq";
+  if (n.type === "ENQUIRY") return "/bulk-enquiry";
+  return "/account/notifications";
+}
+
+/** After user picks a city in the onboarding modal — persisted via `locationOnboarding.ts`. */
 
 const MARQUEE_SEGMENTS_DEFAULT = [
   "GST Invoice on Every Order",
@@ -47,7 +86,7 @@ function TopMarquee({ segments }: { segments: string[] }) {
       `}
       </style>
       <div className="relative w-full overflow-hidden min-h-[1.35rem] flex items-center" aria-live="polite">
-        <div className="sb-top-marquee-track text-sb-cream/95 text-[11px] sm:text-xs font-medium tracking-wide">
+        <div className="sb-top-marquee-track text-white/95 text-[11px] sm:text-xs font-medium tracking-wide">
           {doubled}
         </div>
       </div>
@@ -57,31 +96,50 @@ function TopMarquee({ segments }: { segments: string[] }) {
 
 export function Header() {
   const { city, cityId, cartCount, isLoggedIn, user, setIsLoggedIn, setUser, addRecentSearch } = useApp();
+  const location = useLocation();
+  const isHome = location.pathname === "/" || location.pathname === "";
   const [searchQuery, setSearchQuery]     = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const [menuOpen, setMenuOpen]           = useState(false);
   const [catOpen, setCatOpen]             = useState(false);
   const [userOpen, setUserOpen]           = useState(false);
   const [cityModalOpen, setCityModalOpen] = useState(false);
+  const [announcementsGatePassed, setAnnouncementsGatePassed] = useState(
+    () => typeof window !== "undefined" && hasOnboardingGatePassed()
+  );
   const [categories, setCategories]       = useState<any[]>([]);
   const [storefront, setStorefront]       = useState<Record<string, unknown> | null>(null);
   const [promoModalOpen, setPromoModalOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [notifications, setNotifications] = useState<CustomerNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loadingNotifs, setLoadingNotifs] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const navigate  = useNavigate();
+  const { openBulkEnquiry } = useBulkEnquiryModal();
   const searchRef = useRef<HTMLDivElement>(null);
-  const catRef    = useRef<HTMLDivElement>(null);
   const userRef   = useRef<HTMLDivElement>(null);
 
-  // City-scoped nav (matches customer catalogue: pricing ∩ inventory in that city)
+  const contextualNotices = useMemo(
+    () =>
+      buildContextualNotices({
+        pathname: location.pathname,
+        city,
+        cityId,
+        cartCount,
+        isLoggedIn,
+      }),
+    [location.pathname, city, cityId, cartCount, isLoggedIn]
+  );
+
+  const cityNotices = contextualNotices.filter((n) => n.scope === "city");
+  const pageNotices = contextualNotices.filter((n) => n.scope === "page");
+  const panelTitle = contextualPanelTitle(city, location.pathname);
+
+  // Shop dropdown: only categories with products in the selected city.
   useEffect(() => {
-    const params: Record<string, string> = { status: 'ACTIVE', limit: '100' };
-    if (cityId) params.cityId = cityId;
-    api
-      .getCategories(params)
-      .then((res: any) => {
-        const list = res?.data;
-        if (Array.isArray(list)) setCategories(list);
-        else setCategories([]);
-      })
+    fetchNavCategories({ cityId })
+      .then(setCategories)
       .catch(() => setCategories([]));
   }, [cityId]);
 
@@ -107,33 +165,116 @@ export function Header() {
     if (!p || p.enabled === false) return;
     if (!p.modalEnabled || !String(p.modalTitle || "").trim()) return;
     if (!shouldShowStorefrontPromoModal(p as any)) return;
-    const t = window.setTimeout(() => setPromoModalOpen(true), 1100);
+    // City first: promo only after onboarding + a selected warehouse city.
+    if (!isLocationOnboardingComplete() || !cityId || cityModalOpen) return;
+    const t = window.setTimeout(() => setPromoModalOpen(true), 600);
     return () => window.clearTimeout(t);
-  }, [storefront]);
+  }, [storefront, cityId, cityModalOpen]);
 
-  /** First visit: no city, no stored city, and user has not dismissed onboarding — show location popup. */
+  /** New users on homepage: wait for announcement modal to finish before city picker. */
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      if (city || cityId) return;
-      if (localStorage.getItem(LOCATION_ONBOARDING_DONE_KEY) === "1") return;
-      if (localStorage.getItem("sb_selected_city")) return;
-      const t = window.setTimeout(() => setCityModalOpen(true), 400);
-      return () => window.clearTimeout(t);
-    } catch {
-      /* ignore */
-    }
-  }, [city, cityId]);
+    const onGate = () => setAnnouncementsGatePassed(true);
+    window.addEventListener(ONBOARDING_GATE_EVENT, onGate);
+    return () => window.removeEventListener(ONBOARDING_GATE_EVENT, onGate);
+  }, []);
+
+  useEffect(() => {
+    if (cityId || isLocationOnboardingComplete()) return;
+    if (isHome && !announcementsGatePassed) return;
+    setCityModalOpen(true);
+  }, [cityId, isHome, announcementsGatePassed]);
+
+  useEffect(() => {
+    if (cityId || isLocationOnboardingComplete()) return;
+    if (!isHome) setCityModalOpen(true);
+  }, [cityId, isHome]);
 
   useEffect(() => {
     function handler(e: MouseEvent) {
-      if (catRef.current && !catRef.current.contains(e.target as Node))    setCatOpen(false);
       if (userRef.current && !userRef.current.contains(e.target as Node))  setUserOpen(false);
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchFocused(false);
     }
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+
+  const loadNotifications = useCallback(async () => {
+    if (!isLoggedIn || !getCustomerAccessToken()) return;
+    setLoadingNotifs(true);
+    try {
+      const res = await api.getNotifications({ limit: "8" }) as {
+        data?: { items?: CustomerNotification[]; unreadCount?: number } | CustomerNotification[];
+      };
+      const payload = res?.data;
+      const items = Array.isArray(payload) ? payload : (payload?.items ?? []);
+      setNotifications(items);
+      const unread = !Array.isArray(payload) && typeof payload?.unreadCount === "number"
+        ? payload.unreadCount
+        : items.filter((n) => !n.isRead).length;
+      setUnreadCount(unread);
+    } catch {
+      setNotifications([]);
+      setUnreadCount(0);
+    } finally {
+      setLoadingNotifs(false);
+    }
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    if (!notifOpen) return;
+    if (isLoggedIn) void loadNotifications();
+  }, [notifOpen, isLoggedIn, loadNotifications, location.pathname, cityId]);
+
+  useEffect(() => {
+    if (!isLoggedIn || notifOpen) return;
+    const schedule = () => void loadNotifications();
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      const id = window.requestIdleCallback(schedule, { timeout: 4000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const id = window.setTimeout(schedule, 2500);
+    return () => window.clearTimeout(id);
+  }, [isLoggedIn, notifOpen, loadNotifications, cityId]);
+
+  const openContextualNotice = (n: ContextualNotice) => {
+    setNotifOpen(false);
+    if (n.href) navigate(n.href);
+  };
+
+  const markNotificationRead = async (id: string) => {
+    try {
+      await api.markNotificationRead(id);
+      setNotifications((prev) => prev.map((n) => (n._id === id ? { ...n, isRead: true } : n)));
+      setUnreadCount((c) => Math.max(0, c - 1));
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const markAllNotificationsRead = async () => {
+    try {
+      await api.markAllNotificationsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const openNotification = (n: CustomerNotification) => {
+    if (!n.isRead) void markNotificationRead(n._id);
+    setNotifOpen(false);
+    navigate(notificationPath(n));
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -153,407 +294,281 @@ export function Header() {
         onClose={() => setPromoModalOpen(false)}
       />
 
-      {/* ── Sticky header wrapper ──────────────────────────────────────────── */}
-      <header className="sticky top-0 z-50" style={{ background: "var(--sb-nav)" }}>
-        {promoEnabled && topBarText && (
-          <div
-            className="w-full py-2.5 px-4 text-center text-xs sm:text-sm font-bold tracking-tight border-b border-black/10"
-            style={{ background: topBarBg, color: topBarTextColor }}
-          >
+      {/* ── Reference storefront header ─────────────────────────────────── */}
+      <header className="sf-header">
+        {promoEnabled && topBarText ? (
+          <div className="sf-announce" style={{ background: topBarBg, color: topBarTextColor }}>
             {topBarText}
+          </div>
+        ) : (
+          <div className="sf-announce flex items-center justify-center gap-3">
+            <ChevronLeft className="w-3.5 h-3.5 opacity-50 shrink-0" aria-hidden />
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <TopMarquee segments={marqueeFromCms} />
+            </div>
+            <ChevronRight className="w-3.5 h-3.5 opacity-50 shrink-0" aria-hidden />
           </div>
         )}
 
-        {/* Subtle orange top line (hidden visually when yellow strip sits flush above — keep for brand when no strip) */}
-        <div className="h-px w-full" style={{ background: "linear-gradient(90deg, transparent, var(--sb-orange), transparent)" }} />
+        <div className="sf-header-main">
+          <button
+            onClick={() => setMenuOpen(true)}
+            className="lg:hidden p-2 text-white/80 hover:text-white"
+            aria-label="Open menu"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
 
-        {/* ── Top utility bar ─────────────────────────────────────────────── */}
-        <div className="text-sb-cream/90 text-xs py-1.5 px-4 border-b border-sb-border-dark bg-sb-nav">
-          <div className="max-w-7xl mx-auto flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-            <div className="flex-1 min-w-0 order-2 sm:order-1 sm:pr-2">
-              {!(promoEnabled && topBarText && topBarStyle === "center_banner") && (
-                <TopMarquee segments={marqueeFromCms} />
-              )}
-            </div>
-            <div className="hidden sm:flex order-1 sm:order-2 gap-4 items-center font-semibold shrink-0 text-sb-cream/90 flex-wrap justify-end">
-              <Link to="/blogs"    className="hover:text-sb-orange transition-colors">Blog</Link>
-              <Link to="/tools/cement-estimator" className="hover:text-sb-orange transition-colors">Cement calculator</Link>
-              <Link to="/rfq"     className="hover:text-sb-orange transition-colors">Get RFQ</Link>
-              <Link to="/bulk-enquiry" className="hover:text-sb-orange transition-colors">Bulk Enquiry</Link>
-              <Link to="/finance" className="hover:text-sb-orange transition-colors">Finance</Link>
-              <a href="#"         className="hover:text-sb-orange transition-colors">Vendor Portal</a>
-              <a href="tel:+918045678900" className="flex items-center gap-1 hover:text-sb-orange transition-colors">
-                <Phone className="w-3 h-3" /> Support
-              </a>
-            </div>
-          </div>
-        </div>
+          <Link to="/" className="shrink-0">
+            <img src={logoImg} alt="StructBay" className="h-12 sm:h-14 w-auto object-contain" />
+          </Link>
 
-        {/* ── Main header row ─────────────────────────────────────────────── */}
-        <div className="px-4 py-2.5 border-b border-sb-border-dark bg-sb-nav">
-          <div className="max-w-7xl mx-auto flex items-center gap-3">
-
-            {/* Mobile menu toggle */}
-            <button
-              onClick={() => setMenuOpen(true)}
-              className="md:hidden p-2 rounded-xl transition-colors text-[var(--sb-chrome-fg-muted)] hover:bg-[var(--sb-chrome-hover)] hover:text-[var(--sb-chrome-fg)]"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-
-            {/* Logo */}
-            <Link to="/" className="flex items-center shrink-0">
-              <img src={logoImg} alt="StructBay" className="h-14 w-auto object-contain" />
-            </Link>
-
-            {/* City selector */}
-            <button
-              onClick={() => setCityModalOpen(true)}
-              className="hidden sm:flex items-center gap-1.5 text-sm shrink-0 rounded-xl px-3 py-2 transition-all duration-200"
-              style={{
-                border: "1px solid var(--sb-chrome-border)",
-                color: "var(--sb-chrome-fg)",
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.borderColor = "var(--sb-orange)";
-                e.currentTarget.style.boxShadow = "0 0 0 2px var(--sb-orange-subtle)";
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.borderColor = "var(--sb-chrome-border)";
-                e.currentTarget.style.boxShadow = "none";
-              }}
-            >
-              <MapPin className="w-4 h-4" style={{ color: "var(--sb-orange)" }} />
-              <span className="font-medium max-w-[120px] truncate">{city || "All cities"}</span>
-              <ChevronDown className="w-3 h-3" style={{ color: "var(--sb-chrome-fg-muted)" }} />
-            </button>
-
-            {/* Categories dropdown */}
-            <div className="relative hidden md:block" ref={catRef}>
-              <button
-                onClick={() => setCatOpen(v => !v)}
-                className="flex items-center gap-1.5 text-sm rounded-xl px-3 py-2 transition-all duration-200"
-                style={{
-                  border: `1px solid ${catOpen ? "var(--sb-orange)" : "var(--sb-chrome-border)"}`,
-                  color: "var(--sb-chrome-fg)",
-                  background: catOpen ? "var(--sb-orange-subtle)" : "transparent",
-                }}
+          <nav className="sf-nav" aria-label="Main">
+            <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>Home</NavLink>
+            <DropdownMenu open={catOpen} onOpenChange={setCatOpen}>
+              <DropdownMenuTrigger asChild>
+                <button type="button" className="sf-nav-shop" aria-expanded={catOpen}>
+                  Shop <ChevronDown className={`w-3.5 h-3.5 transition-transform ${catOpen ? "rotate-180" : ""}`} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="center"
+                side="bottom"
+                sideOffset={8}
+                collisionPadding={12}
+                className="sf-shop-dropdown w-56 max-h-[min(70vh,420px)] overflow-y-auto rounded-lg shadow-2xl z-[60] p-0 py-1.5 bg-white border border-gray-200 text-gray-800"
               >
-                <Menu className="w-4 h-4" />
-                <span>Categories</span>
-                <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${catOpen ? "rotate-180" : ""}`} style={{ color: "var(--sb-chrome-fg-muted)" }} />
-              </button>
-
-              {catOpen && (
-                <div
-                  className="absolute top-full left-0 mt-2 rounded-2xl shadow-2xl w-56 z-50 py-1.5 animate-scale-in"
-                  style={{
-                    background: "var(--sb-card)",
-                    border: "1px solid var(--sb-border-on-light)",
-                    boxShadow: "0 20px 60px rgba(34, 34, 34, 0.12)",
-                  }}
-                >
+                <DropdownMenuItem asChild className="p-0 rounded-none focus:bg-transparent">
                   <Link
                     to="/shop"
                     onClick={() => setCatOpen(false)}
-                    className="flex items-center justify-between px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors"
-                    style={{ color: "var(--sb-orange)", borderBottom: "1px solid var(--sb-border-on-light)" }}
-                    onMouseEnter={e => (e.currentTarget.style.background = "var(--sb-bg-section)")}
-                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                    className="sf-shop-dropdown__all px-4 py-2.5 cursor-pointer"
                   >
                     All Categories <ChevronRight className="w-3.5 h-3.5" />
                   </Link>
-                  {categories.map(cat => (
+                </DropdownMenuItem>
+                {categories.map((cat) => (
+                  <DropdownMenuItem key={cat.slug} asChild className="p-0 rounded-none focus:bg-orange-50">
                     <NavLink
-                      key={cat.slug}
                       to={`/category/${cat.slug}`}
                       onClick={() => setCatOpen(false)}
-                      className={({ isActive }) =>
-                        `flex items-center gap-2.5 px-4 py-2.5 text-sm transition-all duration-150 ${
-                          isActive ? "font-semibold" : ""
-                        }`
-                      }
-                      style={({ isActive }) => ({
-                        color: isActive ? "var(--sb-orange)" : "var(--sb-text-on-light)",
-                        background: isActive ? "var(--sb-orange-subtle)" : "transparent",
-                      })}
-                      onMouseEnter={e => {
-                        const el = e.currentTarget;
-                        if (!el.classList.contains("active")) {
-                          el.style.background = "var(--sb-orange)";
-                          el.style.color = "#fff";
-                        }
-                      }}
-                      onMouseLeave={e => {
-                        const el = e.currentTarget;
-                        el.style.background = "";
-                        el.style.color = "";
-                      }}
+                      className="block w-full px-4 py-2.5 hover:bg-orange-50 cursor-pointer"
                     >
                       {cat.name}
                     </NavLink>
-                  ))}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Link to="/blogs">Blog</Link>
+            <a href="/#about">About Us</a>
+            <a href="/#contact">Contact Us</a>
+          </nav>
+
+          <div className="sf-header-actions">
+            <button type="button" onClick={() => setSearchOpen((v) => !v)} className="hidden sm:flex p-2 text-white hover:text-sb-orange transition-colors" aria-label="Search">
+              <Search className="w-5 h-5" />
+            </button>
+            <Link to="/tools/cement-calculator" className="sf-btn-outline hidden lg:inline-flex">
+              Cement Calc
+            </Link>
+            <button
+              type="button"
+              onClick={() => openBulkEnquiry()}
+              className="sf-btn-outline hidden md:inline-flex"
+            >
+              Bulk Order
+            </button>
+            <NavLink to="/cart" className="sf-btn-outline relative">
+              View Cart &gt;&gt;
+              {cartCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[1.1rem] h-[1.1rem] rounded-full bg-sb-orange text-white text-[10px] font-bold flex items-center justify-center px-0.5">{cartCount}</span>
+              )}
+            </NavLink>
+            <div className="relative hidden lg:block" ref={userRef}>
+              <button type="button" onClick={() => setUserOpen((v) => !v)} className="p-2 text-white/80 hover:text-white" aria-label="Account">
+                <User className="w-5 h-5" />
+              </button>
+              {userOpen && (
+                <div className="absolute right-0 top-full mt-2 rounded-lg shadow-2xl w-52 z-50 py-1.5 bg-white border border-gray-200">
+                  {isLoggedIn ? (
+                    <>
+                      <NavLink to="/dashboard" onClick={() => setUserOpen(false)} className="block px-4 py-2.5 text-sm text-gray-800 hover:bg-gray-50">My Dashboard</NavLink>
+                      <button type="button" onClick={() => { clearCustomerSession(); setUser(null); setIsLoggedIn(false); setUserOpen(false); }} className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-gray-800 hover:bg-gray-50">
+                        <LogOut className="w-4 h-4" /> Logout
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <NavLink to="/login" onClick={() => setUserOpen(false)} className="block px-4 py-2.5 text-sm text-gray-800 hover:bg-gray-50">Login</NavLink>
+                      <NavLink to="/register" onClick={() => setUserOpen(false)} className="block px-4 py-2.5 text-sm text-gray-800 hover:bg-gray-50">Register</NavLink>
+                    </>
+                  )}
                 </div>
               )}
             </div>
-
-            {/* Search */}
-            <form onSubmit={handleSearch} className="flex-1 flex items-center min-w-0">
-              <div className="relative w-full" ref={searchRef}>
-                <input
-                  type="search"
-                  enterKeyHint="search"
-                  autoComplete="off"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  aria-autocomplete="list"
-                  aria-expanded={searchFocused}
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  onFocus={() => setSearchFocused(true)}
-                  placeholder="Search cement, steel, paints, tools..."
-                  className="w-full min-w-0 pl-4 pr-14 py-2.5 rounded-full text-sm transition-all duration-200"
-                  style={{
-                    background: "var(--sb-bg-section)",
-                    border: `1px solid ${searchFocused ? "var(--sb-orange)" : "var(--sb-border-on-light)"}`,
-                    color: "var(--sb-text-on-light)",
-                    boxShadow: searchFocused ? "0 0 0 3px var(--sb-orange-ring)" : "none",
-                  }}
-                />
-                <button
-                  type="submit"
-                  title="Search"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-colors"
-                  style={{ background: "var(--sb-orange)", color: "#fff" }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "var(--sb-orange-hover)")}
-                  onMouseLeave={e => (e.currentTarget.style.background = "var(--sb-orange)")}
-                >
-                  <Search className="w-4 h-4" aria-hidden />
-                </button>
-                {searchFocused && (
-                  <SearchDropdown
-                    query={searchQuery}
-                    onSelect={() => setSearchFocused(false)}
-                    onClose={() => setSearchFocused(false)}
-                  />
-                )}
-              </div>
-            </form>
-
-            {/* Right icons */}
-            <div className="flex items-center gap-1 shrink-0">
-              {isLoggedIn && (
-                <button
-                  className="relative p-2 rounded-xl transition-colors"
-                  style={{ color: "var(--sb-chrome-fg-muted)" }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "var(--sb-chrome-hover)"; e.currentTarget.style.color = "var(--sb-chrome-fg)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--sb-chrome-fg-muted)"; }}
-                >
-                  <Bell className="w-5 h-5" />
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: "var(--sb-orange)" }} />
-                </button>
-              )}
-
-              <NavLink
-                to="/cart"
-                className="relative p-2 rounded-xl transition-colors"
-                style={{ color: "var(--sb-chrome-fg-muted)" }}
-              >
-                {({ isActive }) => (
-                  <>
-                    <ShoppingCart className="w-5 h-5" style={{ color: isActive ? "var(--sb-orange)" : undefined }} />
-                    {cartCount > 0 && (
-                      <span
-                        className="absolute -top-0.5 -right-0.5 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold"
-                        style={{ background: "var(--sb-orange)" }}
-                      >
-                        {cartCount}
+            <DropdownMenu open={notifOpen} onOpenChange={(open) => {
+                setNotifOpen(open);
+                if (open && isLoggedIn) void loadNotifications();
+              }}>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="relative p-2 text-white/80 hover:text-white"
+                    aria-label="Notifications and updates"
+                  >
+                    <Bell className="w-5 h-5" />
+                    {isLoggedIn && unreadCount > 0 && (
+                      <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-sb-orange px-1 text-[10px] font-medium text-white">
+                        {unreadCount > 9 ? "9+" : unreadCount}
                       </span>
                     )}
-                  </>
-                )}
-              </NavLink>
-
-              {/* User dropdown */}
-              <div className="relative" ref={userRef}>
-                <button
-                  onClick={() => setUserOpen(v => !v)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all duration-200"
-                  style={
-                    isLoggedIn
-                      ? { background: "var(--sb-orange)", color: "#fff", boxShadow: "0 2px 10px rgba(249,115,22,0.3)" }
-                      : { border: "1px solid var(--sb-chrome-border)", color: "var(--sb-chrome-fg)", background: "transparent" }
-                  }
-                >
-                  <User className="w-4 h-4" />
-                  <span className="hidden md:inline">
-                    {isLoggedIn ? (user?.name?.split(" ")[0] || "Account") : "Login"}
-                  </span>
-                </button>
-
-                {userOpen && (
-                  <div
-                    className="absolute right-0 top-full mt-2 rounded-2xl shadow-2xl w-52 z-50 py-1.5 animate-scale-in"
-                    style={{ background: "var(--sb-card)", border: "1px solid var(--sb-border-on-light)", boxShadow: "0 20px 60px rgba(34, 34, 34, 0.12)" }}
-                  >
-                    {isLoggedIn ? (
-                      <>
-                        <NavLink
-                          to="/dashboard"
-                          onClick={() => setUserOpen(false)}
-                          className="block px-4 py-2.5 text-sm transition-colors"
-                          style={{ color: "var(--sb-text-on-light)" }}
-                          onMouseEnter={e => (e.currentTarget.style.background = "var(--sb-cream-secondary)")}
-                          onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                        >
-                          My Dashboard
-                        </NavLink>
-                        <Link
-                          to="/dashboard"
-                          onClick={() => setUserOpen(false)}
-                          className="block px-4 py-2.5 text-sm transition-colors"
-                          style={{ color: "var(--sb-text-on-light)" }}
-                          onMouseEnter={e => (e.currentTarget.style.background = "var(--sb-cream-secondary)")}
-                          onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                        >
-                          My Orders
-                        </Link>
-                        <hr style={{ borderColor: "var(--sb-border-on-light)", margin: "4px 0" }} />
-                        <button
-                          onClick={() => {
-                            clearCustomerSession();
-                            setUser(null);
-                            setIsLoggedIn(false);
-                            setUserOpen(false);
-                          }}
-                          className="flex items-center gap-2 w-full px-4 py-2.5 text-sm transition-colors"
-                          style={{ color: "var(--sb-text-on-light)" }}
-                          onMouseEnter={e => (e.currentTarget.style.background = "var(--sb-cream-secondary)")}
-                          onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                        >
-                          <LogOut className="w-4 h-4" /> Logout
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <NavLink
-                          to="/login"
-                          onClick={() => setUserOpen(false)}
-                          className="block px-4 py-2.5 text-sm transition-colors"
-                          style={{ color: "var(--sb-text-on-light)" }}
-                          onMouseEnter={e => (e.currentTarget.style.background = "var(--sb-cream-secondary)")}
-                          onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                        >
-                          Login
-                        </NavLink>
-                        <NavLink
-                          to="/register"
-                          onClick={() => setUserOpen(false)}
-                          className="block px-4 py-2.5 text-sm transition-colors"
-                          style={{ color: "var(--sb-text-on-light)" }}
-                          onMouseEnter={e => (e.currentTarget.style.background = "var(--sb-cream-secondary)")}
-                          onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                        >
-                          Register
-                        </NavLink>
-                      </>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-80 border-gray-200 bg-white p-0 text-black shadow-lg z-[70]">
+                  <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100">
+                    <div>
+                      <DropdownMenuLabel className="p-0 text-xs font-semibold text-black">
+                        {panelTitle}
+                      </DropdownMenuLabel>
+                      <p className="text-[10px] text-gray-400 mt-0.5">Updates for this page & city</p>
+                    </div>
+                    {isLoggedIn && unreadCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          void markAllNotificationsRead();
+                        }}
+                        className="text-[11px] font-medium text-[#E85A00] hover:underline shrink-0"
+                      >
+                        Mark all read
+                      </button>
                     )}
                   </div>
-                )}
-              </div>
-            </div>
+                  <div className="max-h-80 overflow-y-auto">
+                    {cityNotices.length > 0 && (
+                      <div className="border-b border-gray-100">
+                        <p className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                          {city ? `${city}` : "Location"}
+                        </p>
+                        {cityNotices.map((n) => (
+                          <DropdownMenuItem
+                            key={n.id}
+                            className="flex cursor-pointer flex-col items-start gap-0.5 rounded-none border-b border-gray-50 px-3 py-2.5 hover:bg-gray-50 bg-sky-50/30"
+                            onSelect={() => openContextualNotice(n)}
+                          >
+                            <p className="text-sm font-medium text-black">{n.title}</p>
+                            <p className="text-xs text-gray-600 leading-snug">{n.message}</p>
+                          </DropdownMenuItem>
+                        ))}
+                      </div>
+                    )}
+                    {pageNotices.length > 0 && (
+                      <div className="border-b border-gray-100">
+                        <p className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                          This page
+                        </p>
+                        {pageNotices.map((n) => (
+                          <DropdownMenuItem
+                            key={n.id}
+                            className="flex cursor-pointer flex-col items-start gap-0.5 rounded-none border-b border-gray-50 px-3 py-2.5 hover:bg-gray-50"
+                            onSelect={() => openContextualNotice(n)}
+                          >
+                            <p className="text-sm font-medium text-black">{n.title}</p>
+                            <p className="text-xs text-gray-500 leading-snug">{n.message}</p>
+                          </DropdownMenuItem>
+                        ))}
+                      </div>
+                    )}
+                    {isLoggedIn && (
+                      <div>
+                        <p className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                          Your orders & alerts
+                        </p>
+                        {loadingNotifs && !notifications.length ? (
+                          <p className="px-3 py-4 text-center text-xs text-gray-400">Loading…</p>
+                        ) : notifications.length === 0 ? (
+                          <p className="px-3 py-4 text-center text-xs text-gray-400">No order alerts yet</p>
+                        ) : (
+                          notifications.map((n) => (
+                            <DropdownMenuItem
+                              key={n._id}
+                              className={`flex cursor-pointer flex-col items-start gap-0.5 rounded-none border-b border-gray-50 px-3 py-2.5 hover:bg-gray-50 ${!n.isRead ? "bg-orange-50/40" : ""}`}
+                              onSelect={() => openNotification(n)}
+                            >
+                              <div className="flex w-full items-start justify-between gap-2">
+                                <p className={`text-sm ${n.isRead ? "font-normal text-gray-800" : "font-medium text-black"}`}>
+                                  {n.title}
+                                </p>
+                                <span className="shrink-0 text-[10px] text-gray-400">{timeAgo(n.createdAt)}</span>
+                              </div>
+                              <p className="text-xs text-gray-500 line-clamp-2">{n.message}</p>
+                            </DropdownMenuItem>
+                          ))
+                        )}
+                      </div>
+                    )}
+                    {!isLoggedIn && (
+                      <p className="px-3 py-3 text-[11px] text-gray-500 border-t border-gray-100">
+                        <Link to="/login" className="text-[#E85A00] font-semibold hover:underline" onClick={() => setNotifOpen(false)}>
+                          Sign in
+                        </Link>{" "}
+                        for order confirmations and dispatch updates.
+                      </p>
+                    )}
+                  </div>
+                  {isLoggedIn && notifications.length > 0 && (
+                    <>
+                      <DropdownMenuSeparator className="bg-gray-100" />
+                      <DropdownMenuItem
+                        className="cursor-pointer justify-center py-2 text-xs font-medium text-[#E85A00] hover:bg-gray-50"
+                        onSelect={() => {
+                          setNotifOpen(false);
+                          navigate("/account/notifications");
+                        }}
+                      >
+                        View all alerts
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
           </div>
         </div>
 
-        {/* ── Category nav bar ────────────────────────────────────────────── */}
-        <div
-          className="hidden md:block px-4 bg-sb-nav border-b border-sb-border-dark"
-        >
-          <div className="max-w-7xl mx-auto flex gap-0 overflow-x-auto scrollbar-none">
-            <NavLink
-              to="/shop"
-              className={({ isActive }) =>
-                `text-xs px-4 py-2.5 whitespace-nowrap transition-all duration-200 font-bold border-b-2 -mb-px ${
-                  isActive
-                    ? "border-sb-orange text-sb-orange"
-                    : "border-transparent text-sb-cream/70 hover:text-sb-orange hover:border-sb-orange/50"
-                }`
-              }
-            >
-              All
-            </NavLink>
-            {categories.map(cat => (
-              <NavLink
-                key={cat.slug}
-                to={`/category/${cat.slug}`}
-                className={({ isActive }) =>
-                  `text-xs px-4 py-2.5 whitespace-nowrap transition-all duration-200 border-b-2 -mb-px ${
-                    isActive
-                      ? "border-sb-orange text-sb-orange font-semibold"
-                      : "border-transparent text-sb-cream/70 hover:text-sb-cream hover:border-sb-orange/40"
-                  }`
-                }
-              >
-                {cat.name}
-              </NavLink>
-            ))}
-
-            {/* Right side quick links */}
-            <div className="ml-auto flex items-center gap-1 shrink-0">
-              <Link
-                to="/tools/cement-estimator"
-                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg my-1.5 font-semibold transition-all duration-200 text-sb-cream/65 hover:text-sb-orange"
-              >
-                <Zap className="w-3 h-3" /> Cement calc
-              </Link>
-              <Link
-                to="/bulk-enquiry"
-                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg my-1.5 font-semibold transition-all duration-200 border border-sb-orange/25 bg-sb-orange/10 text-sb-orange hover:bg-sb-orange hover:text-white hover:border-sb-orange"
-              >
-                <FileText className="w-3 h-3" /> Bulk Enquiry
-              </Link>
-              <Link
-                to="/rfq"
-                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg my-1.5 font-semibold transition-all duration-200 text-sb-cream/65 hover:text-sb-orange"
-              >
-                <TrendingUp className="w-3 h-3" /> Concrete RFQ
-              </Link>
-            </div>
+        {(searchOpen || searchFocused) && (
+          <div className="sf-search-row">
+            <form onSubmit={handleSearch} className="max-w-3xl mx-auto relative" ref={searchRef}>
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setSearchFocused(true)}
+                placeholder="Search cement, steel, paints, tools..."
+                className="w-full pl-4 pr-12 py-3 rounded-full text-sm bg-white border border-gray-200 text-gray-900 min-h-0"
+              />
+              <button type="submit" className="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-sb-orange text-white flex items-center justify-center">
+                <Search className="w-4 h-4" />
+              </button>
+              {searchFocused && (
+                <SearchDropdown query={searchQuery} onSelect={() => { setSearchFocused(false); setSearchOpen(false); }} onClose={() => setSearchFocused(false)} />
+              )}
+            </form>
           </div>
-        </div>
+        )}
       </header>
 
-      {/* City modal — compact premium layout (max 850px / 75vh); backdrop dismiss = onboarding done */}
+      <FloatingCityPill onChangeCity={() => setCityModalOpen(true)} />
+
+      {/* City modal — first visit prompts city; user may browse without selecting. */}
       {cityModalOpen && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4"
-          style={{ background: "rgba(34, 34, 34, 0.78)", backdropFilter: "blur(6px)" }}
-          onClick={() => {
-            try {
-              localStorage.setItem(LOCATION_ONBOARDING_DONE_KEY, "1");
-            } catch {
-              /* ignore */
-            }
-            setCityModalOpen(false);
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-[680px] max-h-[68vh] flex min-h-0"
-          >
-            <CitySelection
-              isModal
-              onClose={() => {
-                try {
-                  localStorage.setItem(LOCATION_ONBOARDING_DONE_KEY, "1");
-                } catch {
-                  /* ignore */
-                }
-                setCityModalOpen(false);
-              }}
-            />
-          </div>
-        </div>
+        <CitySelection
+          isModal
+          requireSelection={!isLocationOnboardingComplete() && !cityId}
+          onClose={() => setCityModalOpen(false)}
+        />
       )}
 
       {/* Mobile drawer */}
@@ -562,7 +577,7 @@ export function Header() {
           <div className="absolute inset-0 bg-black/75" onClick={() => setMenuOpen(false)} />
           <div
             className="relative w-72 h-full overflow-y-auto flex flex-col animate-slide-left"
-            style={{ background: "var(--sb-nav)", borderRight: "1px solid var(--sb-chrome-border)" }}
+            style={{ background: "var(--chrome-black, #000000)", borderRight: "1px solid var(--sb-chrome-border)" }}
             onClick={e => e.stopPropagation()}
           >
             <div className="flex justify-between items-center p-4 border-b border-sb-border-dark">
@@ -576,14 +591,14 @@ export function Header() {
               onClick={() => { setCityModalOpen(true); setMenuOpen(false); }}
               className="flex items-center gap-2 px-4 py-3 text-sm transition-colors w-full text-left"
               style={{ color: "var(--sb-chrome-fg)", borderBottom: "1px solid var(--sb-chrome-border)" }}
-              onMouseEnter={e => (e.currentTarget.style.background = "var(--sb-bg-section)")}
+              onMouseEnter={e => (e.currentTarget.style.background = "rgba(255, 255, 255, 0.08)")}
               onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
             >
               <MapPin className="w-4 h-4" style={{ color: "var(--sb-orange)" }} /> {city || "All cities"}
             </button>
 
             <div className="px-4 py-3 flex-1">
-              <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: "var(--sb-text-faint)" }}>Categories</p>
+              <p className="text-xs font-bold uppercase tracking-wider mb-2 text-white/50">Categories</p>
               <NavLink
                 to="/shop"
                 onClick={() => setMenuOpen(false)}
@@ -611,18 +626,49 @@ export function Header() {
                   {cat.name}
                 </NavLink>
               ))}
+
+              <p className="text-xs font-bold uppercase tracking-wider mb-2 mt-4 text-white/50">Menu</p>
+              <Link to="/blogs" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-white">Blog</Link>
+              <Link to="/tools/cement-calculator" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-white">
+                Cement calculator
+              </Link>
+              <button
+                type="button"
+                onClick={() => { openBulkEnquiry(); setMenuOpen(false); }}
+                className="block py-2 text-sm text-white w-full text-left"
+              >
+                Bulk Order
+              </button>
+              <Link to="/rfq" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-white">Concrete RFQ</Link>
+              <Link to="/finance" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-white">Finance</Link>
+              <button type="button" onClick={() => { setSearchOpen(true); setMenuOpen(false); }} className="block py-2 text-sm text-white w-full text-left">Search</button>
             </div>
 
             <div className="p-4 space-y-2" style={{ borderTop: "1px solid var(--sb-chrome-border)" }}>
               {isLoggedIn ? (
                 <>
                   <Link
+                    to="/account/notifications"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center justify-between py-2.5 text-sm transition-colors"
+                    style={{ color: "var(--sb-chrome-fg)" }}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Bell className="w-4 h-4" /> Notifications
+                    </span>
+                    {unreadCount > 0 && (
+                      <span className="min-w-[1.25rem] h-5 px-1.5 rounded-full bg-sb-orange text-white text-[10px] font-medium flex items-center justify-center">
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </span>
+                    )}
+                  </Link>
+                  <Link
                     to="/dashboard"
                     onClick={() => setMenuOpen(false)}
                     className="block py-2.5 text-sm transition-colors"
                     style={{ color: "var(--sb-chrome-fg)" }}
                   >
-                    Dashboard
+                    My Dashboard
                   </Link>
                   <button
                     onClick={() => {

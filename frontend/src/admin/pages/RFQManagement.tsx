@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
-import { Search, RefreshCw, Eye, Pencil, Trash2, Loader2, ClipboardList, Check, Download } from "lucide-react";
+import { Search, RefreshCw, Eye, Trash2, Loader2, ClipboardList, Download } from "lucide-react";
 import { adminFetch as apiFetch } from "../../lib/adminApi";
 import { AdminDeleteConfirmModal } from "../components/AdminDeleteConfirmModal";
 
@@ -11,24 +11,71 @@ const STATUS_COLORS: Record<string, string> = {
   CANCELLED: "bg-sb-cream-secondary text-sb-ink/55 border-sb-ink/15",
 };
 
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+function Modal({
+  title,
+  subtitle,
+  onClose,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-      <div className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-sb-ink/10 sticky top-0 bg-sb-cream-secondary">
-          <h3 className="font-bold text-sb-ink">{title}</h3>
-          <button type="button" onClick={onClose} className="text-sb-ink/55 hover:text-sb-ink text-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+      <button type="button" className="absolute inset-0 bg-black/55" aria-label="Close dialog" onClick={onClose} />
+      <div
+        className="relative z-10 flex w-full max-w-lg max-h-[min(88vh,720px)] flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-gray-200 px-5 py-4">
+          <div className="min-w-0">
+            <h3 className="text-base font-semibold text-black truncate">{title}</h3>
+            {subtitle ? <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p> : null}
+          </div>
+          <button type="button" onClick={onClose} className="text-gray-400 hover:text-black text-2xl leading-none shrink-0 px-1">
             ×
           </button>
         </div>
-        <div className="p-5">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-5 bg-gray-50">{children}</div>
       </div>
     </div>
   );
 }
 
+function ModalTabs({
+  tab,
+  onTab,
+}: {
+  tab: "overview" | "manage";
+  onTab: (t: "overview" | "manage") => void;
+}) {
+  const tabs = [
+    { id: "overview" as const, label: "Overview" },
+    { id: "manage" as const, label: "Manage" },
+  ];
+  return (
+    <div className="flex gap-1 p-1 mb-4 bg-white border border-gray-200 rounded-lg">
+      {tabs.map((t) => (
+        <button
+          key={t.id}
+          type="button"
+          onClick={() => onTab(t.id)}
+          className={`flex-1 py-2 px-2 rounded-md text-xs font-medium transition-colors ${
+            tab === t.id ? "bg-[#E85A00] text-white" : "text-gray-600 hover:bg-gray-100"
+          }`}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 const inp =
-  "w-full bg-sb-cream border border-sb-ink/15 rounded-lg px-3 py-2 text-sm text-sb-ink placeholder:text-sb-ink/45 focus:outline-none focus:border-sb-orange transition-colors";
+  "w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-black placeholder:text-gray-400 focus:outline-none focus:border-[#E85A00] transition-colors";
 
 type AdminMini = { _id: string; name?: string; email?: string };
 
@@ -89,6 +136,7 @@ export function RFQManagement() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [rfqModalTab, setRfqModalTab] = useState<"overview" | "manage">("overview");
 
   const load = useCallback((opts?: { soft?: boolean }) => {
     const soft = opts?.soft === true;
@@ -139,6 +187,16 @@ export function RFQManagement() {
     if (selected) setAssignDraft(assignedId(selected));
   }, [selected]);
 
+  useEffect(() => {
+    setRfqModalTab("overview");
+  }, [selected?._id]);
+
+  useEffect(() => {
+    if (!updateMsg) return;
+    const t = window.setTimeout(() => setUpdateMsg(null), 4000);
+    return () => window.clearTimeout(t);
+  }, [updateMsg]);
+
   /** Drop row selections that disappeared after reload. */
   useEffect(() => {
     const ids = new Set(items.map((i) => String(i._id)));
@@ -156,9 +214,7 @@ export function RFQManagement() {
         setAssignDraft(assignedId(next as { assignedTo?: { _id?: string } | string | null }));
       }
       if (patch.status !== undefined || patch.assignedTo !== undefined) {
-        setUpdateMsg(
-          "Update saved. Customer receives an email when status or assignment changes (if their RFQ has an email and SMTP is configured)."
-        );
+        setUpdateMsg("Saved. Customer will be emailed if SMTP is configured.");
       } else if (patch.adminNotes !== undefined) {
         setUpdateMsg("Notes saved.");
       }
@@ -233,24 +289,23 @@ export function RFQManagement() {
   };
 
   return (
-    <div className="p-6 bg-sb-cream min-h-full">
+    <div className="admin-page">
       <div className="mb-6">
-        <h1 className="text-2xl font-black text-sb-ink">Concrete RFQ Management</h1>
-        <p className="text-sb-ink/55 text-sm mt-1">Ready-Mix Concrete quotation requests — RFQCON format</p>
+        <h1 className="admin-page-title">Concrete RFQs</h1>
+        <p className="admin-page-desc">Ready-mix concrete quotation requests</p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
         {[
-          { label: "Total RFQs", value: stats.total, color: "text-sb-ink" },
-          { label: "Pending", value: stats.pending, color: "text-sb-orange" },
-          { label: "In Progress", value: stats.inProgress, color: "text-sb-orange" },
-          { label: "Quoted", value: stats.quoted, color: "text-sb-ink" },
-          { label: "Converted", value: stats.converted, color: "text-sb-orange" },
+          { label: "Total", value: stats.total },
+          { label: "Pending", value: stats.pending, accent: true },
+          { label: "In progress", value: stats.inProgress },
+          { label: "Quoted", value: stats.quoted },
+          { label: "Converted", value: stats.converted, accent: true },
         ].map((s) => (
-          <div key={s.label} className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl p-4 text-center">
-            <div className={`text-2xl font-black ${s.color}`}>{s.value}</div>
-            <div className="text-xs text-sb-ink/50 mt-1">{s.label}</div>
+          <div key={s.label} className="bg-white border border-gray-200 rounded-lg p-3 text-center">
+            <div className={`text-xl font-semibold ${s.accent ? "text-[#E85A00]" : "text-black"}`}>{s.value}</div>
+            <div className="text-xs text-gray-500 mt-0.5">{s.label}</div>
           </div>
         ))}
       </div>
@@ -338,10 +393,10 @@ export function RFQManagement() {
           <Loader2 className="h-6 w-6 animate-spin text-sb-orange" />
         </div>
       ) : (
-        <div className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl overflow-x-auto">
-          <table className="w-full text-sm min-w-[880px]">
+        <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+          <table className="w-full text-sm min-w-[800px]">
             <thead>
-              <tr className="border-b border-sb-ink/10">
+              <tr className="border-b border-gray-200 bg-gray-50">
                 <th className="w-10 py-3 px-2">
                   <input
                     type="checkbox"
@@ -351,90 +406,61 @@ export function RFQManagement() {
                     }}
                     onChange={toggleSelectAllFiltered}
                     aria-label="Select all on page"
-                    className="rounded border-sb-ink/25"
+                    className="rounded border-gray-300"
                   />
                 </th>
-                {["RFQ No.", "Customer", "Grade", "Qty", "Location / City", "Pump", "Assigned", "Status", "Date", "Actions"].map(
-                  (h) => (
-                    <th key={h} className="text-left py-3 px-3 text-xs font-semibold uppercase tracking-wider text-sb-ink/50">
-                      {h}
-                    </th>
-                  )
-                )}
+                {["RFQ", "Customer", "Grade", "Qty", "Location", "Assigned", "Status", "Date", ""].map((h) => (
+                  <th key={h || "actions"} className="text-left py-3 px-3 text-xs font-medium text-gray-500">
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {filtered.map((item) => (
-                <tr key={item._id} className="border-b border-sb-ink/8 hover:bg-sb-cream-secondary/90 transition-colors">
+                <tr key={item._id} className="border-b border-gray-100 hover:bg-gray-50/80 transition-colors">
                   <td className="py-3 px-2">
                     <input
                       type="checkbox"
                       checked={selectedSet.has(String(item._id))}
                       onChange={() => toggleRow(String(item._id))}
                       aria-label={`Select ${item.rfqNumber}`}
-                      className="rounded border-sb-ink/25"
+                      className="rounded border-gray-300"
                     />
                   </td>
-                  <td className="py-3.5 px-3 font-mono text-xs font-bold text-sb-orange">{item.rfqNumber}</td>
-                  <td className="py-3.5 px-3">
-                    <p className="font-medium text-sb-ink">{item.customerName}</p>
-                    <p className="text-xs text-sb-ink/50">{item.customerPhone}</p>
+                  <td className="py-3 px-3 font-mono text-xs text-[#E85A00]">{item.rfqNumber}</td>
+                  <td className="py-3 px-3">
+                    <p className="font-medium text-black">{item.customerName}</p>
+                    <p className="text-xs text-gray-500">{item.customerPhone}</p>
                   </td>
-                  <td className="py-3.5 px-3 font-bold text-sb-orange">{item.grade}</td>
-                  <td className="py-3.5 px-3 text-sb-ink/65">{item.quantity} m³</td>
-                  <td className="py-3.5 px-3">
-                    <p className="text-sb-ink/65">{item.location}</p>
-                    <p className="text-xs text-sb-ink/50">{item.city}</p>
+                  <td className="py-3 px-3 text-black">{item.grade}</td>
+                  <td className="py-3 px-3 text-gray-600">{item.quantity} m³</td>
+                  <td className="py-3 px-3 max-w-[200px]">
+                    <p className="text-gray-600 truncate" title={item.location}>{item.location}</p>
+                    <p className="text-xs text-gray-400">{item.city}{item.pumpRequired ? " · Pump" : ""}</p>
                   </td>
-                  <td className="py-3.5 px-3">
+                  <td className="py-3 px-3 text-xs text-gray-600">
+                    {item.assignedTo?.name || <span className="text-gray-400">—</span>}
+                  </td>
+                  <td className="py-3 px-3">
                     <span
-                      className={`inline-flex items-center gap-1 text-xs font-medium ${
-                        item.pumpRequired ? "text-sb-orange" : "text-sb-ink/45"
-                      }`}
-                    >
-                      {item.pumpRequired ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 shrink-0" aria-hidden /> Yes
-                        </>
-                      ) : (
-                        "No"
-                      )}
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-3">
-                    {item.assignedTo ? (
-                      <span className="text-xs text-sb-ink/65">{item.assignedTo.name}</span>
-                    ) : (
-                      <span className="text-xs text-sb-ink/45 italic">Unassigned</span>
-                    )}
-                  </td>
-                  <td className="py-3.5 px-3">
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                        STATUS_COLORS[item.status] || "bg-sb-cream-secondary text-sb-ink/55 border-sb-ink/12"
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${
+                        STATUS_COLORS[item.status] || "bg-gray-50 text-gray-600 border-gray-200"
                       }`}
                     >
                       {item.status}
                     </span>
                   </td>
-                  <td className="py-3.5 px-3 text-xs text-sb-ink/50">{new Date(item.createdAt).toLocaleDateString()}</td>
-                  <td className="py-3.5 px-3">
+                  <td className="py-3 px-3 text-xs text-gray-500">{new Date(item.createdAt).toLocaleDateString()}</td>
+                  <td className="py-3 px-3">
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
                         title="View"
                         onClick={() => setSelected(item)}
-                        className="p-1.5 border border-sb-ink/10 rounded-lg text-sb-ink/55 hover:text-sb-ink hover:border-sb-ink/20 transition-colors"
+                        className="p-1.5 border border-gray-200 rounded-lg text-gray-500 hover:text-black hover:border-gray-300 transition-colors"
                       >
                         <Eye className="w-3.5 h-3.5" aria-hidden />
-                      </button>
-                      <button
-                        type="button"
-                        title="Edit"
-                        onClick={() => setSelected(item)}
-                        className="p-1.5 border border-sb-ink/10 rounded-lg text-sb-ink/55 hover:text-sb-orange hover:border-sb-orange/30 transition-colors"
-                      >
-                        <Pencil className="w-3.5 h-3.5" aria-hidden />
                       </button>
                       <button
                         type="button"
@@ -446,7 +472,7 @@ export function RFQManagement() {
                             summary: String(item.rfqNumber ?? item._id),
                           })
                         }
-                        className="p-1.5 border border-red-600/20 rounded-lg text-red-700/80 hover:bg-red-600/10 hover:text-red-800 transition-colors"
+                        className="p-1.5 border border-red-200 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
                       >
                         <Trash2 className="w-3.5 h-3.5" aria-hidden />
                       </button>
@@ -493,115 +519,129 @@ export function RFQManagement() {
       {selected && (
         <Modal
           title={`RFQ — ${selected.rfqNumber}`}
+          subtitle={selected.status}
           onClose={() => {
             setUpdateMsg(null);
             setSelected(null);
           }}
         >
-          <div className="space-y-4">
-            {updateMsg && (
-              <p className="text-xs text-sb-ink/80 rounded-lg border border-sb-orange/30 bg-sb-orange/10 px-3 py-2 leading-relaxed">
-                {updateMsg}
-              </p>
-            )}
+          {updateMsg && (
+            <p className="mb-3 text-xs text-[#E85A00] bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
+              {updateMsg}
+            </p>
+          )}
 
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                ["Customer", selected.customerName],
-                ["Phone", selected.customerPhone],
-                ["Email", selected.customerEmail || selected.customer?.email || "—"],
-                ["Grade", selected.grade],
-                ["Quantity", `${selected.quantity} m³`],
-                ["Location", selected.location],
-                ["City", selected.city],
-                ["Pump Required", selected.pumpRequired ? "Yes" : "No"],
-                ["Status", selected.status],
-              ].map(([k, v]) => (
-                <div key={String(k)} className="p-3 bg-sb-cream border border-sb-ink/10 rounded-lg">
-                  <p className="text-[10px] text-sb-ink/50 uppercase tracking-wide mb-0.5">{k}</p>
-                  <p className="text-sm font-medium text-sb-ink break-all">{v}</p>
-                </div>
-              ))}
-            </div>
+          <ModalTabs tab={rfqModalTab} onTab={setRfqModalTab} />
 
-            <div>
-              <p className="text-xs font-semibold text-sb-ink/55 uppercase tracking-wider mb-1">Assign internally</p>
-              <p className="text-[11px] text-sb-ink/50 mb-2 leading-relaxed">
-                Pick an <strong>admin</strong> owner for this RFQ. Click <strong>Apply assignment</strong> to save.
-                Changing assignment or status sends the customer an email (when their email exists and mail is configured).
-              </p>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <select
-                  className={`${inp} cursor-pointer`}
-                  value={assignDraft}
-                  onChange={(e) => setAssignDraft(e.target.value)}
-                  disabled={saving}
-                >
-                  <option value="">Unassigned</option>
-                  {admins.map((a) => (
-                    <option key={a._id} value={a._id}>
-                      {(a.name || "Admin").trim()} {a.email ? `— ${a.email}` : ""}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  disabled={saving || assignDraft === assignedId(selected)}
-                  onClick={() => void update(selected._id, { assignedTo: assignDraft === "" ? null : assignDraft })}
-                  className="shrink-0 px-4 py-2 rounded-lg text-sm font-bold bg-sb-orange text-white hover:bg-sb-orange-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Apply assignment
-                </button>
+          {rfqModalTab === "overview" && (
+            <div className="space-y-3">
+              <div className="p-3 bg-white border border-gray-200 rounded-lg">
+                <p className="text-xs text-gray-500 mb-1">Customer</p>
+                <p className="text-sm font-medium text-black">{selected.customerName}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{selected.customerPhone}</p>
+                <p className="text-xs text-gray-500">{selected.customerEmail || selected.customer?.email || "—"}</p>
               </div>
-              {admins.length === 0 && (
-                <p className="text-[10px] text-sb-ink/45 mt-1">No admin users loaded — check Admin users or your session.</p>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-3 bg-white border border-gray-200 rounded-lg">
+                  <p className="text-xs text-gray-500">Grade</p>
+                  <p className="text-sm font-medium text-black">{selected.grade}</p>
+                </div>
+                <div className="p-3 bg-white border border-gray-200 rounded-lg">
+                  <p className="text-xs text-gray-500">Quantity</p>
+                  <p className="text-sm font-medium text-black">{selected.quantity} m³</p>
+                </div>
+                <div className="p-3 bg-white border border-gray-200 rounded-lg">
+                  <p className="text-xs text-gray-500">City</p>
+                  <p className="text-sm text-black">{selected.city}</p>
+                </div>
+                <div className="p-3 bg-white border border-gray-200 rounded-lg">
+                  <p className="text-xs text-gray-500">Pump</p>
+                  <p className="text-sm text-black">{selected.pumpRequired ? "Required" : "Not required"}</p>
+                </div>
+              </div>
+
+              <div className="p-3 bg-white border border-gray-200 rounded-lg">
+                <p className="text-xs text-gray-500 mb-1">Site location</p>
+                <p className="text-sm text-black leading-relaxed">{selected.location}</p>
+              </div>
+
+              {selected.adminNotes && (
+                <div className="p-3 bg-white border border-gray-200 rounded-lg">
+                  <p className="text-xs text-gray-500 mb-1">Admin notes</p>
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap">{selected.adminNotes}</p>
+                </div>
               )}
             </div>
+          )}
 
-            <div>
-              <p className="text-xs font-semibold text-sb-ink/55 uppercase tracking-wider mb-2">Update Status</p>
-              <div className="grid grid-cols-3 gap-2">
-                {["PENDING", "IN_PROGRESS", "QUOTED", "CONVERTED", "CANCELLED"].map((s) => (
-                  <button
-                    key={s}
-                    type="button"
+          {rfqModalTab === "manage" && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-medium text-gray-500 block mb-1.5">Status</label>
+                <select
+                  className={inp}
+                  value={selected.status}
+                  disabled={saving}
+                  onChange={(e) => void update(selected._id, { status: e.target.value })}
+                >
+                  {["PENDING", "IN_PROGRESS", "QUOTED", "CONVERTED", "CANCELLED"].map((s) => (
+                    <option key={s} value={s}>{s.replace("_", " ")}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-gray-500 block mb-1.5">Assign to admin</label>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <select
+                    className={`${inp} cursor-pointer`}
+                    value={assignDraft}
+                    onChange={(e) => setAssignDraft(e.target.value)}
                     disabled={saving}
-                    onClick={() => void update(selected._id, { status: s })}
-                    className={`py-2 rounded-lg text-xs font-bold border transition-colors disabled:opacity-50 ${
-                      selected.status === s
-                        ? "bg-sb-orange text-white border-sb-orange"
-                        : "border-sb-ink/10 text-sb-ink/65 hover:border-sb-orange/40 hover:text-sb-orange"
-                    }`}
                   >
-                    {s}
+                    <option value="">Unassigned</option>
+                    {admins.map((a) => (
+                      <option key={a._id} value={a._id}>
+                        {(a.name || "Admin").trim()}{a.email ? ` · ${a.email}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    disabled={saving || assignDraft === assignedId(selected)}
+                    onClick={() => void update(selected._id, { assignedTo: assignDraft === "" ? null : assignDraft })}
+                    className="shrink-0 px-4 py-2 rounded-lg text-sm font-medium bg-[#E85A00] text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Update
                   </button>
-                ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-gray-500 block mb-1.5">Internal notes</label>
+                <textarea
+                  className={`${inp} resize-none min-h-[72px]`}
+                  rows={3}
+                  defaultValue={selected.adminNotes || ""}
+                  id={`note-${selected._id}`}
+                  placeholder="Notes for your team…"
+                />
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() =>
+                    void update(selected._id, {
+                      adminNotes: (document.getElementById(`note-${selected._id}`) as HTMLTextAreaElement)?.value,
+                    })
+                  }
+                  className="mt-2 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 text-gray-700 hover:border-[#E85A00] hover:text-[#E85A00] disabled:opacity-50"
+                >
+                  Save notes
+                </button>
               </div>
             </div>
-
-            <div>
-              <p className="text-xs font-semibold text-sb-ink/55 uppercase tracking-wider mb-2">Admin Notes</p>
-              <textarea
-                className={`${inp} resize-none`}
-                rows={3}
-                defaultValue={selected.adminNotes || ""}
-                id={`note-${selected._id}`}
-                placeholder="Add notes for this RFQ..."
-              />
-              <button
-                type="button"
-                disabled={saving}
-                onClick={() =>
-                  void update(selected._id, {
-                    adminNotes: (document.getElementById(`note-${selected._id}`) as HTMLTextAreaElement)?.value,
-                  })
-                }
-                className="mt-2 px-4 py-2 bg-sb-orange/15 hover:bg-sb-orange/25 text-sb-orange font-medium rounded-lg text-sm transition-colors disabled:opacity-50"
-              >
-                Save Notes
-              </button>
-            </div>
-          </div>
+          )}
         </Modal>
       )}
     </div>

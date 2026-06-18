@@ -5,6 +5,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import { VendorWorkflowPanel } from '../components/VendorWorkflowPanel';
 import { api } from '../lib/api';
 import { vendorPath } from '../../lib/portalRoutes';
+import { formatPaymentMethod, formatPaymentStatus } from '../../lib/paymentLabels';
 
 const SB = { color: 'var(--sb-text-primary)', muted: 'var(--sb-text-muted)', faint: 'var(--sb-text-faint)', orange: 'var(--sb-orange)', card: 'var(--sb-card)', border: 'var(--sb-border)', bg: 'var(--sb-bg-section)' };
 
@@ -166,10 +167,26 @@ export function OrderDetails() {
         <StatusBadge status={order.status} />
       </div>
 
+      {order.masterOrder && typeof order.masterOrder === 'object' && (
+        <div className="rounded-2xl p-4" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
+          <h2 className="vendor-section-title mb-3" style={{ color: SB.muted }}>Customer payment</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <InfoRow label="Method" value={formatPaymentMethod(order.masterOrder.paymentMethod)} />
+            <InfoRow label="Status" value={formatPaymentStatus(order.masterOrder.paymentStatus)} />
+            {order.masterOrder.grandTotal != null && (
+              <InfoRow label="Order total" value={`₹${Number(order.masterOrder.grandTotal).toLocaleString('en-IN')}`} />
+            )}
+            {order.masterOrder.orderNumber && (
+              <InfoRow label="Master order" value={String(order.masterOrder.orderNumber)} />
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Status Tracker — legacy orders (workflow v1) */}
       {Number(order.workflowVersion) !== 2 && (
       <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
-        <h2 className="text-xs font-bold uppercase tracking-widest mb-5" style={{ color: SB.muted }}>Order Progress</h2>
+        <h2 className="vendor-section-title mb-5" style={{ color: SB.muted }}>Order Progress</h2>
         {currentIdx < 0 ? (
           <p className="text-sm font-medium" style={{ color: SB.muted }}>This order was cancelled.</p>
         ) : (
@@ -203,12 +220,15 @@ export function OrderDetails() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Order Info — API returns only this vendor&apos;s line items */}
-        <div className="rounded-2xl p-5 space-y-4" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
-          <div className="flex items-center gap-2">
-            <Package className="w-4 h-4" style={{ color: SB.orange }} />
-            <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: SB.muted }}>Assigned Products</h2>
+        <div className="wf-section">
+          <div className="wf-section__head">
+            <span className="wf-section__badge">1</span>
+            <div>
+              <h2 className="wf-section__title">Assigned products</h2>
+              <p className="wf-section__desc">Line items on this vendor sub-order only</p>
+            </div>
           </div>
+          <div className="wf-section__body space-y-3">
           {assignedLines.length === 0 && (
             <p className="text-sm" style={{ color: SB.muted }}>No line items on this vendor order.</p>
           )}
@@ -224,20 +244,22 @@ export function OrderDetails() {
               </div>
             </div>
           ))}
-          <div className="grid grid-cols-2 gap-4 pt-2">
-            <InfoRow label="Sub-order Total" value={`₹${order.totalAmount?.toLocaleString('en-IN') ?? '—'}`} />
-            <InfoRow label="Invoice Status" value={order.invoiceStatus ?? '—'} />
-            <InfoRow label="Expected Dispatch" value={order.expectedDispatchDate ? new Date(order.expectedDispatchDate).toLocaleDateString('en-IN') : '—'} />
-            <InfoRow label="Expected Delivery" value={order.expectedDeliveryDate ? new Date(order.expectedDeliveryDate).toLocaleDateString('en-IN') : '—'} />
+          <div className="grid grid-cols-2 gap-3 pt-2 border-t border-black/6">
+            <InfoRow label="Sub-order total" value={`₹${order.totalAmount?.toLocaleString('en-IN') ?? '—'}`} />
+            <InfoRow label="Invoice status" value={order.invoiceStatus ?? '—'} />
+          </div>
           </div>
         </div>
 
-        {/* Customer + Delivery */}
-        <div className="rounded-2xl p-5 space-y-4" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
-          <div className="flex items-center gap-2">
-            <User className="w-4 h-4" style={{ color: SB.orange }} />
-            <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: SB.muted }}>Customer & Delivery</h2>
+        <div className="wf-section">
+          <div className="wf-section__head">
+            <span className="wf-section__badge">2</span>
+            <div>
+              <h2 className="wf-section__title">Customer & delivery</h2>
+              <p className="wf-section__desc">Site address and contact for fulfillment</p>
+            </div>
           </div>
+          <div className="wf-section__body space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <InfoRow label="Customer" value={cust.name ?? '—'} />
             <InfoRow label="Contact" value={cust.phone ?? '—'} />
@@ -271,12 +293,13 @@ export function OrderDetails() {
               <p className="text-sm" style={{ color: SB.muted }}>{order.dispatchInstructions}</p>
             </div>
           )}
+          </div>
         </div>
       </div>
 
       {order.deliveryType === "structbay_delivery" && (
         <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
-          <h2 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: SB.muted }}>StructBay pickup & logistics</h2>
+          <h2 className="vendor-section-title mb-4" style={{ color: SB.muted }}>StructBay pickup & logistics</h2>
           {order.structbayLogistics?.pickupScheduledText || order.structbayLogistics?.companyName || order.structbayLogistics?.driverContactDetails ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <InfoRow label="Pickup scheduled" value={order.structbayLogistics?.pickupScheduledText} />
@@ -294,7 +317,7 @@ export function OrderDetails() {
         <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
           <div className="flex items-center gap-2 mb-4">
             <Truck className="w-4 h-4" style={{ color: SB.orange }} />
-            <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: SB.muted }}>Dispatch Details</h2>
+            <h2 className="vendor-section-title" style={{ color: SB.muted }}>Dispatch Details</h2>
             <StatusBadge status={dispatch.status} />
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -308,12 +331,10 @@ export function OrderDetails() {
         </div>
       )}
 
-      {/* Actions */}
+      {Number(order.workflowVersion) !== 2 && (
       <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
-        <h2 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: SB.muted }}>Actions</h2>
+        <h2 className="vendor-section-title mb-4" style={{ color: SB.muted }}>Actions</h2>
         <div className="flex flex-wrap gap-3">
-          {Number(order.workflowVersion) !== 2 ? (
-          <>
           {inv === 'PENDING' && (
             <Link to={vendorPath('orders', orderId!, 'invoice')}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
@@ -347,10 +368,6 @@ export function OrderDetails() {
             style={{ background: SB.bg, color: SB.color, border: `1px solid ${SB.border}` }}>
             <Truck className="w-4 h-4" /> Update Dispatch
           </Link>
-          </>
-          ) : (
-            <p className="text-sm w-full" style={{ color: SB.muted }}>Use the StructBay workflow card above for accept/reject, ready-for-dispatch, dispatch, and delivery steps.</p>
-          )}
           <Link to={vendorPath('documents')}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
             style={{ background: SB.bg, color: SB.color, border: `1px solid ${SB.border}` }}>
@@ -358,13 +375,23 @@ export function OrderDetails() {
           </Link>
         </div>
       </div>
+      )}
+
+      {Number(order.workflowVersion) === 2 && (
+        <div className="wf-subsection">
+          <p className="wf-subsection__title">Documents</p>
+          <Link to={vendorPath('documents')} className="wf-btn wf-btn--secondary no-underline inline-flex">
+            <Download className="w-4 h-4" /> Download SB invoice & e-way
+          </Link>
+        </div>
+      )}
 
       {/* Status History */}
       {order.statusHistory?.length > 0 && (
         <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
           <div className="flex items-center gap-2 mb-4">
             <Clock className="w-4 h-4" style={{ color: SB.orange }} />
-            <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: SB.muted }}>Status History</h2>
+            <h2 className="vendor-section-title" style={{ color: SB.muted }}>Status History</h2>
           </div>
           <div className="space-y-3">
             {[...order.statusHistory].reverse().map((h: any, i: number) => (

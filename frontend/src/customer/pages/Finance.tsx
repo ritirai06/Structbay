@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { ChevronRight, TrendingUp, CheckCircle2, Shield, Clock, Percent, AlertCircle } from "lucide-react";
+import { TrendingUp, CheckCircle2, Shield, Clock, Percent, AlertCircle } from "lucide-react";
 import { getApiV1Base } from "../../lib/apiBase";
 import { getCustomerAccessToken } from "../lib/authStorage";
+import { UtilityBreadcrumb, UtilityCard, UtilityHero, UtilityPage } from "../components/UtilityPageLayout";
 
 export function Finance() {
   const [submitted, setSubmitted] = useState(false);
@@ -83,92 +84,46 @@ export function Finance() {
 
   if (submitted) {
     return (
-      <div className="max-w-xl mx-auto px-4 py-20 text-center">
-        <div
-          style={{ backgroundColor: "var(--sb-green, #16a34a)" }}
-          className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"
-        >
-          <CheckCircle2 className="w-12 h-12 text-sb-cream" />
+      <UtilityPage width="narrow">
+        <div className="sf-utility-success">
+          <div className="sf-utility-success__icon">
+            <CheckCircle2 aria-hidden />
+          </div>
+          <h2>Application submitted</h2>
+          <p>Our finance team will review your application and contact you within 24 business hours.</p>
+          {ref && (
+            <div className="sf-utility-ref">
+              <p className="sf-utility-ref__label">Your reference</p>
+              <p className="sf-utility-ref__value">{ref}</p>
+            </div>
+          )}
+          <Link to="/" className="sf-utility-btn-primary">Back to home</Link>
         </div>
-        <h2 className="text-foreground mb-2">Application Submitted!</h2>
-        <p className="text-muted-foreground mb-4">
-          Our finance team will review your application and contact you within 24 business hours.
-        </p>
-        {ref && (
-          <p className="text-sm text-muted-foreground mb-6">
-            Your reference: <strong className="text-foreground font-mono">{ref}</strong>
-          </p>
-        )}
-        <Link
-          to="/"
-          style={{ backgroundColor: "var(--sb-blue)" }}
-          className="inline-flex items-center gap-2 text-sb-cream px-6 py-3 rounded-2xl font-semibold"
-        >
-          Back to Home
-        </Link>
-      </div>
+      </UtilityPage>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-        <Link to="/" className="hover:text-foreground">
-          Home
-        </Link>
-        <ChevronRight className="w-3 h-3" />
-        <span className="text-foreground font-medium">Builder Finance</span>
-      </nav>
+    <UtilityPage width="medium">
+      <UtilityBreadcrumb items={[{ label: "Home", to: "/" }, { label: "Builder finance" }]} />
 
-      {/* Hero */}
-      <div
-        style={{
-          background: "linear-gradient(135deg, var(--sb-blue-dark, #0f2850) 0%, var(--sb-blue) 100%)",
-        }}
-        className="rounded-3xl p-8 text-sb-cream mb-8"
-      >
-        <div className="flex items-center gap-3 mb-4">
-          <div
-            style={{ backgroundColor: "var(--sb-yellow)" }}
-            className="w-12 h-12 rounded-2xl flex items-center justify-center"
-          >
-            <TrendingUp className="w-7 h-7 text-black" />
-          </div>
-          <h1 className="text-sb-cream">Builder Finance</h1>
-        </div>
-        <p className="text-sb-cream/80 mb-6">
-          Get construction finance up to ₹5 Crore. Fast approval, competitive rates, and flexible repayment for
-          builders and developers across South India.
-        </p>
-        <div className="grid grid-cols-3 gap-4">
-          {[
-            ["Up to ₹5 Cr", "Loan Amount"],
-            ["From 10.5%", "Interest Rate"],
-            ["48 Hours", "Approval Time"],
-          ].map(([val, label]) => (
-            <div key={label} className="bg-white/10 rounded-2xl p-4 text-center">
-              <p style={{ color: "var(--sb-yellow)" }} className="font-bold text-xl">
-                {val}
-              </p>
-              <p className="text-sb-cream/60 text-xs mt-1">{label}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+      <UtilityHero
+        variant="brand"
+        icon={TrendingUp}
+        title="Builder finance"
+        description="Construction finance up to ₹5 Crore. Fast approval, competitive rates, and flexible repayment for builders and developers across South India."
+        features={["Up to ₹5 Cr", "From 10.5% interest", "48-hour approval"]}
+      />
 
-      {/* Features */}
-      <div className="grid sm:grid-cols-3 gap-4 mb-8">
+      <div className="grid sm:grid-cols-3 gap-4 mb-6">
         {[
           { icon: Shield, label: "Secured Financing", desc: "Backed by leading NBFCs and banks" },
           { icon: Clock, label: "Fast Approval", desc: "Decision within 48 business hours" },
           { icon: Percent, label: "Best Rates", desc: "Competitive rates from 10.5% p.a." },
         ].map(({ icon: Icon, label, desc }) => (
-          <div key={label} className="bg-white rounded-2xl border border-border p-4 text-center">
-            <div
-              style={{ backgroundColor: "var(--sb-blue)" }}
-              className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-3"
-            >
-              <Icon className="w-5 h-5 text-sb-cream" />
+          <div key={label} className="sf-utility-card text-center">
+            <div className="w-10 h-10 rounded-xl bg-[var(--primary)] flex items-center justify-center mx-auto mb-3">
+              <Icon className="w-5 h-5 text-white" aria-hidden />
             </div>
             <p className="font-semibold text-sm text-foreground">{label}</p>
             <p className="text-xs text-muted-foreground mt-1">{desc}</p>
@@ -176,9 +131,8 @@ export function Finance() {
         ))}
       </div>
 
-      {/* Form */}
-      <div className="bg-white rounded-2xl border border-border p-6">
-        <h3 className="font-semibold text-foreground mb-5">Apply for Builder Finance</h3>
+      <UtilityCard>
+        <h3 className="font-semibold text-foreground mb-5 text-sm uppercase tracking-wider">Apply for builder finance</h3>
         {error && (
           <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 mb-4">
             <AlertCircle className="w-4 h-4 shrink-0" />
@@ -222,13 +176,12 @@ export function Finance() {
           <button
             type="submit"
             disabled={loading}
-            style={{ backgroundColor: "var(--sb-orange)" }}
-            className="w-full py-3.5 rounded-2xl text-sb-cream font-semibold hover:opacity-90 transition-opacity disabled:opacity-60"
+            className="sf-utility-btn-primary w-full justify-center py-3 disabled:opacity-60"
           >
-            {loading ? "Submitting…" : "Submit Finance Application"}
+            {loading ? "Submitting…" : "Submit finance application"}
           </button>
         </form>
-      </div>
-    </div>
+      </UtilityCard>
+    </UtilityPage>
   );
 }

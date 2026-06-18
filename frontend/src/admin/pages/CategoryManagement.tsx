@@ -5,9 +5,13 @@ import { Input } from "@shared/components/ui/input";
 import { Textarea } from "@shared/components/ui/textarea";
 import {
   Plus, Edit, Trash2, ToggleLeft, ToggleRight,
-  FolderTree, Loader2, Save, RefreshCw, Search, Upload,
+  FolderTree, Loader2, Save, RefreshCw, Search, Upload, SlidersHorizontal,
 } from "lucide-react";
 import { BulkImportCsvModal } from "../components/BulkImportCsvModal";
+import { AdminBulkToolbar } from "../components/AdminBulkToolbar";
+import { AdminDeleteConfirmModal } from "../components/AdminDeleteConfirmModal";
+import { useAdminDeleteFlow } from "../hooks/useAdminDeleteFlow";
+import { adminToast } from "../lib/adminToast";
 import { CATEGORY_BULK_TEMPLATE, parseCategoryBulkCsv } from "../lib/adminBulkCsvParsers";
 import { adminFetch as apiFetch, adminUploadImage } from "../../lib/adminApi";
 
@@ -38,6 +42,58 @@ const emptyForm = {
   image: null as null | { url: string; publicId: string },
 };
 
+type FilterRowForm = {
+  label: string;
+  key: string;
+  type: "SELECT" | "MULTI_SELECT" | "RANGE" | "TEXT";
+  optionsText: string;
+  sortOrder: number;
+  isActive: boolean;
+};
+
+const emptyFilterRow = (): FilterRowForm => ({
+  label: "",
+  key: "",
+  type: "MULTI_SELECT",
+  optionsText: "",
+  sortOrder: 0,
+  isActive: true,
+});
+
+function filtersToForm(filters: any[] | undefined): FilterRowForm[] {
+  if (!Array.isArray(filters) || filters.length === 0) return [emptyFilterRow()];
+  return filters.map((f) => ({
+    label: f.label || "",
+    key: f.key || "",
+    type: f.type || "MULTI_SELECT",
+    optionsText: Array.isArray(f.options)
+      ? f.options.map((o: any) => (o.label && o.value ? `${o.label}:${o.value}` : o.value || o.label || "")).join(", ")
+      : "",
+    sortOrder: Number(f.sortOrder) || 0,
+    isActive: f.isActive !== false,
+  }));
+}
+
+function filtersFromForm(rows: FilterRowForm[]) {
+  return rows
+    .filter((r) => r.label.trim() && r.key.trim())
+    .map((r) => ({
+      label: r.label.trim(),
+      key: r.key.trim().toLowerCase(),
+      type: r.type,
+      options: r.optionsText
+        .split(",")
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .map((part) => {
+          const [label, value] = part.includes(":") ? part.split(":").map((s) => s.trim()) : [part, part];
+          return { label: label || value, value: value || label };
+        }),
+      sortOrder: Number(r.sortOrder) || 0,
+      isActive: r.isActive,
+    }));
+}
+
 export function CategoryManagement() {
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,18 +103,61 @@ export function CategoryManagement() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [pagination, setPagination] = useState({ total: 0, pages: 1, page: 1 });
+  const [pagination, setPagination] = useState({ total: 0, active: 0, pages: 1, page: 1 });
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [filterModal, setFilterModal] = useState<{ open: boolean; category: any | null }>({ open: false, category: null });
+  const [filterRows, setFilterRows] = useState<FilterRowForm[]>([emptyFilterRow()]);
+  const [filterLoading, setFilterLoading] = useState(false);
+  const [filterSaving, setFilterSaving] = useState(false);
+  const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const deleteFlow = useAdminDeleteFlow();
 
-  const load = useCallback((page = 1) => {
+  const deleteOneCategory = async (id: string) => {
+    await apiFetch(`/categories/${id}`, { method: "DELETE" });
+  };
+
+  const load = useCallback(async (page = 1) => {
     setLoading(true);
-    const params = new URLSearchParams({ page: String(page), limit: "24", sortBy: "sortOrder", sortOrder: "asc" });
-    if (search) params.set("search", search);
-    if (statusFilter) params.set("status", statusFilter);
-    apiFetch(`/categories?${params}`)
-      .then(d => { setCategories(d.data || []); setPagination(d.pagination || {}); })
-      .catch(() => { setCategories([]); setPagination({ total: 0, pages: 1, page: 1 }); })
-      .finally(() => setLoading(false));
+    try {
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: "100",
+        sortBy: "sortOrder",
+        sortOrder: "asc",
+      });
+      if (search) params.set("search", search);
+      if (statusFilter) params.set("status", statusFilter);
+
+      const d = await apiFetch(`/categories?${params}`);
+      let rows = d.data || [];
+      const pag = d.pagination || { total: rows.length, pages: 1, page: 1 };
+
+      // Fetch remaining pages so admin always sees the full catalogue
+      if (pag.pages > 1) {
+        const rest = await Promise.all(
+          Array.from({ length: pag.pages - 1 }, (_, i) => {
+            const p = new URLSearchParams(params);
+            p.set("page", String(i + 2));
+            return apiFetch(`/categories?${p}`).then((r) => r.data || []);
+          })
+        );
+        rows = rows.concat(...rest);
+      }
+
+      setCategories(rows);
+      setPagination({
+        total: Number(pag.total) || rows.length,
+        active: typeof pag.active === "number" ? pag.active : rows.filter((c: { status?: string }) => c.status === "ACTIVE").length,
+        pages: 1,
+        page: 1,
+      });
+      setSelected({});
+    } catch {
+      setCategories([]);
+      setPagination({ total: 0, active: 0, pages: 1, page: 1 });
+    } finally {
+      setLoading(false);
+    }
   }, [search, statusFilter]);
 
   useEffect(() => { load(); }, [load]);
@@ -84,7 +183,7 @@ export function CategoryManagement() {
       if (modal.data) await apiFetch(`/categories/${modal.data._id}`, { method: "PATCH", body: JSON.stringify(body) });
       else await apiFetch("/categories", { method: "POST", body: JSON.stringify(body) });
       setModal({ open: false, data: null }); load();
-    } catch (e: any) { alert(e.message); }
+    } catch (e: any) { adminToast.error(e.message || "Could not save category"); }
     setSaving(false);
   };
 
@@ -97,28 +196,77 @@ export function CategoryManagement() {
       const { url, publicId } = await adminUploadImage("/upload/category-image", file);
       setForm(f => ({ ...f, image: { url, publicId } }));
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Upload failed");
+      adminToast.error(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploadingImage(false);
     }
   };
 
   const toggle = async (id: string) => {
-    await apiFetch(`/categories/${id}/toggle`, { method: "PATCH" }).catch(e => alert(e.message));
-    load();
+    try {
+      await apiFetch(`/categories/${id}/toggle`, { method: "PATCH" });
+      adminToast.success("Category status updated");
+      load();
+    } catch (e: any) {
+      adminToast.error(e.message || "Could not update status");
+    }
   };
 
-  const remove = async (id: string) => {
-    if (!confirm("Delete this category? This action cannot be undone.")) return;
-    await apiFetch(`/categories/${id}`, { method: "DELETE" }).catch(e => alert(e.message));
-    load();
+  const selectedIds = categories.filter((c) => selected[String(c._id)]).map((c) => String(c._id));
+  const allSelected = categories.length > 0 && selectedIds.length === categories.length;
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelected({});
+      return;
+    }
+    const next: Record<string, boolean> = {};
+    categories.forEach((c) => {
+      next[String(c._id)] = true;
+    });
+    setSelected(next);
+  };
+
+  const remove = (id: string, name: string) => {
+    deleteFlow.requestDelete({ kind: "single", ids: [id], label: name });
+  };
+
+  const openFilters = async (category: any) => {
+    setFilterModal({ open: true, category });
+    setFilterLoading(true);
+    setFilterRows([emptyFilterRow()]);
+    try {
+      const d = await apiFetch(`/category-filters/${category._id}`);
+      const filters = d.data?.filters;
+      setFilterRows(filtersToForm(filters));
+    } catch {
+      setFilterRows([emptyFilterRow()]);
+    } finally {
+      setFilterLoading(false);
+    }
+  };
+
+  const saveFilters = async () => {
+    if (!filterModal.category?._id) return;
+    setFilterSaving(true);
+    try {
+      await apiFetch(`/category-filters/${filterModal.category._id}`, {
+        method: "PUT",
+        body: JSON.stringify({ filters: filtersFromForm(filterRows) }),
+      });
+      setFilterModal({ open: false, category: null });
+    } catch (e: any) {
+      alert(e.message || "Could not save filters");
+    } finally {
+      setFilterSaving(false);
+    }
   };
 
   return (
-    <div className="p-6 bg-sb-cream min-h-full">
+    <div className="p-6 min-h-full">
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-sb-ink">Category Management</h1>
+          <h1 className="admin-page-title text-sb-ink">Category Management</h1>
           <p className="text-sb-ink/55 text-sm mt-1">
             Changes reflect in Customer Panel, Vendor Panel, RFQ Forms, Search Filters & Homepage.
           </p>
@@ -154,8 +302,31 @@ export function CategoryManagement() {
       {/* Stats bar */}
       <div className="flex items-center gap-4 mb-5 text-sm text-sb-ink/55">
         <span>{pagination.total || 0} total categories</span>
-        <span>{categories.filter(c => c.status === "ACTIVE").length} active</span>
+        <span>{pagination.active} active</span>
       </div>
+
+      <AdminBulkToolbar
+        totalCount={categories.length}
+        selectedCount={selectedIds.length}
+        allSelected={allSelected}
+        onToggleAll={toggleAll}
+        onDeleteSelected={() =>
+          deleteFlow.requestDelete({
+            kind: "bulk",
+            ids: selectedIds,
+            label: `${selectedIds.length} categories`,
+          })
+        }
+        onDeleteAll={() =>
+          deleteFlow.requestDelete({
+            kind: "bulk",
+            ids: categories.map((c) => String(c._id)),
+            label: `all ${categories.length} visible categories`,
+          })
+        }
+        itemLabel="categories"
+        disabled={deleteFlow.busy || loading}
+      />
 
       {loading ? <Spinner /> : categories.length === 0 ? (
         <div className="text-center py-16">
@@ -163,48 +334,57 @@ export function CategoryManagement() {
           <p className="text-sb-ink/45">No categories found. Create your first category.</p>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
           {categories.map(c => (
-            <div key={c._id} className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl p-4 hover:border-sb-ink/20 transition-colors">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div key={c._id} className="bg-sb-cream-secondary border border-sb-ink/10 rounded-lg p-3 hover:border-sb-orange/35 transition-colors flex flex-col min-h-0">
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <label className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="h-3.5 w-3.5 shrink-0 rounded border-sb-ink/25 accent-sb-orange"
+                    checked={!!selected[String(c._id)]}
+                    onChange={() =>
+                      setSelected((s) => ({ ...s, [String(c._id)]: !s[String(c._id)] }))
+                    }
+                  />
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
                   {c.image?.url ? (
-                    <img src={c.image.url} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0 border border-sb-ink/10" />
+                    <img src={c.image.url} alt="" className="w-8 h-8 rounded-md object-cover shrink-0 border border-sb-ink/10" />
                   ) : (
-                    <div className="w-9 h-9 rounded-lg bg-sb-orange/15 flex items-center justify-center shrink-0">
-                      <FolderTree className="h-4 w-4 text-sb-orange" />
+                    <div className="w-8 h-8 rounded-md bg-sb-orange/15 flex items-center justify-center shrink-0">
+                      <FolderTree className="h-3.5 w-3.5 text-sb-orange" />
                     </div>
                   )}
                   <div className="min-w-0">
-                    <p className="font-semibold text-sb-ink text-sm truncate">{c.name}</p>
-                    <p className="text-xs text-sb-ink/50 truncate">/{c.slug}</p>
+                    <p className="font-semibold text-sb-ink text-xs leading-tight line-clamp-2">{c.name}</p>
+                    <p className="text-[10px] text-sb-ink/50 truncate">/{c.slug}</p>
                   </div>
                 </div>
-                <Badge className={c.status === "ACTIVE" ? "bg-sb-orange/12 text-sb-orange border-sb-orange/22 shrink-0 ml-2" : "bg-sb-cream-secondary text-sb-ink/55 shrink-0 ml-2"}>
+                </label>
+                <Badge className={`text-[10px] px-1.5 py-0 shrink-0 ${c.status === "ACTIVE" ? "bg-sb-orange/12 text-sb-orange border-sb-orange/22" : "bg-sb-cream-secondary text-sb-ink/55"}`}>
                   {c.status}
                 </Badge>
               </div>
 
-              {c.image?.url && (
-                <img src={c.image.url} alt={c.name} className="w-full h-20 object-cover rounded-lg mb-3 bg-[#111]" />
-              )}
-
               {c.description && (
-                <p className="text-xs text-sb-ink/55 mb-3 line-clamp-2">{c.description}</p>
+                <p className="text-[10px] text-sb-ink/55 mb-2 line-clamp-2 leading-snug flex-1">{c.description}</p>
               )}
 
-              <div className="text-xs text-sb-ink/45 mb-3">Sort Order: {c.sortOrder}</div>
+              <div className="text-[10px] text-sb-ink/45 mb-2">Sort: {c.sortOrder}</div>
 
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => openEdit(c)} className="flex-1">
-                  <Edit className="h-3.5 w-3.5 mr-1.5" /> Edit
+              <div className="flex gap-1.5 mt-auto flex-wrap">
+                <Button variant="outline" size="sm" onClick={() => openEdit(c)} className="flex-1 h-8 text-xs px-2 min-w-[4.5rem]">
+                  <Edit className="h-3 w-3 mr-1" /> Edit
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => toggle(c._id)} title={c.status === "ACTIVE" ? "Disable" : "Enable"}>
+                <Button variant="outline" size="sm" onClick={() => void openFilters(c)} title="Category filters" className="h-8 w-8 p-0">
+                  <SlidersHorizontal className="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => toggle(c._id)} title={c.status === "ACTIVE" ? "Disable" : "Enable"} className="h-8 w-8 p-0">
                   {c.status === "ACTIVE"
                     ? <ToggleRight className="h-3.5 w-3.5 text-sb-orange" />
                     : <ToggleLeft className="h-3.5 w-3.5 text-sb-ink/45" />}
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => remove(c._id)} className="text-sb-ink/55 border-sb-ink/18 hover:bg-sb-cream-secondary">
+                <Button variant="outline" size="sm" onClick={() => remove(c._id, c.name)} className="h-8 w-8 p-0 text-sb-ink/55 border-sb-ink/18 hover:bg-sb-cream-secondary">
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -213,17 +393,26 @@ export function CategoryManagement() {
         </div>
       )}
 
-      {/* Pagination */}
-      {pagination.pages > 1 && (
-        <div className="flex justify-center gap-2 mt-6">
-          {Array.from({ length: pagination.pages }, (_, i) => i + 1).map(p => (
-            <button key={p} onClick={() => load(p)}
-              className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${p === pagination.page ? "bg-sb-orange text-black" : "bg-sb-cream-secondary border border-sb-ink/10 text-sb-ink/60 hover:border-sb-orange/50"}`}>
-              {p}
-            </button>
-          ))}
-        </div>
+      {/* Pagination — all pages merged; show count only */}
+      {categories.length > 0 && (
+        <p className="text-center text-xs text-sb-ink/45 mt-5">
+          Showing all {categories.length} categor{categories.length === 1 ? "y" : "ies"}
+        </p>
       )}
+
+      <AdminDeleteConfirmModal
+        open={!!deleteFlow.pending}
+        title={deleteFlow.modalTitle}
+        description={deleteFlow.modalDescription}
+        busy={deleteFlow.busy}
+        onCancel={deleteFlow.cancelDelete}
+        onConfirm={() =>
+          void deleteFlow.executeDelete(deleteOneCategory, () => {
+            setSelected({});
+            load();
+          })
+        }
+      />
 
       {/* Modal */}
       <BulkImportCsvModal
@@ -295,6 +484,109 @@ export function CategoryManagement() {
               <Button variant="outline" onClick={() => setModal({ open: false, data: null })}>Cancel</Button>
             </div>
           </div>
+        </Modal>
+      )}
+
+      {filterModal.open && filterModal.category && (
+        <Modal
+          title={`Filters — ${filterModal.category.name}`}
+          onClose={() => setFilterModal({ open: false, category: null })}
+        >
+          {filterLoading ? (
+            <Spinner />
+          ) : (
+            <div className="space-y-4">
+              <p className="text-xs text-sb-ink/50 leading-relaxed">
+                Filters appear on the customer category listing. Options: comma-separated <code>Label:value</code> pairs.
+              </p>
+              {filterRows.map((row, idx) => (
+                <div key={idx} className="border border-sb-ink/10 rounded-lg p-3 space-y-2">
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    <Input
+                      value={row.label}
+                      onChange={(e) => setFilterRows((rows) => {
+                        const next = [...rows];
+                        next[idx] = { ...next[idx], label: e.target.value };
+                        return next;
+                      })}
+                      placeholder="Label (e.g. Brand)"
+                    />
+                    <Input
+                      value={row.key}
+                      onChange={(e) => setFilterRows((rows) => {
+                        const next = [...rows];
+                        next[idx] = { ...next[idx], key: e.target.value };
+                        return next;
+                      })}
+                      placeholder="Key (e.g. brand)"
+                    />
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    <select
+                      value={row.type}
+                      onChange={(e) => setFilterRows((rows) => {
+                        const next = [...rows];
+                        next[idx] = { ...next[idx], type: e.target.value as FilterRowForm["type"] };
+                        return next;
+                      })}
+                      className="bg-sb-cream border border-sb-ink/15 rounded-md px-3 py-2 text-sm"
+                    >
+                      <option value="MULTI_SELECT">Multi select</option>
+                      <option value="SELECT">Select</option>
+                      <option value="RANGE">Range</option>
+                      <option value="TEXT">Text</option>
+                    </select>
+                    <Input
+                      type="number"
+                      value={row.sortOrder}
+                      onChange={(e) => setFilterRows((rows) => {
+                        const next = [...rows];
+                        next[idx] = { ...next[idx], sortOrder: +e.target.value };
+                        return next;
+                      })}
+                      placeholder="Sort order"
+                    />
+                  </div>
+                  <Input
+                    value={row.optionsText}
+                    onChange={(e) => setFilterRows((rows) => {
+                      const next = [...rows];
+                      next[idx] = { ...next[idx], optionsText: e.target.value };
+                      return next;
+                    })}
+                    placeholder="Options: UltraTech:ultratech, ACC:acc"
+                  />
+                  <label className="flex items-center gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={row.isActive}
+                      onChange={(e) => setFilterRows((rows) => {
+                        const next = [...rows];
+                        next[idx] = { ...next[idx], isActive: e.target.checked };
+                        return next;
+                      })}
+                    />
+                    Active
+                  </label>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setFilterRows((rows) => [...rows, { ...emptyFilterRow(), sortOrder: rows.length }])}
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" /> Add filter
+              </Button>
+              <div className="flex gap-2 pt-2">
+                <Button onClick={() => void saveFilters()} disabled={filterSaving} className="bg-sb-orange hover:bg-sb-orange-hover text-black flex-1">
+                  {filterSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                  Save filters
+                </Button>
+                <Button variant="outline" onClick={() => setFilterModal({ open: false, category: null })}>Cancel</Button>
+              </div>
+            </div>
+          )}
         </Modal>
       )}
     </div>

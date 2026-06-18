@@ -5,11 +5,17 @@ import { useApp } from "../context/AppContext";
 import { api } from "../lib/api";
 import { loadStorefrontCities } from "../lib/storefrontCities";
 import { pushClientCartToServer } from "../lib/pushClientCartToServer";
+import { getCustomerAccessToken } from "../lib/authStorage";
 import { DeliveryChargesNotice } from "@shared/components/DeliveryChargesNotice";
 import { deliveryCityMatchesSelected, normalizeCityName } from "../../lib/cityNameMatch";
+import { CartOrderSummary } from "../components/CartOrderSummary";
+import {
+  buildCartSummaryFromLines,
+  formatCartLineDisplay,
+} from "../lib/cartTotals";
 
 export function Checkout() {
-  const { cart, cartTotal, city, cityId, isLoggedIn, clearClientCart, updateQty } = useApp();
+  const { cart, city, cityId, isLoggedIn, clearClientCart, updateQty } = useApp();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -25,23 +31,40 @@ export function Checkout() {
   }, [city]);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("sb_customer_profile");
-      if (!raw) return;
-      const p = JSON.parse(raw) as Record<string, string>;
-      setForm(f => ({
-        ...f,
-        companyName: f.companyName || p.company || "",
-        gstNumber: f.gstNumber || p.gst || "",
-        contactName: f.contactName || p.name || "",
-        phone: f.phone || p.mobile || "",
-        email: f.email || p.email || "",
-        address: f.address || p.billingAddress || "",
-      }));
-    } catch {
-      /* ignore */
-    }
-  }, []);
+    if (!isLoggedIn) return;
+    void api.getProfile()
+      .then((res: any) => {
+        const p = res?.data;
+        if (!p) return;
+        setForm((f) => ({
+          ...f,
+          companyName: f.companyName || p.companyName || "",
+          gstNumber: f.gstNumber || p.gstNumber || "",
+          contactName: f.contactName || p.name || "",
+          phone: f.phone || p.phone || "",
+          email: f.email || p.email || "",
+          address: f.address || p.billingAddress || "",
+        }));
+      })
+      .catch(() => {
+        try {
+          const raw = localStorage.getItem("sb_customer_profile");
+          if (!raw) return;
+          const p = JSON.parse(raw) as Record<string, string>;
+          setForm((f) => ({
+            ...f,
+            companyName: f.companyName || p.company || "",
+            gstNumber: f.gstNumber || p.gst || "",
+            contactName: f.contactName || p.name || "",
+            phone: f.phone || p.mobile || "",
+            email: f.email || p.email || "",
+            address: f.address || p.billingAddress || "",
+          }));
+        } catch {
+          /* ignore */
+        }
+      });
+  }, [isLoggedIn]);
 
   useEffect(() => {
     try {
@@ -49,11 +72,12 @@ export function Checkout() {
       if (!raw) return;
       const p = JSON.parse(raw) as Record<string, string>;
       sessionStorage.removeItem("sb_checkout_prefill");
+      if (p.addressId) setSavedAddressId(p.addressId);
       setForm(f => ({
         ...f,
         contactName: f.contactName || p.name || "",
         phone: f.phone || p.phone || "",
-        address: f.address || [p.line1, p.city, p.state, p.pincode].filter(Boolean).join(", ") || f.address,
+        address: f.address || p.line1 || [p.line1, p.city, p.state, p.pincode].filter(Boolean).join(", ") || f.address,
         deliveryCity: f.deliveryCity || p.city || f.deliveryCity,
         pincode: f.pincode || p.pincode || f.pincode,
       }));
@@ -63,6 +87,7 @@ export function Checkout() {
   }, []);
 
   const [step, setStep] = useState(1);
+  const [savedAddressId, setSavedAddressId] = useState<string | undefined>();
   const [form, setForm] = useState({
     companyName: "",
     gstNumber: "",
@@ -81,6 +106,12 @@ export function Checkout() {
   const [pincodeChecking, setPincodeChecking] = useState(false);
   const [placingOrder, setPlacingOrder] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
+
+  const summary = useMemo(
+    () => buildCartSummaryFromLines(cart, "exclusive"),
+    [cart]
+  );
+  const total = summary.total;
 
   useEffect(() => {
     let cancelled = false;
@@ -101,10 +132,6 @@ export function Checkout() {
       cancelled = true;
     };
   }, []);
-
-  const gst = Math.round(cartTotal * 0.18);
-  const delivery = cartTotal >= 10000 ? 0 : 350;
-  const total = cartTotal + gst + delivery;
 
   /** Mongo city id: header selection, else match delivery dropdown to `/cities` list (PIN + checkout APIs need this). */
   const resolvedWarehouseCityId = useMemo(() => {
@@ -152,6 +179,11 @@ export function Checkout() {
 
   const handlePlaceOrder = async () => {
     setOrderError(null);
+    if (!getCustomerAccessToken()) {
+      setOrderError("Your session has expired. Please sign in again.");
+      navigate("/login", { state: { from: { pathname: "/checkout" } } });
+      return;
+    }
     if (form.deliveryCity && city && !deliveryCityMatchesSelected(city, form.deliveryCity)) {
       setCityError(true);
       return;
@@ -200,7 +232,10 @@ export function Checkout() {
       await api.clearCart();
       await api.setCartCity({ cityId: resolvedWarehouseCityId });
       await pushClientCartToServer(cart, resolvedWarehouseCityId);
-      await api.validateCheckout({ cityId: resolvedWarehouseCityId, addressCity: form.deliveryCity });
+      await api.validateCheckout({
+        cityId: resolvedWarehouseCityId,
+        addressCity: form.deliveryCity,
+      });
       const line2 = [form.companyName.trim(), form.gstNumber.trim() ? `GSTIN: ${form.gstNumber.trim()}` : ""]
         .filter(Boolean)
         .join(" · ");
@@ -216,6 +251,7 @@ export function Checkout() {
           pincode: digits,
         },
         paymentMethod: form.paymentMethod,
+        ...(savedAddressId ? { addressId: savedAddressId } : {}),
       });
       const order = res?.data as { _id?: string; id?: string; orderNumber?: string } | undefined;
       const placedId = order?._id ?? order?.id;
@@ -229,6 +265,9 @@ export function Checkout() {
       );
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Could not place order.";
+      if (/sign in again|session has expired/i.test(msg)) {
+        navigate("/login", { state: { from: { pathname: "/checkout" } } });
+      }
       setOrderError(msg);
       try {
         await api.clearCart();
@@ -275,8 +314,8 @@ export function Checkout() {
         {[{ n: 1, label: "Billing" }, { n: 2, label: "Delivery" }, { n: 3, label: "Payment" }].map(({ n, label }) => (
           <div key={n} className="flex items-center gap-2">
             <div
-              style={{ backgroundColor: step >= n ? "var(--sb-blue)" : undefined }}
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step >= n ? "text-sb-cream" : "bg-muted text-muted-foreground"}`}
+              style={{ backgroundColor: step >= n ? "var(--sb-orange)" : undefined }}
+              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step >= n ? "text-white" : "bg-muted text-muted-foreground"}`}
             >
               {n}
             </div>
@@ -293,7 +332,7 @@ export function Checkout() {
           {step >= 1 && (
             <div className="bg-white rounded-2xl border border-border p-5">
               <h3 className="font-semibold flex items-center gap-2 mb-4">
-                <Building2 className="w-5 h-5" style={{ color: "var(--sb-blue)" }} /> Billing Information
+                <Building2 className="w-5 h-5" style={{ color: "var(--sb-orange)" }} /> Billing Information
               </h3>
               <div className="grid sm:grid-cols-2 gap-4">
                 {[
@@ -391,7 +430,7 @@ export function Checkout() {
           {step >= 1 && (
             <div className="bg-white rounded-2xl border border-border p-5">
               <h3 className="font-semibold flex items-center gap-2 mb-4">
-                <CreditCard className="w-5 h-5" style={{ color: "var(--sb-blue)" }} /> Payment Method
+                <CreditCard className="w-5 h-5" style={{ color: "var(--sb-orange)" }} /> Payment Method
               </h3>
               <div className="space-y-3">
                 {[
@@ -417,7 +456,7 @@ export function Checkout() {
               </div>
 
               <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground bg-muted rounded-xl p-3">
-                <Shield className="w-4 h-4 shrink-0" style={{ color: "var(--sb-blue)" }} />
+                <Shield className="w-4 h-4 shrink-0" style={{ color: "var(--sb-orange)" }} />
                 Your payment is secured by 256-bit SSL encryption. We never store card details.
               </div>
               <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
@@ -429,76 +468,84 @@ export function Checkout() {
 
         {/* Order Summary */}
         <div>
-          <div className="bg-white rounded-2xl border border-border p-5 sticky top-24">
-            <h3 className="font-semibold text-foreground mb-4">Order Summary</h3>
-            <div className="space-y-3 mb-4">
-              {cart.map(item => (
-                <div key={item.id} className="flex gap-3">
-                  <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded-xl bg-muted shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium line-clamp-2 text-foreground">{item.name}</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">{item.unit}</p>
-                    <div className="mt-1.5 flex items-center gap-2">
-                      <div className="inline-flex items-stretch rounded-lg border border-border overflow-hidden bg-muted/40">
-                        <button
-                          type="button"
-                          aria-label="Decrease quantity"
-                          onClick={() => updateQty(item.id, item.qty - 1)}
-                          className="w-7 flex items-center justify-center text-foreground hover:bg-muted transition-colors"
-                        >
-                          <Minus className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="min-w-[1.5rem] px-1 flex items-center justify-center text-xs font-bold tabular-nums border-x border-border">
-                          {item.qty}
-                        </span>
-                        <button
-                          type="button"
-                          aria-label="Increase quantity"
-                          onClick={() => updateQty(item.id, item.qty + 1)}
-                          className="w-7 flex items-center justify-center text-foreground hover:bg-muted transition-colors"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                        </button>
+          <CartOrderSummary
+            itemCount={cart.length}
+            summary={summary}
+            showCoupon={false}
+            header={
+              <>
+                <div className="space-y-3">
+                  {cart.map((item) => {
+                    const display = formatCartLineDisplay(item, "exclusive");
+                    return (
+                    <div key={item.id} className="flex gap-3">
+                      <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded-xl bg-muted shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium line-clamp-2 text-foreground">{item.name}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{item.unit}</p>
+                        <div className="mt-1.5 flex items-center gap-2">
+                          <div className="inline-flex items-stretch rounded-lg border border-border overflow-hidden bg-muted/40">
+                            <button
+                              type="button"
+                              aria-label="Decrease quantity"
+                              onClick={() => updateQty(item.id, item.qty - 1)}
+                              className="w-7 flex items-center justify-center text-foreground hover:bg-muted transition-colors"
+                            >
+                              <Minus className="w-3.5 h-3.5" />
+                            </button>
+                            <span className="min-w-[1.5rem] px-1 flex items-center justify-center text-xs font-bold tabular-nums border-x border-border">
+                              {item.qty}
+                            </span>
+                            <button
+                              type="button"
+                              aria-label="Increase quantity"
+                              onClick={() => updateQty(item.id, item.qty + 1)}
+                              className="w-7 flex items-center justify-center text-foreground hover:bg-muted transition-colors"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                        <p className="text-xs font-bold mt-1 tabular-nums" style={{ color: "var(--sb-orange)" }}>
+                          ₹{display.lineTotal.toLocaleString("en-IN")}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                          @ ₹{display.unitPrice.toLocaleString("en-IN")} / {item.unit} · {display.priceSuffix}
+                        </p>
                       </div>
                     </div>
-                    <p className="text-xs font-bold mt-1" style={{ color: "var(--sb-blue)" }}>₹{(item.price * item.qty).toLocaleString()}</p>
-                  </div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
-            <hr className="border-border mb-3" />
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>₹{cartTotal.toLocaleString()}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">GST (18%)</span><span>₹{gst.toLocaleString()}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Delivery</span><span className={delivery === 0 ? "text-green-600" : ""}>{delivery === 0 ? "FREE" : `₹${delivery}`}</span></div>
-              <hr className="border-border" />
-              <div className="flex justify-between font-bold text-base">
-                <span>Total</span>
-                <span style={{ color: "var(--sb-blue)" }}>₹{total.toLocaleString()}</span>
-              </div>
-            </div>
-            {orderError && (
-              <div className="mt-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden />
-                <span>{orderError}</span>
-              </div>
-            )}
-            <button
-              type="button"
-              disabled={placingOrder}
-              onClick={() => void handlePlaceOrder()}
-              style={{ backgroundColor: "var(--sb-orange)" }}
-              className="w-full mt-5 py-3.5 rounded-2xl text-sb-cream font-semibold hover:opacity-90 transition-opacity disabled:opacity-60 disabled:pointer-events-none"
-            >
-              {placingOrder ? "Placing order…" : `Place Order ₹${total.toLocaleString()}`}
-            </button>
-            <div className="mt-3">
-              <DeliveryChargesNotice />
-            </div>
-            <p className="text-center text-xs text-muted-foreground mt-3">
-              By placing the order, you agree to our Terms of Service
-            </p>
-          </div>
+                <hr className="border-border my-3" />
+              </>
+            }
+            footer={
+              <>
+                {orderError && (
+                  <div className="mt-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden />
+                    <span>{orderError}</span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  disabled={placingOrder}
+                  onClick={() => void handlePlaceOrder()}
+                  style={{ backgroundColor: "var(--sb-orange)" }}
+                  className="w-full mt-5 py-3.5 rounded-2xl text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-60 disabled:pointer-events-none"
+                >
+                  {placingOrder ? "Placing order…" : `Place Order ₹${total.toLocaleString("en-IN")}`}
+                </button>
+                <p className="text-center text-xs text-muted-foreground mt-3">
+                  By placing the order, you agree to our{" "}
+                  <a href="/terms" className="text-[#E85A00] hover:underline font-medium">
+                    Terms &amp; Conditions
+                  </a>
+                </p>
+              </>
+            }
+          />
         </div>
       </div>
     </div>

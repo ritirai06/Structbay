@@ -95,21 +95,21 @@ export function HeroDeliverTo({ cityId, className = "" }: Props) {
         onClick={openModal}
         className={`inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-left text-sm text-white backdrop-blur-sm transition hover:bg-white/15 hover:border-white/35 ${className}`}
       >
-        <MapPin className="w-4 h-4 shrink-0 text-[#FE5E00]" aria-hidden />
+        <MapPin className="w-4 h-4 shrink-0 text-[#E85A00]" aria-hidden />
         <span className="text-white/75 text-xs font-medium uppercase tracking-wide">Deliver to</span>
         <span className="font-mono font-semibold text-white tabular-nums">{displayPin || "—"}</span>
-        <span className="text-[#FE5E00] text-xs font-bold ml-1">Change</span>
+        <span className="text-[#E85A00] text-xs font-bold ml-1">Change</span>
       </button>
 
       {open && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="hero-pin-title">
           <button type="button" className="absolute inset-0 bg-sb-ink/60 backdrop-blur-sm" aria-label="Close" onClick={close} />
-          <div className="relative w-full max-w-md rounded-2xl border border-sb-ink/12 bg-sb-cream-secondary shadow-2xl overflow-hidden">
+          <div className="relative w-full max-w-md rounded-2xl border border-gray-200 bg-white shadow-2xl overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-sb-ink/10">
               <h2 id="hero-pin-title" className="text-base font-bold text-sb-ink">
                 Check delivery availability
               </h2>
-              <button type="button" onClick={close} className="p-2 rounded-lg text-sb-ink/50 hover:bg-sb-cream hover:text-sb-ink" aria-label="Close">
+              <button type="button" onClick={close} className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-black" aria-label="Close">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -121,14 +121,14 @@ export function HeroDeliverTo({ cityId, className = "" }: Props) {
                   onChange={(e) => setInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   placeholder="560001"
                   maxLength={6}
-                  className="flex-1 rounded-xl border border-sb-ink/15 bg-sb-cream px-4 py-3 font-mono text-lg text-sb-ink placeholder:text-sb-ink/35 focus:outline-none focus:ring-2 focus:ring-[#FE5E00]/35"
+                  className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 font-mono text-lg text-black placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#E85A00]/35"
                   inputMode="numeric"
                 />
                 <button
                   type="button"
                   disabled={checking}
                   onClick={() => void check()}
-                  className="shrink-0 rounded-xl bg-[#FE5E00] hover:bg-[#E05200] text-white font-bold px-5 py-3 disabled:opacity-50 inline-flex items-center gap-2"
+                  className="shrink-0 rounded-xl bg-[#E85A00] hover:bg-[#CC4E00] text-white font-bold px-5 py-3 disabled:opacity-50 inline-flex items-center gap-2"
                 >
                   {checking ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                   Check

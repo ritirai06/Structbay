@@ -1,7 +1,13 @@
-import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from "react";
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useMemo } from "react";
 import { getApiV1Base } from "../../lib/apiBase";
-import { clearCustomerSession, getCustomerAccessToken } from "../lib/authStorage";
+import { clearCustomerSession, getCustomerAccessToken, getCustomerRefreshToken, refreshCustomerAccessToken, CUSTOMER_TOKEN_KEY } from "../lib/authStorage";
 import { loadStorefrontCities } from "../lib/storefrontCities";
+import {
+  isLocationOnboardingComplete,
+  markLocationOnboardingComplete,
+} from "../lib/locationOnboarding";
+import type { PricingSnapshot } from "../lib/wholesalePricing";
+import { buildPricingSnapshotFromRow, cartLineSubtotalExGst, cartLineGstAmount } from "../lib/wholesalePricing";
 
 export interface CartItem {
   id: string;
@@ -11,10 +17,15 @@ export interface CartItem {
   variationLabel?: string;
   name: string;
   brand: string;
+  /** Fallback unit price when `pricingSnapshot` is missing (legacy carts). */
   price: number;
   qty: number;
   unit: string;
   image: string;
+  /** City pricing row for wholesale slab resolution (must match checkout). */
+  pricingSnapshot?: PricingSnapshot | null;
+  /** Product GST % (ex-GST line → GST). Defaults to 18 in totals if omitted. */
+  gstPercentage?: number;
 }
 
 /** Serviceable city from admin / DB — drives warehouse pricing via `cityId` on APIs. */
@@ -28,6 +39,12 @@ export type SelectedCity = {
 const STORAGE_KEY = "sb_selected_city";
 const LEGACY_CITY_KEY = "sb_city";
 const CART_STORAGE_KEY = "sb_cart";
+
+function parseStoredPricingSnapshot(raw: unknown): PricingSnapshot | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const s = buildPricingSnapshotFromRow(raw as Record<string, unknown>);
+  return s ?? undefined;
+}
 
 function readStoredCart(): CartItem[] {
   try {
@@ -45,6 +62,11 @@ function readStoredCart(): CartItem[] {
       const price = Number(o.price);
       const qty = Math.floor(Number(o.qty));
       if (!Number.isFinite(price) || price < 0 || !Number.isFinite(qty) || qty < 1) continue;
+      const gstRaw = o.gstPercentage;
+      const gstPercentage =
+        gstRaw !== undefined && gstRaw !== null && gstRaw !== "" && Number.isFinite(Number(gstRaw))
+          ? Number(gstRaw)
+          : undefined;
       out.push({
         id,
         productSlug: typeof o.productSlug === "string" ? o.productSlug : undefined,
@@ -56,6 +78,8 @@ function readStoredCart(): CartItem[] {
         qty,
         unit: typeof o.unit === "string" ? o.unit : "",
         image: typeof o.image === "string" ? o.image : "",
+        pricingSnapshot: parseStoredPricingSnapshot(o.pricingSnapshot),
+        gstPercentage,
       });
     }
     return out;
@@ -102,6 +126,8 @@ interface AppContextType {
   cityId: string | null;
   /** Display name for header, PDP, checkout messaging. */
   city: string | null;
+  /** True after user has confirmed a delivery city (this visit or a prior one). */
+  locationOnboardingComplete: boolean;
   setSelectedCity: (c: SelectedCity | null) => void;
   cart: CartItem[];
   addToCart: (item: CartItem) => void;
@@ -109,7 +135,10 @@ interface AppContextType {
   updateQty: (id: string, qty: number) => void;
   /** Clear in-memory cart (e.g. after a successful server checkout). */
   clearClientCart: () => void;
+  /** Sum of line subtotals ex-GST (wholesale slabs applied per line by quantity). */
   cartTotal: number;
+  /** GST on cart lines (per product `gstPercentage`, default 18%). */
+  cartGstTotal: number;
   cartCount: number;
   isLoggedIn: boolean;
   setIsLoggedIn: (v: boolean) => void;
@@ -138,16 +167,20 @@ const MAX_RECENT_SEARCHES = 5;
 const MAX_COMPARE = 3;
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [selectedCity, setSelectedCityState] = useState<SelectedCity | null>(() => readStoredCity());
+  const [selectedCity, setSelectedCityState] = useState<SelectedCity | null>(() =>
+    isLocationOnboardingComplete() ? readStoredCity() : null
+  );
 
   const setSelectedCity = useCallback((c: SelectedCity | null) => {
     setSelectedCityState(c);
     persistCity(c);
+    if (c) markLocationOnboardingComplete();
     if (!c) localStorage.removeItem(LEGACY_CITY_KEY);
   }, []);
 
   /** One-time migration: old `sb_city` stored display name only — resolve to id from API. */
   useEffect(() => {
+    if (!isLocationOnboardingComplete()) return;
     if (readStoredCity()) return;
     const legacy = localStorage.getItem(LEGACY_CITY_KEY);
     if (!legacy?.trim()) return;
@@ -195,27 +228,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   /** Restore session from JWT after refresh (login stores tokens in localStorage). */
   useEffect(() => {
-    const t = getCustomerAccessToken();
-    if (!t) return;
-
     const base = getApiV1Base().replace(/\/$/, "");
     let cancelled = false;
 
+    const loadProfile = async (token: string) => {
+      const res = await fetch(`${base}/customer/profile`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.status === 401 && getCustomerRefreshToken()) {
+        const ok = await refreshCustomerAccessToken();
+        if (ok) {
+          const next = getCustomerAccessToken();
+          if (next) return loadProfile(next);
+        }
+        clearCustomerSession();
+        return null;
+      }
+      const json = (await res.json()) as {
+        success?: boolean;
+        message?: string;
+        data?: { name?: string; email?: string; companyName?: string; role?: string };
+      };
+      if (!res.ok || json.success === false) {
+        clearCustomerSession();
+        return null;
+      }
+      return json.data ?? null;
+    };
+
     (async () => {
       try {
-        const res = await fetch(`${base}/customer/profile`, {
-          headers: { Authorization: `Bearer ${t}` },
-        });
-        const json = (await res.json()) as {
-          success?: boolean;
-          message?: string;
-          data?: { name?: string; email?: string; companyName?: string; role?: string };
-        };
-        if (!res.ok || json.success === false) {
-          clearCustomerSession();
-          return;
+        let t = getCustomerAccessToken();
+        if (!t && getCustomerRefreshToken()) {
+          const ok = await refreshCustomerAccessToken();
+          if (ok) t = getCustomerAccessToken();
         }
-        const d = json.data;
+        if (!t || cancelled) return;
+
+        const d = await loadProfile(t);
         if (!d || cancelled) return;
         if (d.role !== "CUSTOMER") {
           clearCustomerSession();
@@ -235,6 +285,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  /** Keep UI in sync if token is cleared elsewhere (logout, expired refresh, other tab). */
+  useEffect(() => {
+    if (isLoggedIn && !getCustomerAccessToken()) {
+      setIsLoggedIn(false);
+      setUser(null);
+    }
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    const onSessionCleared = () => {
+      setIsLoggedIn(false);
+      setUser(null);
+    };
+    window.addEventListener("customer-session-cleared", onSessionCleared);
+    return () => window.removeEventListener("customer-session-cleared", onSessionCleared);
+  }, []);
+
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === CUSTOMER_TOKEN_KEY && !e.newValue) {
+        setIsLoggedIn(false);
+        setUser(null);
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   const [wishlist, setWishlist] = useState<string[]>(() => {
@@ -262,7 +340,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addToCart = (item: CartItem) => {
     setCart((prev) => {
       const existing = prev.find((i) => i.id === item.id);
-      if (existing) return prev.map((i) => (i.id === item.id ? { ...i, qty: i.qty + item.qty } : i));
+      if (existing) {
+        return prev.map((i) =>
+          i.id === item.id
+            ? {
+                ...i,
+                qty: i.qty + item.qty,
+                pricingSnapshot: i.pricingSnapshot ?? item.pricingSnapshot,
+                gstPercentage: i.gstPercentage ?? item.gstPercentage,
+              }
+            : i
+        );
+      }
       return [...prev, item];
     });
   };
@@ -279,7 +368,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const clearClientCart = () => setCart([]);
 
-  const cartTotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
+  const cartTotal = useMemo(() => cart.reduce((sum, i) => sum + cartLineSubtotalExGst(i), 0), [cart]);
+  const cartGstTotal = useMemo(() => cart.reduce((sum, i) => sum + cartLineGstAmount(i, i.gstPercentage ?? 18), 0), [cart]);
   const cartCount = cart.reduce((sum, i) => sum + i.qty, 0);
 
   const addToWishlist = (id: string) => {
@@ -339,6 +429,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         updateQty,
         clearClientCart,
         cartTotal,
+        cartGstTotal,
         cartCount,
         isLoggedIn,
         setIsLoggedIn,

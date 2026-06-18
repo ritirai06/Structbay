@@ -43,10 +43,10 @@ export function AuditLogs() {
   const ACTIONS = ["CREATE", "UPDATE", "DELETE", "UPLOAD", "APPROVE", "REJECT", "PUBLISH", "TOGGLE"];
 
   return (
-    <div className="p-6 bg-sb-cream min-h-full">
+    <div className="admin-page">
       <div className="mb-6">
-        <h1 className="text-2xl font-black text-sb-ink">Audit Logs</h1>
-        <p className="text-sb-ink/55 text-sm mt-1">Complete history of every admin action on the platform.</p>
+        <h1 className="admin-page-title text-sb-ink">Audit Logs</h1>
+        <p className="admin-page-desc">Complete history of every admin action on the platform.</p>
       </div>
 
       <Card className="border-sb-ink/10 bg-sb-cream-secondary">

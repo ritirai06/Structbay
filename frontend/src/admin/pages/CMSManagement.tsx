@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useLocation } from "react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/card";
 import { Button } from "@shared/components/ui/button";
 import { Badge } from "@shared/components/ui/badge";
@@ -7,10 +8,14 @@ import { Textarea } from "@shared/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@shared/components/ui/tabs";
 import {
   Plus, Edit, Trash2, ToggleLeft, ToggleRight, Eye,
-  Megaphone, Image, Upload, FileText, Globe, Mail, MapPin,
+  Megaphone, Image, Upload, FileText, Globe, Mail, MapPin, Link2,
   BarChart3, Loader2, RefreshCw, Save, Star, Pin, MousePointerClick,
 } from "lucide-react";
 import { adminFetch as apiFetch, adminUploadImage } from "../../lib/adminApi";
+import { AdminDeleteConfirmModal } from "../components/AdminDeleteConfirmModal";
+import { AdminBulkToolbar } from "../components/AdminBulkToolbar";
+import { useAdminResourceDelete } from "../hooks/useAdminResourceDelete";
+import { adminToast } from "../lib/adminToast";
 
 function RatingStarsRow({ rating }: { rating: number }) {
   const n = Math.min(5, Math.max(0, Math.round(Number(rating) || 0)));
@@ -45,7 +50,7 @@ function localDayBoundsToISO(start: string, end: string): { startDate: string | 
 function SectionHeader({ title, onAdd, addLabel = "Add" }: { title: string; onAdd?: () => void; addLabel?: string }) {
   return (
     <div className="flex items-center justify-between mb-4">
-      <h2 className="text-lg font-bold text-sb-ink">{title}</h2>
+      <h2 className="text-lg font-semibold text-sb-ink">{title}</h2>
       {onAdd && (
         <Button size="sm" onClick={onAdd} className="bg-sb-orange hover:bg-sb-orange-hover text-black">
           <Plus className="h-3.5 w-3.5 mr-1.5" /> {addLabel}
@@ -82,7 +87,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
       <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
       <div className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-5 py-4 border-b border-sb-ink/10">
-          <h3 className="font-bold text-sb-ink">{title}</h3>
+          <h3 className="font-semibold text-sb-ink">{title}</h3>
           <button onClick={onClose} className="text-sb-ink/55 hover:text-sb-ink text-xl leading-none">×</button>
         </div>
         <div className="p-5">{children}</div>
@@ -92,6 +97,85 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 }
 
 // ─── Homepage Tab ─────────────────────────────────────────────────────────────
+type FeatureCardForm = {
+  title: string;
+  description: string;
+  imageUrl: string;
+  imagePublicId: string;
+  buttonText: string;
+  buttonLink: string;
+  icon: string;
+  isActive: boolean;
+  sortOrder: number;
+};
+
+const DEFAULT_INTRO_SECTION = {
+  title: "Smart Construction Starts With Smarter Sourcing",
+  tagline: "Built for Contractors, Backed by Brands.",
+  body:
+    "StructBay combines the reliability of branded materials, the power of affordable pricing, and the ease of single-window sourcing — everything you need to finish projects faster and better.",
+};
+
+const DEFAULT_FEATURE_CARDS: FeatureCardForm[] = [
+  {
+    title: "Genuine Products, Guaranteed",
+    description:
+      "All products are sourced directly from trusted manufacturers, ensuring authentic quality at competitive prices.",
+    imageUrl: "",
+    imagePublicId: "",
+    buttonText: "Shop Now",
+    buttonLink: "/shop",
+    icon: "box",
+    isActive: true,
+    sortOrder: 0,
+  },
+  {
+    title: "Unmatched Affordability",
+    description:
+      "Premium construction materials supplied at factory-direct rates, delivering exceptional quality at competitive prices.",
+    imageUrl: "",
+    imagePublicId: "",
+    buttonText: "Shop Now",
+    buttonLink: "/shop",
+    icon: "lightbulb",
+    isActive: true,
+    sortOrder: 1,
+  },
+  {
+    title: "A to Z Material Availability",
+    description:
+      "Complete range of construction essentials available in one place, ensuring convenience at competitive prices.",
+    imageUrl: "",
+    imagePublicId: "",
+    buttonText: "Shop Now",
+    buttonLink: "/shop",
+    icon: "shapes",
+    isActive: true,
+    sortOrder: 2,
+  },
+];
+
+function normalizeFeatureCards(raw: unknown): FeatureCardForm[] {
+  const list = Array.isArray(raw) ? raw : [];
+  const out: FeatureCardForm[] = [];
+  for (let i = 0; i < 3; i++) {
+    const c = list[i] as Record<string, unknown> | undefined;
+    const d = DEFAULT_FEATURE_CARDS[i];
+    out.push({
+      title: String(c?.title ?? d.title),
+      description: String(c?.description ?? d.description),
+      imageUrl: String(c?.imageUrl ?? ""),
+      imagePublicId: String(c?.imagePublicId ?? ""),
+      buttonText: String(c?.buttonText ?? d.buttonText),
+      buttonLink: String(c?.buttonLink ?? d.buttonLink),
+      icon: String(c?.icon ?? d.icon),
+      isActive: c?.isActive !== false,
+      sortOrder: Number(c?.sortOrder ?? i),
+    });
+  }
+  return out;
+}
+
 function HomepageTab() {
   const defaultPromo = {
     enabled: true,
@@ -120,12 +204,15 @@ function HomepageTab() {
     heroCtaText: "",
     brandLogoUrl: "",
     heroBackgroundImageUrl: "",
+    introSection: { ...DEFAULT_INTRO_SECTION },
+    featureCards: DEFAULT_FEATURE_CARDS.map((c) => ({ ...c })),
     storefrontPromo: defaultPromo,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [uploading, setUploading] = useState<null | "hero" | "bg">(null);
+  const [uploadingCard, setUploadingCard] = useState<number | null>(null);
 
   useEffect(() => {
     apiFetch("/cms/homepage")
@@ -138,6 +225,11 @@ function HomepageTab() {
           heroCtaText: d.data.heroCtaText || "",
           brandLogoUrl: d.data.brandLogoUrl || "",
           heroBackgroundImageUrl: d.data.heroBackgroundImageUrl || "",
+          introSection: {
+            ...DEFAULT_INTRO_SECTION,
+            ...(d.data.introSection || {}),
+          },
+          featureCards: normalizeFeatureCards(d.data.featureCards),
           storefrontPromo: {
             ...sp,
             marqueeSegments: segs,
@@ -166,6 +258,20 @@ function HomepageTab() {
     }
   };
 
+  const uploadFeatureCardImage = async (index: number, file: File) => {
+    setUploadingCard(index);
+    try {
+      const up = await adminUploadImage("/upload/banner", file);
+      setForm((f) => {
+        const cards = [...f.featureCards];
+        cards[index] = { ...cards[index], imageUrl: up.url, imagePublicId: up.publicId };
+        return { ...f, featureCards: cards };
+      });
+    } finally {
+      setUploadingCard(null);
+    }
+  };
+
   const save = async () => {
     setSaving(true); setMsg("");
     try {
@@ -180,6 +286,8 @@ function HomepageTab() {
         heroCtaText: form.heroCtaText,
         brandLogoUrl: form.brandLogoUrl,
         heroBackgroundImageUrl: form.heroBackgroundImageUrl,
+        introSection: form.introSection,
+        featureCards: form.featureCards,
         storefrontPromo: { ...restPromo, marqueeSegments },
       };
       await apiFetch("/cms/homepage", { method: "PUT", body: JSON.stringify(payload) });
@@ -221,6 +329,198 @@ function HomepageTab() {
           <label className="text-xs text-sb-ink/55 mb-1 block">Hero background image URL</label>
           <Input value={form.heroBackgroundImageUrl} onChange={e => setForm(f => ({ ...f, heroBackgroundImageUrl: e.target.value }))}
             placeholder="Optional full-width hero image" />
+        </div>
+      </div>
+
+      <div className="border-t border-sb-ink/10 pt-6 space-y-4">
+        <SectionHeader title="Intro & feature cards" />
+        <p className="text-xs text-sb-ink/45 -mt-2">
+          Text and images below the homepage banner — three feature cards with background image, title, description, and CTA.
+        </p>
+
+        <div>
+          <label className="text-xs text-sb-ink/55 mb-1 block">Intro heading</label>
+          <Input
+            value={form.introSection.title}
+            onChange={(e) => setForm((f) => ({ ...f, introSection: { ...f.introSection, title: e.target.value } }))}
+            placeholder={DEFAULT_INTRO_SECTION.title}
+          />
+        </div>
+        <div>
+          <label className="text-xs text-sb-ink/55 mb-1 block">Intro tagline (orange line)</label>
+          <Input
+            value={form.introSection.tagline}
+            onChange={(e) => setForm((f) => ({ ...f, introSection: { ...f.introSection, tagline: e.target.value } }))}
+            placeholder={DEFAULT_INTRO_SECTION.tagline}
+          />
+        </div>
+        <div>
+          <label className="text-xs text-sb-ink/55 mb-1 block">Intro body paragraph</label>
+          <Textarea
+            rows={3}
+            value={form.introSection.body}
+            onChange={(e) => setForm((f) => ({ ...f, introSection: { ...f.introSection, body: e.target.value } }))}
+            placeholder={DEFAULT_INTRO_SECTION.body}
+          />
+        </div>
+
+        <div className="space-y-5 pt-2">
+          {form.featureCards.map((card, index) => (
+            <div key={index} className="rounded-xl border border-sb-ink/12 bg-white p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-bold text-sb-ink">Card {index + 1}</p>
+                <label className="flex items-center gap-2 text-xs text-sb-ink/60">
+                  <input
+                    type="checkbox"
+                    checked={card.isActive}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setForm((f) => {
+                        const cards = [...f.featureCards];
+                        cards[index] = { ...cards[index], isActive: checked };
+                        return { ...f, featureCards: cards };
+                      });
+                    }}
+                  />
+                  Show on homepage
+                </label>
+              </div>
+
+              {card.imageUrl ? (
+                <img src={card.imageUrl} alt="" className="w-full max-h-36 object-cover rounded-lg border border-sb-ink/10" />
+              ) : (
+                <div className="h-28 rounded-lg border border-dashed border-sb-ink/15 bg-sb-cream-secondary/50 flex items-center justify-center text-xs text-sb-ink/45">
+                  No background image — upload below
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={uploadingCard === index}
+                  onClick={() => document.getElementById(`feature-card-file-${index}`)?.click()}
+                >
+                  <Upload className="h-3.5 w-3.5 mr-1" />
+                  {uploadingCard === index ? "Uploading…" : "Upload image"}
+                </Button>
+                <input
+                  id={`feature-card-file-${index}`}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (file) void uploadFeatureCardImage(index, file);
+                  }}
+                />
+                {card.imageUrl && (
+                  <button
+                    type="button"
+                    className="text-xs text-red-600 underline"
+                    onClick={() =>
+                      setForm((f) => {
+                        const cards = [...f.featureCards];
+                        cards[index] = { ...cards[index], imageUrl: "", imagePublicId: "" };
+                        return { ...f, featureCards: cards };
+                      })
+                    }
+                  >
+                    Remove image
+                  </button>
+                )}
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-sb-ink/55 mb-1 block">Title</label>
+                  <Input
+                    value={card.title}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setForm((f) => {
+                        const cards = [...f.featureCards];
+                        cards[index] = { ...cards[index], title: v };
+                        return { ...f, featureCards: cards };
+                      });
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-sb-ink/55 mb-1 block">Icon</label>
+                  <select
+                    className="w-full rounded-md border border-sb-ink/15 bg-white px-3 py-2 text-sm"
+                    value={card.icon}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setForm((f) => {
+                        const cards = [...f.featureCards];
+                        cards[index] = { ...cards[index], icon: v };
+                        return { ...f, featureCards: cards };
+                      });
+                    }}
+                  >
+                    <option value="box">Box (products)</option>
+                    <option value="lightbulb">Lightbulb (affordability)</option>
+                    <option value="shapes">Shapes (range)</option>
+                    <option value="shield">Shield (quality)</option>
+                    <option value="package">Package</option>
+                    <option value="building">Building</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-sb-ink/55 mb-1 block">Description</label>
+                <Textarea
+                  rows={2}
+                  value={card.description}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setForm((f) => {
+                      const cards = [...f.featureCards];
+                      cards[index] = { ...cards[index], description: v };
+                      return { ...f, featureCards: cards };
+                    });
+                  }}
+                />
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-sb-ink/55 mb-1 block">Button text</label>
+                  <Input
+                    value={card.buttonText}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setForm((f) => {
+                        const cards = [...f.featureCards];
+                        cards[index] = { ...cards[index], buttonText: v };
+                        return { ...f, featureCards: cards };
+                      });
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-sb-ink/55 mb-1 block">Button link</label>
+                  <Input
+                    value={card.buttonLink}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setForm((f) => {
+                        const cards = [...f.featureCards];
+                        cards[index] = { ...cards[index], buttonLink: v };
+                        return { ...f, featureCards: cards };
+                      });
+                    }}
+                    placeholder="/shop"
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -457,14 +757,22 @@ function BannersTab() {
     subtitleColor: "",
     backgroundColor: "",
     overlayOpacity: "" as string | number,
+    textAlign: "right" as "left" | "center" | "right",
+    clearImage: false,
   });
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [selected, setSelected] = useState<Record<string, boolean>>({});
 
   const load = useCallback(() => {
     setLoading(true);
-    apiFetch("/cms/banners?limit=50").then(d => setBanners(d.data || [])).finally(() => setLoading(false));
+    apiFetch("/cms/banners?limit=50").then(d => { setBanners(d.data || []); setSelected({}); }).finally(() => setLoading(false));
   }, []);
+
+  const bannerDelete = useAdminResourceDelete("/cms/banners", () => {
+    setSelected({});
+    load();
+  });
 
   useEffect(() => { load(); }, [load]);
 
@@ -472,6 +780,8 @@ function BannersTab() {
     setForm({
       title: "", subtitle: "", buttonText: "", buttonLink: "#", displayOrder: 0, status: "ACTIVE",
       imageUrl: "", imagePublicId: "", titleColor: "", subtitleColor: "", backgroundColor: "", overlayOpacity: "",
+      textAlign: "right",
+      clearImage: false,
     });
     setModal({ open: true, data: null });
   };
@@ -489,6 +799,8 @@ function BannersTab() {
       subtitleColor: b.subtitleColor || "",
       backgroundColor: b.backgroundColor || "",
       overlayOpacity: b.overlayOpacity != null ? b.overlayOpacity : "",
+      textAlign: (["left", "center", "right"].includes(String(b.textAlign)) ? b.textAlign : "right") as "left" | "center" | "right",
+      clearImage: false,
     });
     setModal({ open: true, data: b });
   };
@@ -505,9 +817,23 @@ function BannersTab() {
         displayOrder: form.displayOrder,
         status: form.status,
       };
-      if (form.imageUrl) {
-        payload.imageUrl = form.imageUrl;
-        if (form.imagePublicId) payload.imagePublicId = form.imagePublicId;
+
+      const imageUrl =
+        String(form.imageUrl || "").trim() ||
+        (isEdit ? String(modal.data?.image?.url || "").trim() : "");
+      const imagePublicId =
+        String(form.imagePublicId || "").trim() ||
+        (isEdit ? String(modal.data?.image?.publicId || "").trim() : "");
+
+      if (form.clearImage) {
+        payload.clearImage = true;
+      } else if (imageUrl) {
+        payload.imageUrl = imageUrl;
+        if (imagePublicId) payload.imagePublicId = imagePublicId;
+      } else if (!isEdit) {
+        alert("Please upload a hero banner image (wide photo works best).");
+        setSaving(false);
+        return;
       }
 
       const tc = String(form.titleColor || "").trim();
@@ -526,6 +852,9 @@ function BannersTab() {
         payload.overlayOpacity = Math.min(100, Math.max(0, Number(form.overlayOpacity)));
       }
 
+      const align = String(form.textAlign || "right");
+      payload.textAlign = ["left", "center", "right"].includes(align) ? align : "right";
+
       if (isEdit) await apiFetch(`/cms/banners/${modal.data._id}`, { method: "PATCH", body: JSON.stringify(payload) });
       else await apiFetch("/cms/banners", { method: "POST", body: JSON.stringify(payload) });
       setModal({ open: false, data: null }); load();
@@ -538,10 +867,22 @@ function BannersTab() {
     load();
   };
 
-  const remove = async (id: string) => {
-    if (!confirm("Delete this banner?")) return;
-    await apiFetch(`/cms/banners/${id}`, { method: "DELETE" }).catch(e => alert(e.message));
-    load();
+  const remove = (id: string, title: string) => {
+    bannerDelete.removeOne(id, title);
+  };
+
+  const selectedIds = banners.filter((b) => selected[String(b._id)]).map((b) => String(b._id));
+  const allSelected = banners.length > 0 && selectedIds.length === banners.length;
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelected({});
+      return;
+    }
+    const next: Record<string, boolean> = {};
+    banners.forEach((b) => {
+      next[String(b._id)] = true;
+    });
+    setSelected(next);
   };
 
   const onBannerImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -551,7 +892,23 @@ function BannersTab() {
     setUploadingImage(true);
     try {
       const up = await adminUploadImage("/upload/banner", file);
-      setForm(f => ({ ...f, imageUrl: up.url, imagePublicId: up.publicId || f.imagePublicId }));
+      setForm(f => ({
+        ...f,
+        imageUrl: up.url,
+        imagePublicId: up.publicId || f.imagePublicId,
+        clearImage: false,
+      }));
+      // When editing, persist image immediately (hero banner ≠ product gallery — must not be lost on close).
+      if (modal.data?._id) {
+        await apiFetch(`/cms/banners/${modal.data._id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ imageUrl: up.url, imagePublicId: up.publicId || "" }),
+        });
+        setModal(m => ({
+          ...m,
+          data: m.data ? { ...m.data, image: { url: up.url, publicId: up.publicId || null } } : m.data,
+        }));
+      }
     } catch (err) {
       alert(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -559,15 +916,52 @@ function BannersTab() {
     }
   };
 
+  const bannerPreviewImage =
+    !form.clearImage && (form.imageUrl || modal.data?.image?.url)
+      ? form.imageUrl || modal.data?.image?.url
+      : "";
+  const previewTitleColor = /^#[0-9A-Fa-f]{6}$/.test(String(form.titleColor)) ? form.titleColor : "#faf8f5";
+  const previewSubColor = /^#[0-9A-Fa-f]{6}$/.test(String(form.subtitleColor)) ? form.subtitleColor : "#a8a29e";
+  const previewBg = /^#[0-9A-Fa-f]{6}$/.test(String(form.backgroundColor)) ? form.backgroundColor : "#1e293b";
+
   return (
     <>
       <SectionHeader title="Hero Banners" onAdd={openCreate} addLabel="New Banner" />
+      <p className="text-xs text-sb-ink/55 mb-4 -mt-2">
+        Add multiple <strong className="font-semibold text-sb-ink/70">Active</strong> banners — the homepage hero auto-rotates every few seconds. Use <strong className="font-semibold text-sb-ink/70">Display order</strong> to control slide sequence.
+      </p>
+      <AdminBulkToolbar
+        totalCount={banners.length}
+        selectedCount={selectedIds.length}
+        allSelected={allSelected}
+        onToggleAll={toggleAll}
+        onDeleteSelected={() =>
+          bannerDelete.removeMany(selectedIds, `${selectedIds.length} banners`)
+        }
+        onDeleteAll={() =>
+          bannerDelete.removeMany(
+            banners.map((b) => String(b._id)),
+            `all ${banners.length} banners`
+          )
+        }
+        itemLabel="banners"
+        disabled={bannerDelete.busy || loading}
+      />
       {loading ? <Spinner /> : banners.length === 0 ? <EmptyState text="No banners yet. Create your first banner." /> : (
         <div className="grid gap-4 md:grid-cols-2">
           {banners.map(b => (
             <div key={b._id} className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl p-4">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1 min-w-0 mr-3">
+              <div className="flex items-start justify-between mb-3 gap-2">
+                <label className="flex items-start gap-2 flex-1 min-w-0 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-3.5 w-3.5 shrink-0 rounded border-sb-ink/25 accent-sb-orange"
+                    checked={!!selected[String(b._id)]}
+                    onChange={() =>
+                      setSelected((s) => ({ ...s, [String(b._id)]: !s[String(b._id)] }))
+                    }
+                  />
+                <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sb-ink truncate">{b.title}</p>
                   {b.subtitle && <p className="text-xs text-sb-ink/55 mt-0.5 line-clamp-2">{b.subtitle}</p>}
               <div className="flex flex-wrap gap-1.5 mt-2">
@@ -579,6 +973,7 @@ function BannersTab() {
                 )}
               </div>
                 </div>
+                </label>
                 <StatusBadge status={b.status} />
               </div>
               {b.image?.url && <img src={b.image.url} alt={b.title} className="w-full h-28 object-cover rounded-lg mb-3 bg-[#111]" />}
@@ -591,7 +986,7 @@ function BannersTab() {
                 <Button variant="outline" size="sm" onClick={() => toggle(b._id)}>
                   {b.status === "ACTIVE" ? <ToggleRight className="h-3.5 w-3.5 text-sb-orange" /> : <ToggleLeft className="h-3.5 w-3.5" />}
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => remove(b._id)} className="text-sb-ink/55 border-sb-ink/18 hover:bg-sb-cream-secondary">
+                <Button variant="outline" size="sm" onClick={() => remove(b._id, b.title)} className="text-sb-ink/55 border-sb-ink/18 hover:bg-sb-cream-secondary">
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -599,6 +994,15 @@ function BannersTab() {
           ))}
         </div>
       )}
+
+      <AdminDeleteConfirmModal
+        open={!!bannerDelete.pending}
+        title={bannerDelete.modalTitle}
+        description={bannerDelete.modalDescription}
+        busy={bannerDelete.busy}
+        onCancel={bannerDelete.cancelDelete}
+        onConfirm={bannerDelete.confirm}
+      />
 
       {modal.open && (
         <Modal title={modal.data ? "Edit Banner" : "Create Banner"} onClose={() => setModal({ open: false, data: null })}>
@@ -650,6 +1054,27 @@ function BannersTab() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
+                <label className="text-xs text-sb-ink/55 mb-1 block">Text alignment</label>
+                <select
+                  className="w-full rounded-md border border-sb-ink/15 bg-white px-3 py-2 text-sm"
+                  value={form.textAlign}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      textAlign: e.target.value as "left" | "center" | "right",
+                    }))
+                  }
+                >
+                  <option value="left">Left</option>
+                  <option value="center">Center</option>
+                  <option value="right">Right (default)</option>
+                </select>
+                <p className="text-[10px] text-sb-ink/45 mt-1">Position of title, subtitle, and buttons on the hero image.</p>
+              </div>
+              <div aria-hidden className="hidden sm:block" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
                 <label className="text-xs text-sb-ink/55 mb-1 block">Title color</label>
                 <div className="flex gap-2 items-center">
                   <input
@@ -687,26 +1112,65 @@ function BannersTab() {
               </div>
             </div>
             <div>
-              <label className="text-xs text-sb-ink/55 mb-1 block">Banner image</label>
+              <label className="text-xs text-sb-ink/55 mb-1 block">Hero banner image</label>
+              <p className="text-[10px] text-sb-ink/45 mb-2">
+                Wide photo (16:9 or wider). Uses <code className="text-sb-orange">/upload/banner</code> — separate from product images.
+              </p>
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <label className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-sb-ink/15 bg-sb-cream text-sm text-sb-ink cursor-pointer hover:border-sb-orange/50 transition-colors">
                   <Upload className="h-4 w-4 text-sb-orange" />
-                  {uploadingImage ? "Uploading…" : "Upload image"}
-                  <input type="file" accept="image/*" className="hidden" disabled={uploadingImage} onChange={onBannerImagePick} />
+                  {uploadingImage ? "Uploading…" : "Upload hero image"}
+                  <input type="file" accept="image/jpeg,image/png,image/webp,image/jpg" className="hidden" disabled={uploadingImage} onChange={onBannerImagePick} />
                 </label>
-                {form.imageUrl && (
-                  <span className="text-[10px] text-sb-orange/90">Image ready — save to apply on storefront.</span>
+                {bannerPreviewImage && (
+                  <span className="text-[10px] text-sb-orange/90">
+                    {modal.data?._id ? "Image saved to banner." : "Image ready — click Update/Create to publish."}
+                  </span>
+                )}
+                {bannerPreviewImage && (
+                  <button
+                    type="button"
+                    className="text-[10px] text-sb-ink/55 hover:text-red-600 underline"
+                    onClick={() => setForm(f => ({ ...f, imageUrl: "", imagePublicId: "", clearImage: true }))}
+                  >
+                    Remove image
+                  </button>
                 )}
               </div>
-              {form.imageUrl && (
-                <img src={form.imageUrl} alt="" className="w-full max-h-36 object-cover rounded-lg mb-2 border border-sb-ink/10 bg-[#111]" />
+              {bannerPreviewImage && (
+                <img src={bannerPreviewImage} alt="" className="w-full max-h-36 object-cover rounded-lg mb-2 border border-sb-ink/10" />
               )}
+              <div
+                className="rounded-lg overflow-hidden border border-sb-ink/10 mb-2 min-h-[88px] relative"
+                style={{ backgroundColor: previewBg }}
+              >
+                {bannerPreviewImage && (
+                  <img src={bannerPreviewImage} alt="" className="absolute inset-0 w-full h-full object-cover opacity-90" />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
+                <div
+                  className={`relative p-4 ${
+                    form.textAlign === "center"
+                      ? "text-center"
+                      : form.textAlign === "left"
+                        ? "text-left"
+                        : "text-right"
+                  }`}
+                >
+                  <p className="font-bold text-lg leading-tight" style={{ color: previewTitleColor }}>
+                    {form.title || "Hero title preview"}
+                  </p>
+                  {form.subtitle && (
+                    <p className="text-sm mt-1" style={{ color: previewSubColor }}>{form.subtitle}</p>
+                  )}
+                </div>
+              </div>
               <Input
-                value={form.imageUrl}
-                onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))}
+                value={form.clearImage ? "" : form.imageUrl}
+                onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value, clearImage: false }))}
                 placeholder="Or paste image URL (https://…)"
               />
-              <p className="text-[10px] text-sb-ink/45 mt-1">Upload stores the image on Cloudinary. URL field is optional if you uploaded.</p>
+              <p className="text-[10px] text-sb-ink/45 mt-1">Upload is recommended. URL is optional if you uploaded.</p>
             </div>
             <div>
               <label className="text-xs text-sb-ink/55 mb-1 block">Image public ID (optional)</label>
@@ -755,6 +1219,8 @@ function BlogsTab() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
+  const blogDelete = useAdminResourceDelete("/cms/blogs", load);
+
   const openCreate = () => { setForm({ title: "", description: "", content: "", author: "StructBay Team", status: "DRAFT", isFeatured: false, tags: "" }); setModal({ open: true, data: null }); };
   const openEdit = (b: any) => { setForm({ title: b.title, description: b.description || "", content: b.content || "", author: b.author, status: b.status, isFeatured: b.isFeatured, tags: (b.tags || []).join(", ") }); setModal({ open: true, data: b }); };
 
@@ -769,10 +1235,8 @@ function BlogsTab() {
     setSaving(false);
   };
 
-  const remove = async (id: string) => {
-    if (!confirm("Delete this blog?")) return;
-    await apiFetch(`/cms/blogs/${id}`, { method: "DELETE" }).catch(e => alert(e.message));
-    load();
+  const remove = (id: string, title: string) => {
+    blogDelete.removeOne(id, title);
   };
 
   const statusColor = (s: string) => ({ PUBLISHED: "text-sb-orange", DRAFT: "text-sb-orange", SCHEDULED: "text-sb-ink", ARCHIVED: "text-sb-ink/45" }[s] || "");
@@ -797,7 +1261,7 @@ function BlogsTab() {
               {b.description && <p className="text-xs text-sb-ink/55 line-clamp-2 flex-1">{b.description}</p>}
               <div className="flex gap-2 mt-3">
                 <Button variant="outline" size="sm" onClick={() => openEdit(b)} className="flex-1"><Edit className="h-3.5 w-3.5 mr-1.5" />Edit</Button>
-                <Button variant="outline" size="sm" onClick={() => remove(b._id)} className="text-sb-ink/55 border-sb-ink/18 hover:bg-sb-cream-secondary"><Trash2 className="h-3.5 w-3.5" /></Button>
+                <Button variant="outline" size="sm" onClick={() => remove(b._id, b.title)} className="text-sb-ink/55 border-sb-ink/18 hover:bg-sb-cream-secondary"><Trash2 className="h-3.5 w-3.5" /></Button>
               </div>
             </div>
           ))}
@@ -838,6 +1302,15 @@ function BlogsTab() {
           </div>
         </Modal>
       )}
+
+      <AdminDeleteConfirmModal
+        open={!!blogDelete.pending}
+        title={blogDelete.modalTitle}
+        description={blogDelete.modalDescription}
+        busy={blogDelete.busy}
+        onCancel={blogDelete.cancelDelete}
+        onConfirm={blogDelete.confirm}
+      />
     </>
   );
 }
@@ -866,6 +1339,8 @@ function AnnouncementsTab() {
     apiFetch("/cms/announcements?limit=50").then(d => setItems(d.data || [])).finally(() => setLoading(false));
   }, []);
   useEffect(() => { load(); }, [load]);
+
+  const announcementDelete = useAdminResourceDelete("/cms/announcements", load);
 
   const onAnnouncementImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -900,10 +1375,8 @@ function AnnouncementsTab() {
     setSaving(false);
   };
 
-  const remove = async (id: string) => {
-    if (!confirm("Delete announcement?")) return;
-    await apiFetch(`/cms/announcements/${id}`, { method: "DELETE" }).catch(e => alert(e.message));
-    load();
+  const remove = (id: string, title: string) => {
+    announcementDelete.removeOne(id, title);
   };
 
   const priorityColor: Record<string, string> = { LOW: "text-sb-ink/50", MEDIUM: "text-sb-ink", HIGH: "text-sb-orange", URGENT: "text-sb-ink/55" };
@@ -987,7 +1460,7 @@ function AnnouncementsTab() {
                 >
                   <Edit className="h-3.5 w-3.5" />
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => remove(a._id)} className="text-sb-ink/55 border-sb-ink/18 hover:bg-sb-cream-secondary"><Trash2 className="h-3.5 w-3.5" /></Button>
+                <Button variant="outline" size="sm" onClick={() => remove(a._id, a.title)} className="text-sb-ink/55 border-sb-ink/18 hover:bg-sb-cream-secondary"><Trash2 className="h-3.5 w-3.5" /></Button>
               </div>
             </div>
           ))}
@@ -1062,6 +1535,15 @@ function AnnouncementsTab() {
           </div>
         </Modal>
       )}
+
+      <AdminDeleteConfirmModal
+        open={!!announcementDelete.pending}
+        title={announcementDelete.modalTitle}
+        description={announcementDelete.modalDescription}
+        busy={announcementDelete.busy}
+        onCancel={announcementDelete.cancelDelete}
+        onConfirm={announcementDelete.confirm}
+      />
     </>
   );
 }
@@ -1080,6 +1562,8 @@ function TestimonialsTab() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
+  const testimonialDelete = useAdminResourceDelete("/cms/testimonials", load);
+
   const save = async () => {
     setSaving(true);
     try {
@@ -1090,10 +1574,8 @@ function TestimonialsTab() {
     setSaving(false);
   };
 
-  const remove = async (id: string) => {
-    if (!confirm("Delete testimonial?")) return;
-    await apiFetch(`/cms/testimonials/${id}`, { method: "DELETE" }).catch(e => alert(e.message));
-    load();
+  const remove = (id: string, name: string) => {
+    testimonialDelete.removeOne(id, name);
   };
 
   return (
@@ -1121,7 +1603,7 @@ function TestimonialsTab() {
               <RatingStarsRow rating={t.rating} />
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => { setForm({ customerName: t.customerName, designation: t.designation || "", company: t.company || "", review: t.review, rating: t.rating, isFeatured: t.isFeatured, status: t.status }); setModal({ open: true, data: t }); }}><Edit className="h-3.5 w-3.5 mr-1.5" />Edit</Button>
-                <Button variant="outline" size="sm" onClick={() => remove(t._id)} className="text-sb-ink/55 border-sb-ink/18 hover:bg-sb-cream-secondary"><Trash2 className="h-3.5 w-3.5" /></Button>
+                <Button variant="outline" size="sm" onClick={() => remove(t._id, t.customerName)} className="text-sb-ink/55 border-sb-ink/18 hover:bg-sb-cream-secondary"><Trash2 className="h-3.5 w-3.5" /></Button>
               </div>
             </div>
           ))}
@@ -1163,6 +1645,15 @@ function TestimonialsTab() {
           </div>
         </Modal>
       )}
+
+      <AdminDeleteConfirmModal
+        open={!!testimonialDelete.pending}
+        title={testimonialDelete.modalTitle}
+        description={testimonialDelete.modalDescription}
+        busy={testimonialDelete.busy}
+        onCancel={testimonialDelete.cancelDelete}
+        onConfirm={testimonialDelete.confirm}
+      />
     </>
   );
 }
@@ -1325,6 +1816,8 @@ function AdsTab() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
+  const adDelete = useAdminResourceDelete("/cms/ads", load);
+
   const onAdImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -1362,10 +1855,8 @@ function AdsTab() {
     setSaving(false);
   };
 
-  const remove = async (id: string) => {
-    if (!confirm("Delete ad?")) return;
-    await apiFetch(`/cms/ads/${id}`, { method: "DELETE" }).catch(e => alert(e.message));
-    load();
+  const remove = (id: string, title: string) => {
+    adDelete.removeOne(id, title || "ad");
   };
 
   const emptyAdForm = () => ({
@@ -1433,7 +1924,7 @@ function AdsTab() {
                 >
                   <Edit className="h-3.5 w-3.5 mr-1.5" />Edit
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => remove(a._id)} className="text-sb-ink/55 border-sb-ink/18 hover:bg-sb-cream-secondary"><Trash2 className="h-3.5 w-3.5" /></Button>
+                <Button variant="outline" size="sm" onClick={() => remove(a._id, a.title)} className="text-sb-ink/55 border-sb-ink/18 hover:bg-sb-cream-secondary"><Trash2 className="h-3.5 w-3.5" /></Button>
               </div>
             </div>
           ))}
@@ -1495,32 +1986,721 @@ function AdsTab() {
           </div>
         </Modal>
       )}
+
+      <AdminDeleteConfirmModal
+        open={!!adDelete.pending}
+        title={adDelete.modalTitle}
+        description={adDelete.modalDescription}
+        busy={adDelete.busy}
+        onCancel={adDelete.cancelDelete}
+        onConfirm={adDelete.confirm}
+      />
     </>
+  );
+}
+
+// ─── Footer & Policies Tab ────────────────────────────────────────────────────
+type PolicySectionForm = { title: string; bodyText: string };
+
+function sectionsToForm(sections: any[]): PolicySectionForm[] {
+  if (!Array.isArray(sections) || !sections.length) {
+    return [{ title: "", bodyText: "" }];
+  }
+  return sections.map((s) => ({
+    title: s.title || "",
+    bodyText: Array.isArray(s.body) ? s.body.join("\n") : "",
+  }));
+}
+
+function sectionsFromForm(sections: PolicySectionForm[]) {
+  return sections
+    .map((s) => ({
+      title: s.title.trim(),
+      body: s.bodyText.split("\n").map((l) => l.trim()).filter(Boolean),
+    }))
+    .filter((s) => s.title);
+}
+
+function FooterTab() {
+  const [footer, setFooter] = useState({
+    companyDescription: "",
+    address: "",
+    phone: "",
+    email: "",
+    newsletterText: "",
+    copyrightText: "",
+  });
+  const [quickLinks, setQuickLinks] = useState<any[]>([]);
+  const [policies, setPolicies] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [footerMsg, setFooterMsg] = useState("");
+  const [savingFooter, setSavingFooter] = useState(false);
+
+  const [linkModal, setLinkModal] = useState<{ open: boolean; data: any | null }>({ open: false, data: null });
+  const [linkForm, setLinkForm] = useState({ label: "", href: "", sortOrder: 0 });
+  const [savingLink, setSavingLink] = useState(false);
+
+  const [policyModal, setPolicyModal] = useState<{ open: boolean; data: any | null }>({ open: false, data: null });
+  const [policyForm, setPolicyForm] = useState({
+    slug: "",
+    title: "",
+    subtitle: "",
+    lastUpdated: "",
+    sortOrder: 0,
+    isActive: true,
+    sections: [{ title: "", bodyText: "" }] as PolicySectionForm[],
+  });
+  const [savingPolicy, setSavingPolicy] = useState(false);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    Promise.all([
+      apiFetch("/cms/footer"),
+      apiFetch("/cms/policies/all"),
+    ])
+      .then(([footerRes, policiesRes]) => {
+        const f = footerRes.data || {};
+        setFooter({
+          companyDescription: f.companyDescription || "",
+          address: f.address || "",
+          phone: f.phone || "",
+          email: f.email || "",
+          newsletterText: f.newsletterText || "",
+          copyrightText: f.copyrightText || "",
+        });
+        setQuickLinks(Array.isArray(f.quickLinks) ? f.quickLinks : []);
+        setPolicies(Array.isArray(policiesRes.data) ? policiesRes.data : []);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const quickLinkDelete = useAdminResourceDelete("/cms/footer/quick-links", load);
+  const policyDelete = useAdminResourceDelete("/cms/policies", load);
+
+  const saveFooter = async () => {
+    setSavingFooter(true);
+    setFooterMsg("");
+    try {
+      await apiFetch("/cms/footer", { method: "PATCH", body: JSON.stringify(footer) });
+      setFooterMsg("Footer details saved.");
+    } catch (e: any) {
+      setFooterMsg(`Error: ${e.message}`);
+    }
+    setSavingFooter(false);
+  };
+
+  const saveQuickLink = async () => {
+    if (!linkForm.label.trim() || !linkForm.href.trim()) return;
+    setSavingLink(true);
+    try {
+      if (linkModal.data?._id) {
+        await apiFetch(`/cms/footer/quick-links/${linkModal.data._id}`, {
+          method: "PATCH",
+          body: JSON.stringify(linkForm),
+        });
+      } else {
+        await apiFetch("/cms/footer/quick-links", {
+          method: "POST",
+          body: JSON.stringify(linkForm),
+        });
+      }
+      setLinkModal({ open: false, data: null });
+      load();
+    } catch (e: any) {
+      alert(e.message || "Failed to save quick link");
+    }
+    setSavingLink(false);
+  };
+
+  const deleteQuickLink = (id: string, label: string) => {
+    quickLinkDelete.removeOne(id, label);
+  };
+
+  const savePolicy = async () => {
+    if (!policyForm.slug.trim() || !policyForm.title.trim()) return;
+    setSavingPolicy(true);
+    const payload = {
+      slug: policyForm.slug.trim().toLowerCase(),
+      title: policyForm.title.trim(),
+      subtitle: policyForm.subtitle.trim(),
+      lastUpdated: policyForm.lastUpdated.trim(),
+      sortOrder: Number(policyForm.sortOrder) || 0,
+      isActive: policyForm.isActive,
+      sections: sectionsFromForm(policyForm.sections),
+    };
+    try {
+      if (policyModal.data?._id) {
+        await apiFetch(`/cms/policies/${policyModal.data._id}`, {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+        });
+      } else {
+        await apiFetch("/cms/policies", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+      }
+      setPolicyModal({ open: false, data: null });
+      load();
+    } catch (e: any) {
+      alert(e.message || "Failed to save policy");
+    }
+    setSavingPolicy(false);
+  };
+
+  const deletePolicy = (id: string, title: string) => {
+    policyDelete.removeOne(id, title);
+  };
+
+  const openPolicyEditor = (p: any | null) => {
+    if (p) {
+      setPolicyForm({
+        slug: p.slug || "",
+        title: p.title || "",
+        subtitle: p.subtitle || "",
+        lastUpdated: p.lastUpdated || "",
+        sortOrder: Number(p.sortOrder) || 0,
+        isActive: p.isActive !== false,
+        sections: sectionsToForm(p.sections),
+      });
+      setPolicyModal({ open: true, data: p });
+    } else {
+      setPolicyForm({
+        slug: "",
+        title: "",
+        subtitle: "",
+        lastUpdated: new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }),
+        sortOrder: policies.length,
+        isActive: true,
+        sections: [{ title: "", bodyText: "" }],
+      });
+      setPolicyModal({ open: true, data: null });
+    }
+  };
+
+  if (loading) return <Spinner />;
+
+  return (
+    <div className="space-y-8 max-w-4xl">
+      <div>
+        <SectionHeader title="Footer details" />
+        <p className="text-xs text-sb-ink/45 mb-4 leading-relaxed">
+          Company blurb, contact lines, and copyright shown in the storefront footer.
+        </p>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-sb-ink/55 mb-1 block">Company description</label>
+            <Textarea
+              rows={3}
+              value={footer.companyDescription}
+              onChange={(e) => setFooter((f) => ({ ...f, companyDescription: e.target.value }))}
+            />
+          </div>
+          {[
+            { key: "address", label: "Address" },
+            { key: "phone", label: "Phone" },
+            { key: "email", label: "Email" },
+            { key: "newsletterText", label: "Newsletter text" },
+            { key: "copyrightText", label: "Copyright line" },
+          ].map(({ key, label }) => (
+            <div key={key}>
+              <label className="text-xs text-sb-ink/55 mb-1 block">{label}</label>
+              <Input
+                value={(footer as any)[key]}
+                onChange={(e) => setFooter((f) => ({ ...f, [key]: e.target.value }))}
+              />
+            </div>
+          ))}
+          <div className="flex items-center gap-3 pt-1">
+            <Button onClick={saveFooter} disabled={savingFooter} className="bg-sb-orange hover:bg-sb-orange-hover text-black">
+              {savingFooter ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+              Save footer
+            </Button>
+            {footerMsg && <span className="text-sm text-sb-orange">{footerMsg}</span>}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <SectionHeader
+          title="Quick links"
+          onAdd={() => {
+            setLinkForm({ label: "", href: "/", sortOrder: quickLinks.length });
+            setLinkModal({ open: true, data: null });
+          }}
+          addLabel="Add link"
+        />
+        <p className="text-xs text-sb-ink/45 mb-4">
+          Links in the footer Quick Links column. Use paths like <code className="text-sb-ink/70">/privacy</code> or <code className="text-sb-ink/70">/policy/your-slug</code>.
+        </p>
+        {quickLinks.length === 0 ? (
+          <EmptyState text="No quick links yet." />
+        ) : (
+          <div className="space-y-2">
+            {quickLinks.map((link) => (
+              <div key={link._id} className="flex items-center gap-3 bg-sb-cream-secondary border border-sb-ink/10 rounded-lg px-4 py-3">
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-sb-ink truncate">{link.label}</p>
+                  <p className="text-xs text-sb-ink/50 truncate">{link.href}</p>
+                </div>
+                <span className="text-[10px] text-sb-ink/40 shrink-0">#{link.sortOrder}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setLinkForm({
+                      label: link.label || "",
+                      href: link.href || "",
+                      sortOrder: Number(link.sortOrder) || 0,
+                    });
+                    setLinkModal({ open: true, data: link });
+                  }}
+                >
+                  <Edit className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-sb-ink/55 border-sb-ink/18"
+                  onClick={() => deleteQuickLink(link._id, link.label || "quick link")}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <SectionHeader title="Policy pages" onAdd={() => openPolicyEditor(null)} addLabel="Add policy" />
+        <p className="text-xs text-sb-ink/45 mb-4">
+          Legal / policy content for footer links. Edits appear on the storefront immediately. Slug <code className="text-sb-ink/70">privacy</code> maps to <code className="text-sb-ink/70">/privacy</code>; custom slugs use <code className="text-sb-ink/70">/policy/slug</code>.
+        </p>
+        {policies.length === 0 ? (
+          <EmptyState text="No policies yet." />
+        ) : (
+          <div className="space-y-2">
+            {policies.map((p) => (
+              <div key={p._id} className="flex items-start gap-3 bg-sb-cream-secondary border border-sb-ink/10 rounded-lg px-4 py-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-semibold text-sm text-sb-ink">{p.title}</p>
+                    <Badge className={p.isActive !== false ? "bg-sb-orange/12 text-sb-orange" : "bg-sb-cream-secondary text-sb-ink/55"}>
+                      {p.isActive !== false ? "Active" : "Hidden"}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-sb-ink/50 mt-0.5">/{p.slug} · {(p.sections || []).length} section(s)</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => openPolicyEditor(p)}>
+                  <Edit className="h-3.5 w-3.5 mr-1" /> Edit
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-sb-ink/55 border-sb-ink/18"
+                  onClick={() => deletePolicy(p._id, p.title)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {linkModal.open && (
+        <Modal title={linkModal.data ? "Edit quick link" : "Add quick link"} onClose={() => setLinkModal({ open: false, data: null })}>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-sb-ink/55 mb-1 block">Label *</label>
+              <Input value={linkForm.label} onChange={(e) => setLinkForm((f) => ({ ...f, label: e.target.value }))} placeholder="Privacy Policy" />
+            </div>
+            <div>
+              <label className="text-xs text-sb-ink/55 mb-1 block">URL path *</label>
+              <Input value={linkForm.href} onChange={(e) => setLinkForm((f) => ({ ...f, href: e.target.value }))} placeholder="/privacy" />
+            </div>
+            <div>
+              <label className="text-xs text-sb-ink/55 mb-1 block">Sort order</label>
+              <Input type="number" value={linkForm.sortOrder} onChange={(e) => setLinkForm((f) => ({ ...f, sortOrder: Number(e.target.value) || 0 }))} />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button onClick={saveQuickLink} disabled={savingLink} className="bg-sb-orange hover:bg-sb-orange-hover text-black flex-1">
+                {savingLink ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                Save
+              </Button>
+              <Button variant="outline" onClick={() => setLinkModal({ open: false, data: null })}>Cancel</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {policyModal.open && (
+        <Modal title={policyModal.data ? "Edit policy" : "Create policy"} onClose={() => setPolicyModal({ open: false, data: null })}>
+          <div className="space-y-3">
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-sb-ink/55 mb-1 block">Slug *</label>
+                <Input
+                  value={policyForm.slug}
+                  onChange={(e) => setPolicyForm((f) => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") }))}
+                  placeholder="privacy"
+                  disabled={!!policyModal.data}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-sb-ink/55 mb-1 block">Sort order</label>
+                <Input type="number" value={policyForm.sortOrder} onChange={(e) => setPolicyForm((f) => ({ ...f, sortOrder: Number(e.target.value) || 0 }))} />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-sb-ink/55 mb-1 block">Title *</label>
+              <Input value={policyForm.title} onChange={(e) => setPolicyForm((f) => ({ ...f, title: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-xs text-sb-ink/55 mb-1 block">Subtitle</label>
+              <Input value={policyForm.subtitle} onChange={(e) => setPolicyForm((f) => ({ ...f, subtitle: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-xs text-sb-ink/55 mb-1 block">Last updated (display text)</label>
+              <Input value={policyForm.lastUpdated} onChange={(e) => setPolicyForm((f) => ({ ...f, lastUpdated: e.target.value }))} placeholder="17 June 2026" />
+            </div>
+            <label className="flex items-center gap-2 text-sm text-sb-ink">
+              <input
+                type="checkbox"
+                checked={policyForm.isActive}
+                onChange={(e) => setPolicyForm((f) => ({ ...f, isActive: e.target.checked }))}
+              />
+              Visible on storefront
+            </label>
+
+            <div className="border-t border-sb-ink/10 pt-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold uppercase tracking-wider text-sb-ink/55">Sections</p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setPolicyForm((f) => ({ ...f, sections: [...f.sections, { title: "", bodyText: "" }] }))}
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1" /> Add section
+                </Button>
+              </div>
+              {policyForm.sections.map((sec, idx) => (
+                <div key={idx} className="rounded-lg border border-sb-ink/10 p-3 space-y-2 bg-sb-cream/50">
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="text-xs text-sb-ink/55">Section {idx + 1} title</label>
+                    {policyForm.sections.length > 1 && (
+                      <button
+                        type="button"
+                        className="text-xs text-red-600 hover:underline"
+                        onClick={() => setPolicyForm((f) => ({ ...f, sections: f.sections.filter((_, i) => i !== idx) }))}
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <Input
+                    value={sec.title}
+                    onChange={(e) => setPolicyForm((f) => {
+                      const sections = [...f.sections];
+                      sections[idx] = { ...sections[idx], title: e.target.value };
+                      return { ...f, sections };
+                    })}
+                    placeholder="1. Overview"
+                  />
+                  <Textarea
+                    rows={4}
+                    value={sec.bodyText}
+                    onChange={(e) => setPolicyForm((f) => {
+                      const sections = [...f.sections];
+                      sections[idx] = { ...sections[idx], bodyText: e.target.value };
+                      return { ...f, sections };
+                    })}
+                    placeholder="One paragraph per line"
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button onClick={savePolicy} disabled={savingPolicy} className="bg-sb-orange hover:bg-sb-orange-hover text-black flex-1">
+                {savingPolicy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                {policyModal.data ? "Update policy" : "Create policy"}
+              </Button>
+              <Button variant="outline" onClick={() => setPolicyModal({ open: false, data: null })}>Cancel</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      <AdminDeleteConfirmModal
+        open={!!quickLinkDelete.pending}
+        title={quickLinkDelete.modalTitle}
+        description={quickLinkDelete.modalDescription}
+        busy={quickLinkDelete.busy}
+        onCancel={quickLinkDelete.cancelDelete}
+        onConfirm={quickLinkDelete.confirm}
+      />
+      <AdminDeleteConfirmModal
+        open={!!policyDelete.pending}
+        title={policyDelete.modalTitle}
+        description={policyDelete.modalDescription}
+        busy={policyDelete.busy}
+        onCancel={policyDelete.cancelDelete}
+        onConfirm={policyDelete.confirm}
+      />
+    </div>
+  );
+}
+
+// ─── Landing Pages Tab ────────────────────────────────────────────────────────
+type LandingSectionForm = { title: string; bodyText: string };
+
+function landingSectionsToForm(sections: any[] | undefined): LandingSectionForm[] {
+  if (!Array.isArray(sections) || sections.length === 0) return [{ title: "", bodyText: "" }];
+  return sections.map((s) => ({
+    title: s.title || "",
+    bodyText: Array.isArray(s.body) ? s.body.join("\n") : "",
+  }));
+}
+
+function landingSectionsFromForm(sections: LandingSectionForm[]) {
+  return sections
+    .filter((s) => s.title.trim() || s.bodyText.trim())
+    .map((s) => ({
+      title: s.title.trim(),
+      body: s.bodyText.split("\n").map((l) => l.trim()).filter(Boolean),
+    }));
+}
+
+function LandingPagesTab() {
+  const [pages, setPages] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState<{ open: boolean; data: any | null }>({ open: false, data: null });
+  const [form, setForm] = useState({
+    slug: "",
+    title: "",
+    subtitle: "",
+    sortOrder: 0,
+    isActive: true,
+    sections: [{ title: "", bodyText: "" }] as LandingSectionForm[],
+  });
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    apiFetch("/cms/landing-pages/all")
+      .then((d) => setPages(Array.isArray(d.data) ? d.data : []))
+      .catch(() => setPages([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const landingDelete = useAdminResourceDelete("/cms/landing-pages", load);
+
+  const openEditor = (p: any | null) => {
+    if (p) {
+      setForm({
+        slug: p.slug || "",
+        title: p.title || "",
+        subtitle: p.subtitle || "",
+        sortOrder: Number(p.sortOrder) || 0,
+        isActive: p.isActive !== false,
+        sections: landingSectionsToForm(p.sections),
+      });
+      setModal({ open: true, data: p });
+    } else {
+      setForm({
+        slug: "",
+        title: "",
+        subtitle: "",
+        sortOrder: pages.length,
+        isActive: true,
+        sections: [{ title: "", bodyText: "" }],
+      });
+      setModal({ open: true, data: null });
+    }
+  };
+
+  const save = async () => {
+    if (!form.slug.trim() || !form.title.trim()) return;
+    setSaving(true);
+    const payload = {
+      slug: form.slug.trim().toLowerCase(),
+      title: form.title.trim(),
+      subtitle: form.subtitle.trim(),
+      pageType: "content",
+      calculatorType: "none",
+      sortOrder: Number(form.sortOrder) || 0,
+      isActive: form.isActive,
+      sections: landingSectionsFromForm(form.sections),
+    };
+    try {
+      if (modal.data?._id) {
+        await apiFetch(`/cms/landing-pages/${modal.data._id}`, { method: "PATCH", body: JSON.stringify(payload) });
+      } else {
+        await apiFetch("/cms/landing-pages", { method: "POST", body: JSON.stringify(payload) });
+      }
+      setModal({ open: false, data: null });
+      load();
+    } catch (e: any) {
+      alert(e.message || "Save failed");
+    }
+    setSaving(false);
+  };
+
+  const remove = (id: string, title: string) => {
+    landingDelete.removeOne(id, title);
+  };
+
+  if (loading) return <Spinner />;
+
+  return (
+    <div className="space-y-6 max-w-4xl">
+      <SectionHeader title="Landing pages" onAdd={() => openEditor(null)} addLabel="Add page" />
+      <p className="text-xs text-sb-ink/45 -mt-2 leading-relaxed">
+        Public URLs: <code className="text-sb-orange">/lp/your-slug</code>
+      </p>
+
+      {pages.length === 0 ? (
+        <p className="text-sm text-sb-ink/45">No landing pages yet.</p>
+      ) : (
+        <div className="space-y-2">
+          {pages.map((p) => (
+            <div key={p._id} className="flex flex-wrap items-center justify-between gap-3 bg-sb-cream-secondary border border-sb-ink/10 rounded-xl px-4 py-3">
+              <div className="min-w-0">
+                <p className="font-semibold text-sb-ink">{p.title}</p>
+                <p className="text-xs text-sb-ink/50">/lp/{p.slug}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge className={p.isActive !== false ? "bg-sb-orange/12 text-sb-orange" : "bg-gray-100 text-gray-500"}>
+                  {p.isActive !== false ? "Active" : "Hidden"}
+                </Badge>
+                <Button variant="outline" size="sm" onClick={() => openEditor(p)}>
+                  <Edit className="h-3.5 w-3.5 mr-1" /> Edit
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => void remove(p._id, p.title)}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {modal.open && (
+        <Modal title={modal.data ? `Edit — ${modal.data.title}` : "Create landing page"} onClose={() => setModal({ open: false, data: null })}>
+          <div className="space-y-3">
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-sb-ink/55 mb-1 block">Slug *</label>
+                <Input value={form.slug} onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))} placeholder="summer-sale" disabled={!!modal.data} />
+              </div>
+              <div>
+                <label className="text-xs text-sb-ink/55 mb-1 block">Sort order</label>
+                <Input type="number" value={form.sortOrder} onChange={(e) => setForm((f) => ({ ...f, sortOrder: +e.target.value }))} />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-sb-ink/55 mb-1 block">Title *</label>
+              <Input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-xs text-sb-ink/55 mb-1 block">Subtitle</label>
+              <Input value={form.subtitle} onChange={(e) => setForm((f) => ({ ...f, subtitle: e.target.value }))} />
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={form.isActive} onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))} />
+              Active (visible on storefront)
+            </label>
+            <div className="space-y-2">
+              <p className="text-xs font-bold uppercase tracking-wider text-sb-ink/55">Sections</p>
+              {form.sections.map((sec, idx) => (
+                <div key={idx} className="border border-sb-ink/10 rounded-lg p-3 space-y-2">
+                  <Input
+                    value={sec.title}
+                    onChange={(e) => setForm((f) => {
+                      const sections = [...f.sections];
+                      sections[idx] = { ...sections[idx], title: e.target.value };
+                      return { ...f, sections };
+                    })}
+                    placeholder="Section title"
+                  />
+                  <Textarea
+                    rows={3}
+                    value={sec.bodyText}
+                    onChange={(e) => setForm((f) => {
+                      const sections = [...f.sections];
+                      sections[idx] = { ...sections[idx], bodyText: e.target.value };
+                      return { ...f, sections };
+                    })}
+                    placeholder="One bullet per line"
+                  />
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setForm((f) => ({ ...f, sections: [...f.sections, { title: "", bodyText: "" }] }))}
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" /> Add section
+              </Button>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button onClick={() => void save()} disabled={saving || !form.slug.trim() || !form.title.trim()} className="bg-sb-orange hover:bg-sb-orange-hover text-black flex-1">
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                Save
+              </Button>
+              <Button variant="outline" onClick={() => setModal({ open: false, data: null })}>Cancel</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      <AdminDeleteConfirmModal
+        open={!!landingDelete.pending}
+        title={landingDelete.modalTitle}
+        description={landingDelete.modalDescription}
+        busy={landingDelete.busy}
+        onCancel={landingDelete.cancelDelete}
+        onConfirm={landingDelete.confirm}
+      />
+    </div>
   );
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export function CMSManagement() {
+  const location = useLocation();
+  const defaultTab = location.pathname.includes("landing-pages") ? "landing" : "homepage";
+
   return (
-    <div className="p-6 bg-sb-cream min-h-full">
+    <div className="p-6 min-h-full">
       <div className="mb-6">
-        <h1 className="text-2xl font-black text-sb-ink">CMS & Platform Control Center</h1>
+        <h1 className="admin-page-title text-sb-ink">CMS & Platform Control Center</h1>
         <p className="text-sb-ink/55 text-sm mt-1">
           All content changes reflect instantly across Customer Panel, Vendor Panel, and Public Website.
         </p>
       </div>
 
-      <Tabs defaultValue="homepage" className="space-y-5">
+      <Tabs defaultValue={defaultTab} key={defaultTab} className="space-y-5">
         <div className="overflow-x-auto">
-          <TabsList className="flex w-max gap-1 bg-sb-cream-secondary p-1">
+          <TabsList className="flex w-max gap-1 bg-white border border-gray-200 p-1 shadow-sm">
             <TabsTrigger value="homepage"><Globe className="h-3.5 w-3.5 mr-1.5" />Homepage</TabsTrigger>
             <TabsTrigger value="banners"><Image className="h-3.5 w-3.5 mr-1.5" />Banners</TabsTrigger>
             <TabsTrigger value="blogs"><FileText className="h-3.5 w-3.5 mr-1.5" />Blogs</TabsTrigger>
+            <TabsTrigger value="landing"><FileText className="h-3.5 w-3.5 mr-1.5" />Landing pages</TabsTrigger>
             <TabsTrigger value="announcements"><Megaphone className="h-3.5 w-3.5 mr-1.5" />Announcements</TabsTrigger>
             <TabsTrigger value="testimonials"><Eye className="h-3.5 w-3.5 mr-1.5" />Testimonials</TabsTrigger>
             <TabsTrigger value="ads"><BarChart3 className="h-3.5 w-3.5 mr-1.5" />Ads</TabsTrigger>
             <TabsTrigger value="seo"><Globe className="h-3.5 w-3.5 mr-1.5" />SEO</TabsTrigger>
             <TabsTrigger value="contact"><Mail className="h-3.5 w-3.5 mr-1.5" />Contact</TabsTrigger>
+            <TabsTrigger value="footer"><Link2 className="h-3.5 w-3.5 mr-1.5" />Footer & Policies</TabsTrigger>
             <TabsTrigger value="marketplace"><MapPin className="h-3.5 w-3.5 mr-1.5" />Marketplace</TabsTrigger>
           </TabsList>
         </div>
@@ -1528,11 +2708,13 @@ export function CMSManagement() {
         <TabsContent value="homepage"><HomepageTab /></TabsContent>
         <TabsContent value="banners"><BannersTab /></TabsContent>
         <TabsContent value="blogs"><BlogsTab /></TabsContent>
+        <TabsContent value="landing"><LandingPagesTab /></TabsContent>
         <TabsContent value="announcements"><AnnouncementsTab /></TabsContent>
         <TabsContent value="testimonials"><TestimonialsTab /></TabsContent>
         <TabsContent value="ads"><AdsTab /></TabsContent>
         <TabsContent value="seo"><SEOTab /></TabsContent>
         <TabsContent value="contact"><ContactTab /></TabsContent>
+        <TabsContent value="footer"><FooterTab /></TabsContent>
         <TabsContent value="marketplace"><MarketplaceTab /></TabsContent>
       </Tabs>
     </div>

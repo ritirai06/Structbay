@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router";
+import { useEffect } from "react";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router";
 import { AppProvider } from "./context/AppContext";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
@@ -11,6 +12,7 @@ import { Cart } from "./pages/Cart";
 import { Checkout } from "./pages/Checkout";
 import { OrderSuccess } from "./pages/OrderSuccess";
 import { OrderTracking } from "./pages/OrderTracking";
+import { TrackOrder } from "./pages/TrackOrder";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
 import { Dashboard } from "./pages/Dashboard";
@@ -21,10 +23,24 @@ import { BlogListing, BlogDetails } from "./pages/Blog";
 import { SearchResults } from "./pages/SearchResults";
 import { BrandLanding } from "./pages/BrandLanding";
 import { Shop } from "./pages/Shop";
-import { ToolsQuantityEstimator } from "./pages/ToolsQuantityEstimator";
+import {
+  PrivacyPolicyPage,
+  TermsPage,
+  ReturnsPolicyPage,
+  ShippingPolicyPage,
+  DynamicPolicyPage,
+} from "./pages/PolicyPage";
 
 /* Pages that use full-screen layouts (no shared header/footer) */
 const FULLSCREEN_ROUTES = ["/splash", "/city", "/login", "/register", "/dashboard"];
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
 
 function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -33,7 +49,8 @@ function Layout({ children }: { children: React.ReactNode }) {
   if (isFullscreen) return <>{children}</>;
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-white">
+      <ScrollToTop />
       <Header />
       <main className="flex-1">{children}</main>
       <Footer />
@@ -54,7 +71,7 @@ function AppRoutes() {
         <Route path="/cart" element={<Cart />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/order-success" element={<OrderSuccess />} />
-        <Route path="/track" element={<Navigate to="/dashboard/orders" replace />} />
+        <Route path="/track" element={<TrackOrder />} />
         <Route path="/orders/:orderId" element={<OrderTracking />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
@@ -63,7 +80,6 @@ function AppRoutes() {
         <Route path="/rfq" element={<RFQ />} />
         <Route path="/bulk" element={<BulkEnquiry />} />
         <Route path="/bulk-enquiry" element={<BulkEnquiry />} />
-        <Route path="/tools/cement-estimator" element={<ToolsQuantityEstimator />} />
         <Route path="/finance" element={<Finance />} />
         {/* Blog: plural routes match links across the site; singular kept for old bookmarks */}
         <Route path="/blogs" element={<BlogListing />} />
@@ -73,6 +89,11 @@ function AppRoutes() {
         <Route path="/search" element={<SearchResults />} />
         <Route path="/brand/:brand" element={<BrandLanding />} />
         <Route path="/shop" element={<Shop />} />
+        <Route path="/privacy" element={<PrivacyPolicyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/returns" element={<ReturnsPolicyPage />} />
+        <Route path="/shipping" element={<ShippingPolicyPage />} />
+        <Route path="/policy/:slug" element={<DynamicPolicyPage />} />
         {/* Catch-all */}
         <Route path="*" element={<Homepage />} />
       </Routes>

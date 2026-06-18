@@ -94,14 +94,14 @@ function buildOrderAcknowledgementHtml(order) {
     }
   </style>
 </head>
-<body style="margin:0;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Ubuntu,sans-serif;background:#FAF3E1;color:#171717;">
-  <div class="sb-wrap" style="max-width:800px;margin:24px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(23,23,23,.08);">
-    <div style="background:#171717;color:#FAF3E1;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+<body style="margin:0;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Ubuntu,sans-serif;background:#f7f7f7;color:#000000;">
+  <div class="sb-wrap" style="max-width:800px;margin:24px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.08);border:1px solid #e5e5e5;">
+    <div style="background:#000000;color:#ffffff;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
       <div style="display:flex;align-items:center;gap:14px;min-width:0;">
         ${
           logoUri
             ? `<img src="${logoUri}" alt="StructBay" width="160" height="48" style="height:44px;width:auto;max-width:min(200px,42vw);object-fit:contain;display:block;flex-shrink:0;" />`
-            : `<div style="font-size:22px;font-weight:800;letter-spacing:-0.02em;"><span style="color:#FE5E00">Struct</span>Bay</div>`
+            : `<div style="font-size:22px;font-weight:800;letter-spacing:-0.02em;"><span style="color:#E85A00">Struct</span>Bay</div>`
         }
         <div style="min-width:0;">
           <div style="font-size:12px;opacity:.85;line-height:1.35;">India's Premier B2B Construction Materials Marketplace</div>
@@ -120,8 +120,8 @@ function buildOrderAcknowledgementHtml(order) {
       </p>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
-        <div style="background:#FAF3E1;border-radius:12px;padding:14px 16px;border:1px solid #eadfcc;">
-          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#7a6a52;font-weight:700;margin-bottom:8px;">Bill to / Ship to</div>
+        <div style="background:#fff;border-radius:12px;padding:14px 16px;border:1px solid #e5e5e5;">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#666;font-weight:700;margin-bottom:8px;">Bill to / Ship to</div>
           <div style="font-size:14px;line-height:1.55;">
             <strong>${esc(addr.name || '—')}</strong><br/>
             ${esc(addr.line1 || '')}${addr.line1 ? '<br/>' : ''}
@@ -131,8 +131,8 @@ function buildOrderAcknowledgementHtml(order) {
             ${addr.phone ? `Phone: ${esc(addr.phone)}` : ''}
           </div>
         </div>
-        <div style="background:#FAF3E1;border-radius:12px;padding:14px 16px;border:1px solid #eadfcc;">
-          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#7a6a52;font-weight:700;margin-bottom:8px;">Order details</div>
+        <div style="background:#fff;border-radius:12px;padding:14px 16px;border:1px solid #e5e5e5;">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#666;font-weight:700;margin-bottom:8px;">Order details</div>
           <div style="font-size:14px;line-height:1.7;">
             <div><strong>Order no.</strong> ${esc(o.orderNumber)}</div>
             <div><strong>Date</strong> ${esc(formatDate(o.createdAt))}</div>
@@ -146,7 +146,7 @@ function buildOrderAcknowledgementHtml(order) {
       <div style="border:1px solid #eee;border-radius:12px;overflow:hidden;">
         <table style="width:100%;border-collapse:collapse;font-size:14px;">
           <thead>
-            <tr style="background:#171717;color:#FAF3E1;">
+            <tr style="background:#000000;color:#ffffff;">
               <th style="text-align:left;padding:12px 10px;font-weight:700;">Item</th>
               <th style="text-align:center;padding:12px 8px;font-weight:700;width:72px;">Qty</th>
               <th style="text-align:right;padding:12px 10px;font-weight:700;width:110px;">Rate</th>
@@ -160,15 +160,15 @@ function buildOrderAcknowledgementHtml(order) {
       </div>
 
       <div style="margin-top:20px;display:flex;justify-content:flex-end;">
-        <div style="min-width:260px;background:#FAF3E1;border-radius:12px;padding:16px 18px;border:1px solid #eadfcc;">
+        <div style="min-width:260px;background:#fff7f0;border-radius:12px;padding:16px 18px;border:1px solid #ffd9b8;">
           <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px;">
             <span>Subtotal</span><strong>${formatINR(o.subtotal)}</strong>
           </div>
           <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px;">
             <span>GST</span><strong>${formatINR(o.gstTotal)}</strong>
           </div>
-          <div style="height:1px;background:#dccfb5;margin:10px 0;"></div>
-          <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:800;color:#FE5E00;">
+          <div style="height:1px;background:#e5e5e5;margin:10px 0;"></div>
+          <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:800;color:#E85A00;">
             <span>Grand total</span><span>${formatINR(o.grandTotal)}</span>
           </div>
         </div>
