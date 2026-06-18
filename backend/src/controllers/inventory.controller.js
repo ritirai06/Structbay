@@ -7,6 +7,7 @@ const InventoryLog = require('../models/InventoryLog');
 const Product = require('../models/Product');
 const City = require('../models/City');
 const { logAction } = require('../services/auditLog.service');
+const { reviveSoftDeleted } = require('../utils/softDeleteRelease');
 
 const OID_RE = /^[a-f0-9]{24}$/i;
 
@@ -43,8 +44,12 @@ async function executeAdjustment({
 
   const query = { product, city };
   if (variation) query.variation = variation;
+  else query.variation = null;
 
   let inv = await Inventory.findOne(query);
+  if (!inv) {
+    inv = await reviveSoftDeleted(Inventory, query);
+  }
   if (!inv) {
     inv = await Inventory.create({
       product,

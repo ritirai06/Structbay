@@ -2,9 +2,11 @@ const mongoose = require('mongoose');
 const asyncHandler = require('../utils/asyncHandler');
 const ApiResponse = require('../utils/apiResponse');
 const AppError = require('../utils/AppError');
+const slugify = require('slugify');
 const City = require('../models/City');
 const { logAction } = require('../services/auditLog.service');
 const { generateRefNumber } = require('../services/refNumber.service');
+const { applySoftDelete } = require('../utils/softDeleteRelease');
 
 /** Split comma/newline/space separated PINs into unique 6-digit strings. */
 function normalizePincodes(input) {
@@ -120,14 +122,15 @@ const toggle = asyncHandler(async (req, res) => {
 const remove = asyncHandler(async (req, res) => {
   const city = await City.findById(req.params.id);
   if (!city) throw new AppError('City not found.', 404);
-  city.isDeleted = true;
+  const oldName = city.name;
+  applySoftDelete(city, { fields: ['name', 'slug'], nameMaxLength: 100 });
   await city.save({ validateBeforeSave: false });
   await logAction({
     adminId: req.user._id,
     action: 'DELETE',
     module: 'City',
     targetId: city._id.toString(),
-    description: `Deleted city: ${city.name}`,
+    description: `Deleted city: ${oldName}`,
     ipAddress: req.ip,
   });
   return ApiResponse.success(res, 200, 'City deleted.');

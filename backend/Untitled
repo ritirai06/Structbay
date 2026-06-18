@@ -1,0 +1,59 @@
+# ─── Server ───────────────────────────────────────────────────────────────────
+PORT=5000
+NODE_ENV=development                  # development | production | test
+
+# ─── MongoDB ──────────────────────────────────────────────────────────────────
+MONGODB_URI=mongodb+srv://riti_db_user:XFtbNFXS7CammPJ4@cluster0.42fczgz.mongodb.net/?appName=structbay
+# ─── JWT (code uses JWT_ACCESS_SECRET — not JWT_SECRET) ───────────────────────
+# Generate with: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+JWT_ACCESS_SECRET=024750c6613643238a425986280226298412630e337845621141302b796099a9
+JWT_REFRESH_SECRET=6961682969286d68373638363534346566613562376132653563336133363866
+JWT_RESET_SECRET=8340313831363735393135363138363437343832323833363831333338323633
+JWT_ACCESS_EXPIRES_IN=15m             # Access token lifespan
+JWT_REFRESH_EXPIRES_IN=30d            # Refresh token lifespan (JWT claim)
+JWT_REFRESH_EXPIRES_DAYS=30           # Refresh token lifespan (DB TTL, integer days)
+JWT_RESET_EXPIRES_IN=1h               # Password reset token lifespan
+
+# ─── Cloudinary ───────────────────────────────────────────────────────────────
+CLOUDINARY_CLOUD_NAME=dr3bbkrv7
+CLOUDINARY_API_KEY=218394488325373
+CLOUDINARY_API_SECRET=5f4j0xN3xBwcedj3FL-JMPkUlhE
+
+# ─── Frontend URLs (CORS & email links) ──────────────────────────────────────
+# Single SPA (Vite on 3000): point all panel URLs at the same origin so CORS allows the browser.
+FRONTEND_URL=http://localhost:3000
+ADMIN_URL=http://localhost:3000
+CUSTOMER_URL=http://localhost:3000
+VENDOR_URL=http://localhost:3000
+
+# ─── Email / SMTP ─────────────────────────────────────────────────────────────
+# Zoho Mail (India): use smtp.zoho.in + Mail → Settings → Mail Accounts → SMTP (app password if enforced).
+# Do NOT use smtp.gmail.com for @hsdadigital.com unless that mailbox is on Google Workspace with Gmail SMTP.
+SMTP_HOST=smtp.zoho.in
+SMTP_PORT=587
+SMTP_SECURE=false                     # true for port 465
+SMTP_USER=riti@hsdadigital.com
+SMTP_PASS="R!t!11#@"
+SMTP_FROM=riti@hsdadigital.com
+
+GMAIL_USER=riti@hsdadigital.com
+GMAIL_PASS="R!t!11#@"
+
+# ─── Zoho (optional — Books / Inventory; see src/services/zoho.service.js) ───
+# ZOHO_CLIENT_ID=
+# ZOHO_CLIENT_SECRET=
+# ZOHO_REFRESH_TOKEN=
+# ZOHO_ACCOUNTS_URL=https://accounts.zoho.in
+# ZOHO_ORG_ID=
+
+# ─── Rate Limiting ────────────────────────────────────────────────────────────
+RATE_LIMIT_WINDOW_MS=900000           # 15 minutes in ms
+RATE_LIMIT_MAX=100                    # Max requests per window per IP
+# ─── Vendor registration ─────────────────────────────────────────────────────
+# When false (default), POST /auth/register/vendor returns 403; vendors are created via POST /admin/vendors only.
+# Set to true only if you need legacy public vendor self-signup.
+ALLOW_PUBLIC_VENDOR_REGISTRATION=false
+
+# ─── Bootstrap admin (optional — run `npm run seed:admin` once) ───────────────
+SEED_ADMIN_EMAIL=admin@hsdadigital.com
+SEED_ADMIN_PASSWORD=admin@123

@@ -47,6 +47,103 @@ function PdpAccordion({
   );
 }
 
+function ReturnExchangePolicyContent({ policy }: { policy: any }) {
+  const ret = policy?.return || {};
+  const ex = policy?.exchange || {};
+  const hasReturn =
+    ret.allowed ||
+    ret.windowDays ||
+    ret.instructions ||
+    (ret.conditions?.length ?? 0) > 0 ||
+    (ret.nonReturnableConditions?.length ?? 0) > 0;
+  const hasExchange =
+    ex.allowed ||
+    ex.windowDays ||
+    ex.instructions ||
+    (ex.conditions?.length ?? 0) > 0;
+  const hasAny = hasReturn || hasExchange;
+
+  if (!hasAny) {
+    return (
+      <p className="text-sm text-gray-600">
+        Contact us at +91 70905 70505 for return and exchange queries on this product.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-5 text-sm text-gray-600">
+      {hasReturn && (
+        <div>
+          <p className="font-semibold text-gray-900 mb-2">Return Policy</p>
+          <ul className="sf-pdp-list space-y-1">
+            <li>
+              <strong>Return allowed:</strong> {ret.allowed ? "Yes" : "No"}
+            </li>
+            {ret.windowDays != null && ret.windowDays !== "" && (
+              <li>
+                <strong>Return window:</strong> {ret.windowDays} day{Number(ret.windowDays) === 1 ? "" : "s"}
+              </li>
+            )}
+          </ul>
+          {ret.instructions && (
+            <p className="mt-2 whitespace-pre-line leading-relaxed">{ret.instructions}</p>
+          )}
+          {(ret.conditions?.length ?? 0) > 0 && (
+            <div className="mt-3">
+              <p className="font-medium text-gray-800 mb-1">Conditions</p>
+              <ul className="sf-pdp-list">
+                {ret.conditions.map((c: string, i: number) => (
+                  <li key={i}>{c}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {(ret.nonReturnableConditions?.length ?? 0) > 0 && (
+            <div className="mt-3">
+              <p className="font-medium text-gray-800 mb-1">Non-returnable</p>
+              <ul className="sf-pdp-list">
+                {ret.nonReturnableConditions.map((c: string, i: number) => (
+                  <li key={i}>{c}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {hasExchange && (
+        <div>
+          <p className="font-semibold text-gray-900 mb-2">Exchange Policy</p>
+          <ul className="sf-pdp-list space-y-1">
+            <li>
+              <strong>Exchange allowed:</strong> {ex.allowed ? "Yes" : "No"}
+            </li>
+            {ex.windowDays != null && ex.windowDays !== "" && (
+              <li>
+                <strong>Exchange window:</strong> {ex.windowDays} day{Number(ex.windowDays) === 1 ? "" : "s"}
+              </li>
+            )}
+          </ul>
+          {ex.instructions && (
+            <p className="mt-2 whitespace-pre-line leading-relaxed">{ex.instructions}</p>
+          )}
+          {(ex.conditions?.length ?? 0) > 0 && (
+            <div className="mt-3">
+              <p className="font-medium text-gray-800 mb-1">Conditions</p>
+              <ul className="sf-pdp-list">
+                {ex.conditions.map((c: string, i: number) => (
+                  <li key={i}>{c}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function relatedCardPricing(p: any) {
   const vid = p.variations?.[0]?._id ? String(p.variations[0]._id) : null;
   const snap = pricingSnapshotFromProduct(p, vid);
@@ -385,7 +482,7 @@ export function ProductDetails() {
             {/* Accordions */}
             <div className="sf-pdp-accordions mt-6">
               <PdpAccordion
-                title="Product Highlights"
+                title="Specifications"
                 open={openSection === "highlights"}
                 onToggle={() => toggleSection("highlights")}
               >
@@ -457,15 +554,11 @@ export function ProductDetails() {
               </PdpAccordion>
 
               <PdpAccordion
-                title="Returns & Exchange Policy"
+                title="Return & Exchange Policy"
                 open={openSection === "returns"}
                 onToggle={() => toggleSection("returns")}
               >
-                <ul className="sf-pdp-list">
-                  <li>7-day replacement for defective or wrong products.</li>
-                  <li>Report issues with order number and site photos within 7 days of delivery.</li>
-                  <li>Refunds processed after verification; GST invoice provided on all orders.</li>
-                </ul>
+                <ReturnExchangePolicyContent policy={product.returnExchangePolicy} />
               </PdpAccordion>
             </div>
           </div>

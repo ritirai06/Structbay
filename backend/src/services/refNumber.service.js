@@ -15,6 +15,7 @@ const MODULE_PREFIXES = {
   VENDOR_INVOICE:  'VINV',
   EWAY_BILL:       'EWB',
   SHIPMENT:        'SHP',
+  TRACKING:        'TRK',
   DELIVERY:        'DEL',
   FINANCE:         'FIN',
   CUSTOMER:        'CUS',

@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router";
 import {
   LayoutDashboard, Package, FolderTree, Award, MapPin,
-  DollarSign, Warehouse, Users, ShoppingCart, Truck,
+  Users, ShoppingCart, Truck,
   FileText, ClipboardList, Briefcase, CreditCard,
   UserCircle, Layout, BarChart3, History, Settings, UserCog,
   RefreshCw,
@@ -15,8 +15,6 @@ const navItems = [
   { path: "/admin/categories",   label: "Categories",        icon: FolderTree },
   { path: "/admin/brands",       label: "Brands",            icon: Award },
   { path: "/admin/cities",       label: "Cities",            icon: MapPin },
-  { path: "/admin/pricing",      label: "Pricing",           icon: DollarSign },
-  { path: "/admin/inventory",    label: "Inventory",         icon: Warehouse },
   { path: "/admin/vendors",      label: "Vendors",           icon: Users },
   { path: "/admin/orders",       label: "Orders",            icon: ShoppingCart },
   { path: "/admin/dispatch",     label: "Dispatch",          icon: Truck },

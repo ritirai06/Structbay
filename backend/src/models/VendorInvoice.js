@@ -4,15 +4,15 @@ const vendorInvoiceSchema = new mongoose.Schema({
   vendorOrder: { type: mongoose.Schema.Types.ObjectId, ref: 'VendorOrder', required: true },
   vendor: { type: mongoose.Schema.Types.ObjectId, ref: 'Vendor', required: true },
   
-  // StructBay vendor invoice ref (VINV…); vendor's tax invoice serial optional
+  // StructBay internal ref (VINV…); vendor tax invoice details optional (from PDF / future OCR)
   invoiceNumber: { type: String, required: true },
   vendorTaxInvoiceNumber: { type: String, default: null },
-  invoiceDate: { type: Date, required: true },
-  
-  // Amounts
-  invoiceAmount: { type: Number, required: true },
-  gstAmount: { type: Number, required: true },
-  totalAmount: { type: Number, required: true },
+  invoiceDate: { type: Date, default: null },
+
+  // Amounts — optional; extracted from PDF manually or via future OCR
+  invoiceAmount: { type: Number, default: null },
+  gstAmount: { type: Number, default: null },
+  totalAmount: { type: Number, default: null },
   
   // Invoice Document
   invoiceUrl: { type: String, required: true },
@@ -27,6 +27,12 @@ const vendorInvoiceSchema = new mongoose.Schema({
   // Remarks
   vendorRemarks: String,
   adminRemarks: String,
+
+  /** Snapshot at submission (Type B pickup coordination). */
+  pickupContactName: String,
+  pickupContactPhone: String,
+
+  submittedAt: { type: Date, default: Date.now },
   
   // Metadata
   fileSize: Number,

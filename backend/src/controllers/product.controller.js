@@ -13,8 +13,10 @@ const Inventory = require('../models/Inventory');
 const { deleteFile } = require('../config/cloudinary');
 const { logAction } = require('../services/auditLog.service');
 const { generateRefNumber } = require('../services/refNumber.service');
+const { applySoftDelete } = require('../utils/softDeleteRelease');
 const { resolveCategoryFromRow, escRx } = require('../utils/resolveCategoryFromRow');
 const catalogBrowse = require('../services/catalogBrowse.service');
+const productFull = require('../services/productFull.service');
 
 async function resolveBrandForProductRow(r) {
   const byId = String(r.brandId || r.brand_id || '').trim();
@@ -60,7 +62,8 @@ const getAll = asyncHandler(async (req, res) => {
     Product.countDocuments(filter),
     Product.countDocuments({ ...filter, status: 'ACTIVE' }),
   ]);
-  return ApiResponse.success(res, 200, 'Products retrieved.', products, {
+  const enriched = await productFull.enrichProductsSummary(products);
+  return ApiResponse.success(res, 200, 'Products retrieved.', enriched, {
     total, active: activeTotal, page: pageNum, limit: limitNum, pages: Math.ceil(total / limitNum),
   });
 });
@@ -70,8 +73,18 @@ const getById = asyncHandler(async (req, res) => {
     .populate('category', 'name slug')
     .populate('brand', 'name slug logo');
   if (!product) throw new AppError('Product not found.', 404);
-  const variations = await ProductVariation.find({ product: product._id });
-  return ApiResponse.success(res, 200, 'Product retrieved.', { ...product.toJSON(), variations });
+  const [variations, config] = await Promise.all([
+    ProductVariation.find({ product: product._id }),
+    productFull.getProductConfiguration(product._id),
+  ]);
+  return ApiResponse.success(res, 200, 'Product retrieved.', {
+    ...product.toJSON(),
+    variations,
+    cityPricing: config.cityPricing,
+    inventory: config.inventory,
+    cityConfigs: config.cityConfigs,
+    activeCities: config.activeCities,
+  });
 });
 
 const getBySlug = asyncHandler(async (req, res) => {
@@ -84,50 +97,117 @@ const getBySlug = asyncHandler(async (req, res) => {
 });
 
 const create = asyncHandler(async (req, res) => {
+  const nested = productFull.hasNestedPayload(req.body);
+  const { productFields, cityPricing, inventory } = nested
+    ? productFull.extractNestedPayload(req.body)
+    : { productFields: req.body, cityPricing: [], inventory: [] };
+
   const {
     name, sku, category, brand, shortDescription, description,
     gstPercentage, priceIncludesGst, status, isFeatured, isTopSelling, isAssured, isExpress,
     isStructbayAssured, isStructbayDelivery, assuredVerifiedAt, assuredVerifiedBy,
     structbayDeliverySupported, structbayDeliveryZones, structbayDeliveryLeadTimeDays,
-    displayOrder, seo, faqs, videos, documents,
-  } = req.body;
+    displayOrder, seo, faqs, videos, documents, returnExchangePolicy,
+  } = productFields;
 
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
   const referenceNumber = await generateRefNumber('PRODUCT');
 
-  const product = await Product.create({
+    const [product] = await Product.create([{
     name, sku, category, brand, shortDescription, description,
     gstPercentage, priceIncludesGst, status, isFeatured, isTopSelling, isAssured, isExpress,
     isStructbayAssured, isStructbayDelivery, assuredVerifiedAt, assuredVerifiedBy,
     structbayDeliverySupported, structbayDeliveryZones, structbayDeliveryLeadTimeDays,
-    displayOrder, seo, faqs, videos, documents,
+    displayOrder, seo, faqs, videos, documents, returnExchangePolicy,
     referenceNumber,
     createdBy: req.user._id,
-  });
+    }], { session });
+
+    if (cityPricing.length || inventory.length) {
+      await productFull.saveProductConfiguration(
+        product._id,
+        { cityPricing, inventory },
+        req.user._id,
+        session,
+        gstPercentage ?? 18
+      );
+    }
+
+    await session.commitTransaction();
 
   await logAction({ adminId: req.user._id, action: 'CREATE', module: 'Product', targetId: product._id.toString(),
     description: `Created product: ${product.name}`, ipAddress: req.ip, newData: { name: product.name, sku: product.sku } });
 
-  return ApiResponse.created(res, 'Product created.', product);
+    const config = await productFull.getProductConfiguration(product._id);
+    return ApiResponse.created(res, 'Product created.', {
+      ...product.toJSON(),
+      cityPricing: config.cityPricing,
+      inventory: config.inventory,
+      cityConfigs: config.cityConfigs,
+    });
+  } catch (err) {
+    await session.abortTransaction();
+    throw err;
+  } finally {
+    session.endSession();
+  }
 });
 
 const update = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id);
   if (!product) throw new AppError('Product not found.', 404);
 
+  const nested = productFull.hasNestedPayload(req.body);
+  const { productFields, cityPricing, inventory } = nested
+    ? productFull.extractNestedPayload(req.body, product.gstPercentage)
+    : { productFields: req.body, cityPricing: [], inventory: [] };
+
   const allowed = [
     'name', 'sku', 'category', 'brand', 'shortDescription', 'description',
     'gstPercentage', 'priceIncludesGst', 'status', 'isFeatured', 'isTopSelling', 'isAssured', 'isExpress',
     'isStructbayAssured', 'isStructbayDelivery', 'assuredVerifiedAt', 'assuredVerifiedBy',
     'structbayDeliverySupported', 'structbayDeliveryZones', 'structbayDeliveryLeadTimeDays',
-    'displayOrder', 'seo', 'faqs', 'videos', 'documents',
+    'displayOrder', 'seo', 'faqs', 'videos', 'documents', 'returnExchangePolicy',
   ];
-  allowed.forEach(f => { if (req.body[f] !== undefined) product[f] = req.body[f]; });
-  await product.save();
+  allowed.forEach(f => { if (productFields[f] !== undefined) product[f] = productFields[f]; });
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    await product.save({ session });
+
+    if (cityPricing.length || inventory.length) {
+      await productFull.saveProductConfiguration(
+        product._id,
+        { cityPricing, inventory },
+        req.user._id,
+        session,
+        product.gstPercentage ?? 18
+      );
+    }
+
+    await session.commitTransaction();
 
   await logAction({ adminId: req.user._id, action: 'UPDATE', module: 'Product', targetId: product._id.toString(),
     description: `Updated product: ${product.name}`, ipAddress: req.ip });
 
-  return ApiResponse.success(res, 200, 'Product updated.', product);
+    const config = await productFull.getProductConfiguration(product._id);
+    const variations = await ProductVariation.find({ product: product._id });
+    return ApiResponse.success(res, 200, 'Product updated.', {
+      ...product.toJSON(),
+      variations,
+      cityPricing: config.cityPricing,
+      inventory: config.inventory,
+      cityConfigs: config.cityConfigs,
+    });
+  } catch (err) {
+    await session.abortTransaction();
+    throw err;
+  } finally {
+    session.endSession();
+  }
 });
 
 const addImages = asyncHandler(async (req, res) => {
@@ -152,10 +232,11 @@ const removeImage = asyncHandler(async (req, res) => {
 const remove = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id);
   if (!product) throw new AppError('Product not found.', 404);
-  product.isDeleted = true;
+  const oldName = product.name;
+  applySoftDelete(product, { fields: ['slug', 'sku'], nameMaxLength: 200 });
   await product.save({ validateBeforeSave: false });
   await logAction({ adminId: req.user._id, action: 'DELETE', module: 'Product', targetId: product._id.toString(),
-    description: `Deleted product: ${product.name}`, ipAddress: req.ip });
+    description: `Deleted product: ${oldName}`, ipAddress: req.ip });
   return ApiResponse.success(res, 200, 'Product deleted.');
 });
 
@@ -188,7 +269,7 @@ const updateVariation = asyncHandler(async (req, res) => {
 const deleteVariation = asyncHandler(async (req, res) => {
   const variation = await ProductVariation.findOne({ _id: req.params.varId, product: req.params.id });
   if (!variation) throw new AppError('Variation not found.', 404);
-  variation.isDeleted = true;
+  applySoftDelete(variation, { fields: ['sku'] });
   await variation.save({ validateBeforeSave: false });
   return ApiResponse.success(res, 200, 'Variation deleted.');
 });

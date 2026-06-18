@@ -7,6 +7,7 @@ const Product = require('../models/Product');
 const ProductVariation = require('../models/ProductVariation');
 const City = require('../models/City');
 const { logAction } = require('../services/auditLog.service');
+const { reviveSoftDeleted } = require('../utils/softDeleteRelease');
 
 const OID_RE = /^[a-f0-9]{24}$/i;
 
@@ -81,7 +82,7 @@ async function resolveVariationOidFromRow(productOid, r) {
 
 function parseCompactWholesaleSlabs(s) {
   const parts = s.split('|').map((p) => p.trim()).filter(Boolean);
-  if (parts.length > 5) throw new AppError('At most 5 wholesale slabs.', 400);
+  if (parts.length > 100) throw new AppError('At most 100 wholesale slabs.', 400);
   const out = [];
   for (const seg of parts) {
     const bits = seg.split(':').map((x) => x.trim());
@@ -123,7 +124,7 @@ function parseJsonWholesaleSlabs(s) {
     throw new AppError('wholesaleSlabs must be valid JSON array.', 400);
   }
   if (!Array.isArray(arr)) throw new AppError('wholesaleSlabs must be a JSON array.', 400);
-  if (arr.length > 5) throw new AppError('At most 5 wholesale slabs.', 400);
+  if (arr.length > 100) throw new AppError('At most 100 wholesale slabs.', 400);
   return arr.map((sl, i) => {
     const minQty = Number(sl.minQty);
     const price = Number(sl.price);
@@ -178,16 +179,30 @@ const getAll = asyncHandler(async (req, res) => {
 });
 
 const upsert = asyncHandler(async (req, res) => {
-  const { product, variation, city, regularPrice, salePrice, wholesaleSlabs, isVisible } = req.body;
+  const {
+    product, variation, city, regularPrice, salePrice, wholesaleSlabs, isVisible,
+    mrp, purchaseCost, deliveryCharge, taxPercentage,
+  } = req.body;
   if (!product || !city || regularPrice === undefined) throw new AppError('product, city, regularPrice are required.', 400);
 
   const query = { product, city };
   if (variation) query.variation = variation;
   else query.variation = null;
 
+  const $set = {
+    regularPrice, salePrice, wholesaleSlabs, isVisible, updatedBy: req.user._id,
+    isDeleted: false,
+  };
+  if (mrp !== undefined) $set.mrp = mrp;
+  if (purchaseCost !== undefined) $set.purchaseCost = purchaseCost;
+  if (deliveryCharge !== undefined) $set.deliveryCharge = deliveryCharge;
+  if (taxPercentage !== undefined) $set.taxPercentage = taxPercentage;
+
+  await reviveSoftDeleted(CityPricing, query);
+
   const pricing = await CityPricing.findOneAndUpdate(
     query,
-    { $set: { regularPrice, salePrice, wholesaleSlabs, isVisible, updatedBy: req.user._id } },
+    { $set },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   ).populate('product', 'name sku').populate('city', 'name state');
 
@@ -233,6 +248,7 @@ const bulkImport = asyncHandler(async (req, res) => {
       const $set = {
         regularPrice: reg,
         updatedBy: req.user._id,
+        isDeleted: false,
       };
 
       if (r.salePrice !== undefined || r.sale_price !== undefined) {
@@ -257,6 +273,8 @@ const bulkImport = asyncHandler(async (req, res) => {
       const query = variationOid
         ? { product: productOid, city: cityOid, variation: variationOid }
         : { product: productOid, city: cityOid, variation: null };
+
+      await reviveSoftDeleted(CityPricing, query);
 
       await CityPricing.findOneAndUpdate(
         query,

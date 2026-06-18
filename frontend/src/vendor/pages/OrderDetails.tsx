@@ -1,8 +1,9 @@
 import { useParams, Link } from 'react-router';
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Package, MapPin, Upload, Truck, Download, CheckCircle, Circle, AlertCircle, Phone, User, Clock } from 'lucide-react';
+import { ArrowLeft, Package, MapPin, Upload, Truck, CheckCircle, Circle, AlertCircle, Phone, User, Clock } from 'lucide-react';
 import { StatusBadge } from '../components/StatusBadge';
 import { VendorWorkflowPanel } from '../components/VendorWorkflowPanel';
+import { VendorOrderDocuments } from '../components/VendorOrderDocuments';
 import { api } from '../lib/api';
 import { vendorPath } from '../../lib/portalRoutes';
 import { formatPaymentMethod, formatPaymentStatus } from '../../lib/paymentLabels';
@@ -368,11 +369,6 @@ export function OrderDetails() {
             style={{ background: SB.bg, color: SB.color, border: `1px solid ${SB.border}` }}>
             <Truck className="w-4 h-4" /> Update Dispatch
           </Link>
-          <Link to={vendorPath('documents')}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
-            style={{ background: SB.bg, color: SB.color, border: `1px solid ${SB.border}` }}>
-            <Download className="w-4 h-4" /> Download Documents
-          </Link>
         </div>
       </div>
       )}
@@ -380,9 +376,10 @@ export function OrderDetails() {
       {Number(order.workflowVersion) === 2 && (
         <div className="wf-subsection">
           <p className="wf-subsection__title">Documents</p>
-          <Link to={vendorPath('documents')} className="wf-btn wf-btn--secondary no-underline inline-flex">
-            <Download className="w-4 h-4" /> Download SB invoice & e-way
-          </Link>
+          <p className="text-xs mb-3" style={{ color: SB.muted }}>
+            StructBay invoice and e-way bill when sent. Shipping label appears only if StructBay explicitly shares it with you.
+          </p>
+          <VendorOrderDocuments documents={order.documents} />
         </div>
       )}
 

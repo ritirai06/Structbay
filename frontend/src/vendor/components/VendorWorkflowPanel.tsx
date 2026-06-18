@@ -380,7 +380,7 @@ export function VendorWorkflowPanel({
           <div className="wf-subsection">
             <p className="wf-subsection__title">StructBay handling delivery</p>
             <p className="text-sm" style={{ color: 'var(--sb-text-muted)' }}>
-              StructBay has sent invoice & e-way bill. Porter/Delhivery pickup and customer delivery will be handled by StructBay — no further action needed from you.
+              StructBay has sent invoice &amp; e-way bill. Porter/Delhivery pickup and customer delivery will be handled by StructBay — no further action needed from you. Download your documents in the Documents section below.
             </p>
           </div>
         )}

@@ -7,6 +7,7 @@ const Category = require('../models/Category');
 const { deleteFile } = require('../config/cloudinary');
 const { resolveCategoryFromRow, escRx } = require('../utils/resolveCategoryFromRow');
 const { logAction } = require('../services/auditLog.service');
+const { applySoftDelete } = require('../utils/softDeleteRelease');
 
 async function applyImageSubdoc(brand, field, incoming) {
   if (incoming === undefined) return;
@@ -162,14 +163,15 @@ const remove = asyncHandler(async (req, res) => {
   if (!brand) throw new AppError('Brand not found.', 404);
   if (brand.logo?.publicId) await deleteFile(brand.logo.publicId).catch(() => {});
   if (brand.banner?.publicId) await deleteFile(brand.banner.publicId).catch(() => {});
-  brand.isDeleted = true;
+  const oldName = brand.name;
+  applySoftDelete(brand, { fields: ['name', 'slug'], nameMaxLength: 100 });
   await brand.save({ validateBeforeSave: false });
   await logAction({
     adminId: req.user._id,
     action: 'DELETE',
     module: 'Brand',
     targetId: brand._id.toString(),
-    description: `Deleted brand: ${brand.name}`,
+    description: `Deleted brand: ${oldName}`,
     ipAddress: req.ip,
   });
   return ApiResponse.success(res, 200, 'Brand deleted.');
