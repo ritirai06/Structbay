@@ -6,11 +6,30 @@ const faqSchema = new mongoose.Schema(
   { _id: true }
 );
 
+const returnExchangePolicySchema = new mongoose.Schema(
+  {
+    return: {
+      allowed: { type: Boolean, default: false },
+      windowDays: { type: Number, default: null, min: 0 },
+      instructions: { type: String, default: '', trim: true },
+      conditions: [{ type: String, trim: true }],
+      nonReturnableConditions: [{ type: String, trim: true }],
+    },
+    exchange: {
+      allowed: { type: Boolean, default: false },
+      windowDays: { type: Number, default: null, min: 0 },
+      instructions: { type: String, default: '', trim: true },
+      conditions: [{ type: String, trim: true }],
+    },
+  },
+  { _id: false }
+);
+
 const productSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true, maxlength: 200 },
-    slug: { type: String, unique: true, lowercase: true, trim: true },
-    sku: { type: String, required: true, trim: true, unique: true, uppercase: true },
+    slug: { type: String, lowercase: true, trim: true },
+    sku: { type: String, required: true, trim: true, uppercase: true },
     referenceNumber: { type: String, unique: true, sparse: true },
 
     category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
@@ -23,6 +42,7 @@ const productSchema = new mongoose.Schema(
     documents: [{ name: String, url: String, publicId: String }],
     videos: [{ title: String, url: String }],
     faqs: [faqSchema],
+    returnExchangePolicy: { type: returnExchangePolicySchema, default: () => ({}) },
 
     gstPercentage: { type: Number, enum: [0, 5, 12, 18, 28], default: 18 },
     /** When true, storefront shows city prices including GST (admin setting per product). */
@@ -70,6 +90,7 @@ productSchema.virtual('displayStructbayDelivery').get(function () {
 });
 
 productSchema.pre('save', function (next) {
+  if (this.isDeleted) return next();
   if (this.isModified('name')) this.slug = slugify(this.name, { lower: true, strict: true });
   next();
 });
@@ -80,6 +101,13 @@ const excludeSoftDeleted = function (next) {
 productSchema.pre(/^find/, excludeSoftDeleted);
 productSchema.pre('countDocuments', excludeSoftDeleted);
 productSchema.index({ category: 1, brand: 1, status: 1, isDeleted: 1 });
-// sku: index already created by field `unique: true`
+productSchema.index(
+  { slug: 1 },
+  { unique: true, partialFilterExpression: { isDeleted: { $eq: false } } }
+);
+productSchema.index(
+  { sku: 1 },
+  { unique: true, partialFilterExpression: { isDeleted: { $eq: false } } }
+);
 
 module.exports = mongoose.model('Product', productSchema);

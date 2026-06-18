@@ -65,7 +65,7 @@ const issueTokenPair = async (user, req) => {
 // ─── Register Customer ────────────────────────────────────────────────────────
 const registerCustomer = async ({ name, email, phone, password, companyName, gstNumber, billingAddress }, req) => {
   email = normalizeEmail(email);
-  const existing = await User.findOne({ email });
+  const existing = await User.findOne({ email, status: { $ne: USER_STATUS.DELETED } });
   if (existing) throw new AppError('An account with this email already exists.', 409);
 
   const referenceNumber = await generateRefNumber('CUSTOMER');
@@ -108,7 +108,7 @@ const registerVendor = async (
   }
 
   const emailNorm = normalizeEmail(email);
-  const existing = await User.findOne({ email: emailNorm });
+  const existing = await User.findOne({ email: emailNorm, status: { $ne: USER_STATUS.DELETED } });
   if (existing) throw new AppError('An account with this email already exists.', 409);
 
   const referenceNumber = await generateRefNumber('VENDOR');
@@ -146,7 +146,7 @@ const createVendorByAdmin = async (
   adminUser
 ) => {
   const emailNorm = normalizeEmail(email);
-  const existing = await User.findOne({ email: emailNorm });
+  const existing = await User.findOne({ email: emailNorm, status: { $ne: USER_STATUS.DELETED } });
   if (existing) throw new AppError('An account with this email already exists.', 409);
 
   const referenceNumber = await generateRefNumber('VENDOR');

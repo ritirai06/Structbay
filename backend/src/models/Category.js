@@ -7,11 +7,10 @@ const categorySchema = new mongoose.Schema(
       type: String,
       required: [true, 'Category name is required'],
       trim: true,
-      unique: true,
       minlength: [2, 'Category name must be at least 2 characters'],
       maxlength: [100, 'Category name cannot exceed 100 characters'],
     },
-    slug: { type: String, unique: true, lowercase: true, trim: true },
+    slug: { type: String, lowercase: true, trim: true },
     description: {
       type: String,
       trim: true,
@@ -42,8 +41,17 @@ const categorySchema = new mongoose.Schema(
 );
 
 categorySchema.index({ status: 1, isDeleted: 1, sortOrder: 1 });
+categorySchema.index(
+  { name: 1 },
+  { unique: true, partialFilterExpression: { isDeleted: { $eq: false } } }
+);
+categorySchema.index(
+  { slug: 1 },
+  { unique: true, partialFilterExpression: { isDeleted: { $eq: false } } }
+);
 
 categorySchema.pre('save', function (next) {
+  if (this.isDeleted) return next();
   if (this.isModified('name')) this.slug = slugify(this.name, { lower: true, strict: true });
   next();
 });

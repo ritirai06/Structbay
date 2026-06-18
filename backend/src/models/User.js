@@ -16,7 +16,6 @@ const userSchema = new mongoose.Schema(
     email: {
       type: String,
       required: [true, 'Email is required'],
-      unique: true,
       lowercase: true,
       trim: true,
       match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email'],
@@ -203,6 +202,11 @@ userSchema.methods.resetFailedLogin = async function () {
   this.lockUntil = null;
   return this.save({ validateBeforeSave: false });
 };
+
+userSchema.index(
+  { email: 1 },
+  { unique: true, partialFilterExpression: { status: { $ne: 'DELETED' } } }
+);
 
 const User = mongoose.model('User', userSchema);
 module.exports = User;

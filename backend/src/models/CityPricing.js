@@ -17,8 +17,12 @@ const cityPricingSchema = new mongoose.Schema(
 
     regularPrice: { type: Number, required: true, min: 0 },
     salePrice: { type: Number, default: null, min: 0 },
+    mrp: { type: Number, default: null, min: 0 },
+    purchaseCost: { type: Number, default: null, min: 0 },
+    deliveryCharge: { type: Number, default: 0, min: 0 },
+    taxPercentage: { type: Number, default: null, min: 0, max: 100 },
 
-    wholesaleSlabs: [wholesaleSlabSchema],   // up to 5 slabs
+    wholesaleSlabs: [wholesaleSlabSchema],
 
     isVisible: { type: Boolean, default: true },
     isDeleted: { type: Boolean, default: false, select: false },
@@ -31,7 +35,10 @@ const cityPricingSchema = new mongoose.Schema(
 );
 
 cityPricingSchema.index({ product: 1, city: 1 }, { unique: false });
-cityPricingSchema.index({ product: 1, variation: 1, city: 1 }, { unique: true, sparse: true });
+cityPricingSchema.index(
+  { product: 1, variation: 1, city: 1 },
+  { unique: true, sparse: true, partialFilterExpression: { isDeleted: { $eq: false } } }
+);
 cityPricingSchema.pre(/^find/, function (next) { this.where({ isDeleted: { $ne: true } }); next(); });
 const excludeSoftDeleted = function (next) {
   this.where({ isDeleted: { $ne: true } });

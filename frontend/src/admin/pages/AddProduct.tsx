@@ -1,10 +1,18 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate, useParams, Link } from "react-router";
-import { ArrowLeft, Plus, Trash2, Loader2, Save, Shield, Zap, TrendingUp, Star, MapPin, Info, Upload } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Loader2, Save, Shield, Zap, TrendingUp, Star, Info, Upload, RefreshCw } from "lucide-react";
 import { adminPath } from "../../lib/portalRoutes";
 import { adminFetch as apiFetch, adminUploadImage, getAdminToken } from "../../lib/adminApi";
 import { AdminDeleteConfirmModal } from "../components/AdminDeleteConfirmModal";
 import { useAdminDeleteFlow } from "../hooks/useAdminDeleteFlow";
+import { ProductCityConfig } from "../components/ProductCityConfig";
+import {
+  type ActiveCity,
+  type CityConfig,
+  buildCityConfigsFromApi,
+  cityConfigsToPayload,
+  validateCityConfigs,
+} from "../lib/productCityConfig";
 
 const VARIATION_ATTRS = ["size", "thickness", "length", "diameter", "weight", "grade", "color", "finish"];
 
@@ -22,6 +30,22 @@ const emptyVariation = {
   customValue: "",
 };
 
+const emptyReturnExchangePolicy = {
+  return: {
+    allowed: false,
+    windowDays: "" as number | "",
+    instructions: "",
+    conditions: [] as string[],
+    nonReturnableConditions: [] as string[],
+  },
+  exchange: {
+    allowed: false,
+    windowDays: "" as number | "",
+    instructions: "",
+    conditions: [] as string[],
+  },
+};
+
 const emptyForm = {
   name: "", sku: "", category: "", brand: "",
   shortDescription: "", description: "",
@@ -30,9 +54,51 @@ const emptyForm = {
   displayOrder: 0,
   seo: { metaTitle: "", metaDescription: "", metaKeywords: [] },
   faqs: [] as { question: string; answer: string }[],
+  returnExchangePolicy: emptyReturnExchangePolicy,
   videos: [] as { title: string; url: string }[],
   documents: [] as { name: string; url: string }[],
 };
+
+function normalizeReturnExchangePolicy(raw: unknown) {
+  const p = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const ret = p.return && typeof p.return === "object" ? (p.return as Record<string, unknown>) : {};
+  const ex = p.exchange && typeof p.exchange === "object" ? (p.exchange as Record<string, unknown>) : {};
+  return {
+    return: {
+      allowed: !!ret.allowed,
+      windowDays: ret.windowDays != null && ret.windowDays !== "" ? Number(ret.windowDays) : "",
+      instructions: String(ret.instructions || ""),
+      conditions: Array.isArray(ret.conditions) ? ret.conditions.map(String).filter(Boolean) : [],
+      nonReturnableConditions: Array.isArray(ret.nonReturnableConditions)
+        ? ret.nonReturnableConditions.map(String).filter(Boolean)
+        : [],
+    },
+    exchange: {
+      allowed: !!ex.allowed,
+      windowDays: ex.windowDays != null && ex.windowDays !== "" ? Number(ex.windowDays) : "",
+      instructions: String(ex.instructions || ""),
+      conditions: Array.isArray(ex.conditions) ? ex.conditions.map(String).filter(Boolean) : [],
+    },
+  };
+}
+
+function serializeReturnExchangePolicy(policy: typeof emptyReturnExchangePolicy) {
+  return {
+    return: {
+      allowed: policy.return.allowed,
+      windowDays: policy.return.windowDays !== "" ? Number(policy.return.windowDays) : null,
+      instructions: policy.return.instructions.trim(),
+      conditions: policy.return.conditions.map((c) => c.trim()).filter(Boolean),
+      nonReturnableConditions: policy.return.nonReturnableConditions.map((c) => c.trim()).filter(Boolean),
+    },
+    exchange: {
+      allowed: policy.exchange.allowed,
+      windowDays: policy.exchange.windowDays !== "" ? Number(policy.exchange.windowDays) : null,
+      instructions: policy.exchange.instructions.trim(),
+      conditions: policy.exchange.conditions.map((c) => c.trim()).filter(Boolean),
+    },
+  };
+}
 
 function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
   return (
@@ -59,22 +125,109 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function Toggle({ checked, onChange, label, icon: Icon, accent = "#E85A00" }: {
-  checked: boolean; onChange: (v: boolean) => void; label: string; icon: any; accent?: string;
+function Toggle({ checked, onChange, label, icon: Icon }: {
+  checked: boolean; onChange: (v: boolean) => void; label: string; icon: any;
 }) {
   return (
-    <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${checked ? "border-sb-orange/30 bg-sb-orange/5" : "border-sb-ink/10 bg-[#111] hover:border-sb-ink/15"}`}>
-      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${checked ? "bg-sb-orange/20" : "bg-white/5"}`}>
-        <Icon className={`w-4 h-4 ${checked ? "text-sb-orange" : "text-sb-ink/45"}`} />
+    <div
+      className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
+        checked
+          ? "border-[#FB923C] bg-[#FFF7ED]"
+          : "border-[#E5E7EB] bg-white"
+      }`}
+    >
+      <div
+        className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+          checked ? "bg-[#FFEDD5]" : "bg-[#F9FAFB]"
+        }`}
+      >
+        <Icon className={`w-4 h-4 ${checked ? "text-[#EA580C]" : "text-[#6B7280]"}`} />
       </div>
       <div className="flex-1">
-        <p className={`text-sm font-medium ${checked ? "text-sb-ink" : "text-sb-ink/55"}`}>{label}</p>
+        <p className={`text-sm font-medium ${checked ? "text-[#EA580C]" : "text-[#374151]"}`}>{label}</p>
       </div>
-      <div className={`w-9 h-5 rounded-full transition-colors flex items-center px-0.5 ${checked ? "bg-sb-orange" : "bg-white/15"}`}
-        onClick={() => onChange(!checked)}>
-        <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-4" : ""}`} />
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        onClick={() => onChange(!checked)}
+        className={`w-9 h-5 rounded-full transition-colors flex items-center px-0.5 shrink-0 ${
+          checked ? "bg-sb-orange" : "bg-[#D1D5DB]"
+        }`}
+      >
+        <span
+          className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${
+            checked ? "translate-x-4" : "translate-x-0"
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
+
+function PolicyStringList({
+  label,
+  items,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  items: string[];
+  onChange: (items: string[]) => void;
+  placeholder: string;
+}) {
+  const [draft, setDraft] = useState("");
+  return (
+    <div>
+      <label className="text-xs text-[#374151] font-medium mb-2 block">{label}</label>
+      {items.length > 0 && (
+        <ul className="space-y-2 mb-3">
+          {items.map((item, i) => (
+            <li key={`${item}-${i}`} className="flex items-center gap-2 p-2.5 rounded-lg border border-[#E5E7EB] bg-white">
+              <span className="flex-1 text-sm text-[#374151]">{item}</span>
+              <button
+                type="button"
+                onClick={() => onChange(items.filter((_, j) => j !== i))}
+                className="p-1.5 text-[#6B7280] hover:text-red-600 rounded"
+                aria-label="Remove item"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="flex gap-2">
+        <input
+          className={inp}
+          value={draft}
+          placeholder={placeholder}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              const v = draft.trim();
+              if (!v) return;
+              onChange([...items, v]);
+              setDraft("");
+            }
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => {
+            const v = draft.trim();
+            if (!v) return;
+            onChange([...items, v]);
+            setDraft("");
+          }}
+          className="shrink-0 px-3 py-2 rounded-lg border border-sb-orange/30 text-sb-orange text-sm font-medium hover:bg-sb-orange/5"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
       </div>
-    </label>
+    </div>
   );
 }
 
@@ -89,7 +242,11 @@ export function AddProduct() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEdit);
   const [newFaq, setNewFaq] = useState({ question: "", answer: "" });
-  const [tab, setTab] = useState<"info" | "media" | "variations" | "seo" | "faqs">("info");
+  const [tab, setTab] = useState<"info" | "cities" | "media" | "variations" | "seo" | "faqs" | "policy">("info");
+  const [activeCities, setActiveCities] = useState<ActiveCity[]>([]);
+  const [cityConfigs, setCityConfigs] = useState<CityConfig[]>([]);
+  const [dirty, setDirty] = useState(false);
+  const initialSnapshot = useRef<string>("");
   const [images, setImages] = useState<{ _id?: string; url: string; publicId?: string }[]>([]);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [mediaMsg, setMediaMsg] = useState<null | { type: "ok" | "err"; text: string }>(null);
@@ -140,6 +297,52 @@ export function AddProduct() {
   }, [form.category, form.brand, brandsForCategory, catalogBrands.length]);
 
   useEffect(() => {
+    apiFetch("/cities?limit=200&status=ACTIVE")
+      .then((d) => {
+        const cities = (d.data || [])
+          .filter((c: { isServiceable?: boolean }) => c.isServiceable !== false)
+          .map((c: { _id: string; name: string; slug?: string }) => ({
+            _id: c._id,
+            name: c.name,
+            slug: c.slug,
+          }));
+        setActiveCities(cities);
+      })
+      .catch(() => setActiveCities([]));
+  }, []);
+
+  useEffect(() => {
+    if (isEdit || !activeCities.length || cityConfigs.length) return;
+    setCityConfigs(buildCityConfigsFromApi(activeCities, [], form.gstPercentage));
+  }, [isEdit, activeCities, cityConfigs.length, form.gstPercentage]);
+
+  const snapshotState = useCallback(
+    () => JSON.stringify({ form, cityConfigs }),
+    [form, cityConfigs]
+  );
+
+  useEffect(() => {
+    if (!initialSnapshot.current && !loading && (isEdit || activeCities.length)) {
+      initialSnapshot.current = snapshotState();
+    }
+  }, [loading, isEdit, activeCities.length, snapshotState]);
+
+  useEffect(() => {
+    if (!initialSnapshot.current) return;
+    setDirty(snapshotState() !== initialSnapshot.current);
+  }, [snapshotState]);
+
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!dirty) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [dirty]);
+
+  useEffect(() => {
     if (!isEdit) return;
     apiFetch(`/products/${id}`)
       .then(d => {
@@ -153,29 +356,71 @@ export function AddProduct() {
           isAssured: p.isAssured, isExpress: p.isExpress, displayOrder: p.displayOrder,
           seo: p.seo || { metaTitle: "", metaDescription: "", metaKeywords: [] },
           faqs: p.faqs || [], videos: p.videos || [], documents: p.documents || [],
+          returnExchangePolicy: normalizeReturnExchangePolicy(p.returnExchangePolicy),
         });
         setVariations(p.variations || []);
         setImages((p.images || []).map((img: { _id?: string; url: string; publicId?: string }) => ({
           _id: img._id, url: img.url, publicId: img.publicId,
         })));
+        const cities = (p.activeCities || activeCities).map((c: ActiveCity) => ({
+          _id: c._id,
+          name: c.name,
+          slug: c.slug,
+        }));
+        if (p.activeCities?.length) setActiveCities(p.activeCities);
+        setCityConfigs(buildCityConfigsFromApi(cities.length ? cities : activeCities, p.cityConfigs, p.gstPercentage));
+        initialSnapshot.current = "";
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [id, isEdit]);
 
-  const set = (field: string, value: any) => setForm(f => ({ ...f, [field]: value }));
+  const set = (field: string, value: any) => {
+    setForm(f => ({ ...f, [field]: value }));
+    setDirty(true);
+  };
 
-  const save = async () => {
-    if (!form.name || !form.sku) return alert("Name and SKU are required.");
+  const handleCityConfigsChange = (configs: CityConfig[]) => {
+    setCityConfigs(configs);
+    setDirty(true);
+  };
+
+  const goBack = () => {
+    if (dirty && !window.confirm("You have unsaved changes. Leave without saving?")) return;
+    navigate(adminPath("products"));
+  };
+
+  const save = async (overrideStatus?: string) => {
+    if (!form.name || !form.sku || !form.category || !form.brand) {
+      return alert("Name, SKU, category, and brand are required.");
+    }
+    const validationError = validateCityConfigs(cityConfigs);
+    if (validationError) return alert(validationError);
+
     setSaving(true);
     try {
-      const body = {
+      const product = {
         ...form,
+        status: overrideStatus ?? form.status,
         documents: form.documents.filter(d => d.name.trim() && d.url.trim()),
         videos: form.videos.filter(v => v.title.trim() || v.url.trim()),
+        returnExchangePolicy: serializeReturnExchangePolicy(form.returnExchangePolicy),
       };
-      if (isEdit) await apiFetch(`/products/${id}`, { method: "PATCH", body: JSON.stringify(body) });
-      else await apiFetch("/products", { method: "POST", body: JSON.stringify(body) });
+      const { cityPricing, inventory } = cityConfigsToPayload(cityConfigs);
+      const body = { product, cityPricing, inventory };
+
+      if (isEdit) {
+        await apiFetch(`/products/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+      } else {
+        const res = await apiFetch("/products", { method: "POST", body: JSON.stringify(body) });
+        const createdId = res.data?._id;
+        if (createdId && images.length === 0) {
+          navigate(adminPath("products", String(createdId), "edit"));
+          return;
+        }
+      }
+      setDirty(false);
+      initialSnapshot.current = snapshotState();
       navigate(adminPath("products"));
     } catch (e: any) { alert(e.message); }
     setSaving(false);
@@ -208,6 +453,17 @@ export function AddProduct() {
   const removeProductImage = (imageId: string) => {
     if (!isEdit) return;
     imageDelete.requestDelete({ kind: "single", ids: [imageId], label: "this image" });
+  };
+
+  const setPolicy = (patch: Partial<typeof emptyReturnExchangePolicy>) => {
+    setForm((f) => ({
+      ...f,
+      returnExchangePolicy: {
+        return: { ...f.returnExchangePolicy.return, ...(patch.return || {}) },
+        exchange: { ...f.returnExchangePolicy.exchange, ...(patch.exchange || {}) },
+      },
+    }));
+    setDirty(true);
   };
 
   const addFaq = () => {
@@ -265,10 +521,12 @@ export function AddProduct() {
 
   const TABS = [
     { key: "info", label: "General" },
+    { key: "cities", label: "Pricing & Inventory" },
     { key: "media", label: "Media" },
     { key: "variations", label: "Variations" },
     { key: "seo", label: "SEO" },
     { key: "faqs", label: "FAQs" },
+    { key: "policy", label: "Return & Exchange" },
   ] as const;
 
   if (loading) return <div className="flex justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-sb-orange" /></div>;
@@ -277,21 +535,24 @@ export function AddProduct() {
     <div className="admin-page">
       {/* Header */}
       <div className="mb-6">
-        <button onClick={() => navigate(adminPath("products"))}
+        <button onClick={goBack}
           className="flex items-center gap-2 text-sm text-sb-ink/55 hover:text-sb-ink mb-4 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to Products
         </button>
         <div className="flex items-center justify-between">
           <div>
             <h1 className="admin-page-title text-sb-ink">{isEdit ? "Edit Product" : "Add Product"}</h1>
-            <p className="admin-page-desc">Admin-only product management</p>
+            <p className="admin-page-desc">
+              Configure product details, city pricing, wholesale slabs, and inventory in one place
+              {dirty && <span className="text-sb-orange ml-2">· Unsaved changes</span>}
+            </p>
           </div>
           <div className="flex gap-3">
-            <button onClick={() => { set("status", "DRAFT"); save(); }}
-              className="px-4 py-2.5 border border-sb-ink/15 rounded-lg text-sm text-sb-ink/60 hover:border-sb-ink/25 transition-colors">
+            <button onClick={() => save("DRAFT")} disabled={saving}
+              className="px-4 py-2.5 border border-sb-ink/15 rounded-lg text-sm text-sb-ink/60 hover:border-sb-ink/25 transition-colors disabled:opacity-60">
               Save Draft
             </button>
-            <button onClick={save} disabled={saving}
+            <button onClick={() => save()} disabled={saving}
               className="flex items-center gap-2 bg-sb-orange hover:bg-sb-orange-hover text-white font-bold px-5 py-2.5 rounded-lg text-sm transition-colors disabled:opacity-60">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               {isEdit ? "Update Product" : "Publish Product"}
@@ -340,7 +601,7 @@ export function AddProduct() {
                 </select>
               </Field>
               <p className="text-xs text-sb-ink/50 -mt-2">
-                City prices in Pricing Management are stored ex-GST. Choose whether customers see prices with or without GST on listing and product pages.
+                City prices are stored ex-GST. Use the <strong>Pricing &amp; Inventory</strong> tab to set per-city selling price, MRP, stock, and wholesale slabs.
               </p>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Category" required>
@@ -361,20 +622,6 @@ export function AddProduct() {
                 <Link to={adminPath("brands")} className="text-sb-orange hover:underline">Brands</Link>
                 {" "}(legacy brands with no category stay available for every category).
               </p>
-              <div className="rounded-lg border border-sb-orange/25 bg-sb-orange/5 px-4 py-3 flex gap-3 items-start">
-                <MapPin className="w-4 h-4 text-sb-orange shrink-0 mt-0.5" />
-                <div className="text-xs text-sb-ink/70 leading-relaxed">
-                  <span className="font-semibold text-sb-ink">City-wise listing on the storefront</span> is not set on this screen.
-                  A product appears for customers in a city only when that city has both{" "}
-                  <strong className="text-sb-ink/90">visible pricing</strong> and{" "}
-                  <strong className="text-sb-ink/90">available stock</strong>.
-                  Use{" "}
-                  <Link to={adminPath("pricing")} className="text-sb-orange hover:underline">Pricing</Link>
-                  {" "}and{" "}
-                  <Link to={adminPath("inventory")} className="text-sb-orange hover:underline">Inventory</Link>
-                  {" "}per city (and <Link to={adminPath("cities")} className="text-sb-orange hover:underline">Cities</Link> for serviceable locations).
-                </div>
-              </div>
               <Field label="Short Description">
                 <textarea className={`${inp} resize-none`} rows={2} placeholder="Brief description (max 500 chars)" value={form.shortDescription} onChange={e => set("shortDescription", e.target.value)} />
               </Field>
@@ -393,6 +640,21 @@ export function AddProduct() {
                   </select>
                 </Field>
               </div>
+            </Section>
+          )}
+
+          {tab === "cities" && (
+            <Section title="City-wise Pricing, Wholesale Slabs & Inventory">
+              <p className="text-xs text-sb-ink/50 mb-4">
+                Configure pricing and stock for each active city. A product appears on the storefront in a city when it has visible pricing and available stock.
+                Manage serviceable cities under{" "}
+                <Link to={adminPath("cities")} className="text-sb-orange hover:underline">Cities</Link>.
+              </p>
+              <ProductCityConfig
+                configs={cityConfigs}
+                onChange={handleCityConfigsChange}
+                defaultTax={form.gstPercentage}
+              />
             </Section>
           )}
 
@@ -616,6 +878,104 @@ export function AddProduct() {
               </div>
             </Section>
           )}
+
+          {tab === "policy" && (
+            <Section title="Return & Exchange Policy">
+              <p className="text-xs text-sb-ink/50 mb-4">
+                Configure product-specific return and exchange rules. Shown on the storefront product page.
+              </p>
+
+              <div className="space-y-6">
+                <div className="rounded-xl border border-sb-ink/10 bg-white p-4 space-y-4">
+                  <h4 className="text-sm font-semibold text-sb-ink">Return Policy</h4>
+                  <Toggle
+                    checked={form.returnExchangePolicy.return.allowed}
+                    onChange={(v) => setPolicy({ return: { allowed: v } })}
+                    label="Return Allowed"
+                    icon={Shield}
+                  />
+                  <Field label="Return Window (Days)">
+                    <input
+                      type="number"
+                      min={0}
+                      className={inp}
+                      value={form.returnExchangePolicy.return.windowDays}
+                      onChange={(e) =>
+                        setPolicy({
+                          return: {
+                            windowDays: e.target.value === "" ? "" : Number(e.target.value),
+                          },
+                        })
+                      }
+                      placeholder="e.g. 7"
+                    />
+                  </Field>
+                  <Field label="Return Instructions">
+                    <textarea
+                      className={`${inp} resize-none`}
+                      rows={4}
+                      value={form.returnExchangePolicy.return.instructions}
+                      onChange={(e) => setPolicy({ return: { instructions: e.target.value } })}
+                      placeholder="Steps customer must follow to initiate a return…"
+                    />
+                  </Field>
+                  <PolicyStringList
+                    label="Return Conditions"
+                    items={form.returnExchangePolicy.return.conditions}
+                    onChange={(conditions) => setPolicy({ return: { conditions } })}
+                    placeholder="e.g. Product must be unused"
+                  />
+                  <PolicyStringList
+                    label="Non-Returnable Conditions"
+                    items={form.returnExchangePolicy.return.nonReturnableConditions}
+                    onChange={(nonReturnableConditions) => setPolicy({ return: { nonReturnableConditions } })}
+                    placeholder="e.g. Opened bags"
+                  />
+                </div>
+
+                <div className="rounded-xl border border-sb-ink/10 bg-white p-4 space-y-4">
+                  <h4 className="text-sm font-semibold text-sb-ink">Exchange Policy</h4>
+                  <Toggle
+                    checked={form.returnExchangePolicy.exchange.allowed}
+                    onChange={(v) => setPolicy({ exchange: { allowed: v } })}
+                    label="Exchange Allowed"
+                    icon={RefreshCw}
+                  />
+                  <Field label="Exchange Window (Days)">
+                    <input
+                      type="number"
+                      min={0}
+                      className={inp}
+                      value={form.returnExchangePolicy.exchange.windowDays}
+                      onChange={(e) =>
+                        setPolicy({
+                          exchange: {
+                            windowDays: e.target.value === "" ? "" : Number(e.target.value),
+                          },
+                        })
+                      }
+                      placeholder="e.g. 10"
+                    />
+                  </Field>
+                  <Field label="Exchange Instructions">
+                    <textarea
+                      className={`${inp} resize-none`}
+                      rows={4}
+                      value={form.returnExchangePolicy.exchange.instructions}
+                      onChange={(e) => setPolicy({ exchange: { instructions: e.target.value } })}
+                      placeholder="Steps customer must follow to request an exchange…"
+                    />
+                  </Field>
+                  <PolicyStringList
+                    label="Exchange Conditions"
+                    items={form.returnExchangePolicy.exchange.conditions}
+                    onChange={(conditions) => setPolicy({ exchange: { conditions } })}
+                    placeholder="e.g. Original packaging required"
+                  />
+                </div>
+              </div>
+            </Section>
+          )}
         </div>
 
         {/* Sidebar */}
@@ -631,29 +991,26 @@ export function AddProduct() {
 
           <div className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl p-4 space-y-3">
             <h3 className="font-semibold text-sb-ink text-sm">Quick Save</h3>
-            <button onClick={save} disabled={saving}
+            <button onClick={() => save()} disabled={saving}
               className="w-full flex items-center justify-center gap-2 bg-sb-orange hover:bg-sb-orange-hover text-white font-bold py-2.5 rounded-lg text-sm transition-colors disabled:opacity-60">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               {isEdit ? "Update Product" : "Publish Product"}
             </button>
-            <button onClick={() => navigate(adminPath("products"))}
+            <button onClick={goBack}
               className="w-full py-2.5 border border-sb-ink/15 rounded-lg text-sm text-sb-ink/60 hover:border-sb-ink/25 transition-colors">
               Cancel
             </button>
           </div>
 
-          <div className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl p-4">
-            <h3 className="font-semibold text-sb-ink text-sm mb-3">Quick Links</h3>
-            <div className="space-y-2">
-              {isEdit && [
-                { label: "→ Manage Pricing", to: `${adminPath("pricing")}?product=${id}` },
-                { label: "→ Manage Inventory", to: `${adminPath("inventory")}?product=${id}` },
-              ].map(l => (
-                <Link key={l.label} to={l.to} className="block text-sm text-sb-orange hover:underline">{l.label}</Link>
-              ))}
-              {!isEdit && <p className="text-xs text-sb-ink/45">Save product first to manage pricing & inventory</p>}
+          {cityConfigs.length > 0 && (
+            <div className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl p-4">
+              <h3 className="font-semibold text-sb-ink text-sm mb-2">City Summary</h3>
+              <p className="text-xs text-sb-ink/55">
+                {cityConfigs.filter(c => c.pricing.sellingPrice !== "").length} cities with pricing ·{" "}
+                {cityConfigs.filter(c => c.inventory.quantity !== "" && Number(c.inventory.quantity) > 0).length} cities with stock
+              </p>
             </div>
-          </div>
+          )}
         </div>
       </div>
 

@@ -15,86 +15,42 @@ const {
 const { notifyAllAdmins } = require('../services/staffNotification.service');
 const { syncMasterOrderStatusFromVendorOrders } = require('../services/masterOrderStatusSync.service');
 
-// @desc    Upload Vendor Invoice
-// @route   POST /api/v1/vendor/invoices
-exports.uploadInvoice = async (req, res) => {
-  const {
-    orderId,
-    invoiceNumber,
-    invoiceDate,
-    invoiceAmount,
-    gstAmount,
-    vendorRemarks,
-    pickupContactName,
-    pickupContactPhone,
-  } = req.body;
-
-  const match = await vendorOrderMatch(req.user);
-  const order = await VendorOrder.findOne({ _id: orderId, ...match });
-  if (!order) return ApiResponse.notFound(res, 'Order not found or not assigned to you.');
-  if (!req.file) return ApiResponse.badRequest(res, 'Please upload invoice PDF.');
-
-  if (isWorkflowVendorOrder(order)) {
-    if (order.status !== 'DISPATCH_APPROVED') {
-      return ApiResponse.badRequest(
-        res,
-        'Final vendor invoice can only be uploaded after StructBay has approved dispatch (status DISPATCH_APPROVED).'
-      );
-    }
-    if (!canTransition(order.status, 'VENDOR_INVOICE_SUBMITTED')) {
-      return ApiResponse.badRequest(res, 'Invalid workflow state for invoice upload.');
-    }
-    if (order.deliveryType === 'structbay_delivery') {
-      const name = String(pickupContactName || '').trim();
-      const phone = String(pickupContactPhone || '').trim();
-      if (!name || !phone) {
-        return ApiResponse.badRequest(
-          res,
-          'Pickup contact name and phone are required for StructBay delivery (Type B).'
-        );
-      }
-      order.structbayLogistics = {
-        ...(order.structbayLogistics && order.structbayLogistics.toObject
-          ? order.structbayLogistics.toObject()
-          : order.structbayLogistics || {}),
-        pickupContactName: name,
-        pickupContactPhone: phone,
-      };
-    }
+function applyPickupContact(order, pickupContactName, pickupContactPhone) {
+  if (order.deliveryType !== 'structbay_delivery') return null;
+  const name = String(pickupContactName || '').trim();
+  const phone = String(pickupContactPhone || '').trim();
+  if (!name || !phone) {
+    return 'Pickup contact name and phone are required for StructBay delivery (Type B).';
   }
+  order.structbayLogistics = {
+    ...(order.structbayLogistics && order.structbayLogistics.toObject
+      ? order.structbayLogistics.toObject()
+      : order.structbayLogistics || {}),
+    pickupContactName: name,
+    pickupContactPhone: phone,
+  };
+  return { name, phone };
+}
 
-  const totalAmount = parseFloat(invoiceAmount) + parseFloat(gstAmount);
-  const structbayInvoiceNumber = await generateRefNumber('VENDOR_INVOICE');
-
-  const invoice = await VendorInvoice.create({
+function buildInvoicePayload({ orderId, vendorId, file, vendorRemarks, pickup }) {
+  return {
     vendorOrder: orderId,
-    vendor: req.user._id,
-    invoiceNumber: structbayInvoiceNumber,
-    vendorTaxInvoiceNumber: invoiceNumber || null,
-    invoiceDate,
-    invoiceAmount: parseFloat(invoiceAmount),
-    gstAmount: parseFloat(gstAmount),
-    totalAmount,
-    invoiceUrl: req.file.path,
-    cloudinaryId: req.file.filename,
-    vendorRemarks,
-    fileSize: req.file.size,
-    mimeType: req.file.mimetype,
-    uploadedBy: req.user._id,
-  });
+    vendor: vendorId,
+    invoiceUrl: file.path,
+    cloudinaryId: file.filename,
+    vendorRemarks: vendorRemarks ? String(vendorRemarks).trim() : undefined,
+    fileSize: file.size,
+    mimeType: file.mimetype,
+    uploadedBy: vendorId,
+    submittedAt: new Date(),
+    ...(pickup ? { pickupContactName: pickup.name, pickupContactPhone: pickup.phone } : {}),
+  };
+}
 
+async function finalizeInvoiceUpload(order, invoice, req, structbayInvoiceNumber) {
   order.invoiceStatus = 'UPLOADED';
 
   if (isWorkflowVendorOrder(order)) {
-    if (order.status !== 'DISPATCH_APPROVED') {
-      return ApiResponse.badRequest(
-        res,
-        'Final vendor invoice can only be uploaded after StructBay has approved dispatch (status DISPATCH_APPROVED).'
-      );
-    }
-    if (!canTransition(order.status, 'VENDOR_INVOICE_SUBMITTED')) {
-      return ApiResponse.badRequest(res, 'Invalid workflow state for invoice upload.');
-    }
     order.status = 'VENDOR_INVOICE_SUBMITTED';
     pushEmbeddedHistory(order, 'VENDOR_INVOICE_SUBMITTED', req.user._id, 'User', 'Vendor submitted final tax invoice.');
     await appendAudit(order._id, 'VENDOR_INVOICE_SUBMITTED', 'Vendor invoice PDF submitted', req.user._id, 'User');
@@ -122,9 +78,12 @@ exports.uploadInvoice = async (req, res) => {
   });
 
   await VendorActivityLog.create({
-    vendor: req.user._id, action: 'invoice_upload',
-    description: `Uploaded StructBay invoice ${structbayInvoiceNumber}${invoiceNumber ? ` (vendor ref ${invoiceNumber})` : ''} for order ${order.orderNumber}`,
-    relatedOrder: orderId, relatedInvoice: invoice._id, ipAddress: req.ip,
+    vendor: req.user._id,
+    action: 'invoice_upload',
+    description: `Uploaded StructBay invoice ${structbayInvoiceNumber} for order ${order.orderNumber}`,
+    relatedOrder: order._id,
+    relatedInvoice: invoice._id,
+    ipAddress: req.ip,
   });
 
   await logAction({
@@ -136,6 +95,48 @@ exports.uploadInvoice = async (req, res) => {
     ipAddress: req.ip,
     platform: (req.get('user-agent') || 'WEB').slice(0, 200),
   });
+}
+
+// @desc    Upload Vendor Invoice
+// @route   POST /api/v1/vendor/invoices
+exports.uploadInvoice = async (req, res) => {
+  const { orderId, vendorRemarks, pickupContactName, pickupContactPhone } = req.body;
+
+  const match = await vendorOrderMatch(req.user);
+  const order = await VendorOrder.findOne({ _id: orderId, ...match });
+  if (!order) return ApiResponse.notFound(res, 'Order not found or not assigned to you.');
+  if (!req.file) return ApiResponse.badRequest(res, 'Please upload invoice PDF.');
+
+  if (isWorkflowVendorOrder(order)) {
+    if (order.status !== 'DISPATCH_APPROVED') {
+      return ApiResponse.badRequest(
+        res,
+        'Final vendor invoice can only be uploaded after StructBay has approved dispatch (status DISPATCH_APPROVED).'
+      );
+    }
+    if (!canTransition(order.status, 'VENDOR_INVOICE_SUBMITTED')) {
+      return ApiResponse.badRequest(res, 'Invalid workflow state for invoice upload.');
+    }
+  }
+
+  const pickupResult = applyPickupContact(order, pickupContactName, pickupContactPhone);
+  if (typeof pickupResult === 'string') {
+    return ApiResponse.badRequest(res, pickupResult);
+  }
+
+  const structbayInvoiceNumber = await generateRefNumber('VENDOR_INVOICE');
+  const invoice = await VendorInvoice.create({
+    ...buildInvoicePayload({
+      orderId,
+      vendorId: req.user._id,
+      file: req.file,
+      vendorRemarks,
+      pickup: pickupResult,
+    }),
+    invoiceNumber: structbayInvoiceNumber,
+  });
+
+  await finalizeInvoiceUpload(order, invoice, req, structbayInvoiceNumber);
 
   return ApiResponse.created(res, 'Invoice uploaded successfully.', invoice);
 };
@@ -143,11 +144,20 @@ exports.uploadInvoice = async (req, res) => {
 // @desc    Replace Vendor Invoice
 // @route   PUT /api/v1/vendor/invoices/:id/replace
 exports.replaceInvoice = async (req, res) => {
-  const { invoiceNumber, invoiceDate, invoiceAmount, gstAmount, vendorRemarks } = req.body;
+  const { vendorRemarks, pickupContactName, pickupContactPhone } = req.body;
 
   const oldInvoice = await VendorInvoice.findOne({ _id: req.params.id, vendor: req.user._id });
   if (!oldInvoice) return ApiResponse.notFound(res, 'Invoice not found.');
   if (!req.file) return ApiResponse.badRequest(res, 'Please upload new invoice PDF.');
+
+  const match = await vendorOrderMatch(req.user);
+  const order = await VendorOrder.findOne({ _id: oldInvoice.vendorOrder, ...match });
+  if (!order) return ApiResponse.notFound(res, 'Order not found or not assigned to you.');
+
+  const pickupResult = applyPickupContact(order, pickupContactName, pickupContactPhone);
+  if (typeof pickupResult === 'string') {
+    return ApiResponse.badRequest(res, pickupResult);
+  }
 
   if (oldInvoice.cloudinaryId) {
     await cloudinary.uploader.destroy(oldInvoice.cloudinaryId, { resource_type: 'raw' }).catch(() => {});
@@ -156,33 +166,31 @@ exports.replaceInvoice = async (req, res) => {
   oldInvoice.status = 'replaced';
   await oldInvoice.save();
 
-  const totalAmount = parseFloat(invoiceAmount) + parseFloat(gstAmount);
   const structbayInvoiceNumber = await generateRefNumber('VENDOR_INVOICE');
   const newInvoice = await VendorInvoice.create({
-    vendorOrder: oldInvoice.vendorOrder,
-    vendor: req.user._id,
+    ...buildInvoicePayload({
+      orderId: oldInvoice.vendorOrder,
+      vendorId: req.user._id,
+      file: req.file,
+      vendorRemarks,
+      pickup: pickupResult,
+    }),
     invoiceNumber: structbayInvoiceNumber,
-    vendorTaxInvoiceNumber: invoiceNumber || null,
-    invoiceDate,
-    invoiceAmount: parseFloat(invoiceAmount),
-    gstAmount: parseFloat(gstAmount),
-    totalAmount,
-    invoiceUrl: req.file.path,
-    cloudinaryId: req.file.filename,
-    vendorRemarks,
-    fileSize: req.file.size,
-    mimeType: req.file.mimetype,
     replacesInvoice: oldInvoice._id,
-    uploadedBy: req.user._id,
   });
 
   oldInvoice.replacedBy = newInvoice._id;
   await oldInvoice.save();
 
+  if (pickupResult) await order.save();
+
   await VendorActivityLog.create({
-    vendor: req.user._id, action: 'invoice_replace',
-    description: `Replaced invoice ${oldInvoice.invoiceNumber} with ${structbayInvoiceNumber}${invoiceNumber ? ` (vendor ref ${invoiceNumber})` : ''}`,
-    relatedOrder: oldInvoice.vendorOrder, relatedInvoice: newInvoice._id, ipAddress: req.ip,
+    vendor: req.user._id,
+    action: 'invoice_replace',
+    description: `Replaced invoice ${oldInvoice.invoiceNumber} with ${structbayInvoiceNumber}`,
+    relatedOrder: oldInvoice.vendorOrder,
+    relatedInvoice: newInvoice._id,
+    ipAddress: req.ip,
   });
 
   return ApiResponse.success(res, 200, 'Invoice replaced successfully.', newInvoice);

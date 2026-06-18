@@ -5,6 +5,7 @@ const Notification = require('../models/Notification');
 const ApiResponse = require('../utils/apiResponse');
 const { vendorOrderMatch } = require('../utils/vendorOrderAccess');
 const { decorateVendorOrderForPortal } = require('../utils/vendorOrderPortal');
+const { buildVendorOrderDocuments } = require('../utils/vendorOrderDocuments');
 const { notifyVendor } = require('../services/vendorNotification.service');
 
 const VENDOR_ALLOWED_STATUSES = [
@@ -83,7 +84,10 @@ exports.getOrderDetails = async (req, res) => {
     relatedOrder: order._id, ipAddress: req.ip,
   }).catch(() => {});
 
-  return ApiResponse.success(res, 200, 'Order details retrieved.', decorateVendorOrderForPortal(order));
+  const payload = decorateVendorOrderForPortal(order);
+  payload.documents = await buildVendorOrderDocuments(order);
+
+  return ApiResponse.success(res, 200, 'Order details retrieved.', payload);
 };
 
 // @desc    Update Order Status

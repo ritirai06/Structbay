@@ -14,7 +14,7 @@ const variationSchema = new mongoose.Schema(
       diameter: { type: String, default: null },
       custom: [{ key: String, value: String }],
     },
-    sku: { type: String, trim: true, unique: true, sparse: true, default: null },
+    sku: { type: String, trim: true, sparse: true, default: null },
     mrp: { type: Number, default: null, min: 0 },
     /** Optional reference weight (kg); city stock stays on Inventory. */
     weightKg: { type: Number, default: null, min: 0 },
@@ -54,5 +54,10 @@ variationSchema.pre('save', function (next) {
   this.searchText = buildSearchText(this);
   next();
 });
+
+variationSchema.index(
+  { sku: 1 },
+  { unique: true, sparse: true, partialFilterExpression: { isDeleted: { $eq: false } } }
+);
 
 module.exports = mongoose.model('ProductVariation', variationSchema);

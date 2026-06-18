@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router';
-import { ArrowLeft, Upload, Send, AlertCircle, CheckCircle, FileText } from 'lucide-react';
+import { ArrowLeft, Upload, Send, AlertCircle, CheckCircle, FileText, Download, Eye } from 'lucide-react';
 import { api } from '../lib/api';
 import { vendorPath } from '../../lib/portalRoutes';
 
 const SB = { color: 'var(--sb-text-primary)', muted: 'var(--sb-text-muted)', faint: 'var(--sb-text-faint)', orange: 'var(--sb-orange)', card: 'var(--sb-card)', border: 'var(--sb-border)', bg: 'var(--sb-bg-section)' };
+
+const MAX_PDF_MB = 10;
+const MAX_PDF_BYTES = MAX_PDF_MB * 1024 * 1024;
 
 function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
   return (
@@ -20,6 +23,12 @@ function Field({ label, children, required }: { label: string; children: React.R
 const inputCls = 'w-full px-3 py-2.5 rounded-xl text-sm transition-all';
 const inputStyle = { background: 'var(--sb-bg-section)', border: '1px solid var(--sb-border)', color: 'var(--sb-text-primary)' };
 
+function validatePdf(f: File): string | null {
+  if (f.type !== 'application/pdf') return 'Only PDF files are allowed.';
+  if (f.size > MAX_PDF_BYTES) return `File must be ${MAX_PDF_MB}MB or smaller.`;
+  return null;
+}
+
 export function UploadInvoice() {
   const { orderId } = useParams();
   const navigate = useNavigate();
@@ -30,16 +39,10 @@ export function UploadInvoice() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  const [invoiceNumber, setInvoiceNumber] = useState('');
-  const [invoiceDate, setInvoiceDate] = useState('');
-  const [invoiceAmount, setInvoiceAmount] = useState('');
-  const [gstAmount, setGstAmount] = useState('');
   const [vendorRemarks, setVendorRemarks] = useState('');
   const [pickupContactName, setPickupContactName] = useState('');
   const [pickupContactPhone, setPickupContactPhone] = useState('');
   const [file, setFile] = useState<File | null>(null);
-
-  const total = (parseFloat(invoiceAmount || '0') + parseFloat(gstAmount || '0')).toFixed(2);
 
   useEffect(() => {
     async function load() {
@@ -54,15 +57,28 @@ export function UploadInvoice() {
           if (lg?.pickupContactName) setPickupContactName(lg.pickupContactName);
           if (lg?.pickupContactPhone) setPickupContactPhone(lg.pickupContactPhone);
         }
-        if (iRes.status === 'fulfilled') setExistingInvoice(iRes.value.data);
+        if (iRes.status === 'fulfilled') {
+          setExistingInvoice(iRes.value.data);
+          if (iRes.value.data?.vendorRemarks) setVendorRemarks(iRes.value.data.vendorRemarks);
+        }
       } finally { setLoading(false); }
     }
     load();
   }, [orderId]);
 
+  function selectFile(f: File | null) {
+    if (!f) { setFile(null); return; }
+    const err = validatePdf(f);
+    if (err) { setError(err); setFile(null); return; }
+    setError('');
+    setFile(f);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!file) { setError('Please select an invoice PDF.'); return; }
+    const pdfErr = validatePdf(file);
+    if (pdfErr) { setError(pdfErr); return; }
     if (order?.deliveryType === 'structbay_delivery' && (!pickupContactName.trim() || !pickupContactPhone.trim())) {
       setError('Pickup contact name and phone are required for StructBay delivery (Type B).');
       return;
@@ -72,11 +88,7 @@ export function UploadInvoice() {
       const form = new FormData();
       form.append('invoice', file);
       form.append('orderId', orderId!);
-      form.append('invoiceNumber', invoiceNumber);
-      form.append('invoiceDate', invoiceDate);
-      form.append('invoiceAmount', invoiceAmount);
-      form.append('gstAmount', gstAmount);
-      form.append('vendorRemarks', vendorRemarks);
+      if (vendorRemarks.trim()) form.append('vendorRemarks', vendorRemarks.trim());
       if (order?.deliveryType === 'structbay_delivery') {
         form.append('pickupContactName', pickupContactName.trim());
         form.append('pickupContactPhone', pickupContactPhone.trim());
@@ -93,6 +105,23 @@ export function UploadInvoice() {
       setError(err.message ?? 'Upload failed. Please try again.');
     } finally { setSubmitting(false); }
   }
+
+  const openExistingPdf = () => {
+    if (existingInvoice?.invoiceUrl) {
+      window.open(existingInvoice.invoiceUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const downloadExistingPdf = async () => {
+    if (!existingInvoice?._id) return;
+    try {
+      const res = await api.downloadInvoice(existingInvoice._id);
+      const url = res.data?.downloadUrl || existingInvoice.invoiceUrl;
+      if (url) window.open(url, '_blank', 'noopener,noreferrer');
+    } catch {
+      if (existingInvoice?.invoiceUrl) window.open(existingInvoice.invoiceUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
 
   if (loading) return (
     <div className="flex items-center justify-center py-20">
@@ -132,12 +161,29 @@ export function UploadInvoice() {
       {isReplace && (
         <div className="flex items-start gap-3 p-4 rounded-2xl" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)' }}>
           <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-amber-400" />
-          <div>
+          <div className="flex-1 min-w-0">
             <p className="text-xs font-bold uppercase tracking-wider text-amber-400 mb-1">Replacing Existing Invoice</p>
             <p className="text-xs" style={{ color: SB.muted }}>
-              Current: {existingInvoice.invoiceNumber} · ₹{existingInvoice.totalAmount?.toLocaleString('en-IN')} ·{' '}
-              <span className="capitalize">{existingInvoice.status}</span>
+              Ref: {existingInvoice.invoiceNumber} · Submitted{' '}
+              {existingInvoice.submittedAt || existingInvoice.createdAt
+                ? new Date(existingInvoice.submittedAt || existingInvoice.createdAt).toLocaleString()
+                : '—'}{' '}
+              · <span className="capitalize">{existingInvoice.status}</span>
             </p>
+            {existingInvoice.invoiceUrl && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                <button type="button" onClick={openExistingPdf}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                  style={{ background: SB.bg, border: `1px solid ${SB.border}`, color: SB.color }}>
+                  <Eye className="w-3.5 h-3.5" /> Preview current PDF
+                </button>
+                <button type="button" onClick={() => void downloadExistingPdf()}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                  style={{ background: SB.bg, border: `1px solid ${SB.border}`, color: SB.color }}>
+                  <Download className="w-3.5 h-3.5" /> Download current PDF
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -146,40 +192,22 @@ export function UploadInvoice() {
         <div className="lg:col-span-2">
           <div className="rounded-2xl p-6" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
             <form onSubmit={handleSubmit} className="space-y-5">
-              <Field label="Invoice Number" required>
-                <input type="text" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} required
-                  placeholder="INV-2025-001" className={inputCls} style={inputStyle} />
-              </Field>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field label="Invoice Date" required>
-                  <input type="date" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} required
-                    className={inputCls} style={inputStyle} />
-                </Field>
-                <Field label="Invoice Amount (₹)" required>
-                  <input type="number" value={invoiceAmount} onChange={e => setInvoiceAmount(e.target.value)} required
-                    placeholder="0.00" min="0" step="0.01" className={inputCls} style={inputStyle} />
-                </Field>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field label="GST Amount (₹)" required>
-                  <input type="number" value={gstAmount} onChange={e => setGstAmount(e.target.value)} required
-                    placeholder="0.00" min="0" step="0.01" className={inputCls} style={inputStyle} />
-                </Field>
-                <Field label="Total Amount (₹)">
-                  <input type="text" value={total} readOnly className={inputCls}
-                    style={{ ...inputStyle, background: 'var(--sb-bg)', opacity: 0.7 }} />
-                </Field>
-              </div>
-
               <Field label="Upload Invoice PDF" required>
                 <label className="flex flex-col items-center justify-center gap-3 p-8 rounded-xl cursor-pointer transition-all"
                   style={{ border: `2px dashed ${file ? 'var(--sb-orange)' : SB.border}`, background: file ? 'var(--sb-orange-subtle)' : SB.bg }}
                   onDragOver={e => e.preventDefault()}
-                  onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f?.type === 'application/pdf') setFile(f); }}
+                  onDrop={e => {
+                    e.preventDefault();
+                    const f = e.dataTransfer.files[0];
+                    if (f) selectFile(f);
+                  }}
                 >
-                  <input type="file" accept="application/pdf" className="hidden" onChange={e => setFile(e.target.files?.[0] ?? null)} />
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    className="hidden"
+                    onChange={e => selectFile(e.target.files?.[0] ?? null)}
+                  />
                   {file ? (
                     <>
                       <FileText className="w-10 h-10" style={{ color: SB.orange }} />
@@ -189,17 +217,24 @@ export function UploadInvoice() {
                   ) : (
                     <>
                       <Upload className="w-10 h-10" style={{ color: SB.faint }} />
-                      <p className="text-sm font-semibold" style={{ color: SB.color }}>Click to upload or drag and drop</p>
-                      <p className="text-xs" style={{ color: SB.faint }}>PDF only · Max 10MB</p>
+                      <p className="text-sm font-semibold" style={{ color: SB.color }}>
+                        {isReplace ? 'Click to upload replacement PDF' : 'Click to upload or drag and drop'}
+                      </p>
+                      <p className="text-xs" style={{ color: SB.faint }}>PDF only · Max {MAX_PDF_MB}MB</p>
                     </>
                   )}
                 </label>
               </Field>
 
               <Field label="Remarks">
-                <textarea value={vendorRemarks} onChange={e => setVendorRemarks(e.target.value)}
-                  rows={3} placeholder="Any remarks about this invoice..."
-                  className={inputCls} style={inputStyle} />
+                <textarea
+                  value={vendorRemarks}
+                  onChange={e => setVendorRemarks(e.target.value)}
+                  rows={3}
+                  placeholder="Add any notes related to this invoice..."
+                  className={inputCls}
+                  style={inputStyle}
+                />
               </Field>
 
               {typeB && (
@@ -233,7 +268,6 @@ export function UploadInvoice() {
           </div>
         </div>
 
-        {/* Sidebar */}
         <div className="space-y-4">
           <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
             <h3 className="vendor-section-title mb-4" style={{ color: SB.muted }}>Order Summary</h3>
@@ -261,7 +295,7 @@ export function UploadInvoice() {
               <span className="text-sm capitalize" style={{ color: SB.color }}>{order?.invoiceStatus ?? 'Pending Upload'}</span>
             </div>
             <p className="text-xs mt-2" style={{ color: SB.faint }}>
-              Once submitted, StructBay will review your invoice.
+              Upload your GST tax invoice PDF. StructBay will review the document directly — no manual amount entry needed.
             </p>
           </div>
         </div>

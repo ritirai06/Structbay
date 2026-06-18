@@ -38,6 +38,7 @@ const UPLOAD_FOLDERS = {
   QUOTATION: 'structbay/quotations',
   BULK_ENQUIRY: 'structbay/bulk-enquiries',
   INVOICE: 'structbay/invoices',
+  SHIPPING_LABEL: 'structbay/shipping-labels',
   FINANCE: 'structbay/finance/documents',
 };
 

@@ -9,6 +9,7 @@ const inventorySchema = new mongoose.Schema(
     quantity: { type: Number, required: true, default: 0, min: 0 },
     reserved: { type: Number, default: 0, min: 0 },    // locked for pending orders
     lowStockThreshold: { type: Number, default: 50 },
+    safetyStock: { type: Number, default: 0, min: 0 },
 
     isDeleted: { type: Boolean, default: false, select: false },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
@@ -31,9 +32,17 @@ inventorySchema.virtual('isLowStock').get(function () {
 inventorySchema.virtual('isOutOfStock').get(function () {
   return this.quantity === 0;
 });
+inventorySchema.virtual('stockStatus').get(function () {
+  if (this.quantity === 0) return 'OUT_OF_STOCK';
+  if (this.quantity <= this.lowStockThreshold) return 'LOW_STOCK';
+  return 'IN_STOCK';
+});
 
 inventorySchema.index({ product: 1, city: 1 });
-inventorySchema.index({ product: 1, variation: 1, city: 1 }, { unique: true, sparse: true });
+inventorySchema.index(
+  { product: 1, variation: 1, city: 1 },
+  { unique: true, sparse: true, partialFilterExpression: { isDeleted: { $eq: false } } }
+);
 inventorySchema.pre(/^find/, function (next) { this.where({ isDeleted: false }); next(); });
 
 module.exports = mongoose.model('Inventory', inventorySchema);

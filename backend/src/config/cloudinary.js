@@ -50,4 +50,27 @@ const updateFile = async (oldPublicId, newFilePath, folder, resourceType = 'auto
 const uploadImage    = (filePath, folder) => uploadFile(filePath, folder, 'image');
 const uploadDocument = (filePath, folder) => uploadFile(filePath, folder, 'raw');
 
-module.exports = { cloudinary, uploadFile, uploadImage, uploadDocument, deleteFile, updateFile };
+/**
+ * Upload a buffer (e.g. generated PDF) to Cloudinary.
+ * @returns {Promise<{ url: string, publicId: string }>}
+ */
+const uploadBuffer = (buffer, folder, resourceType = 'raw', filename = 'file') =>
+  new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder,
+        resource_type: resourceType,
+        use_filename: true,
+        unique_filename: true,
+        filename_override: filename,
+      },
+      (error, result) => {
+        if (error) return reject(error);
+        logger.info(`Cloudinary buffer upload: ${result.public_id}`);
+        resolve({ url: result.secure_url, publicId: result.public_id });
+      }
+    );
+    stream.end(buffer);
+  });
+
+module.exports = { cloudinary, uploadFile, uploadImage, uploadDocument, uploadBuffer, deleteFile, updateFile };

@@ -224,6 +224,42 @@ export async function adminDownloadBlob(relPath: string, downloadFileName: strin
   URL.revokeObjectURL(a.href);
 }
 
+/** Authenticated GET returning a Blob (for PDF preview / print). */
+export async function adminFetchBlob(relPath: string): Promise<Blob> {
+  const base = getApiV1Base().replace(/\/$/, "");
+  const rel = relPath.startsWith("/") ? relPath : `/${relPath}`;
+  const url = `${base}${rel}`;
+
+  const buildHeaders = () => {
+    const headers = new Headers();
+    const t = getAdminToken();
+    if (t) headers.set("Authorization", `Bearer ${t}`);
+    return headers;
+  };
+
+  const doFetch = () => fetch(url, { headers: buildHeaders() });
+
+  let res = await doFetch();
+  if (res.status === 401 && getAdminRefreshToken()) {
+    const ok = await refreshAdminAccessToken();
+    if (ok) res = await doFetch();
+  }
+
+  if (!res.ok) {
+    const text = await res.text();
+    let msg = `Request failed (${res.status})`;
+    try {
+      const j = JSON.parse(text) as { message?: string };
+      if (j?.message) msg = j.message;
+    } catch {
+      if (text) msg = text.slice(0, 200);
+    }
+    throw new Error(msg);
+  }
+
+  return res.blob();
+}
+
 /** Upload one image (multipart field `image`) to an admin upload endpoint; returns Cloudinary `url` + `publicId`. */
 export async function adminUploadImage(
   uploadPath: string,

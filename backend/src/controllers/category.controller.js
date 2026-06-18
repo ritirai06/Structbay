@@ -5,6 +5,7 @@ const AppError = require('../utils/AppError');
 const Category = require('../models/Category');
 const { deleteFile } = require('../config/cloudinary');
 const { logAction } = require('../services/auditLog.service');
+const { applySoftDelete } = require('../utils/softDeleteRelease');
 
 // ─── GET /api/v1/categories ───────────────────────────────────────────────────
 const getAll = asyncHandler(async (req, res) => {
@@ -124,8 +125,8 @@ const remove = asyncHandler(async (req, res) => {
   const category = await Category.findById(req.params.id);
   if (!category) throw new AppError('Category not found.', 404);
 
-  // Soft delete
-  category.isDeleted = true;
+  const oldName = category.name;
+  applySoftDelete(category, { fields: ['name', 'slug'], nameMaxLength: 100 });
   await category.save({ validateBeforeSave: false });
 
   if (category.image?.publicId) await deleteFile(category.image.publicId).catch(() => {});
@@ -135,9 +136,9 @@ const remove = asyncHandler(async (req, res) => {
     action: 'DELETE',
     module: 'Category',
     targetId: category._id.toString(),
-    description: `Deleted category: ${category.name}`,
+    description: `Deleted category: ${oldName}`,
     ipAddress: req.ip,
-    oldData: { name: category.name },
+    oldData: { name: oldName },
   });
 
   return ApiResponse.success(res, 200, 'Category deleted.');

@@ -12,6 +12,7 @@ const {
 } = require('../services/email.service');
 
 const authService = require('../services/auth.service');
+const { applyUserSoftDelete } = require('../utils/softDeleteRelease');
 
 // ─── GET /api/v1/admin/users ──────────────────────────────────────────────────
 const getAllUsers = asyncHandler(async (req, res) => {
@@ -97,8 +98,8 @@ const deleteUser = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id);
   if (!user) throw new AppError('User not found.', 404);
 
-  // Soft delete
-  user.status = USER_STATUS.DELETED;
+  // Soft delete — release email for reuse
+  applyUserSoftDelete(user);
   await user.save({ validateBeforeSave: false });
   await RefreshToken.revokeAllForUser(user._id);
 
@@ -247,7 +248,7 @@ const BULK_DELETE_MAX = 200;
 const deleteVendor = asyncHandler(async (req, res) => {
   const vendor = await User.findOne({ _id: req.params.id, role: ROLES.VENDOR });
   if (!vendor) throw new AppError('Vendor not found.', 404);
-  vendor.status = USER_STATUS.DELETED;
+  applyUserSoftDelete(vendor);
   await vendor.save({ validateBeforeSave: false });
   await RefreshToken.revokeAllForUser(vendor._id);
   await Session.updateMany({ user: vendor._id, isActive: true }, { isActive: false, logoutAt: new Date() });
@@ -276,7 +277,7 @@ const bulkDeleteVendors = asyncHandler(async (req, res) => {
     try {
       const vendor = await User.findOne({ _id: id, role: ROLES.VENDOR });
       if (!vendor) throw new AppError('Vendor not found.', 404);
-      vendor.status = USER_STATUS.DELETED;
+      applyUserSoftDelete(vendor);
       await vendor.save({ validateBeforeSave: false });
       await RefreshToken.revokeAllForUser(vendor._id);
       ok += 1;

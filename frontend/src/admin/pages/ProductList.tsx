@@ -67,6 +67,13 @@ function escapeCsvCell(val: unknown) {
   return s;
 }
 
+function formatPriceRange(low: number | null | undefined, high: number | null | undefined) {
+  if (low == null && high == null) return "—";
+  if (low != null && high != null && low !== high) return `₹${low} – ₹${high}`;
+  const p = low ?? high;
+  return p != null ? `₹${p}` : "—";
+}
+
 function formatBytes(n: number | null | undefined) {
   if (n == null || !Number.isFinite(n)) return "—";
   if (n < 1024) return `${n} B`;
@@ -421,7 +428,7 @@ export function ProductList() {
                       title="Select all on this page"
                     />
                   </th>
-                  {["Product", "Product ID", "SKU", "Category", "Brand", "Badges", "Status", "Order", ""].map((h) => (
+                  {["Product", "Product ID", "SKU", "Category", "Brand", "Cities", "Price Range", "Total Stock", "Badges", "Status", "Order", ""].map((h) => (
                     <th key={h}>{h}</th>
                   ))}
                 </tr>
@@ -464,6 +471,18 @@ export function ProductList() {
                     <td className="py-3.5 px-4 font-mono text-xs text-sb-ink/55">{p.sku}</td>
                     <td className="py-3.5 px-4 text-sb-ink/65">{p.category?.name || "—"}</td>
                     <td className="py-3.5 px-4 text-sb-ink/65">{p.brand?.name || "—"}</td>
+                    <td className="py-3.5 px-4 text-sb-ink/65 text-xs max-w-[140px]">
+                      {(p.citiesAvailable || []).length
+                        ? (p.citiesAvailable as string[]).slice(0, 3).join(", ") +
+                          ((p.citiesAvailable as string[]).length > 3 ? "…" : "")
+                        : "—"}
+                    </td>
+                    <td className="py-3.5 px-4 text-sb-ink/65 text-xs whitespace-nowrap">
+                      {formatPriceRange(p.lowestPrice, p.highestPrice)}
+                    </td>
+                    <td className="py-3.5 px-4 text-sb-ink/65 text-xs">
+                      {p.totalStock != null ? `${p.totalStock.toLocaleString()} units` : "—"}
+                    </td>
                     <td className="py-3.5 px-4">
                       <div className="flex gap-1">
                         {p.isAssured && (
@@ -519,16 +538,6 @@ export function ProductList() {
                           <DropdownMenuItem asChild className="hover:bg-sb-cream-secondary cursor-pointer text-sm gap-2">
                             <Link to={adminPath("products", String(p._id), "edit")}>
                               <Edit className="w-3.5 h-3.5 text-sb-ink/55" /> Edit product
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild className="hover:bg-sb-cream-secondary cursor-pointer text-sm gap-2">
-                            <Link to={`${adminPath("pricing")}?product=${p._id}`}>
-                              <Star className="w-3.5 h-3.5 text-sb-ink/55" /> Manage pricing
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild className="hover:bg-sb-cream-secondary cursor-pointer text-sm gap-2">
-                            <Link to={`${adminPath("inventory")}?product=${p._id}`}>
-                              <Archive className="w-3.5 h-3.5 text-sb-ink/55" /> Manage inventory
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />

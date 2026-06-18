@@ -18,6 +18,7 @@ import {
   buildLogisticsDraft,
   vendorUserId,
 } from "../components/order/orderDetailShared";
+import { ShippingLabelCard } from "../components/order/ShippingLabelCard";
 
 const STEPS = [
   { id: "step-overview", label: "Overview" },
@@ -38,6 +39,7 @@ export function OrderDetailPage() {
   const [deliveryTypePick, setDeliveryTypePick] = useState<"vendor_delivery" | "structbay_delivery">("vendor_delivery");
   const [vendorsLoading, setVendorsLoading] = useState(false);
   const [voDetailById, setVoDetailById] = useState<Record<string, any>>({});
+  const [labelRefreshKey, setLabelRefreshKey] = useState(0);
 
   const loadOrder = useCallback(async () => {
     if (!orderId) return;
@@ -153,6 +155,7 @@ export function OrderDetailPage() {
       body: JSON.stringify({ structbayLogistics: body }),
     }).catch((e: Error) => alert(e.message));
     await loadOrder();
+    setLabelRefreshKey((k) => k + 1);
   };
 
   const confirmPayment = async (paymentStatus: "PAID" | "FAILED") => {
@@ -233,9 +236,21 @@ export function OrderDetailPage() {
           description="Customer, payment, line items, and delivery notes for tracking."
         >
           <div className="space-y-4">
-            <div className="wf-info-grid wf-info-grid--3">
-              <InfoTile label="Customer" value={order.customer?.name} sub={order.customer?.phone} />
-              <InfoTile label="Delivery city" value={order.city?.name} sub={`₹${order.grandTotal?.toLocaleString()}`} />
+            <div className="wf-info-grid wf-info-grid--4">
+              <InfoTile label="Customer" value={order.customer?.name ?? "—"} sub={order.customer?.phone} />
+              <InfoTile
+                label="Delivery city"
+                value={order.city?.name || order.shippingAddress?.city || "—"}
+                sub={
+                  [order.shippingAddress?.state || order.city?.state, order.shippingAddress?.pincode]
+                    .filter(Boolean)
+                    .join(" · ") || undefined
+                }
+              />
+              <InfoTile
+                label="Order total"
+                value={order.grandTotal != null ? `₹${Number(order.grandTotal).toLocaleString("en-IN")}` : "—"}
+              />
               <InfoTile
                 label="Payment"
                 value={formatPaymentMethod(order.paymentMethod)}
@@ -464,6 +479,14 @@ export function OrderDetailPage() {
                           </div>
                         </WorkflowSubsection>
                       )}
+
+                      <ShippingLabelCard
+                        orderId={order._id}
+                        vendorOrderId={vo._id}
+                        vendorOrderNumber={vo.orderNumber}
+                        deliveryType={vo.deliveryType === "structbay_delivery" ? "structbay_delivery" : "vendor_delivery"}
+                        refreshKey={labelRefreshKey}
+                      />
 
                       {vo.workflowVersion === 2 && (
                         <>
