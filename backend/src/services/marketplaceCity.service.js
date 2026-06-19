@@ -90,9 +90,22 @@ function vendorServesCity(userLean, cityOid) {
   return ids.some((id) => String(id) === want);
 }
 
+/**
+ * Product IDs with visible city pricing (discovery — does not require stock on hand).
+ * @param {import('mongoose').Types.ObjectId} cityOid
+ */
+async function getPricedProductIdsForCity(cityOid) {
+  return CityPricing.distinct('product', {
+    city: cityOid,
+    isVisible: true,
+    isDeleted: false,
+  });
+}
+
 module.exports = {
   resolveMarketplaceCityId,
   getPricedProductIdsForCity,
   getSellableProductIdsForCity,
+  getPricedProductIdsForCity,
   vendorServesCity,
 };
