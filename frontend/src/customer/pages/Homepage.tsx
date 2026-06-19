@@ -13,7 +13,13 @@ import {
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { api } from "../lib/api";
-import { fetchNavCategories } from "../lib/navCategories";
+import {
+  loadHomepageCategories,
+  loadHomepageBrands,
+  loadHomepageProducts,
+} from "../lib/homepageCatalog";
+import { TopSellingProductsCarousel } from "../components/TopSellingProductsCarousel";
+import { FeaturedBrandsMarquee } from "../components/FeaturedBrandsMarquee";
 import { pricingSnapshotFromProduct, resolveUnitPriceFromSnapshot } from "../lib/wholesalePricing";
 import { productHref } from "../lib/productRoutes";
 import { useCmsPageSeo } from "../hooks/useCmsPageSeo";
@@ -191,25 +197,25 @@ const FEATURE_CARDS = [
     title: "Genuine Products, Guaranteed",
     desc: "All products are sourced directly from trusted manufacturers, ensuring authentic quality at competitive prices.",
     icon: Box,
-    image: "https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=900&q=80",
+    image: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=900&q=80",
     href: "/shop",
-    buttonText: "Shop Now",
+    buttonText: "SHOP NOW",
   },
   {
     title: "Unmatched Affordability",
     desc: "Premium construction materials supplied at factory-direct rates, delivering exceptional quality at competitive prices.",
     icon: Lightbulb,
-    image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=900&q=80",
+    image: "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=900&q=80",
     href: "/shop",
-    buttonText: "Shop Now",
+    buttonText: "SHOP NOW",
   },
   {
     title: "A to Z Material Availability",
     desc: "Complete range of construction essentials available in one place, ensuring convenience at competitive prices.",
     icon: Shapes,
-    image: "https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=900&q=80",
+    image: "https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=900&q=80",
     href: "/shop",
-    buttonText: "Shop Now",
+    buttonText: "SHOP NOW",
   },
 ] as const;
 
@@ -257,7 +263,7 @@ function resolveFeatureCards(cms: Record<string, unknown>): ResolvedFeatureCard[
         image: String(c.imageUrl || "").trim() || fallback.image,
         href: String(c.buttonLink || "").trim() || fallback.href,
         buttonText: String(c.buttonText || "").trim() || fallback.buttonText,
-        icon: FEATURE_ICON_MAP[iconKey] || Box,
+        icon: FEATURE_ICON_MAP[iconKey] || fallback.icon,
       };
     });
 }
@@ -786,6 +792,7 @@ export function Homepage() {
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [announcementsReady, setAnnouncementsReady] = useState(false);
   const [cmsHome, setCmsHome] = useState<Record<string, unknown>>({});
+  const [catalogLoading, setCatalogLoading] = useState(true);
 
   const dismissAnnouncements = useCallback(() => {
     const ids = announcements.map((a: any) => String(a._id));
@@ -866,27 +873,40 @@ export function Homepage() {
     };
   }, []);
 
-  // City-scoped catalogue (after delivery city is chosen).
+  // Catalog sections: CMS featured → city-scoped → all ACTIVE (see homepageCatalog.ts).
   useEffect(() => {
-    if (!cityId) {
-      setCategories([]);
-      setBrands([]);
-      setTopProducts([]);
-      return;
-    }
+    let cancelled = false;
+    setCatalogLoading(true);
 
-    fetchNavCategories({ cityId })
-      .then(setCategories)
-      .catch(() => setCategories([]));
+    void (async () => {
+      try {
+        const [cats, brandRows, productRows] = await Promise.all([
+          loadHomepageCategories(cmsHome, cityId, HOMEPAGE_CATEGORY_LIMIT),
+          loadHomepageBrands(cityId, 24),
+          loadHomepageProducts(cityId, 12),
+        ]);
+        if (cancelled) return;
+        setCategories(cats);
+        setBrands(brandRows);
+        setTopProducts(productRows);
+      } catch (err) {
+        if (import.meta.env.DEV) {
+          console.error("[Homepage] catalog load failed", err);
+        }
+        if (!cancelled) {
+          setCategories([]);
+          setBrands([]);
+          setTopProducts([]);
+        }
+      } finally {
+        if (!cancelled) setCatalogLoading(false);
+      }
+    })();
 
-    api.getBrands({ status: "ACTIVE", limit: 24, cityId })
-      .then((d: any) => setBrands(d.data || []))
-      .catch(() => {});
-
-    api.getProducts({ isTopSelling: "true", limit: 8, cityId })
-      .then((d: any) => setTopProducts(d.data || []))
-      .catch(() => {});
-  }, [cityId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [cityId, cmsHome]);
 
   const categoriesForHome = useMemo(
     () =>
@@ -987,10 +1007,12 @@ export function Homepage() {
           {featureCards.map(({ title, desc, icon: Icon, image, href, buttonText }) => (
             <div key={title} className="sf-feature-card" style={{ backgroundImage: `url(${image})` }}>
               <div className="sf-feature-card__overlay">
-                <Icon className="sf-feature-card__icon" strokeWidth={1.25} aria-hidden />
-                <h3>{title}</h3>
-                <p>{desc}</p>
-                <Link to={href} className="sf-btn-orange">{buttonText}</Link>
+                <Icon className="sf-feature-card__icon" strokeWidth={1.15} aria-hidden />
+                <div className="sf-feature-card__body">
+                  <h3>{title}</h3>
+                  <p>{desc}</p>
+                </div>
+                <Link to={href} className="sf-btn-orange sf-feature-card__btn">{buttonText}</Link>
               </div>
             </div>
           ))}
@@ -998,10 +1020,13 @@ export function Homepage() {
       </section>
 
       {/* ── Our Categories (reference layout — API data) ─────────────────── */}
-      {categoriesForHome.length > 0 && (
+      {(catalogLoading || categoriesForHome.length > 0) && (
         <section className="sf-categories-section" id="categories">
           <h2 className="sf-categories-title">Our Categories</h2>
           <p className="sf-categories-sub">{CATEGORIES_SUB}</p>
+          {catalogLoading && categoriesForHome.length === 0 ? (
+            <p className="text-center text-sm text-sb-ink-muted/70 py-8">Loading categories…</p>
+          ) : (
           <div className="sf-cat-grid">
             {categoriesForHome.map((cat) => {
               const Icon = categoryAccentIcon(cat);
@@ -1021,44 +1046,26 @@ export function Homepage() {
               );
             })}
           </div>
+          )}
         </section>
       )}
 
 
  {/* ── Featured brands (logo carousel) ─────────────────────────────────── */}
-      {brands.length > 0 && (
-        <section className="sf-brands-section py-14 px-4 border-y border-[#E85A00]/15">
-          <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-8">
+      {(catalogLoading || brands.length > 0) && (
+        <section className="sf-brands-section py-16 sm:py-20 px-3 sm:px-5 lg:px-6 xl:px-8 border-y border-[#E85A00]/15" aria-label="Featured brands">
+          <div className="max-w-screen-2xl mx-auto w-full">
+            <div className="text-center mb-10 sm:mb-12">
               <h2 className="text-sb-ink">Featured Brands</h2>
-              <p className="text-sb-ink-muted/60 text-sm mt-1">Authorized partners for India&apos;s top construction brands</p>
+              <p className="sf-brands-section__subtitle text-sm sm:text-base mt-2 max-w-2xl mx-auto">
+                Authorized partners for India&apos;s top construction brands
+              </p>
             </div>
-            <div className="bg-white rounded-2xl border border-black/10 py-6 sb-marquee shadow-sm">
-              <div className="sb-marquee__track items-stretch px-4 gap-4 md:gap-6">
-                {[...brands, ...brands].map((brand, i) => (
-                  <Link
-                    key={`${brand.slug}-${i}`}
-                    to={`/brands/${brand.slug}`}
-                    className="group shrink-0 flex flex-col items-center justify-center w-[7.25rem] sm:w-36 min-h-[5.5rem] rounded-2xl border border-sb-ink/10 bg-white hover:border-[#E85A00]/50 hover:shadow-[0_8px_24px_rgba(232, 90, 0,0.12)] transition-all px-3 py-3"
-                  >
-                    {brand.logo?.url ? (
-                      <img
-                        src={brand.logo.url}
-                        alt={brand.name}
-                        className="max-h-11 sm:max-h-12 max-w-[5.5rem] sm:max-w-[6.25rem] w-auto object-contain"
-                      />
-                    ) : (
-                      <div className="h-11 w-11 rounded-xl flex items-center justify-center bg-[#E85A00]/12 border border-[#E85A00]/20 text-[#E85A00] font-black text-sm">
-                        {(brand.name || "?")[0]}
-                      </div>
-                    )}
-                    <span className="mt-2 text-[11px] sm:text-xs font-semibold text-sb-ink/90 text-center line-clamp-2 leading-tight max-w-full group-hover:text-[#E85A00] transition-colors">
-                      {brand.name}
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            </div>
+            {catalogLoading && brands.length === 0 ? (
+              <p className="text-center text-sm text-sb-ink/80 py-8">Loading brands…</p>
+            ) : (
+              <FeaturedBrandsMarquee brands={brands} />
+            )}
           </div>
         </section>
       )}
@@ -1070,12 +1077,12 @@ export function Homepage() {
           <p className="text-sb-ink-muted/70 text-sm leading-relaxed max-w-2xl mx-auto mb-6">
             {footerCms.companyDescription}
           </p>
-          <Link
+          {/* <Link
             to="/rfq"
             className="inline-flex items-center gap-2 border-2 border-sb-ink/12 text-sb-ink px-6 py-2.5 rounded-xl font-bold hover:bg-[#E85A00] hover:border-[#E85A00] hover:text-sb-on-orange transition-all"
           >
             Get Started <ArrowRight className="w-4 h-4" />
-          </Link>
+          </Link> */}
         </div>
         <div ref={statsRef} className="sf-stats max-w-4xl mx-auto">
           {WHY_CHOOSE_STATS.map(({ icon, target, label }) => (
@@ -1094,23 +1101,23 @@ export function Homepage() {
       </section>
 
       {/* ── Top Selling Products ───────────────────────────────────────────── */}
-      {topProducts.length > 0 && (
-        <section className="sf-dot-grid py-12 px-4">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex items-center justify-between mb-7">
-              <div>
-                <h2 className="text-sb-ink">Top Selling Products</h2>
-                <p className="text-sb-ink-muted/60 text-sm mt-1">
-                  {city ? `Best deals in ${city}` : "Pick a city in the header for local pricing"}
-                </p>
-              </div>
-              <Link to="/shop" className="flex items-center gap-1 text-sm font-semibold text-[#E85A00] hover:text-[#CC4E00] transition-colors">
-                View All <ChevronRight className="w-4 h-4" />
-              </Link>
+      {(catalogLoading || topProducts.length > 0) && (
+        <section className="sf-dot-grid py-16 px-3 sm:px-5 lg:px-6 xl:px-8" aria-label="Top selling products">
+          <div className="max-w-screen-2xl mx-auto w-full">
+            <div className="text-center mb-11 sm:mb-12">
+              <h2 className="text-sb-ink">Top Selling Products</h2>
+              <p className="text-sb-ink-muted/60 text-sm mt-1">
+                {city ? `Best deals in ${city}` : "Browse our latest construction materials"}
+              </p>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 max-w-5xl">
-              {topProducts.map(p => <ProductCard key={p._id || p.slug} product={p} compact />)}
-            </div>
+            {catalogLoading && topProducts.length === 0 ? (
+              <p className="text-center text-sm text-sb-ink-muted/70 py-8">Loading products…</p>
+            ) : (
+              <TopSellingProductsCarousel
+                products={topProducts}
+                renderProduct={(p) => <ProductCard product={p} compact />}
+              />
+            )}
           </div>
         </section>
       )}
@@ -1147,7 +1154,7 @@ export function Homepage() {
               <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4 bg-[#E85A00]/15 border border-[#E85A00]/20">
                 <TrendingUp className="w-5 h-5 text-[#E85A00]" />
               </div>
-              <h3 className="text-sb-ink mb-2">Builder Finance</h3>
+              <h3 className="text-sb-ink mb-2">StructBay Finance</h3>
               <p className="text-sb-ink-muted/60 text-sm">Get construction finance up to ₹5 Cr. Fast approval, competitive rates for builders.</p>
             </div>
             <Link

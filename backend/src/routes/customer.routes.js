@@ -289,6 +289,7 @@ router.get(
       search, category, brand, brands: brandsQuery, cityId, assured, express,
       structbayAssured, structbayDelivery,
       isTopSelling, isFeatured, page = 1, limit = 24, sort = 'default',
+      catalog,
     } = req.query;
 
     const filter = { status: 'ACTIVE' };
@@ -311,8 +312,16 @@ router.get(
 
     const cityOid = await marketplaceCity.resolveMarketplaceCityId(cityId);
     if (cityOid) {
-      const subset = await catalogBrowse.computeCityScopedProductIdSubset(req.query, cityOid);
-      filter._id = { $in: subset };
+      if (catalog === 'homepage') {
+        let productIds = await marketplaceCity.getPricedProductIdsForCity(cityOid);
+        if (productIds.length === 0) {
+          productIds = await marketplaceCity.getSellableProductIdsForCity(cityOid);
+        }
+        if (productIds.length > 0) filter._id = { $in: productIds };
+      } else {
+        const subset = await catalogBrowse.computeCityScopedProductIdSubset(req.query, cityOid);
+        filter._id = { $in: subset };
+      }
     }
 
     const pageNum  = Math.max(1, parseInt(page));
@@ -596,13 +605,18 @@ router.get(
     const cityOid = await marketplaceCity.resolveMarketplaceCityId(cityId);
     let catFilter = { status };
     if (cityOid) {
-      const sellable = await marketplaceCity.getSellableProductIdsForCity(cityOid);
-      const catIds = await Product.distinct('category', { status: 'ACTIVE', _id: { $in: sellable } });
-      catFilter._id = { $in: catIds };
+      let productIds = await marketplaceCity.getPricedProductIdsForCity(cityOid);
+      if (productIds.length === 0) {
+        productIds = await marketplaceCity.getSellableProductIdsForCity(cityOid);
+      }
+      if (productIds.length > 0) {
+        const catIds = await Product.distinct('category', { status: 'ACTIVE', _id: { $in: productIds } });
+        if (catIds.length > 0) catFilter._id = { $in: catIds };
+      }
     }
 
     const categories = await Category.find(catFilter)
-      .select('name slug image icon description sortOrder')
+      .select('name slug image icon description sortOrder status')
       .sort({ sortOrder: 1 })
       .limit(lim)
       .lean();
@@ -610,8 +624,11 @@ router.get(
     const catIds = categories.map((c) => c._id);
     let countMatch = { status: 'ACTIVE', category: { $in: catIds } };
     if (cityOid) {
-      const sellable = await marketplaceCity.getSellableProductIdsForCity(cityOid);
-      countMatch._id = { $in: sellable };
+      let productIds = await marketplaceCity.getPricedProductIdsForCity(cityOid);
+      if (productIds.length === 0) {
+        productIds = await marketplaceCity.getSellableProductIdsForCity(cityOid);
+      }
+      if (productIds.length > 0) countMatch._id = { $in: productIds };
     }
     const countRows =
       catIds.length === 0
@@ -640,9 +657,14 @@ router.get(
     const cityOid = await marketplaceCity.resolveMarketplaceCityId(cityId);
     let brandFilter = { status };
     if (cityOid) {
-      const sellable = await marketplaceCity.getSellableProductIdsForCity(cityOid);
-      const brandIds = await Product.distinct('brand', { status: 'ACTIVE', _id: { $in: sellable } });
-      brandFilter._id = { $in: brandIds };
+      let productIds = await marketplaceCity.getPricedProductIdsForCity(cityOid);
+      if (productIds.length === 0) {
+        productIds = await marketplaceCity.getSellableProductIdsForCity(cityOid);
+      }
+      if (productIds.length > 0) {
+        const brandIds = await Product.distinct('brand', { status: 'ACTIVE', _id: { $in: productIds } });
+        if (brandIds.length > 0) brandFilter._id = { $in: brandIds };
+      }
     }
 
     const brands = await Brand.find(brandFilter)
