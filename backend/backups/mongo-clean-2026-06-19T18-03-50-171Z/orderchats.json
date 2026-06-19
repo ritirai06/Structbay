@@ -1,0 +1,49 @@
+[
+  {
+    "_id": "6a319cc29a230381c5a1a66d",
+    "masterOrder": "6a3184c5d1a54032dcb479ac",
+    "customer": "6a2eb00ef93fe4f1ddc07da5",
+    "isActive": true,
+    "unreadByAdmin": 0,
+    "unreadByCustomer": 0,
+    "messages": [
+      {
+        "senderType": "ADMIN",
+        "sender": "6a2ab23e07a6b7f84fdcca12",
+        "text": "hi",
+        "attachments": [],
+        "isRead": true,
+        "sentAt": "2026-06-16T18:58:17.340Z",
+        "_id": "6a319cc99a230381c5a1a675"
+      }
+    ],
+    "createdAt": "2026-06-16T18:58:10.458Z",
+    "updatedAt": "2026-06-18T08:27:40.647Z",
+    "__v": 0,
+    "lastMessageAt": "2026-06-16T18:58:17.340Z"
+  },
+  {
+    "_id": "6a33949993809d7a81d5899e",
+    "masterOrder": "6a319f71300560934d4a0374",
+    "customer": "6a2eb00ef93fe4f1ddc07da5",
+    "isActive": true,
+    "unreadByAdmin": 0,
+    "unreadByCustomer": 0,
+    "messages": [],
+    "createdAt": "2026-06-18T06:47:53.958Z",
+    "updatedAt": "2026-06-18T06:50:13.930Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a33bed7ab967c7ecb6d2c62",
+    "masterOrder": "6a33beccab967c7ecb6d2c3a",
+    "customer": "6a2eb00ef93fe4f1ddc07da5",
+    "isActive": true,
+    "unreadByAdmin": 0,
+    "unreadByCustomer": 0,
+    "messages": [],
+    "createdAt": "2026-06-18T09:48:07.962Z",
+    "updatedAt": "2026-06-18T10:22:49.172Z",
+    "__v": 0
+  }
+]

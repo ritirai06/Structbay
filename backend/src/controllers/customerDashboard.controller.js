@@ -10,6 +10,8 @@ const Notification = require('../models/Notification');
 exports.getDashboard = asyncHandler(async (req, res) => {
   const customerId = req.user._id;
 
+  const terminalStatuses = ['DELIVERED', 'COMPLETED', 'CANCELLED', 'RETURNED'];
+
   const [
     totalOrders,
     activeOrders,
@@ -21,19 +23,32 @@ exports.getDashboard = asyncHandler(async (req, res) => {
     savedAddresses,
     invoicesAvailable,
     unreadNotifications,
+    spentAgg,
     recentOrders,
     recentEnquiries,
   ] = await Promise.all([
     Order.countDocuments({ customer: customerId }),
-    Order.countDocuments({ customer: customerId, status: { $in: ['CONFIRMED', 'PROCESSING', 'DISPATCHED', 'OUT_FOR_DELIVERY'] } }),
-    Order.countDocuments({ customer: customerId, status: 'DELIVERED' }),
-    Order.countDocuments({ customer: customerId, status: 'PENDING' }),
+    Order.countDocuments({
+      customer: customerId,
+      status: {
+        $in: [
+          'PENDING', 'PAID', 'VENDOR_ASSIGNMENT_PENDING', 'PROCESSING',
+          'READY_FOR_DISPATCH', 'PARTIALLY_DISPATCHED', 'DISPATCHED', 'PARTIALLY_DELIVERED',
+        ],
+      },
+    }),
+    Order.countDocuments({ customer: customerId, status: { $in: ['DELIVERED', 'COMPLETED'] } }),
+    Order.countDocuments({ customer: customerId, status: { $nin: terminalStatuses } }),
     Order.countDocuments({ customer: customerId, status: 'CANCELLED' }),
     BulkEnquiry.countDocuments({ customer: customerId }),
     ConcreteRFQ.countDocuments({ customer: customerId }),
     Address.countDocuments({ customer: customerId }),
     Order.countDocuments({ customer: customerId, invoiceUrl: { $ne: null } }),
     Notification.countDocuments({ customer: customerId, isRead: false }),
+    Order.aggregate([
+      { $match: { customer: customerId, status: { $ne: 'CANCELLED' } } },
+      { $group: { _id: null, total: { $sum: '$grandTotal' } } },
+    ]),
     Order.find({ customer: customerId })
       .sort({ createdAt: -1 })
       .limit(5)
@@ -45,11 +60,13 @@ exports.getDashboard = asyncHandler(async (req, res) => {
       .select('enquiryNumber status createdAt'),
   ]);
 
+  const totalSpent = spentAgg[0]?.total || 0;
+
   return ApiResponse.success(res, 200, 'Dashboard data retrieved.', {
     stats: {
       totalOrders, activeOrders, completedOrders, pendingOrders,
       cancelledOrders, bulkEnquiries, rfqs, savedAddresses,
-      invoicesAvailable, unreadNotifications,
+      invoicesAvailable, unreadNotifications, totalSpent,
     },
     recentOrders,
     recentEnquiries,

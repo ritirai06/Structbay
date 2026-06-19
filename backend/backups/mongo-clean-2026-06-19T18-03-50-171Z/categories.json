@@ -1,0 +1,686 @@
+[
+  {
+    "_id": "6a2adf5e7c77e716575cfc90",
+    "name": "Cement",
+    "description": "Cement is a binding material used in construction, primarily to make concrete.",
+    "icon": "CEMENT",
+    "image": {
+      "url": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781194536/structbay/categories/file_bfcigt.jpg",
+      "publicId": "structbay/categories/file_bfcigt"
+    },
+    "status": "ACTIVE",
+    "sortOrder": 1,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T16:16:30.117Z",
+    "updatedAt": "2026-06-18T16:05:41.604Z",
+    "slug": "cement",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b029958828014d1d07240",
+    "name": "Steel",
+    "description": "TMT bars structural steel and metal products",
+    "icon": "",
+    "image": {
+      "url": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781597963/structbay/categories/file_d2dok7.jpg",
+      "publicId": "structbay/categories/file_d2dok7"
+    },
+    "status": "ACTIVE",
+    "sortOrder": 2,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:46:49.878Z",
+    "updatedAt": "2026-06-18T16:05:43.993Z",
+    "slug": "steel",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b029958828014d1d07242",
+    "name": "Aggregates & Sand",
+    "description": "Sand gravel and aggregates for construction",
+    "icon": "",
+    "image": {
+      "url": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781597979/structbay/categories/file_u8bkwc.jpg",
+      "publicId": "structbay/categories/file_u8bkwc"
+    },
+    "status": "ACTIVE",
+    "sortOrder": 4,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:46:49.930Z",
+    "updatedAt": "2026-06-18T16:05:46.539Z",
+    "slug": "aggregates-and-sand",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b029a58828014d1d07244",
+    "name": "Bricks & Blocks",
+    "description": "Clay bricks AAC blocks and concrete blocks",
+    "icon": "",
+    "image": {
+      "url": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781597993/structbay/categories/file_fitvi4.jpg",
+      "publicId": "structbay/categories/file_fitvi4"
+    },
+    "status": "ACTIVE",
+    "sortOrder": 4,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:46:50.080Z",
+    "updatedAt": "2026-06-18T16:05:48.013Z",
+    "slug": "bricks-and-blocks",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b029a58828014d1d07246",
+    "name": "Wood & Timber",
+    "description": "Timber hardwood softwood and wooden products",
+    "icon": null,
+    "image": {
+      "url": null,
+      "publicId": null
+    },
+    "status": "ACTIVE",
+    "sortOrder": 5,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:46:50.182Z",
+    "updatedAt": "2026-06-18T16:05:49.548Z",
+    "slug": "wood-and-timber",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b029a58828014d1d07248",
+    "name": "Plywood & Laminates",
+    "description": "Plywood MDF HDF and laminates",
+    "icon": null,
+    "image": {
+      "url": null,
+      "publicId": null
+    },
+    "status": "ACTIVE",
+    "sortOrder": 6,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:46:50.284Z",
+    "updatedAt": "2026-06-18T16:05:50.041Z",
+    "slug": "plywood-and-laminates",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b029a58828014d1d0724a",
+    "name": "Tiles & Flooring",
+    "description": "Floor tiles wall tiles and flooring materials",
+    "icon": null,
+    "image": {
+      "url": null,
+      "publicId": null
+    },
+    "status": "ACTIVE",
+    "sortOrder": 7,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:46:50.387Z",
+    "updatedAt": "2026-06-18T16:05:50.470Z",
+    "slug": "tiles-and-flooring",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b029a58828014d1d0724c",
+    "name": "Marble & Granite",
+    "description": "Natural stone marble granite and quartz products",
+    "icon": null,
+    "image": {
+      "url": null,
+      "publicId": null
+    },
+    "status": "ACTIVE",
+    "sortOrder": 8,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:46:50.490Z",
+    "updatedAt": "2026-06-18T16:05:50.866Z",
+    "slug": "marble-and-granite",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b029a58828014d1d0724e",
+    "name": "Paints & Coatings",
+    "description": "Interior exterior paints primers and coatings",
+    "icon": null,
+    "image": {
+      "url": null,
+      "publicId": null
+    },
+    "status": "ACTIVE",
+    "sortOrder": 9,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:46:50.591Z",
+    "updatedAt": "2026-06-18T16:05:51.495Z",
+    "slug": "paints-and-coatings",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b029a58828014d1d07250",
+    "name": "Construction Chemicals",
+    "description": "Admixtures curing compounds and specialty chemicals",
+    "icon": null,
+    "image": {
+      "url": null,
+      "publicId": null
+    },
+    "status": "ACTIVE",
+    "sortOrder": 10,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:46:50.650Z",
+    "updatedAt": "2026-06-18T16:05:51.903Z",
+    "slug": "construction-chemicals",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b029a58828014d1d07252",
+    "name": "Waterproofing",
+    "description": "Waterproofing membranes chemicals and solutions",
+    "icon": null,
+    "image": {
+      "url": null,
+      "publicId": null
+    },
+    "status": "ACTIVE",
+    "sortOrder": 11,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:46:50.795Z",
+    "updatedAt": "2026-06-18T06:59:30.909Z",
+    "slug": "waterproofing",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b029a58828014d1d07254",
+    "name": "Electrical",
+    "description": "Wires switches cables and electrical accessories",
+    "icon": null,
+    "image": {
+      "url": null,
+      "publicId": null
+    },
+    "status": "ACTIVE",
+    "sortOrder": 12,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:46:50.861Z",
+    "updatedAt": "2026-06-18T16:05:52.517Z",
+    "slug": "electrical",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b029a58828014d1d07256",
+    "name": "Lighting",
+    "description": "Indoor outdoor and industrial lighting products",
+    "icon": null,
+    "image": {
+      "url": null,
+      "publicId": null
+    },
+    "status": "ACTIVE",
+    "sortOrder": 13,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:46:50.903Z",
+    "updatedAt": "2026-06-18T16:05:52.963Z",
+    "slug": "lighting",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b029a58828014d1d07258",
+    "name": "Plumbing",
+    "description": "Pipes fittings valves and plumbing accessories",
+    "icon": null,
+    "image": {
+      "url": null,
+      "publicId": null
+    },
+    "status": "ACTIVE",
+    "sortOrder": 14,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:46:50.991Z",
+    "updatedAt": "2026-06-18T16:05:53.440Z",
+    "slug": "plumbing",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b029b58828014d1d0725a",
+    "name": "Bathroom & Sanitaryware",
+    "description": "Sanitaryware faucets showers and bathroom accessories",
+    "icon": null,
+    "image": {
+      "url": null,
+      "publicId": null
+    },
+    "status": "ACTIVE",
+    "sortOrder": 15,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:46:51.104Z",
+    "updatedAt": "2026-06-18T16:05:53.821Z",
+    "slug": "bathroom-and-sanitaryware",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b029b58828014d1d0725c",
+    "name": "Kitchen",
+    "description": "Modular kitchen products sinks and accessories",
+    "icon": null,
+    "image": {
+      "url": null,
+      "publicId": null
+    },
+    "status": "ACTIVE",
+    "sortOrder": 16,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:46:51.165Z",
+    "updatedAt": "2026-06-18T16:05:54.080Z",
+    "slug": "kitchen",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b029b58828014d1d0725e",
+    "name": "Doors",
+    "description": "Wooden metal and engineered doors",
+    "icon": null,
+    "image": {
+      "url": null,
+      "publicId": null
+    },
+    "status": "ACTIVE",
+    "sortOrder": 17,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:46:51.310Z",
+    "updatedAt": "2026-06-18T16:05:54.289Z",
+    "slug": "doors",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b029b58828014d1d07260",
+    "name": "Windows",
+    "description": "uPVC aluminium and wooden windows",
+    "icon": null,
+    "image": {
+      "url": null,
+      "publicId": null
+    },
+    "status": "ACTIVE",
+    "sortOrder": 18,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:46:51.409Z",
+    "updatedAt": "2026-06-18T16:05:54.537Z",
+    "slug": "windows",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b029b58828014d1d07262",
+    "name": "Glass",
+    "description": "Architectural and decorative glass products",
+    "icon": null,
+    "image": {
+      "url": null,
+      "publicId": null
+    },
+    "status": "ACTIVE",
+    "sortOrder": 19,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:46:51.513Z",
+    "updatedAt": "2026-06-18T16:05:54.774Z",
+    "slug": "glass",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b029b58828014d1d07264",
+    "name": "Aluminium",
+    "description": "Aluminium sections sheets and fabrication products",
+    "icon": null,
+    "image": {
+      "url": null,
+      "publicId": null
+    },
+    "status": "ACTIVE",
+    "sortOrder": 20,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:46:51.615Z",
+    "updatedAt": "2026-06-18T06:25:12.890Z",
+    "slug": "aluminium",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b029b58828014d1d07266",
+    "name": "Hardware",
+    "description": "Nuts bolts screws locks and hardware fittings",
+    "icon": null,
+    "image": {
+      "url": null,
+      "publicId": null
+    },
+    "status": "ACTIVE",
+    "sortOrder": 21,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:46:51.716Z",
+    "updatedAt": "2026-06-18T16:05:55.006Z",
+    "slug": "hardware",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b029b58828014d1d07268",
+    "name": "Roofing",
+    "description": "Roof sheets shingles and roofing systems",
+    "icon": null,
+    "image": {
+      "url": null,
+      "publicId": null
+    },
+    "status": "ACTIVE",
+    "sortOrder": 22,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:46:51.819Z",
+    "updatedAt": "2026-06-18T16:05:55.212Z",
+    "slug": "roofing",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b029b58828014d1d0726a",
+    "name": "False Ceiling",
+    "description": "Ceiling tiles grids and suspended ceiling systems",
+    "icon": null,
+    "image": {
+      "url": null,
+      "publicId": null
+    },
+    "status": "ACTIVE",
+    "sortOrder": 23,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:46:51.902Z",
+    "updatedAt": "2026-06-18T16:05:55.507Z",
+    "slug": "false-ceiling",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b029b58828014d1d0726c",
+    "name": "HVAC",
+    "description": "Heating ventilation and air conditioning products",
+    "icon": null,
+    "image": {
+      "url": null,
+      "publicId": null
+    },
+    "status": "ACTIVE",
+    "sortOrder": 24,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:46:51.931Z",
+    "updatedAt": "2026-06-18T16:05:55.780Z",
+    "slug": "hvac",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b029b58828014d1d0726e",
+    "name": "Solar Products",
+    "description": "Solar panels inverters and accessories",
+    "icon": null,
+    "image": {
+      "url": null,
+      "publicId": null
+    },
+    "status": "ACTIVE",
+    "sortOrder": 25,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:46:52.000Z",
+    "updatedAt": "2026-06-18T16:05:56.028Z",
+    "slug": "solar-products",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b029c58828014d1d07270",
+    "name": "Tools & Machinery",
+    "description": "Hand tools power tools and construction machinery",
+    "icon": null,
+    "image": {
+      "url": null,
+      "publicId": null
+    },
+    "status": "ACTIVE",
+    "sortOrder": 26,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:46:52.029Z",
+    "updatedAt": "2026-06-18T16:05:56.284Z",
+    "slug": "tools-and-machinery",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b029c58828014d1d07272",
+    "name": "Safety Equipment",
+    "description": "PPE and construction safety products",
+    "icon": null,
+    "image": {
+      "url": null,
+      "publicId": null
+    },
+    "status": "ACTIVE",
+    "sortOrder": 27,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:46:52.127Z",
+    "updatedAt": "2026-06-18T16:05:56.549Z",
+    "slug": "safety-equipment",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b029c58828014d1d07274",
+    "name": "Landscaping",
+    "description": "Garden outdoor and landscaping materials",
+    "icon": null,
+    "image": {
+      "url": null,
+      "publicId": null
+    },
+    "status": "ACTIVE",
+    "sortOrder": 28,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:46:52.329Z",
+    "updatedAt": "2026-06-18T16:05:56.780Z",
+    "slug": "landscaping",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b029c58828014d1d07276",
+    "name": "Prefabricated Structures",
+    "description": "Portable cabins prefab buildings and structures",
+    "icon": null,
+    "image": {
+      "url": null,
+      "publicId": null
+    },
+    "status": "ACTIVE",
+    "sortOrder": 29,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:46:52.388Z",
+    "updatedAt": "2026-06-18T16:05:56.990Z",
+    "slug": "prefabricated-structures",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b029c58828014d1d07278",
+    "name": "Elevators & Escalators",
+    "description": "Vertical transportation systems and components",
+    "icon": null,
+    "image": {
+      "url": null,
+      "publicId": null
+    },
+    "status": "ACTIVE",
+    "sortOrder": 30,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:46:52.535Z",
+    "updatedAt": "2026-06-18T16:05:57.203Z",
+    "slug": "elevators-and-escalators",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03f2bf34fdffffcf680d",
+    "name": "Wood Timber",
+    "description": "",
+    "icon": "",
+    "image": {
+      "url": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781597886/structbay/categories/file_ito0cv.jpg",
+      "publicId": "structbay/categories/file_ito0cv"
+    },
+    "status": "ACTIVE",
+    "sortOrder": 0,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:34.985Z",
+    "updatedAt": "2026-06-18T16:05:40.503Z",
+    "slug": "wood-timber",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03f4bf34fdffffcf6823",
+    "name": "Plywood Laminates",
+    "description": "",
+    "icon": "",
+    "image": {
+      "url": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781597927/structbay/categories/file_efzdrz.jpg",
+      "publicId": "structbay/categories/file_efzdrz"
+    },
+    "status": "ACTIVE",
+    "sortOrder": 0,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:36.313Z",
+    "updatedAt": "2026-06-18T16:05:39.045Z",
+    "slug": "plywood-laminates",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03f5bf34fdffffcf6839",
+    "name": "Tiles Flooring",
+    "description": "",
+    "icon": "",
+    "image": {
+      "url": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781597943/structbay/categories/file_e433wj.jpg",
+      "publicId": "structbay/categories/file_e433wj"
+    },
+    "status": "ACTIVE",
+    "sortOrder": 3,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:37.648Z",
+    "updatedAt": "2026-06-18T16:05:45.246Z",
+    "slug": "tiles-flooring",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03f7bf34fdffffcf6853",
+    "name": "Paints Coatings",
+    "description": "",
+    "icon": "",
+    "image": {
+      "url": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781597916/structbay/categories/file_ocswjy.jpg",
+      "publicId": "structbay/categories/file_ocswjy"
+    },
+    "status": "ACTIVE",
+    "sortOrder": 0,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:39.080Z",
+    "updatedAt": "2026-06-18T16:05:36.227Z",
+    "slug": "paints-coatings",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03fbbf34fdffffcf6896",
+    "name": "Bathroom Sanitaryware",
+    "description": "",
+    "icon": "",
+    "image": {
+      "url": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781597902/structbay/categories/file_a5e2we.jpg",
+      "publicId": "structbay/categories/file_a5e2we"
+    },
+    "status": "ACTIVE",
+    "sortOrder": 1,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:43.509Z",
+    "updatedAt": "2026-06-18T16:05:42.600Z",
+    "slug": "bathroom-sanitaryware",
+    "__v": 0
+  },
+  {
+    "_id": "6a34512b3bc9e522932cd948",
+    "name": "paint (deleted)",
+    "description": "paint",
+    "icon": "",
+    "image": {
+      "url": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781813523/structbay/categories/file_n1g3rg.png",
+      "publicId": "structbay/categories/file_n1g3rg"
+    },
+    "status": "ACTIVE",
+    "sortOrder": 1,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-18T20:12:27.856Z",
+    "updatedAt": "2026-06-19T17:35:50.195Z",
+    "slug": "paint__deleted__6a34512b3bc9e522932cd948",
+    "__v": 0
+  },
+  {
+    "_id": "6a34d7f97f2c6c481fc97124",
+    "name": "cement001 (deleted)",
+    "description": "cement",
+    "icon": "",
+    "image": {
+      "url": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781848032/structbay/categories/file_etrtsn.jpg",
+      "publicId": "structbay/categories/file_etrtsn"
+    },
+    "status": "ACTIVE",
+    "sortOrder": 2,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-19T05:47:37.991Z",
+    "updatedAt": "2026-06-19T17:35:44.046Z",
+    "slug": "cement001__deleted__6a34d7f97f2c6c481fc97124",
+    "__v": 0
+  },
+  {
+    "_id": "6a3581fdd802d48a1c6d58ec",
+    "name": "M Sand & Aggregates",
+    "description": "",
+    "icon": "",
+    "image": {
+      "url": null,
+      "publicId": null
+    },
+    "status": "ACTIVE",
+    "sortOrder": 1,
+    "isDeleted": false,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-19T17:53:01.331Z",
+    "updatedAt": "2026-06-19T17:53:01.331Z",
+    "slug": "m-sand-and-aggregates",
+    "__v": 0
+  }
+]

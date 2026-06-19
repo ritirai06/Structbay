@@ -48,12 +48,19 @@ async function buildShippingLabelPdf(data) {
   const [barcodePng, qrPng] = await Promise.all([
     bwipjs.toBuffer({
       bcid: 'code128',
-      text: data.barcodeValue,
+      text: String(data.barcodeValue || data.trackingNumber || ''),
       scale: 2,
       height: 12,
-      includetext: false,
+      includetext: true,
+      textsize: 8,
+      textxalign: 'center',
     }),
-    QRCode.toBuffer(data.qrValue, { type: 'png', width: 120, margin: 1, errorCorrectionLevel: 'M' }),
+    QRCode.toBuffer(String(data.qrValue || ''), {
+      type: 'png',
+      width: 120,
+      margin: 1,
+      errorCorrectionLevel: 'M',
+    }),
   ]);
 
   return new Promise((resolve, reject) => {
@@ -85,18 +92,20 @@ async function buildShippingLabelPdf(data) {
 
     let y = 58;
 
-    // Barcode + QR row
+    // Barcode + QR row — barcode encodes tracking #; QR encodes full label JSON
     try {
-      doc.image(barcodePng, margin, y, { width: pageW - margin * 2 - 56, height: 28 });
-    } catch {
-      doc.fillColor(gray).fontSize(7).text(data.barcodeValue, margin, y + 8);
+      doc.image(barcodePng, margin, y, { width: pageW - margin * 2 - 56, height: 36 });
+    } catch (err) {
+      throw new Error(`Failed to render shipping barcode: ${err.message}`);
     }
     try {
       doc.image(qrPng, pageW - margin - 48, y, { width: 48, height: 48 });
-    } catch {
-      /* skip */
+      doc.fillColor(gray).fontSize(5.5).font('Helvetica')
+        .text('Scan for details', pageW - margin - 48, y + 50, { width: 48, align: 'center' });
+    } catch (err) {
+      throw new Error(`Failed to render shipping QR code: ${err.message}`);
     }
-    y += 54;
+    y += 58;
     line(doc, y, margin, pageW);
     y += 8;
 
@@ -131,9 +140,11 @@ async function buildShippingLabelPdf(data) {
     line(doc, y, margin, pageW);
     y += 6;
 
-    section('PRODUCT DETAILS', data.products.map((p) =>
-      `${p.name}${p.sku ? ` (${p.sku})` : ''} · Qty ${p.quantity}${p.weight ? ` · ${p.weight}` : ''}`
-    ));
+    section('PRODUCT DETAILS', data.products.map((p) => {
+      const variantPart = p.variationLabel ? ` — ${p.variationLabel}` : '';
+      const skuPart = p.sku ? ` (${p.sku})` : '';
+      return `${p.name}${variantPart}${skuPart} · Qty ${p.quantity}${p.weight ? ` · ${p.weight}` : ''}`;
+    }));
 
     if (data.packageCount || data.totalWeight) {
       doc.fillColor(gray).fontSize(7).font('Helvetica')

@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
 const Vendor = require('../models/Vendor');
+const { isValidId } = require('../lib/apiShape');
 const Order = require('../models/Order');
 const VendorOrder = require('../models/VendorOrder');
 
@@ -15,7 +15,7 @@ async function vendorIdsForUser(user) {
     const v = await Vendor.findOne({ email: String(user.email).toLowerCase() }).select('_id').lean();
     if (v?._id) set.add(v._id.toString());
   }
-  return [...set].map((id) => new mongoose.Types.ObjectId(id));
+  return [...set].map((id) => String(id));
 }
 
 /**
@@ -71,8 +71,8 @@ async function vendorOrderMatch(user) {
   }
 
   const voOidList = [...voIds]
-    .filter((id) => mongoose.Types.ObjectId.isValid(id))
-    .map((id) => new mongoose.Types.ObjectId(id));
+    .filter((id) => isValidId(id))
+    .map((id) => String(id));
 
   if (!voOidList.length) return byVendorField;
 

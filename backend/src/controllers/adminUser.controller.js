@@ -12,7 +12,6 @@ const {
 } = require('../services/email.service');
 
 const authService = require('../services/auth.service');
-const { applyUserSoftDelete } = require('../utils/softDeleteRelease');
 
 // ─── GET /api/v1/admin/users ──────────────────────────────────────────────────
 const getAllUsers = asyncHandler(async (req, res) => {
@@ -80,7 +79,7 @@ const updateUserStatus = asyncHandler(async (req, res) => {
   const user = await User.findByIdAndUpdate(
     req.params.id,
     { status },
-    { new: true, runValidators: true }
+    { new: true }
   );
   if (!user) throw new AppError('User not found.', 404);
 
@@ -98,10 +97,12 @@ const deleteUser = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id);
   if (!user) throw new AppError('User not found.', 404);
 
-  // Soft delete — release email for reuse
-  applyUserSoftDelete(user);
-  await user.save({ validateBeforeSave: false });
   await RefreshToken.revokeAllForUser(user._id);
+  await Promise.all([
+    Session.deleteMany({ user: user._id }),
+    RefreshToken.deleteMany({ user: user._id }),
+    User.deleteOne({ _id: user._id }),
+  ]);
 
   return ApiResponse.success(res, 200, 'User deleted successfully.');
 });
@@ -248,10 +249,12 @@ const BULK_DELETE_MAX = 200;
 const deleteVendor = asyncHandler(async (req, res) => {
   const vendor = await User.findOne({ _id: req.params.id, role: ROLES.VENDOR });
   if (!vendor) throw new AppError('Vendor not found.', 404);
-  applyUserSoftDelete(vendor);
-  await vendor.save({ validateBeforeSave: false });
   await RefreshToken.revokeAllForUser(vendor._id);
-  await Session.updateMany({ user: vendor._id, isActive: true }, { isActive: false, logoutAt: new Date() });
+  await Promise.all([
+    Session.deleteMany({ user: vendor._id }),
+    RefreshToken.deleteMany({ user: vendor._id }),
+    User.deleteOne({ _id: vendor._id }),
+  ]);
   await logAction({
     adminId: req.user._id,
     action: 'DELETE',
@@ -277,9 +280,12 @@ const bulkDeleteVendors = asyncHandler(async (req, res) => {
     try {
       const vendor = await User.findOne({ _id: id, role: ROLES.VENDOR });
       if (!vendor) throw new AppError('Vendor not found.', 404);
-      applyUserSoftDelete(vendor);
-      await vendor.save({ validateBeforeSave: false });
       await RefreshToken.revokeAllForUser(vendor._id);
+      await Promise.all([
+        Session.deleteMany({ user: vendor._id }),
+        RefreshToken.deleteMany({ user: vendor._id }),
+        User.deleteOne({ _id: vendor._id }),
+      ]);
       ok += 1;
     } catch (e) {
       errors.push({

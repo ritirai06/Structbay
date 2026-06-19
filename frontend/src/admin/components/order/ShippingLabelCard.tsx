@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Download, Eye, Loader2, Printer, RefreshCw, Send, ShieldOff } from "lucide-react";
 import { adminFetch as apiFetch, adminDownloadBlob, adminFetchBlob } from "../../../lib/adminApi";
-import { WorkflowSubsection } from "./orderDetailShared";
+import { adminToast } from "../../lib/adminToast";
+import { WorkflowCard } from "./orderDetailShared";
 
 type ShippingLabelData = {
   id?: string;
@@ -90,8 +91,11 @@ export function ShippingLabelCard({
         body: JSON.stringify({ vendorOrderId }),
       });
       setLabel(d.data ?? null);
+      adminToast.success(regenerate ? "Label regenerated" : "Label generated");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Label generation failed.");
+      const msg = e instanceof Error ? e.message : "Label generation failed.";
+      setError(msg);
+      adminToast.error(msg);
     } finally {
       setBusy(null);
     }
@@ -106,15 +110,21 @@ export function ShippingLabelCard({
         body: JSON.stringify({ vendorOrderId }),
       });
       setLabel(d.data ?? null);
+      adminToast.success("Label shared with vendor");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not share label with vendor.");
+      const msg = e instanceof Error ? e.message : "Could not share label with vendor.";
+      setError(msg);
+      adminToast.error(msg);
     } finally {
       setBusy(null);
     }
   };
 
   const revokeFromVendor = async () => {
-    if (!window.confirm("Revoke vendor access to this shipping label?")) return;
+    const ok = await adminToast.confirm("Revoke vendor access to this shipping label?", {
+      confirmLabel: "Revoke",
+    });
+    if (!ok) return;
     setBusy("revoke");
     setError(null);
     try {
@@ -123,8 +133,11 @@ export function ShippingLabelCard({
         body: JSON.stringify({ vendorOrderId }),
       });
       setLabel(d.data ?? null);
+      adminToast.success("Vendor access revoked");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not revoke vendor access.");
+      const msg = e instanceof Error ? e.message : "Could not revoke vendor access.";
+      setError(msg);
+      adminToast.error(msg);
     } finally {
       setBusy(null);
     }
@@ -187,14 +200,10 @@ export function ShippingLabelCard({
   const shareStatus = vendorShareStatus(label, typeB);
 
   return (
-    <WorkflowSubsection title="Shipping label (optional)">
-      <p className="text-[11px] text-sb-ink/50 mb-3">
-        {typeB
-          ? "Type B — StructBay delivery. Labels stay internal; vendors never see customer delivery labels."
-          : "Type A — Vendor delivery. Generate when needed, then use Send to vendor only if the vendor requires a parcel label."}
-        {" "}
-        Sub-order {vendorOrderNumber}.
-      </p>
+    <WorkflowCard title="Shipping label">
+      {typeB && (
+        <p className="text-[11px] text-sb-ink/50">Internal only — StructBay delivery.</p>
+      )}
 
       {loading ? (
         <div className="flex items-center gap-2 text-sm text-sb-ink/55 py-2">
@@ -205,12 +214,12 @@ export function ShippingLabelCard({
         <>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
             <div className="rounded-lg border border-sb-ink/10 bg-white px-3 py-2">
-              <div className="text-[10px] uppercase tracking-wide text-sb-ink/45">Label status</div>
+              <div className="text-[11px] font-medium text-sb-ink/50">Label status</div>
               <div className="text-sm font-medium text-sb-ink mt-0.5">{labelStatusText(label)}</div>
             </div>
             {shareStatus && (
               <div className="rounded-lg border border-sb-ink/10 bg-white px-3 py-2 sm:col-span-2">
-                <div className="text-[10px] uppercase tracking-wide text-sb-ink/45">Vendor visibility</div>
+                <div className="text-[11px] font-medium text-sb-ink/50">Vendor visibility</div>
                 <div className="text-sm font-medium text-sb-ink mt-0.5">{shareStatus}</div>
                 {isShared && label?.sharedAt && (
                   <div className="text-[11px] text-sb-ink/50 mt-0.5">
@@ -221,15 +230,15 @@ export function ShippingLabelCard({
               </div>
             )}
             <div className="rounded-lg border border-sb-ink/10 bg-white px-3 py-2">
-              <div className="text-[10px] uppercase tracking-wide text-sb-ink/45">Shipment ID</div>
+              <div className="text-[11px] font-medium text-sb-ink/50">Shipment ID</div>
               <div className="text-sm font-medium text-sb-ink mt-0.5 font-mono">{label?.shipmentId || "—"}</div>
             </div>
             <div className="rounded-lg border border-sb-ink/10 bg-white px-3 py-2">
-              <div className="text-[10px] uppercase tracking-wide text-sb-ink/45">Tracking #</div>
+              <div className="text-[11px] font-medium text-sb-ink/50">Tracking</div>
               <div className="text-sm font-medium text-sb-ink mt-0.5 font-mono">{label?.trackingNumber || "—"}</div>
             </div>
             <div className="rounded-lg border border-sb-ink/10 bg-white px-3 py-2">
-              <div className="text-[10px] uppercase tracking-wide text-sb-ink/45">Generated on</div>
+              <div className="text-[11px] font-medium text-sb-ink/50">Generated</div>
               <div className="text-sm font-medium text-sb-ink mt-0.5">
                 {label?.generatedAt ? new Date(label.generatedAt).toLocaleString() : "—"}
               </div>
@@ -316,6 +325,6 @@ export function ShippingLabelCard({
           </div>
         </>
       )}
-    </WorkflowSubsection>
+    </WorkflowCard>
   );
 }

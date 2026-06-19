@@ -1,0 +1,46 @@
+[
+  {
+    "_id": "6a2ec4919a7545857821a5c9",
+    "title": "",
+    "subtitle": "",
+    "image": {
+      "url": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781810489/structbay/banners/file_z66ssq.png",
+      "publicId": "structbay/banners/file_z66ssq"
+    },
+    "buttonText": null,
+    "buttonLink": "#",
+    "displayOrder": 1,
+    "status": "ACTIVE",
+    "startDate": null,
+    "endDate": null,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-14T15:11:13.266Z",
+    "updatedAt": "2026-06-19T05:01:55.983Z",
+    "__v": 0,
+    "textAlign": "right"
+  },
+  {
+    "_id": "6a3393a093809d7a81d5870c",
+    "title": "",
+    "titleColor": "#fbfcf8",
+    "subtitleColor": null,
+    "backgroundColor": "#ffffff",
+    "overlayOpacity": null,
+    "image": {
+      "url": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781810519/structbay/banners/file_yhc0ia.png",
+      "publicId": "structbay/banners/file_yhc0ia"
+    },
+    "buttonText": null,
+    "buttonLink": "#",
+    "displayOrder": 2,
+    "status": "ACTIVE",
+    "startDate": null,
+    "endDate": null,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-18T06:43:44.979Z",
+    "updatedAt": "2026-06-19T05:01:59.473Z",
+    "__v": 0,
+    "textAlign": "right",
+    "subtitle": ""
+  }
+]

@@ -5,8 +5,8 @@ import { vendorLogin } from "../helpers/vendor";
 test.describe("Vendor portal (PRD fulfillment)", () => {
   test("vendor login page loads", async ({ page }) => {
     await page.goto("/vendor/login");
-    await expect(page.getByRole("heading", { name: /vendor sign in/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /login to portal/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^sign in$/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^sign in$/i })).toBeVisible();
   });
 
   test("unauthenticated vendor routes redirect to login", async ({ page }) => {

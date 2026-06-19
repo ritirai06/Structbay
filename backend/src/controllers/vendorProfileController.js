@@ -25,7 +25,7 @@ exports.updateProfile = async (req, res) => {
   if (req.body.notifications) updates.notifications = req.body.notifications;
 
   const user = await User.findByIdAndUpdate(req.user._id, updates, {
-    new: true, runValidators: true,
+    new: true,
   });
 
   await VendorActivityLog.create({

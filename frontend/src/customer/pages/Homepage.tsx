@@ -14,8 +14,9 @@ import {
 import { useApp } from "../context/AppContext";
 import { api } from "../lib/api";
 import { fetchNavCategories } from "../lib/navCategories";
-import { pricingSnapshotFromProduct, resolveUnitPriceFromSnapshot } from "../lib/wholesalePricing";
+import { pricingSnapshotFromProduct, resolveUnitPriceFromSnapshot, listingUnitPrice } from "../lib/wholesalePricing";
 import { productHref } from "../lib/productRoutes";
+import { isVariantProduct, validateCartLine } from "../lib/productStructure";
 import { useCmsPageSeo } from "../hooks/useCmsPageSeo";
 import { useFooterCMS } from "@shared/hooks/useFooterCMS";
 import { signalOnboardingGatePassed } from "../lib/locationOnboarding";
@@ -699,7 +700,11 @@ function categoryAccentIcon(cat: { name?: string; slug?: string }): LucideIcon {
 // ── Product Card ─────────────────────────────────────────────────────────────
 function ProductCard({ product, compact = false }: { product: any; compact?: boolean }) {
   const { addToCart, city } = useApp();
-  const price = product.pricing?.salePrice || product.pricing?.regularPrice || 0;
+  const isVariant = isVariantProduct(product);
+  const unitPrice = listingUnitPrice(product, null);
+  const price = isVariant
+    ? unitPrice
+    : (product.pricing?.salePrice || product.pricing?.regularPrice || unitPrice);
   const mrp = product.pricing?.regularPrice || price;
   const discount = mrp && price < mrp ? Math.round((1 - price / mrp) * 100) : 0;
   const image = Array.isArray(product.images) ? product.images[0]?.url : product.image;
@@ -745,28 +750,44 @@ function ProductCard({ product, compact = false }: { product: any; compact?: boo
           )}
         </div>
         {price > 0 && <p className={`text-sb-text-secondary mt-0.5${compact ? " text-[9px]" : " text-[10px]"}`}>excl. GST · GST at checkout</p>}
-        <button
-          onClick={() => {
-            const snap = pricingSnapshotFromProduct(product, null);
-            addToCart({
-              id: `${String(slug)}::base`,
-              productSlug: String(slug),
-              name: product.name,
-              brand: brandName,
-              price: snap ? resolveUnitPriceFromSnapshot(snap, 1) : price,
-              qty: 1,
-              unit: product.unit || "unit",
-              image,
-              pricingSnapshot: snap || undefined,
-              gstPercentage: Number.isFinite(Number(product.gstPercentage))
-                ? Number(product.gstPercentage)
-                : 18,
-            });
-          }}
-          className={`btn-primary w-full justify-center${compact ? " mt-2 py-1.5 text-xs" : " mt-3 py-2.5 text-sm"}`}
-        >
-          <ShoppingCart className={compact ? "w-3 h-3" : "w-3.5 h-3.5"} /> Add to Cart
-        </button>
+        {price > 0 && (
+          isVariant ? (
+            <Link
+              to={productHref(slug)}
+              className={`btn-primary w-full justify-center${compact ? " mt-2 py-1.5 text-xs" : " mt-3 py-2.5 text-sm"}`}
+            >
+              Select options
+            </Link>
+          ) : (
+            <button
+              onClick={() => {
+                const snap = pricingSnapshotFromProduct(product, null);
+                const check = validateCartLine(product, undefined);
+                if (!check.ok) {
+                  alert(check.message);
+                  return;
+                }
+                addToCart({
+                  id: `${String(slug)}::base`,
+                  productSlug: String(slug),
+                  name: product.name,
+                  brand: brandName,
+                  price: snap ? resolveUnitPriceFromSnapshot(snap, 1) : price,
+                  qty: 1,
+                  unit: product.unit || "unit",
+                  image,
+                  pricingSnapshot: snap || undefined,
+                  gstPercentage: Number.isFinite(Number(product.gstPercentage))
+                    ? Number(product.gstPercentage)
+                    : 18,
+                });
+              }}
+              className={`btn-primary w-full justify-center${compact ? " mt-2 py-1.5 text-xs" : " mt-3 py-2.5 text-sm"}`}
+            >
+              <ShoppingCart className={compact ? "w-3 h-3" : "w-3.5 h-3.5"} /> Add to Cart
+            </button>
+          )
+        )}
       </div>
     </div>
   );

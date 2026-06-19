@@ -1,0 +1,77 @@
+[
+  {
+    "_id": "6a318aa4376963cf2535e3d0",
+    "vendorOrder": "6a318565d1a54032dcb47fdc",
+    "vendor": "6a318251d1a54032dcb4766f",
+    "dispatchType": "vendor_delivery",
+    "vehicleDetails": {
+      "vehicleNumber": "MG-09-AB-0987"
+    },
+    "pickupDetails": {
+      "materialReadyStatus": "not_ready"
+    },
+    "dispatchDate": "2026-06-18T00:00:00.000Z",
+    "trackingNumber": "YES",
+    "courierPartner": "MG-09-AB-0987",
+    "transporterName": "MG-09-AB-0987",
+    "lrNumber": "45613",
+    "documents": [
+      {
+        "documentType": "dispatch_note",
+        "documentName": "dispatch_proof",
+        "documentUrl": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781631650/structbay/vendor/documents/file_t2v2w8.png",
+        "cloudinaryId": "structbay/vendor/documents/file_t2v2w8",
+        "_id": "6a318aa4376963cf2535e3d1",
+        "uploadedAt": "2026-06-16T17:40:52.133Z"
+      }
+    ],
+    "status": "delivered",
+    "dispatchRemarks": "LR 45613",
+    "createdBy": "6a318251d1a54032dcb4766f",
+    "deliveryProof": [
+      {
+        "type": "pod",
+        "url": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781636211/structbay/vendor/documents/file_txplmy.jpg",
+        "cloudinaryId": "structbay/vendor/documents/file_txplmy",
+        "_id": "6a319c759a230381c5a1a46c",
+        "uploadedAt": "2026-06-16T18:56:53.482Z"
+      }
+    ],
+    "createdAt": "2026-06-16T17:40:52.135Z",
+    "updatedAt": "2026-06-16T18:56:53.483Z",
+    "__v": 1
+  },
+  {
+    "_id": "6a32ec694b344ec568690c39",
+    "vendorOrder": "6a31a02a300560934d4a050a",
+    "vendor": "6a318251d1a54032dcb4766f",
+    "dispatchType": "vendor_delivery",
+    "vehicleDetails": {
+      "vehicleNumber": "7898545621"
+    },
+    "pickupDetails": {
+      "materialReadyStatus": "not_ready"
+    },
+    "dispatchDate": "2026-06-18T00:00:00.000Z",
+    "courierPartner": "qwertyuiop",
+    "transporterName": "qwertyuiop",
+    "lrNumber": "789654521",
+    "documents": [
+      {
+        "documentType": "dispatch_note",
+        "documentName": "dispatch_proof",
+        "documentUrl": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781722215/structbay/vendor/documents/file_trkxkd.png",
+        "cloudinaryId": "structbay/vendor/documents/file_trkxkd",
+        "_id": "6a32ec694b344ec568690c3a",
+        "uploadedAt": "2026-06-17T18:50:17.633Z"
+      }
+    ],
+    "status": "dispatched",
+    "dispatchRemarks": "LR 789654521",
+    "createdBy": "6a318251d1a54032dcb4766f",
+    "deliveryProof": [],
+    "createdAt": "2026-06-17T18:50:17.634Z",
+    "updatedAt": "2026-06-17T18:50:17.634Z",
+    "__v": 0
+  }
+]

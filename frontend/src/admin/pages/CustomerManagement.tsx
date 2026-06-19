@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Search, RefreshCw, Eye, Loader2, UserCircle } from "lucide-react";
 import { adminFetch as apiFetch } from "../../lib/adminApi";
+import { adminToast } from "../lib/adminToast";
 
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE: "bg-sb-orange/12 text-sb-orange border-sb-orange/22",
@@ -40,7 +41,12 @@ export function CustomerManagement() {
   useEffect(() => { load(); }, [load]);
 
   const updateStatus = async (id: string, status: string) => {
-    await apiFetch(`/admin/users/${id}/status`, { method: "PUT", body: JSON.stringify({ status }) }).catch(e => alert(e.message));
+    try {
+      await apiFetch(`/admin/users/${id}/status`, { method: "PUT", body: JSON.stringify({ status }) });
+      adminToast.success("Customer status updated");
+    } catch (e) {
+      adminToast.error(e instanceof Error ? e.message : "Update failed");
+    }
     load(); setSelected(null);
   };
 

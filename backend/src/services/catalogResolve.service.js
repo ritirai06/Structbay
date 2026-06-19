@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
 const Product = require('../models/Product');
+const { isValidId } = require('../lib/apiShape');
 const ProductVariation = require('../models/ProductVariation');
 const VendorVariantPricing = require('../models/VendorVariantPricing');
 const CityPricing = require('../models/CityPricing');
@@ -30,25 +30,25 @@ function productFilterFromPayload({ filters = {}, scopeType, categoryId, brandId
   const q = {};
   Object.assign(q, statusConditions(f));
 
-  if (f.categoryId && mongoose.isValidObjectId(f.categoryId)) q.category = f.categoryId;
-  if (f.brandId && mongoose.isValidObjectId(f.brandId)) q.brand = f.brandId;
+  if (f.categoryId && isValidId(f.categoryId)) q.category = f.categoryId;
+  if (f.brandId && isValidId(f.brandId)) q.brand = f.brandId;
 
   if (f.structbayAssured === true || f.structbayAssured === 'true') q.isStructbayAssured = true;
   if (f.structbayDelivery === true || f.structbayDelivery === 'true') q.isStructbayDelivery = true;
   if (f.isTopSelling === true || f.isTopSelling === 'true') q.isTopSelling = true;
   if (f.isFeatured === true || f.isFeatured === 'true') q.isFeatured = true;
 
-  if (scopeType === 'CATEGORY' && categoryId && mongoose.isValidObjectId(categoryId)) {
+  if (scopeType === 'CATEGORY' && categoryId && isValidId(categoryId)) {
     q.category = categoryId;
   }
-  if (scopeType === 'BRAND' && brandId && mongoose.isValidObjectId(brandId)) {
+  if (scopeType === 'BRAND' && brandId && isValidId(brandId)) {
     q.brand = brandId;
   }
   if (scopeType === 'SELECTED' && Array.isArray(productIds) && productIds.length) {
-    const ids = productIds.filter((id) => mongoose.isValidObjectId(id)).slice(0, MAX_PRODUCTS);
+    const ids = productIds.filter((id) => isValidId(id)).slice(0, MAX_PRODUCTS);
     q._id = { $in: ids };
   }
-  if (scopeType === 'PRODUCT' && f.productId && mongoose.isValidObjectId(f.productId)) {
+  if (scopeType === 'PRODUCT' && f.productId && isValidId(f.productId)) {
     q._id = f.productId;
   }
 
@@ -71,7 +71,7 @@ async function resolveCatalogProducts({
 
   if (scopeType === 'PRODUCT') {
     const pid = productId || filters.productId;
-    if (!mongoose.isValidObjectId(pid)) return { products: [], truncated: false };
+    if (!isValidId(pid)) return { products: [], truncated: false };
     const p = await Product.findOne({ _id: pid, ...statusConditions(filters) })
       .populate('category', 'name slug')
       .populate('brand', 'name slug logo')
@@ -80,7 +80,7 @@ async function resolveCatalogProducts({
   }
 
   if (scopeType === 'VENDOR') {
-    if (!mongoose.isValidObjectId(vendorUserId)) return { products: [], truncated: false };
+    if (!isValidId(vendorUserId)) return { products: [], truncated: false };
     const vps = await VendorVariantPricing.find({ vendorUser: vendorUserId, isActive: true })
       .select('variant')
       .lean();
@@ -112,7 +112,7 @@ async function resolveCatalogProducts({
   }
 
   if (scopeType === 'SELECTED') {
-    const ids = (productIds || []).filter((id) => mongoose.isValidObjectId(id)).slice(0, MAX_PRODUCTS);
+    const ids = (productIds || []).filter((id) => isValidId(id)).slice(0, MAX_PRODUCTS);
     truncated = (productIds || []).length > MAX_PRODUCTS;
     if (!ids.length) return { products: [], truncated };
     // Admin explicitly picked rows — do not drop DRAFT products that appear in the admin grid.
@@ -161,7 +161,7 @@ async function loadVariationsMap(productIds) {
 
 /** Optional city pricing for includePricing */
 async function loadPricingMap(productIds, cityId) {
-  if (!cityId || !mongoose.isValidObjectId(cityId) || !productIds.length) return new Map();
+  if (!cityId || !isValidId(cityId) || !productIds.length) return new Map();
   const rows = await CityPricing.find({
     city: cityId,
     product: { $in: productIds },

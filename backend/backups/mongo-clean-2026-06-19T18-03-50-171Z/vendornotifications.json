@@ -1,0 +1,552 @@
+[
+  {
+    "_id": "6a318565d1a54032dcb47fe8",
+    "vendor": "6a318251d1a54032dcb4766f",
+    "type": "order_assigned",
+    "title": "New order assigned",
+    "message": "Order 2606160001-1 has been assigned to you.",
+    "relatedOrder": "6a318565d1a54032dcb47fdc",
+    "priority": "normal",
+    "isRead": false,
+    "isArchived": false,
+    "actionUrl": "/orders/6a318565d1a54032dcb47fdc",
+    "actionLabel": "View order",
+    "channels": {
+      "email": {
+        "sent": true,
+        "sentAt": "2026-06-16T17:18:31.819Z"
+      },
+      "sms": {
+        "sent": false
+      }
+    },
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-16T17:18:29.878Z",
+    "updatedAt": "2026-06-16T17:18:31.819Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a318a56376963cf2535e2df",
+    "vendor": "6a318251d1a54032dcb4766f",
+    "type": "wf_sb_invoice_sent",
+    "title": "StructBay invoice & e-way bill",
+    "message": "StructBay documents for 2606160001-1 are available. You may dispatch the shipment.",
+    "relatedOrder": "6a318565d1a54032dcb47fdc",
+    "priority": "normal",
+    "isRead": false,
+    "isArchived": false,
+    "actionUrl": "/orders/6a318565d1a54032dcb47fdc",
+    "actionLabel": "View order",
+    "channels": {
+      "email": {
+        "sent": true,
+        "sentAt": "2026-06-16T17:39:37.030Z"
+      },
+      "sms": {
+        "sent": false
+      }
+    },
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-16T17:39:34.391Z",
+    "updatedAt": "2026-06-16T17:39:37.030Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a319c9d9a230381c5a1a5a1",
+    "vendor": "6a318251d1a54032dcb4766f",
+    "type": "wf_delivery_confirmed",
+    "title": "Delivery confirmed",
+    "message": "StructBay confirmed delivery for 2606160001-1.",
+    "relatedOrder": "6a318565d1a54032dcb47fdc",
+    "priority": "normal",
+    "isRead": false,
+    "isArchived": false,
+    "actionUrl": "/orders/6a318565d1a54032dcb47fdc",
+    "actionLabel": "View order",
+    "channels": {
+      "email": {
+        "sent": true,
+        "sentAt": "2026-06-16T18:57:37.568Z"
+      },
+      "sms": {
+        "sent": false
+      }
+    },
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-16T18:57:33.616Z",
+    "updatedAt": "2026-06-16T18:57:37.569Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a31a02a300560934d4a0510",
+    "vendor": "6a318251d1a54032dcb4766f",
+    "type": "order_assigned",
+    "title": "New order assigned",
+    "message": "Order 2606170001-1 has been assigned to you.",
+    "relatedOrder": "6a31a02a300560934d4a050a",
+    "priority": "normal",
+    "isRead": false,
+    "isArchived": false,
+    "actionUrl": "/orders/6a31a02a300560934d4a050a",
+    "actionLabel": "View order",
+    "channels": {
+      "email": {
+        "sent": true,
+        "sentAt": "2026-06-16T19:12:44.295Z"
+      },
+      "sms": {
+        "sent": false
+      }
+    },
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-16T19:12:42.655Z",
+    "updatedAt": "2026-06-16T19:12:44.295Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a31a1dbc34fc9e33510d4bf",
+    "vendor": "6a318251d1a54032dcb4766f",
+    "type": "wf_dispatch_approved",
+    "title": "Dispatch approved",
+    "message": "StructBay approved dispatch for 2606170001-1. You may now submit your final tax invoice.",
+    "relatedOrder": "6a31a02a300560934d4a050a",
+    "priority": "normal",
+    "isRead": false,
+    "isArchived": false,
+    "actionUrl": "/orders/6a31a02a300560934d4a050a",
+    "actionLabel": "Upload invoice",
+    "channels": {
+      "email": {
+        "sent": true,
+        "sentAt": "2026-06-16T19:19:58.197Z"
+      },
+      "sms": {
+        "sent": false
+      }
+    },
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-16T19:19:55.826Z",
+    "updatedAt": "2026-06-16T19:19:58.198Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a31a239c34fc9e33510d5bc",
+    "vendor": "6a318251d1a54032dcb4766f",
+    "type": "wf_sb_invoice_sent",
+    "title": "StructBay invoice & e-way bill",
+    "message": "StructBay documents for 2606170001-1 are available. You may dispatch the shipment.",
+    "relatedOrder": "6a31a02a300560934d4a050a",
+    "priority": "normal",
+    "isRead": false,
+    "isArchived": false,
+    "actionUrl": "/orders/6a31a02a300560934d4a050a",
+    "actionLabel": "View order",
+    "channels": {
+      "email": {
+        "sent": true,
+        "sentAt": "2026-06-16T19:21:31.306Z"
+      },
+      "sms": {
+        "sent": false
+      }
+    },
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-16T19:21:29.241Z",
+    "updatedAt": "2026-06-16T19:21:31.307Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a33cf65c069137406b4adac",
+    "vendor": "6a318251d1a54032dcb4766f",
+    "type": "order_assigned",
+    "title": "New order assigned",
+    "message": "Order 2606180002-1 has been assigned to you.",
+    "relatedOrder": "6a33cf65c069137406b4ada4",
+    "priority": "normal",
+    "isRead": false,
+    "isArchived": false,
+    "actionUrl": "/orders/6a33cf65c069137406b4ada4",
+    "actionLabel": "View order",
+    "channels": {
+      "email": {
+        "sent": true,
+        "sentAt": "2026-06-18T10:58:48.807Z"
+      },
+      "sms": {
+        "sent": false
+      }
+    },
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-18T10:58:45.782Z",
+    "updatedAt": "2026-06-18T10:58:48.807Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a33d071c069137406b4b12b",
+    "vendor": "6a318251d1a54032dcb4766f",
+    "type": "wf_dispatch_approved",
+    "title": "Dispatch approved",
+    "message": "StructBay approved dispatch for 2606180002-1. You may now submit your final tax invoice.",
+    "relatedOrder": "6a33cf65c069137406b4ada4",
+    "priority": "normal",
+    "isRead": false,
+    "isArchived": false,
+    "actionUrl": "/orders/6a33cf65c069137406b4ada4",
+    "actionLabel": "Upload invoice",
+    "channels": {
+      "email": {
+        "sent": true,
+        "sentAt": "2026-06-18T11:03:15.648Z"
+      },
+      "sms": {
+        "sent": false
+      }
+    },
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-18T11:03:13.312Z",
+    "updatedAt": "2026-06-18T11:03:15.648Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a33d533c069137406b4b904",
+    "vendor": "6a318251d1a54032dcb4766f",
+    "type": "wf_sb_invoice_sent",
+    "title": "StructBay invoice & e-way bill",
+    "message": "StructBay documents for 2606180002-1 are available. StructBay will book pickup and deliver to the customer.",
+    "relatedOrder": "6a33cf65c069137406b4ada4",
+    "priority": "normal",
+    "isRead": true,
+    "isArchived": false,
+    "actionUrl": "/orders/6a33cf65c069137406b4ada4",
+    "actionLabel": "View order",
+    "channels": {
+      "email": {
+        "sent": true,
+        "sentAt": "2026-06-18T11:23:34.829Z"
+      },
+      "sms": {
+        "sent": false
+      }
+    },
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-18T11:23:31.339Z",
+    "updatedAt": "2026-06-18T15:54:07.974Z",
+    "__v": 0,
+    "readAt": "2026-06-18T15:54:07.973Z"
+  },
+  {
+    "_id": "6a33d562c069137406b4bb06",
+    "vendor": "6a318251d1a54032dcb4766f",
+    "type": "wf_delivery_confirmed",
+    "title": "Customer delivery recorded",
+    "message": "StructBay marked 2606180002-1 delivered to the customer.",
+    "relatedOrder": "6a33cf65c069137406b4ada4",
+    "priority": "normal",
+    "isRead": true,
+    "isArchived": false,
+    "actionUrl": "/orders/6a33cf65c069137406b4ada4",
+    "actionLabel": "View order",
+    "channels": {
+      "email": {
+        "sent": true,
+        "sentAt": "2026-06-18T11:24:20.299Z"
+      },
+      "sms": {
+        "sent": false
+      }
+    },
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-18T11:24:18.484Z",
+    "updatedAt": "2026-06-18T15:54:06.876Z",
+    "__v": 0,
+    "readAt": "2026-06-18T15:54:06.876Z"
+  },
+  {
+    "_id": "6a33d567c069137406b4bb4a",
+    "vendor": "6a318251d1a54032dcb4766f",
+    "type": "wf_delivery_confirmed",
+    "title": "Delivery confirmed",
+    "message": "StructBay confirmed delivery for 2606180002-1.",
+    "relatedOrder": "6a33cf65c069137406b4ada4",
+    "priority": "normal",
+    "isRead": true,
+    "isArchived": false,
+    "actionUrl": "/orders/6a33cf65c069137406b4ada4",
+    "actionLabel": "View order",
+    "channels": {
+      "email": {
+        "sent": true,
+        "sentAt": "2026-06-18T11:24:25.219Z"
+      },
+      "sms": {
+        "sent": false
+      }
+    },
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-18T11:24:23.198Z",
+    "updatedAt": "2026-06-18T15:54:06.118Z",
+    "__v": 0,
+    "readAt": "2026-06-18T15:54:06.118Z"
+  },
+  {
+    "_id": "6a33db37c069137406b4d4cb",
+    "vendor": "6a318251d1a54032dcb4766f",
+    "type": "order_assigned",
+    "title": "New order assigned",
+    "message": "Order 2606180001-1 has been assigned to you.",
+    "relatedOrder": "6a33db37c069137406b4d4c5",
+    "priority": "normal",
+    "isRead": true,
+    "isArchived": false,
+    "actionUrl": "/orders/6a33db37c069137406b4d4c5",
+    "actionLabel": "View order",
+    "channels": {
+      "email": {
+        "sent": true,
+        "sentAt": "2026-06-18T11:49:15.592Z"
+      },
+      "sms": {
+        "sent": false
+      }
+    },
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-18T11:49:11.925Z",
+    "updatedAt": "2026-06-18T15:54:05.152Z",
+    "__v": 0,
+    "readAt": "2026-06-18T15:54:05.152Z"
+  },
+  {
+    "_id": "6a344df9f80d81de00431014",
+    "vendor": "6a318251d1a54032dcb4766f",
+    "type": "order_assigned",
+    "title": "New order assigned",
+    "message": "Order 2606180001-2 has been assigned to you.",
+    "relatedOrder": "6a344df9f80d81de0043100e",
+    "priority": "normal",
+    "isRead": false,
+    "isArchived": false,
+    "actionUrl": "/orders/6a344df9f80d81de0043100e",
+    "actionLabel": "View order",
+    "channels": {
+      "email": {
+        "sent": true,
+        "sentAt": "2026-06-18T19:58:51.406Z"
+      },
+      "sms": {
+        "sent": false
+      }
+    },
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-18T19:58:49.271Z",
+    "updatedAt": "2026-06-18T19:58:51.407Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a344eb3f80d81de004310ec",
+    "vendor": "6a318251d1a54032dcb4766f",
+    "type": "wf_dispatch_approved",
+    "title": "Dispatch approved",
+    "message": "StructBay approved dispatch for 2606180001-2. You may now submit your final tax invoice.",
+    "relatedOrder": "6a344df9f80d81de0043100e",
+    "priority": "normal",
+    "isRead": false,
+    "isArchived": false,
+    "actionUrl": "/orders/6a344df9f80d81de0043100e",
+    "actionLabel": "Upload invoice",
+    "channels": {
+      "email": {
+        "sent": true,
+        "sentAt": "2026-06-18T20:01:56.596Z"
+      },
+      "sms": {
+        "sent": false
+      }
+    },
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-18T20:01:55.351Z",
+    "updatedAt": "2026-06-18T20:01:56.596Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a345470d1838f0abb2fd9a2",
+    "vendor": "6a318251d1a54032dcb4766f",
+    "type": "wf_sb_invoice_sent",
+    "title": "StructBay invoice & e-way bill",
+    "message": "StructBay documents for 2606180001-2 are available. StructBay will book pickup and deliver to the customer.",
+    "relatedOrder": "6a344df9f80d81de0043100e",
+    "priority": "normal",
+    "isRead": false,
+    "isArchived": false,
+    "actionUrl": "/orders/6a344df9f80d81de0043100e",
+    "actionLabel": "View order",
+    "channels": {
+      "email": {
+        "sent": true,
+        "sentAt": "2026-06-18T20:26:27.145Z"
+      },
+      "sms": {
+        "sent": false
+      }
+    },
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-18T20:26:24.910Z",
+    "updatedAt": "2026-06-18T20:26:27.146Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a34d924f734442b5c3d4fcd",
+    "vendor": "6a318251d1a54032dcb4766f",
+    "type": "order_assigned",
+    "title": "New order assigned",
+    "message": "Order 2606180002-2 has been assigned to you.",
+    "relatedOrder": "6a34d924f734442b5c3d4fc6",
+    "priority": "normal",
+    "isRead": false,
+    "isArchived": false,
+    "actionUrl": "/orders/6a34d924f734442b5c3d4fc6",
+    "actionLabel": "View order",
+    "channels": {
+      "email": {
+        "sent": true,
+        "sentAt": "2026-06-19T05:52:39.584Z"
+      },
+      "sms": {
+        "sent": false
+      }
+    },
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-19T05:52:36.412Z",
+    "updatedAt": "2026-06-19T05:52:39.584Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a350cc9db6ea6504d89f2d9",
+    "vendor": "6a318251d1a54032dcb4766f",
+    "type": "order_assigned",
+    "title": "New order assigned",
+    "message": "Order 2606190001-1 has been assigned to you.",
+    "relatedOrder": "6a350cc9db6ea6504d89f2d3",
+    "priority": "normal",
+    "isRead": false,
+    "isArchived": false,
+    "actionUrl": "/orders/6a350cc9db6ea6504d89f2d3",
+    "actionLabel": "View order",
+    "channels": {
+      "email": {
+        "sent": true,
+        "sentAt": "2026-06-19T09:32:59.218Z"
+      },
+      "sms": {
+        "sent": false
+      }
+    },
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-19T09:32:57.457Z",
+    "updatedAt": "2026-06-19T09:32:59.219Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a350d64db6ea6504d89f47a",
+    "vendor": "6a318251d1a54032dcb4766f",
+    "type": "wf_dispatch_approved",
+    "title": "Dispatch approved",
+    "message": "StructBay approved dispatch for 2606190001-1. You may now submit your final tax invoice.",
+    "relatedOrder": "6a350cc9db6ea6504d89f2d3",
+    "priority": "normal",
+    "isRead": false,
+    "isArchived": false,
+    "actionUrl": "/orders/6a350cc9db6ea6504d89f2d3",
+    "actionLabel": "Upload invoice",
+    "channels": {
+      "email": {
+        "sent": true,
+        "sentAt": "2026-06-19T09:35:34.300Z"
+      },
+      "sms": {
+        "sent": false
+      }
+    },
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-19T09:35:32.770Z",
+    "updatedAt": "2026-06-19T09:35:34.300Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a351099db6ea6504d89fb44",
+    "vendor": "6a318251d1a54032dcb4766f",
+    "type": "wf_sb_invoice_sent",
+    "title": "StructBay invoice & e-way bill",
+    "message": "StructBay documents for 2606190001-1 are available. StructBay will book pickup and deliver to the customer.",
+    "relatedOrder": "6a350cc9db6ea6504d89f2d3",
+    "priority": "normal",
+    "isRead": false,
+    "isArchived": false,
+    "actionUrl": "/orders/6a350cc9db6ea6504d89f2d3",
+    "actionLabel": "View order",
+    "channels": {
+      "email": {
+        "sent": true,
+        "sentAt": "2026-06-19T09:49:16.044Z"
+      },
+      "sms": {
+        "sent": false
+      }
+    },
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-19T09:49:13.435Z",
+    "updatedAt": "2026-06-19T09:49:16.044Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a3510ebdb6ea6504d89fced",
+    "vendor": "6a318251d1a54032dcb4766f",
+    "type": "wf_delivery_confirmed",
+    "title": "Customer delivery recorded",
+    "message": "StructBay marked 2606190001-1 delivered to the customer.",
+    "relatedOrder": "6a350cc9db6ea6504d89f2d3",
+    "priority": "normal",
+    "isRead": false,
+    "isArchived": false,
+    "actionUrl": "/orders/6a350cc9db6ea6504d89f2d3",
+    "actionLabel": "View order",
+    "channels": {
+      "email": {
+        "sent": true,
+        "sentAt": "2026-06-19T09:50:37.135Z"
+      },
+      "sms": {
+        "sent": false
+      }
+    },
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-19T09:50:35.292Z",
+    "updatedAt": "2026-06-19T09:50:37.135Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a3510f0db6ea6504d89fd34",
+    "vendor": "6a318251d1a54032dcb4766f",
+    "type": "wf_delivery_confirmed",
+    "title": "Delivery confirmed",
+    "message": "StructBay confirmed delivery for 2606190001-1.",
+    "relatedOrder": "6a350cc9db6ea6504d89f2d3",
+    "priority": "normal",
+    "isRead": false,
+    "isArchived": false,
+    "actionUrl": "/orders/6a350cc9db6ea6504d89f2d3",
+    "actionLabel": "View order",
+    "channels": {
+      "email": {
+        "sent": true,
+        "sentAt": "2026-06-19T09:50:41.631Z"
+      },
+      "sms": {
+        "sent": false
+      }
+    },
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-19T09:50:40.516Z",
+    "updatedAt": "2026-06-19T09:50:41.631Z",
+    "__v": 0
+  }
+]

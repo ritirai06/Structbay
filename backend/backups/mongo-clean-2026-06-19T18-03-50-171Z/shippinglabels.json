@@ -1,0 +1,122 @@
+[
+  {
+    "_id": "6a34532769c4e6422beb10bd",
+    "order": "6a33beccab967c7ecb6d2c3a",
+    "vendorOrder": "6a344df9f80d81de0043100e",
+    "shipmentId": "SHP190626001",
+    "trackingNumber": "TRK190626001",
+    "generatedBy": "6a2ab23e07a6b7f84fdcca12",
+    "generatedAt": "2026-06-18T20:20:55.915Z",
+    "labelUrl": "https://res.cloudinary.com/dr3bbkrv7/raw/upload/v1781814055/structbay/shipping-labels/label-SHP190626001_qyoppr.pdf",
+    "labelCloudinaryId": "structbay/shipping-labels/label-SHP190626001_qyoppr.pdf",
+    "barcodeValue": "SHP190626001",
+    "qrValue": "{\"orderId\":\"6a33beccab967c7ecb6d2c3a\",\"orderNumber\":\"2606180001\",\"vendorOrderId\":\"6a344df9f80d81de0043100e\",\"shipmentId\":\"SHP190626001\",\"trackingNumber\":\"TRK190626001\",\"orderUrl\":\"http://localhost:3000/orders/6a33beccab967c7ecb6d2c3a\",\"trackingUrl\":\"http://localhost:3000/orders/6a33beccab967c7ecb6d2c3a\"}",
+    "status": "GENERATED",
+    "deliveryType": "structbay_delivery",
+    "labelSnapshot": {
+      "orderNumber": "2606180001",
+      "shipmentId": "SHP190626001",
+      "trackingNumber": "TRK190626001",
+      "barcodeValue": "SHP190626001",
+      "qrValue": "{\"orderId\":\"6a33beccab967c7ecb6d2c3a\",\"orderNumber\":\"2606180001\",\"vendorOrderId\":\"6a344df9f80d81de0043100e\",\"shipmentId\":\"SHP190626001\",\"trackingNumber\":\"TRK190626001\",\"orderUrl\":\"http://localhost:3000/orders/6a33beccab967c7ecb6d2c3a\",\"trackingUrl\":\"http://localhost:3000/orders/6a33beccab967c7ecb6d2c3a\"}",
+      "shipTo": {
+        "name": "Riti Rai",
+        "phone": "9874554987",
+        "address": "h 201309, Others",
+        "city": "Bengaluru",
+        "state": "",
+        "pincode": "560001"
+      },
+      "shipFrom": {
+        "name": "StructBay Warehouse",
+        "phone": "",
+        "address": "StructBay Fulfillment Center, India",
+        "gst": ""
+      },
+      "products": [
+        {
+          "name": "Kajaria Vitrified Tile 600x600",
+          "sku": "KAJ-600-001",
+          "quantity": 7,
+          "weight": null
+        }
+      ],
+      "packageCount": 1,
+      "totalWeight": null,
+      "logistics": {
+        "partner": "EKART",
+        "pickupWindow": "20-06-2026",
+        "estimatedDelivery": null,
+        "driver": "RAHUL-7896541230",
+        "driverContact": "7896541230"
+      },
+      "deliveryType": "structbay_delivery"
+    },
+    "version": 1,
+    "createdAt": "2026-06-18T20:20:55.917Z",
+    "updatedAt": "2026-06-18T20:20:55.917Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a351080db6ea6504d89fb25",
+    "order": "6a350c8ddb6ea6504d89f1c0",
+    "vendorOrder": "6a350cc9db6ea6504d89f2d3",
+    "shipmentId": "SHP190626002",
+    "trackingNumber": "TRK190626002",
+    "generatedBy": "6a2ab23e07a6b7f84fdcca12",
+    "generatedAt": "2026-06-19T09:48:48.705Z",
+    "labelUrl": "https://res.cloudinary.com/dr3bbkrv7/raw/upload/v1781862527/structbay/shipping-labels/label-SHP190626002_i2gwcd.pdf",
+    "labelCloudinaryId": "structbay/shipping-labels/label-SHP190626002_i2gwcd.pdf",
+    "barcodeValue": "SHP190626002",
+    "qrValue": "{\"orderId\":\"6a350c8ddb6ea6504d89f1c0\",\"orderNumber\":\"2606190001\",\"vendorOrderId\":\"6a350cc9db6ea6504d89f2d3\",\"shipmentId\":\"SHP190626002\",\"trackingNumber\":\"TRK190626002\",\"orderUrl\":\"http://localhost:3000/orders/6a350c8ddb6ea6504d89f1c0\",\"trackingUrl\":\"http://localhost:3000/orders/6a350c8ddb6ea6504d89f1c0\"}",
+    "status": "GENERATED",
+    "deliveryType": "structbay_delivery",
+    "labelSnapshot": {
+      "orderNumber": "2606190001",
+      "shipmentId": "SHP190626002",
+      "trackingNumber": "TRK190626002",
+      "barcodeValue": "SHP190626002",
+      "qrValue": "{\"orderId\":\"6a350c8ddb6ea6504d89f1c0\",\"orderNumber\":\"2606190001\",\"vendorOrderId\":\"6a350cc9db6ea6504d89f2d3\",\"shipmentId\":\"SHP190626002\",\"trackingNumber\":\"TRK190626002\",\"orderUrl\":\"http://localhost:3000/orders/6a350c8ddb6ea6504d89f1c0\",\"trackingUrl\":\"http://localhost:3000/orders/6a350c8ddb6ea6504d89f1c0\"}",
+      "shipTo": {
+        "name": "Riti",
+        "phone": "9876543212",
+        "address": "\"O\"-Pocket, Ganga Nagar, Meerut-250001, IIMT UNIVERSITY ,MEERUT",
+        "city": "Bengaluru",
+        "state": "Karnataka",
+        "pincode": "560001"
+      },
+      "shipFrom": {
+        "name": "StructBay Warehouse",
+        "phone": "",
+        "address": "StructBay Fulfillment Center, India",
+        "gst": ""
+      },
+      "products": [
+        {
+          "name": "AMBUJA",
+          "sku": "CEM-AMB-001-10KG",
+          "variationLabel": "10 KG",
+          "quantity": 1,
+          "weight": null
+        }
+      ],
+      "packageCount": 1,
+      "totalWeight": null,
+      "logistics": {
+        "partner": "EKART",
+        "pickupWindow": "20-06-2026",
+        "estimatedDelivery": null,
+        "driver": "RITI-850045962",
+        "driverContact": "9874563210"
+      },
+      "deliveryType": "structbay_delivery"
+    },
+    "version": 1,
+    "sharedWithVendor": false,
+    "sharedAt": null,
+    "sharedBy": null,
+    "createdAt": "2026-06-19T09:48:48.707Z",
+    "updatedAt": "2026-06-19T09:48:48.707Z",
+    "__v": 0
+  }
+]

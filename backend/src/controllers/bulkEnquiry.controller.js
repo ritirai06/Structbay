@@ -41,11 +41,21 @@ const getById = asyncHandler(async (req, res) => {
 });
 
 const create = asyncHandler(async (req, res) => {
-  if (!req.body.requirement && !req.body.attachments?.length) {
-    throw new AppError('Either requirement message or document attachment is required.', 400);
+  const attachments = Array.isArray(req.body.attachments) ? req.body.attachments : [];
+  const isSandAggregatesQuote = req.body.quoteType === 'SAND_AGGREGATES';
+  if (!attachments.length && !isSandAggregatesQuote) {
+    throw new AppError('At least one document is required (PDF, image, or Excel).', 400);
+  }
+  if (!req.body.customerName?.trim() || !req.body.customerPhone?.trim()) {
+    throw new AppError('Customer name and phone are required.', 400);
   }
   const enquiryNumber = await genNumber();
-  const payload = { ...req.body, enquiryNumber };
+  const payload = {
+    ...req.body,
+    enquiryNumber,
+    requirement: req.body.requirement?.trim() || 'See attached document(s)',
+    attachments,
+  };
   if (req.user?._id) payload.customer = req.user._id;
   const item = await BulkEnquiry.create(payload);
   return ApiResponse.created(res, 'Bulk enquiry submitted.', item);
@@ -57,6 +67,7 @@ const update = asyncHandler(async (req, res) => {
   const allowed = ['status', 'assignedTo', 'adminNotes'];
   allowed.forEach(f => { if (req.body[f] !== undefined) item[f] = req.body[f]; });
   await item.save();
+  await item.populate('assignedTo', 'name email');
   await logAction({ adminId: req.user._id, action: 'UPDATE', module: 'BulkEnquiry',
     targetId: item._id.toString(), description: `Updated bulk enquiry: ${item.enquiryNumber}`, ipAddress: req.ip });
   return ApiResponse.success(res, 200, 'Bulk enquiry updated.', item);

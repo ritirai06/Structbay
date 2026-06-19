@@ -237,6 +237,16 @@ export function OrderDetails() {
             <div key={p._id ?? i} className="p-3 rounded-xl" style={{ background: SB.bg, border: `1px solid ${SB.border}` }}>
               <div className="grid grid-cols-2 gap-3">
                 <InfoRow label="Product" value={p.productName ?? p.product?.name ?? '—'} />
+                {(p.variationLabel || p.variation?.attributes) && (
+                  <InfoRow
+                    label="Variant"
+                    value={
+                      p.variationLabel
+                      || Object.values(p.variation?.attributes || {}).filter(Boolean).join(' · ')
+                      || '—'
+                    }
+                  />
+                )}
                 <InfoRow label="SKU" value={p.sku ?? p.product?.sku ?? '—'} />
                 <InfoRow label="Quantity" value={String(p.quantity ?? '—')} />
                 <InfoRow label="GST %" value={p.gstPercentage != null ? String(p.gstPercentage) : '—'} />

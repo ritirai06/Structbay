@@ -23,9 +23,19 @@ type CustomerUiOrder = {
   date: string;
   items: string;
   total: string;
+  grandTotal: number;
   status: string;
   apiStatus: string;
   statusClass: string;
+};
+
+type DashboardStats = {
+  totalOrders: number;
+  pendingOrders: number;
+  totalSpent: number;
+  rfqs: number;
+  bulkEnquiries: number;
+  savedAddresses: number;
 };
 
 type CustomerUiNotif = {
@@ -75,6 +85,7 @@ function mapApiOrder(o: any): CustomerUiOrder {
       : "—",
     items: Array.isArray(o.items) ? o.items.map((i: any) => `${i.name} ×${i.quantity}`).join(", ") : "—",
     total: `₹${Number(o.grandTotal || 0).toLocaleString("en-IN")}`,
+    grandTotal: Number(o.grandTotal || 0),
     status: st.label,
     apiStatus: o.status || "",
     statusClass: st.cls,
@@ -159,16 +170,29 @@ function Sidebar({ user, active, setActive, close, logout }: {
 }
 
 /* ─── Section: Dashboard Overview ───────────────────────── */
-function DashboardHome({ user, setActive, orders, savedAddrCount }: { user: any; setActive: (k: string) => void; orders: CustomerUiOrder[]; savedAddrCount: number }) {
-  const totalOrders = orders.length;
-  const pendingOrders = orders.filter(o => !["Delivered", "Cancelled"].includes(o.status)).length;
+function DashboardHome({ user, setActive, orders, stats, savedAddrCount }: {
+  user: any;
+  setActive: (k: string) => void;
+  orders: CustomerUiOrder[];
+  stats: DashboardStats | null;
+  savedAddrCount: number;
+}) {
+  const totalOrders = stats?.totalOrders ?? orders.length;
+  const pendingOrders = stats?.pendingOrders ?? orders.filter(o => !["Delivered", "Cancelled"].includes(o.status)).length;
+  const totalSpent = stats?.totalSpent ?? orders
+    .filter(o => o.apiStatus !== "CANCELLED")
+    .reduce((sum, o) => sum + o.grandTotal, 0);
+  const rfqs = stats?.rfqs ?? 0;
+  const bulkEnquiries = stats?.bulkEnquiries ?? 0;
+  const addressCount = stats?.savedAddresses ?? savedAddrCount;
+
   const widgets = [
     { label: "Total Orders",   value: String(totalOrders),    icon: Package,    accent: "bg-[#E85A00]/12", iconColor: "text-[#E85A00]" },
     { label: "Pending Orders", value: String(pendingOrders), icon: Clock,      accent: "bg-[#E85A00]/12", iconColor: "text-[#E85A00]" },
-    { label: "Total Spent",    value: totalOrders ? "—" : "₹0", icon: TrendingUp, accent: "bg-[#E85A00]/12", iconColor: "text-[#E85A00]" },
-    { label: "Active RFQs",    value: "0",     icon: FileText,   accent: "bg-[#E85A00]/12", iconColor: "text-[#E85A00]" },
-    { label: "Bulk Enquiries", value: "0",     icon: MessageSquare, accent: "bg-[#E85A00]/12", iconColor: "text-[#E85A00]" },
-    { label: "Saved Addresses",value: String(savedAddrCount),     icon: MapPin,     accent: "bg-black/5", iconColor: "text-black" },
+    { label: "Total Spent",    value: `₹${totalSpent.toLocaleString("en-IN")}`, icon: TrendingUp, accent: "bg-[#E85A00]/12", iconColor: "text-[#E85A00]" },
+    { label: "Active RFQs",    value: String(rfqs),     icon: FileText,   accent: "bg-[#E85A00]/12", iconColor: "text-[#E85A00]" },
+    { label: "Bulk Enquiries", value: String(bulkEnquiries),     icon: MessageSquare, accent: "bg-[#E85A00]/12", iconColor: "text-[#E85A00]" },
+    { label: "Saved Addresses",value: String(addressCount),     icon: MapPin,     accent: "bg-black/5", iconColor: "text-black" },
   ];
 
   const quickActions = [
@@ -893,6 +917,7 @@ export function Dashboard() {
   const [active, setActive]           = useState(section || "dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [orders, setOrders] = useState<CustomerUiOrder[]>([]);
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [savedAddrCount, setSavedAddrCount] = useState(() => {
     try {
       const raw = localStorage.getItem(ADDR_STORAGE);
@@ -917,9 +942,31 @@ export function Dashboard() {
     if (section) setActive(section);
   }, [section]);
 
+  const loadDashboardStats = () => {
+    if (!isLoggedIn) return;
+    api.getDashboard()
+      .then((res) => {
+        const s = res?.data?.stats;
+        if (!s || typeof s !== "object") return;
+        setDashboardStats({
+          totalOrders: Number(s.totalOrders) || 0,
+          pendingOrders: Number(s.pendingOrders) || 0,
+          totalSpent: Number(s.totalSpent) || 0,
+          rfqs: Number(s.rfqs) || 0,
+          bulkEnquiries: Number(s.bulkEnquiries) || 0,
+          savedAddresses: Number(s.savedAddresses) || 0,
+        });
+        if (typeof s.unreadNotifications === "number") {
+          setNotifUnread(s.unreadNotifications);
+        }
+      })
+      .catch(() => { /* keep order-based fallbacks */ });
+  };
+
   useEffect(() => {
     if (!isLoggedIn) return;
     loadOrders();
+    loadDashboardStats();
   }, [isLoggedIn]);
 
   useEffect(() => {
@@ -1006,7 +1053,7 @@ export function Dashboard() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50">
-          {active === "dashboard"     && <DashboardHome user={user} setActive={setActive} orders={orders} savedAddrCount={savedAddrCount} />}
+          {active === "dashboard"     && <DashboardHome user={user} setActive={setActive} orders={orders} stats={dashboardStats} savedAddrCount={savedAddrCount} />}
           {active === "orders"        && <OrdersSection orders={orders} onReload={loadOrders} />}
           {active === "invoices"      && <InvoicesSection orders={orders} />}
           {active === "addresses"     && <AddressesSection onCountChange={setSavedAddrCount} />}

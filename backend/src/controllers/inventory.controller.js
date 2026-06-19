@@ -5,6 +5,7 @@ const AppError = require('../utils/AppError');
 const Inventory = require('../models/Inventory');
 const InventoryLog = require('../models/InventoryLog');
 const Product = require('../models/Product');
+const ProductVariation = require('../models/ProductVariation');
 const City = require('../models/City');
 const { logAction } = require('../services/auditLog.service');
 const { reviveSoftDeleted } = require('../utils/softDeleteRelease');
@@ -119,8 +120,47 @@ async function resolveProductId(row) {
   const sku = skuRaw != null ? String(skuRaw).trim().toUpperCase() : '';
   if (!sku) throw new AppError('Each row needs sku or productId', 400);
   const p = await Product.findOne({ sku }).select('_id').lean();
-  if (!p) throw new AppError(`Unknown SKU: ${sku}`, 400);
-  return String(p._id);
+  if (p) return String(p._id);
+  const v = await ProductVariation.findOne({
+    sku,
+    status: 'ACTIVE',
+    isDeleted: { $ne: true },
+  }).select('product').lean();
+  if (v) return String(v.product);
+  throw new AppError(`Unknown SKU: ${sku}`, 400);
+}
+
+async function resolveVariationId(row, productId) {
+  const vidRaw = row.variation ?? row.variationId ?? row.variation_id;
+  const vid = vidRaw != null ? String(vidRaw).trim() : '';
+  if (vid && OID_RE.test(vid)) return vid;
+
+  const variantSkuRaw = row.variantSku ?? row.variant_sku ?? row.variationSku;
+  const variantSku = variantSkuRaw != null ? String(variantSkuRaw).trim().toUpperCase() : '';
+  if (variantSku) {
+    const v = await ProductVariation.findOne({
+      sku: variantSku,
+      product: productId,
+      status: 'ACTIVE',
+      isDeleted: { $ne: true },
+    }).select('_id').lean();
+    if (!v) throw new AppError(`Unknown variant SKU: ${variantSku}`, 400);
+    return String(v._id);
+  }
+
+  const skuRaw = row.sku ?? row.SKU ?? row.productSku;
+  const sku = skuRaw != null ? String(skuRaw).trim().toUpperCase() : '';
+  if (sku) {
+    const v = await ProductVariation.findOne({
+      sku,
+      product: productId,
+      status: 'ACTIVE',
+      isDeleted: { $ne: true },
+    }).select('_id').lean();
+    if (v) return String(v._id);
+  }
+
+  return undefined;
 }
 
 async function resolveCityId(row) {
@@ -213,7 +253,7 @@ const bulkImport = asyncHandler(async (req, res) => {
       }
       const qty = r.quantity !== undefined ? r.quantity : r.qty;
       if (qty === undefined || qty === '') throw new AppError('quantity is required', 400);
-      const variation = r.variation || undefined;
+      const variation = await resolveVariationId(r, product);
       let lowStockThreshold;
       if (r.lowStockThreshold !== undefined && r.lowStockThreshold !== '') {
         lowStockThreshold = Number(r.lowStockThreshold);
@@ -313,7 +353,7 @@ const bulkDelete = asyncHandler(async (req, res) => {
       if (Number(inv.reserved) > 0) {
         throw new AppError(`${inv.reserved} unit(s) reserved for orders — release or fulfill first.`, 400);
       }
-      await Inventory.updateOne({ _id: id }, { $set: { isDeleted: true, updatedBy: req.user._id } });
+      await Inventory.deleteOne({ _id: id });
       ok += 1;
     } catch (e) {
       const message = e instanceof AppError ? e.message : (e && e.message) || String(e);

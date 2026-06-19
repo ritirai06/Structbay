@@ -7,7 +7,19 @@ const {
   FILE_SIZE_LIMITS,
   ALLOWED_IMAGE_TYPES,
   ALLOWED_DOC_TYPES,
+  ALLOWED_DOC_EXTENSIONS,
 } = require('../config/constants');
+
+function fileExtension(name) {
+  const m = String(name || '').toLowerCase().match(/\.[^.]+$/);
+  return m ? m[0] : '';
+}
+
+function isAllowedUpload(file, allowedTypes) {
+  if (allowedTypes.includes(file.mimetype)) return true;
+  const ext = fileExtension(file.originalname);
+  return ext && ALLOWED_DOC_EXTENSIONS.includes(ext);
+}
 
 const trimEnv = (v) => (typeof v === 'string' ? v.trim() : v || '');
 
@@ -57,8 +69,8 @@ const createUploader = (folder, allowedTypes, maxSize, resourceType = 'auto') =>
     storage: multer.memoryStorage(),
     limits: { fileSize: maxSize },
     fileFilter: (req, file, cb) => {
-      if (allowedTypes.includes(file.mimetype)) return cb(null, true);
-      cb(new Error(`Invalid file type. Allowed: ${allowedTypes.join(', ')}`), false);
+      if (isAllowedUpload(file, allowedTypes)) return cb(null, true);
+      cb(new Error(`Invalid file type. Allowed: PDF, JPG, PNG, Word, Excel, CSV (max ${Math.round(maxSize / (1024 * 1024))}MB).`), false);
     },
   });
 

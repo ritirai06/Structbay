@@ -1,5 +1,4 @@
 import { Navigate, Outlet, useLocation } from "react-router";
-import { Toaster } from "sonner";
 import { getAdminToken } from "../../lib/adminApi";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
@@ -12,7 +11,6 @@ export function DashboardLayout() {
 
   return (
     <div className="admin-shell flex h-screen overflow-hidden bg-[#f5f5f5]">
-      <Toaster position="top-right" richColors closeButton duration={4000} />
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden bg-[#f5f5f5]">
         <Header />

@@ -4,6 +4,7 @@ const AppError = require('../utils/AppError');
 const User = require('../models/User');
 const authService = require('../services/auth.service');
 const RefreshToken = require('../models/tokens/RefreshToken');
+const Session = require('../models/Session');
 
 // ─── GET /api/v1/users/me ─────────────────────────────────────────────────────
 const getProfile = asyncHandler(async (req, res) => {
@@ -27,7 +28,6 @@ const updateProfile = asyncHandler(async (req, res) => {
 
   const user = await User.findByIdAndUpdate(req.user._id, updates, {
     new: true,
-    runValidators: true,
   });
 
   return ApiResponse.success(res, 200, 'Profile updated.', user);
@@ -45,9 +45,13 @@ const changePassword = asyncHandler(async (req, res) => {
 
 // ─── DELETE /api/v1/users/deactivate ─────────────────────────────────────────
 const deactivateAccount = asyncHandler(async (req, res) => {
-  await User.findByIdAndUpdate(req.user._id, { status: 'DELETED' });
   await RefreshToken.revokeAllForUser(req.user._id);
-  return ApiResponse.success(res, 200, 'Account deactivated successfully.');
+  await Promise.all([
+    Session.deleteMany({ user: req.user._id }),
+    RefreshToken.deleteMany({ user: req.user._id }),
+    User.deleteOne({ _id: req.user._id }),
+  ]);
+  return ApiResponse.success(res, 200, 'Account deleted successfully.');
 });
 
 module.exports = { getProfile, updateProfile, changePassword, deactivateAccount };

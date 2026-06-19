@@ -145,11 +145,49 @@ export function DeliveryTypeSelector({
   );
 }
 
+export function WorkflowCard({
+  title,
+  children,
+  className = "",
+  variant = "default",
+}: {
+  title?: string;
+  children: ReactNode;
+  className?: string;
+  variant?: "default" | "accent" | "muted";
+}) {
+  return (
+    <div className={`wf-card wf-card--${variant} ${className}`.trim()}>
+      {title ? <h3 className="wf-card__title">{title}</h3> : null}
+      <div className="wf-card__body">{children}</div>
+    </div>
+  );
+}
+
 export function WorkflowSubsection({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="wf-subsection">
-      <p className="wf-subsection__title">{title}</p>
+    <WorkflowCard title={title}>
       {children}
+    </WorkflowCard>
+  );
+}
+
+export function WorkflowSplit({
+  main,
+  aside,
+  asideFirstOnMobile = false,
+}: {
+  main: ReactNode;
+  aside?: ReactNode;
+  asideFirstOnMobile?: boolean;
+}) {
+  if (!aside) {
+    return <div className="wf-page-split__main">{main}</div>;
+  }
+  return (
+    <div className={`wf-page-split${asideFirstOnMobile ? " wf-page-split--aside-first" : ""}`}>
+      <div className="wf-page-split__main">{main}</div>
+      <aside className="wf-page-split__aside">{aside}</aside>
     </div>
   );
 }
@@ -180,20 +218,16 @@ export function VendorWorkflowSubmissions({ detail }: { detail: any }) {
     : [];
 
   return (
-    <WorkflowSubsection title="Vendor submitted documents">
+    <WorkflowCard title="Vendor uploads">
       <div className="space-y-3">
         {hasPre && (
-          <div className="rounded-lg border border-sb-ink/10 bg-sb-cream/50 p-3 space-y-2">
-            <p className="text-sm font-semibold text-sb-ink">Ready for dispatch</p>
+          <div className="wf-doc-block">
+            <p className="wf-doc-block__heading">Ready for dispatch</p>
             {detail.expectedDispatchDate && (
-              <p className="text-xs text-sb-ink/60">
-                <span className="font-medium">Est. dispatch:</span> {fmtDate(detail.expectedDispatchDate)}
-              </p>
+              <p className="wf-doc-block__meta">Est. dispatch · {fmtDate(detail.expectedDispatchDate)}</p>
             )}
             {pre?.remarks && (
-              <p className="text-xs text-sb-ink/60">
-                <span className="font-medium">Remarks:</span> {pre.remarks}
-              </p>
+              <p className="wf-doc-block__meta">Remarks · {pre.remarks}</p>
             )}
             <WorkflowFilePreview
               files={[
@@ -206,14 +240,14 @@ export function VendorWorkflowSubmissions({ detail }: { detail: any }) {
           </div>
         )}
         {hasShip && (
-          <div className="rounded-lg border border-sb-ink/10 bg-sb-cream/50 p-3 space-y-2">
-            <p className="text-sm font-semibold text-sb-ink">Dispatch details</p>
+          <div className="wf-doc-block">
+            <p className="wf-doc-block__heading">Dispatch</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs text-sb-ink/65">
-              <p>Transporter: <strong>{ship?.transporterName || "—"}</strong></p>
-              <p>LR: <strong>{ship?.lrNumber || "—"}</strong></p>
-              <p>Vehicle: <strong>{ship?.vehicleNumber || "—"}</strong></p>
-              {ship?.trackingNumber && <p>Tracking: <strong>{ship.trackingNumber}</strong></p>}
-              {ship?.dispatchDate && <p>Date: <strong>{fmtDate(ship.dispatchDate)}</strong></p>}
+              <p>Transporter · <strong>{ship?.transporterName || "—"}</strong></p>
+              <p>LR · <strong>{ship?.lrNumber || "—"}</strong></p>
+              <p>Vehicle · <strong>{ship?.vehicleNumber || "—"}</strong></p>
+              {ship?.trackingNumber && <p>Tracking · <strong>{ship.trackingNumber}</strong></p>}
+              {ship?.dispatchDate && <p>Date · <strong>{fmtDate(ship.dispatchDate)}</strong></p>}
             </div>
             {ship?.proofUrl && (
               <WorkflowFilePreview files={[{ url: ship.proofUrl, label: "Dispatch proof" }]} />
@@ -221,10 +255,10 @@ export function VendorWorkflowSubmissions({ detail }: { detail: any }) {
           </div>
         )}
         {hasPod && (
-          <div className="rounded-lg border border-sb-ink/10 bg-sb-cream/50 p-3 space-y-2">
-            <p className="text-sm font-semibold text-sb-ink">Delivery (POD)</p>
+          <div className="wf-doc-block">
+            <p className="wf-doc-block__heading">Delivery proof</p>
             {pod?.deliveryDate && (
-              <p className="text-xs text-sb-ink/60">Date: {fmtDate(pod.deliveryDate)}</p>
+              <p className="wf-doc-block__meta">Date · {fmtDate(pod.deliveryDate)}</p>
             )}
             {pod?.podUrl && (
               <WorkflowFilePreview files={[{ url: pod.podUrl, label: "Proof of delivery" }]} />
@@ -232,6 +266,6 @@ export function VendorWorkflowSubmissions({ detail }: { detail: any }) {
           </div>
         )}
       </div>
-    </WorkflowSubsection>
+    </WorkflowCard>
   );
 }

@@ -11,12 +11,22 @@ const VendorOrder = require('../models/VendorOrder');
 const { generateSubOrderNumber, getNextSubOrderIndex } = require('../services/refNumber.service');
 const { notifyVendor } = require('../services/vendorNotification.service');
 const { notifyAllAdmins } = require('../services/staffNotification.service');
+const {
+  assignOrderLineFulfillment,
+  bulkAssignOrderLineFulfillment,
+  getDeliveryTypeOverrideLogs,
+} = require('../services/orderLineFulfillment.service');
 
 const generateOrderNumber = () => generateMasterOrderNumber();
 
+const activeOrderFilter = (extra = {}) => ({
+  ...extra,
+  isDeleted: { $ne: true },
+});
+
 const getAll = asyncHandler(async (req, res) => {
   const { status, city, vendor, customer, search, page = 1, limit = 20 } = req.query;
-  const filter = {};
+  const filter = activeOrderFilter();
   if (status) filter.status = status;
   if (city) filter.city = city;
   if (vendor) filter.assignedVendor = vendor;
@@ -46,7 +56,8 @@ const getById = asyncHandler(async (req, res) => {
     .populate('customer', 'name email phone')
     .populate('city', 'name state')
     .populate('assignedVendor', 'name companyName')
-    .populate('items.product', 'name sku images')
+    .populate('items.product', 'name sku images deliveryType')
+    .populate('items.assignedVendorUser', 'name companyName email')
     .populate('items.variation', 'attributes sku')
     .populate({
       path: 'vendorOrders',
@@ -102,6 +113,13 @@ const assignVendor = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id);
   if (!order) throw new AppError('Order not found.', 404);
   order.assignedVendor = vendor._id;
+  for (const line of order.items) {
+    if (!line.defaultDeliveryType) {
+      line.defaultDeliveryType = line.deliveryType || deliveryType;
+    }
+    if (!line.deliveryType) line.deliveryType = deliveryType;
+    line.assignedVendorUser = vendor._id;
+  }
   if (order.status === 'VENDOR_ASSIGNMENT_PENDING') {
     order.status = 'PROCESSING';
     order.statusHistory.push({
@@ -213,6 +231,10 @@ const assignVendor = asyncHandler(async (req, res) => {
         workflowVersion: 2,
       });
       await Order.findByIdAndUpdate(order._id, { $addToSet: { vendorOrders: sub._id } });
+      for (const line of order.items) {
+        line.vendorOrderId = sub._id;
+      }
+      await order.save();
       notifyVendor({
         vendorId: vendor._id,
         type: 'order_assigned',
@@ -247,6 +269,59 @@ const assignVendor = asyncHandler(async (req, res) => {
     .populate('city', 'name state')
     .populate('assignedVendor', 'name email companyName');
   return ApiResponse.success(res, 200, 'Vendor assigned.', populated);
+});
+
+const patchItemFulfillment = asyncHandler(async (req, res) => {
+  const { vendorId, deliveryType, reason } = req.body;
+  const { order, vendorOrder } = await assignOrderLineFulfillment({
+    orderId: req.params.id,
+    itemId: req.params.itemId,
+    vendorId,
+    deliveryType,
+    reason,
+    adminUserId: req.user._id,
+  });
+  await logAction({
+    adminId: req.user._id,
+    action: 'UPDATE',
+    module: 'Order',
+    targetId: order._id.toString(),
+    description: `Line fulfillment updated (item ${req.params.itemId})`,
+    ipAddress: req.ip,
+  });
+  const populated = await Order.findById(order._id)
+    .populate('customer', 'name email phone')
+    .populate('city', 'name state')
+    .populate('assignedVendor', 'name companyName')
+    .populate('items.product', 'name sku images deliveryType')
+    .populate('items.assignedVendorUser', 'name companyName email')
+    .populate({
+      path: 'vendorOrders',
+      select: 'orderNumber deliveryType status invoiceStatus structbayLogistics vendor totalAmount workflowVersion',
+    });
+  return ApiResponse.success(res, 200, 'Line fulfillment updated.', { order: populated, vendorOrder });
+});
+
+const bulkPatchItemFulfillment = asyncHandler(async (req, res) => {
+  const order = await bulkAssignOrderLineFulfillment({
+    orderId: req.params.id,
+    assignments: req.body.assignments,
+    adminUserId: req.user._id,
+  });
+  await logAction({
+    adminId: req.user._id,
+    action: 'UPDATE',
+    module: 'Order',
+    targetId: order._id.toString(),
+    description: `Bulk line fulfillment updated (${req.body.assignments?.length || 0} lines)`,
+    ipAddress: req.ip,
+  });
+  return ApiResponse.success(res, 200, 'Line fulfillment updated.', order);
+});
+
+const listDeliveryTypeOverrides = asyncHandler(async (req, res) => {
+  const logs = await getDeliveryTypeOverrideLogs(req.params.id);
+  return ApiResponse.success(res, 200, 'Delivery type override logs.', logs);
 });
 
 const patchOrderDetails = asyncHandler(async (req, res) => {
@@ -308,28 +383,34 @@ const uploadDocs = asyncHandler(async (req, res) => {
 });
 
 const getStats = asyncHandler(async (req, res) => {
+  const active = activeOrderFilter();
   // Align with checkout: new orders are often VENDOR_ASSIGNMENT_PENDING / PAID, not legacy PENDING-only.
   const [total, pending, processing, dispatched, delivered, cancelled] = await Promise.all([
-    Order.countDocuments(),
+    Order.countDocuments(active),
     Order.countDocuments({
+      ...active,
       status: { $in: ['PENDING', 'PAID', 'VENDOR_ASSIGNMENT_PENDING'] },
     }),
     Order.countDocuments({
+      ...active,
       status: { $in: ['PROCESSING', 'READY_FOR_DISPATCH', 'PARTIALLY_DISPATCHED'] },
     }),
     Order.countDocuments({
+      ...active,
       status: { $in: ['DISPATCHED', 'PARTIALLY_DELIVERED'] },
     }),
     Order.countDocuments({
+      ...active,
       status: { $in: ['DELIVERED', 'COMPLETED'] },
     }),
-    Order.countDocuments({ status: 'CANCELLED' }),
+    Order.countDocuments({ ...active, status: 'CANCELLED' }),
   ]);
   return ApiResponse.success(res, 200, 'Order stats.', { total, pending, processing, dispatched, delivered, cancelled });
 });
 
 /** Same scope for invoice table + all KPI aggregates (avoids pending ₹ with 0 rows). */
 const invoiceListFilter = () => ({
+  isDeleted: { $ne: true },
   status: { $nin: ['CANCELLED', 'RETURNED'] },
   paymentStatus: { $nin: ['REFUNDED', 'CANCELLED'] },
 });
@@ -413,30 +494,44 @@ const invoiceSummary = asyncHandler(async (req, res) => {
   });
 });
 
-const LOCKED_ORDER_STATUSES = ['DISPATCHED', 'PARTIALLY_DELIVERED', 'DELIVERED', 'COMPLETED'];
+const NON_DELETABLE_ORDER_STATUSES = [
+  'READY_FOR_DISPATCH',
+  'PARTIALLY_DISPATCHED',
+  'DISPATCHED',
+  'PARTIALLY_DELIVERED',
+];
+const INVENTORY_RELEASE_STATUSES = [
+  'PENDING',
+  'PAID',
+  'VENDOR_ASSIGNMENT_PENDING',
+  'PROCESSING',
+];
 const BULK_DELETE_MAX = 200;
 
-async function softDeleteOrder(order, userId, ip) {
-  if (LOCKED_ORDER_STATUSES.includes(order.status)) {
+async function deleteOrderHard(order, userId, ip) {
+  if (NON_DELETABLE_ORDER_STATUSES.includes(order.status)) {
     throw new AppError(
-      'Cannot delete order after dispatch/delivery. Cancel or complete workflow first.',
+      'Cannot delete while order is in active dispatch or delivery. Cancel the order or wait until it is completed.',
       400
     );
   }
-  if (!['CANCELLED', 'RETURNED'].includes(order.status)) {
+  if (INVENTORY_RELEASE_STATUSES.includes(order.status)) {
     try {
       await releaseInventory(order.items, order.city);
     } catch {
       /* best effort */
     }
   }
-  await Order.updateOne({ _id: order._id }, { $set: { isDeleted: true } });
+  await Promise.all([
+    VendorOrder.deleteMany({ masterOrder: order._id }),
+    Order.deleteOne({ _id: order._id }),
+  ]);
   await logAction({
     adminId: userId,
     action: 'DELETE',
     module: 'Order',
     targetId: order._id.toString(),
-    description: `Soft-deleted order ${order.orderNumber}`,
+    description: `Deleted order ${order.orderNumber}`,
     ipAddress: ip,
   });
 }
@@ -444,7 +539,7 @@ async function softDeleteOrder(order, userId, ip) {
 const remove = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id);
   if (!order) throw new AppError('Order not found.', 404);
-  await softDeleteOrder(order, req.user._id, req.ip);
+  await deleteOrderHard(order, req.user._id, req.ip);
   return ApiResponse.success(res, 200, 'Order deleted.', { id: order._id });
 });
 
@@ -462,7 +557,7 @@ const bulkRemove = asyncHandler(async (req, res) => {
     try {
       const order = await Order.findById(id);
       if (!order) throw new AppError('Order not found.', 404);
-      await softDeleteOrder(order, req.user._id, req.ip);
+      await deleteOrderHard(order, req.user._id, req.ip);
       ok += 1;
     } catch (e) {
       errors.push({
@@ -486,6 +581,9 @@ module.exports = {
   create,
   updateStatus,
   assignVendor,
+  patchItemFulfillment,
+  bulkPatchItemFulfillment,
+  listDeliveryTypeOverrides,
   uploadDocs,
   getStats,
   patchOrderDetails,

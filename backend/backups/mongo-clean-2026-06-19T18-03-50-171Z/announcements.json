@@ -1,0 +1,21 @@
+[
+  {
+    "_id": "6a30fdf5328438d0d6ea2aeb",
+    "title": "FREE DELIVERY",
+    "description": "",
+    "priority": "URGENT",
+    "isPinned": true,
+    "startDate": "2026-06-15T18:30:00.000Z",
+    "endDate": "2026-06-30T18:29:59.999Z",
+    "status": "ACTIVE",
+    "image": {
+      "url": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781595614/structbay/banners/file_nhnfk9.png",
+      "publicId": "structbay/banners/file_nhnfk9"
+    },
+    "audience": [],
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-16T07:40:37.741Z",
+    "updatedAt": "2026-06-16T07:40:37.741Z",
+    "__v": 0
+  }
+]

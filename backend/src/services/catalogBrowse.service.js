@@ -5,6 +5,28 @@ const Product = require('../models/Product');
 const ProductVariation = require('../models/ProductVariation');
 const marketplaceCity = require('./marketplaceCity.service');
 const { escRx } = require('../utils/resolveCategoryFromRow');
+const {
+  getAttributeValue,
+  buildVariationAttributeValueMatch,
+} = require('../utils/variationAttributes');
+const { dedupeAttributeValues, canonicalAttributeValue } = require('../utils/attributeValueNormalize');
+
+/** Expand filter values so "10 KG" matches stored "10kg" / "10 kg". */
+function expandAttributeFilterValues(vals, key) {
+  const out = new Set();
+  for (const v of vals) {
+    const raw = String(v).trim();
+    if (!raw) continue;
+    out.add(raw);
+    const canon = canonicalAttributeValue(raw, key);
+    out.add(canon);
+    out.add(canon.toLowerCase());
+    out.add(raw.toLowerCase());
+    out.add(canon.replace(/\s+/g, ''));
+    out.add(canon.replace(/\s+/g, '').toLowerCase());
+  }
+  return [...out];
+}
 
 const FIXED_ATTR_KEYS = new Set(['weight', 'grade', 'size', 'color', 'finish', 'diameter']);
 
@@ -70,28 +92,19 @@ async function distinctAttributeValuesForProducts(productIds, filterDefs) {
   for (const key of keys) facets[key] = new Set();
 
   for (const v of variations) {
-    const attrs = v.attributes || {};
     for (const key of keys) {
-      if (FIXED_ATTR_KEYS.has(key)) {
-        if (key === 'weight' && v.weightKg != null && Number.isFinite(Number(v.weightKg))) {
-          facets[key].add(String(v.weightKg));
-        }
-        const val = attrs[key];
-        if (val != null && String(val).trim()) facets[key].add(String(val).trim());
-      } else if (Array.isArray(attrs.custom)) {
-        for (const c of attrs.custom) {
-          if (c?.key && String(c.key).toLowerCase() === key && c.value) {
-            facets[key].add(String(c.value).trim());
-          }
-        }
+      if (key === 'weight' && v.weightKg != null && Number.isFinite(Number(v.weightKg))) {
+        facets[key].add(canonicalAttributeValue(String(v.weightKg), 'weight'));
       }
+      const val = getAttributeValue(v.attributes, key);
+      if (val) facets[key].add(canonicalAttributeValue(val, key));
     }
   }
 
   /** @type {Record<string, string[]>} */
   const out = {};
   for (const [key, set] of Object.entries(facets)) {
-    out[key] = [...set].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    out[key] = dedupeAttributeValues([...set], key);
   }
   return out;
 }
@@ -108,20 +121,27 @@ function enrichCategoryFilterDefinitions(filterDefs, facets) {
       const key = String(f.key).toLowerCase();
       const fromProducts = facets[key] || [];
       const adminOpts = (f.options || []).map((o) => {
-        const value = String(o.value ?? o.label ?? '').trim();
+        const value = canonicalAttributeValue(o.value ?? o.label ?? '', key);
         const label = String(o.label ?? o.value ?? value).trim();
         return value ? { label: label || value, value } : null;
       }).filter(Boolean);
 
-      const seen = new Set(adminOpts.map((o) => o.value));
+      const seen = new Set();
+      const mergedOpts = [];
+      for (const o of adminOpts) {
+        const canon = canonicalAttributeValue(o.value, key).toLowerCase();
+        if (seen.has(canon)) continue;
+        seen.add(canon);
+        mergedOpts.push(o);
+      }
       for (const val of fromProducts) {
-        if (!seen.has(val)) {
-          adminOpts.push({ label: val, value: val });
-          seen.add(val);
-        }
+        const canon = canonicalAttributeValue(val, key).toLowerCase();
+        if (seen.has(canon)) continue;
+        seen.add(canon);
+        mergedOpts.push({ label: val, value: val });
       }
 
-      return { ...f, key, options: adminOpts };
+      return { ...f, key, options: mergedOpts };
     });
 }
 
@@ -186,15 +206,31 @@ async function computeCategoryPriceBounds(cityOid, productIds) {
 
 /** @param {object} productJson enriched product with pricing */
 function listingUnitPriceFromEnriched(productJson) {
-  const pricing = productJson?.pricing;
-  if (pricing) {
-    const p = Number(pricing.salePrice ?? pricing.regularPrice);
-    if (Number.isFinite(p) && p >= 0) return p;
+  const isVariant = productJson?.productStructure === 'variant';
+
+  if (!isVariant) {
+    const pricing = productJson?.pricing;
+    if (pricing) {
+      const p = Number(pricing.salePrice ?? pricing.sellingPrice ?? pricing.regularPrice);
+      if (Number.isFinite(p) && p >= 0) return p;
+    }
+    return 0;
   }
+
+  const priceFromRow = (row) => {
+    if (!row) return null;
+    const p = Number(row.salePrice ?? row.sellingPrice ?? row.regularPrice);
+    return Number.isFinite(p) && p >= 0 ? p : null;
+  };
+
   const vps = productJson?.variationPricing || [];
-  const prices = vps
-    .map((row) => Number(row?.salePrice ?? row?.regularPrice))
-    .filter((n) => Number.isFinite(n) && n >= 0);
+  const prices = vps.map(priceFromRow).filter((n) => n != null);
+  if (!prices.length && Array.isArray(productJson?.variations)) {
+    for (const v of productJson.variations) {
+      const p = priceFromRow(v.pricing);
+      if (p != null) prices.push(p);
+    }
+  }
   if (prices.length) return Math.min(...prices);
   return 0;
 }
@@ -264,22 +300,23 @@ async function narrowProductsByCategoryAttributeFilters(categoryId, query, categ
     }
 
     const raw = query[key] !== undefined && query[key] !== '' ? query[key] : query[`attr_${key}`];
-    const vals = parseCommaList(raw);
+    const vals = expandAttributeFilterValues(parseCommaList(raw), key);
     if (!vals.length) continue;
 
-    if (FIXED_ATTR_KEYS.has(key)) {
-      andParts.push(vals.length === 1 ? { [`attributes.${key}`]: vals[0] } : { [`attributes.${key}`]: { $in: vals } });
-    } else {
-      const rx = new RegExp(`^${escRx(key)}$`, 'i');
+    if (key === 'weight' && vals.length) {
+      const numVals = vals.map(Number).filter(Number.isFinite);
       andParts.push({
-        'attributes.custom': {
-          $elemMatch: {
-            key: rx,
-            value: vals.length === 1 ? vals[0] : { $in: vals },
-          },
-        },
+        $or: [
+          buildVariationAttributeValueMatch(key, vals),
+          ...(numVals.length
+            ? [{ weightKg: numVals.length === 1 ? numVals[0] : { $in: numVals } }]
+            : []),
+        ],
       });
+      continue;
     }
+
+    andParts.push(buildVariationAttributeValueMatch(key, vals));
   }
 
   if (!andParts.length) return null;
@@ -299,6 +336,29 @@ async function narrowProductsByCategoryAttributeFilters(categoryId, query, categ
   };
 
   return ProductVariation.distinct('product', match);
+}
+
+/**
+ * When attribute filters narrow to variant-matched parents, keep simple products visible too.
+ * @param {import('mongoose').Types.ObjectId|string} categoryId
+ * @param {unknown[]|null} variantMatchedProductIds
+ */
+async function unionSimpleProductsForCategory(categoryId, variantMatchedProductIds) {
+  if (variantMatchedProductIds === null) return null;
+  const catOid = mongoose.Types.ObjectId.isValid(String(categoryId))
+    ? new mongoose.Types.ObjectId(String(categoryId))
+    : null;
+  if (!catOid) return variantMatchedProductIds;
+
+  const simpleIds = await Product.find({
+    category: catOid,
+    status: 'ACTIVE',
+    $or: [{ productStructure: 'simple' }, { productStructure: { $exists: false } }],
+  }).distinct('_id');
+
+  const merged = new Set(variantMatchedProductIds.map((id) => String(id)));
+  for (const id of simpleIds) merged.add(String(id));
+  return [...merged];
 }
 
 /**
@@ -387,15 +447,20 @@ async function computeCityScopedProductIdSubset(query, cityOid) {
   const max = parsePriceBound(maxPrice, { min: false });
   const hasPrice = min != null || max != null;
 
-  const sellable = await marketplaceCity.getSellableProductIdsForCity(cityOid);
+  const [priced, sellable] = await Promise.all([
+    marketplaceCity.getPricedProductIdsForCity(cityOid),
+    marketplaceCity.getSellableProductIdsForCity(cityOid),
+  ]);
   const sellSet = new Set(sellable.map((id) => String(id)));
 
-  let baseIds = sellable;
-  if (availability === 'out_of_stock') {
-    const priced = await CityPricing.distinct('product', { city: cityOid, isVisible: true, isDeleted: false });
+  // Default: list all city-priced products (in stock + out of stock). Checkout still requires sellable stock.
+  let baseIds = priced;
+  if (availability === 'in_stock') {
+    baseIds = sellable;
+  } else if (availability === 'out_of_stock') {
     baseIds = priced.filter((id) => !sellSet.has(String(id)));
   } else if (availability === 'made_to_order' || availability === 'ready_to_dispatch') {
-    baseIds = await CityPricing.distinct('product', { city: cityOid, isVisible: true, isDeleted: false });
+    baseIds = priced;
   }
 
   if (hasPrice) {
@@ -412,6 +477,7 @@ module.exports = {
   applyLegacyAndStructBayBadgeFilters,
   computeCityScopedProductIdSubset,
   narrowProductsByCategoryAttributeFilters,
+  unionSimpleProductsForCategory,
   intersectIdLists,
   parseCommaList,
   distinctAttributeValuesForProducts,

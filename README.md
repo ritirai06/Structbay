@@ -169,3 +169,12 @@ Start the backend on the port expected by the Vite proxy (default **5000**), or 
 ## Further reading
 
 - **`backend/README.md`** — API versioning, PM2, detailed environment list, MongoDB and Cloudinary setup.
+Why does this keep happening? Each time nodemon crashes, the Node.js child process sometimes doesn't release the port. To avoid this in future, you can use this one-liner to kill port 5000 and restart in one shot:
+
+powershell
+# Save as a script or just run when needed:
+taskkill /F /IM node.exe ; npm run dev
+netstat -ano | findstr ":5000"
+# Then kill the PID shown in the last column:
+taskkill /PID <PID> /F
+⚠️ Note: taskkill /F /IM node.exe kills all Node processes — only use it if you're not running other Node apps simultaneously.

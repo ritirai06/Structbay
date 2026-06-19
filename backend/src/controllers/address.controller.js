@@ -60,7 +60,6 @@ exports.setDefault = asyncHandler(async (req, res) => {
 exports.remove = asyncHandler(async (req, res) => {
   const address = await Address.findOne({ _id: req.params.id, customer: req.user._id });
   if (!address) throw new AppError('Address not found.', 404);
-  address.isDeleted = true;
-  await address.save({ validateBeforeSave: false });
+  await address.deleteOne();
   return ApiResponse.success(res, 200, 'Address deleted.');
 });

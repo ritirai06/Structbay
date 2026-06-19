@@ -2,6 +2,8 @@
  * Vendor portal UI historically expected `assignedProducts` and `customer`;
  * VendorOrder schema uses `items` and `customerInfo`. Normalize for API responses.
  */
+const { formatVariationLabel } = require('./variationAttributes');
+
 function decorateVendorOrderForPortal(doc) {
   if (!doc) return doc;
   const o = doc.toObject ? doc.toObject({ virtuals: true }) : { ...doc };
@@ -11,6 +13,12 @@ function decorateVendorOrderForPortal(doc) {
       quantity: it.quantity,
       unit: '',
       product: it.product,
+      variation: it.variation,
+      sku: it.sku || '',
+      variationLabel: it.variationLabel
+        || (it.variation && it.variation.attributes
+          ? formatVariationLabel(it.variation.attributes)
+          : ''),
     }));
   }
   if (!o.customer && o.customerInfo) {

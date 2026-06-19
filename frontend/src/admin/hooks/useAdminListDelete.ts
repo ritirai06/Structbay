@@ -7,7 +7,7 @@ export type AdminListDeleteConfig = {
   singleDeleteUrl: (id: string) => string;
   /** e.g. `/orders/bulk-delete` — POST `{ ids: string[] }` */
   bulkDeleteUrl: string;
-  onSuccess: () => void;
+  onSuccess: (deletedIds: string[]) => void;
   itemLabel?: string;
 };
 
@@ -77,7 +77,7 @@ export function useAdminListDelete(config: AdminListDeleteConfig) {
       const removed = new Set(pending.ids);
       setSelectedIds((prev) => prev.filter((id) => !removed.has(id)));
       setPending(null);
-      onSuccess();
+      onSuccess(pending.ids);
     } catch (e) {
       adminToast.error("Delete failed", e instanceof Error ? e.message : undefined);
     } finally {

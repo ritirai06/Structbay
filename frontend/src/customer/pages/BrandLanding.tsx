@@ -3,8 +3,9 @@ import { Link, useParams, useNavigate } from "react-router";
 import { ChevronRight, Shield, ShoppingCart, Zap, MapPin, Package } from "lucide-react";
 import { api } from "../lib/api";
 import { useApp } from "../context/AppContext";
-import { pricingSnapshotFromProduct, resolveUnitPriceFromSnapshot } from "../lib/wholesalePricing";
+import { pricingSnapshotFromProduct, resolveUnitPriceFromSnapshot, listingUnitPrice } from "../lib/wholesalePricing";
 import { productHref } from "../lib/productRoutes";
+import { isVariantProduct, validateCartLine } from "../lib/productStructure";
 
 export function BrandLanding() {
   const { brand: brandSlug } = useParams<{ brand: string }>();
@@ -162,7 +163,10 @@ export function BrandLanding() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {displayed.map((p: any) => {
               const img = Array.isArray(p.images) ? p.images[0]?.url : p.image;
-              const price = p.pricing?.salePrice || p.pricing?.regularPrice || 0;
+              const isVariant = isVariantProduct(p);
+              const price = isVariant
+                ? listingUnitPrice(p, null)
+                : (p.pricing?.salePrice || p.pricing?.regularPrice || listingUnitPrice(p, null));
               const slug = p.slug || p._id;
               const brandName = p.brand?.name || brand.name;
               return (
@@ -189,26 +193,40 @@ export function BrandLanding() {
                       : <p className="text-xs text-sb-ink-muted/40 mt-1">Price on request</p>
                     }
                     {price > 0 && (
-                      <button
-                        onClick={() => {
-                          const snap = pricingSnapshotFromProduct(p, null);
-                          addToCart({
-                            id: `${String(slug)}::base`,
-                            productSlug: String(slug),
-                            name: p.name,
-                            brand: brandName,
-                            price: snap ? resolveUnitPriceFromSnapshot(snap, 1) : Number(price),
-                            qty: 1,
-                            unit: p.unit || "unit",
-                            image: img || "",
-                            pricingSnapshot: snap || undefined,
-                            gstPercentage: Number.isFinite(Number(p.gstPercentage)) ? Number(p.gstPercentage) : 18,
-                          });
-                        }}
-                        className="w-full mt-3 py-2 rounded-xl bg-[#E85A00] hover:bg-[#CC4E00] text-sb-on-orange text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"
-                      >
-                        <ShoppingCart className="w-3.5 h-3.5" /> Add to Cart
-                      </button>
+                      isVariant ? (
+                        <Link
+                          to={productHref(slug)}
+                          className="w-full mt-3 py-2 rounded-xl bg-[#E85A00] hover:bg-[#CC4E00] text-sb-on-orange text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"
+                        >
+                          Select options
+                        </Link>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            const snap = pricingSnapshotFromProduct(p, null);
+                            const check = validateCartLine(p, undefined);
+                            if (!check.ok) {
+                              alert(check.message);
+                              return;
+                            }
+                            addToCart({
+                              id: `${String(slug)}::base`,
+                              productSlug: String(slug),
+                              name: p.name,
+                              brand: brandName,
+                              price: snap ? resolveUnitPriceFromSnapshot(snap, 1) : Number(price),
+                              qty: 1,
+                              unit: p.unit || "unit",
+                              image: img || "",
+                              pricingSnapshot: snap || undefined,
+                              gstPercentage: Number.isFinite(Number(p.gstPercentage)) ? Number(p.gstPercentage) : 18,
+                            });
+                          }}
+                          className="w-full mt-3 py-2 rounded-xl bg-[#E85A00] hover:bg-[#CC4E00] text-sb-on-orange text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"
+                        >
+                          <ShoppingCart className="w-3.5 h-3.5" /> Add to Cart
+                        </button>
+                      )
                     )}
                   </div>
                 </div>

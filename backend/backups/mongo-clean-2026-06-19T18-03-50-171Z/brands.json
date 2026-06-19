@@ -1,0 +1,1321 @@
+[
+  {
+    "_id": "6a2ab328637b3bb4c2b6baca",
+    "name": "Cement",
+    "description": "Construction binding material",
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "status": "ACTIVE",
+    "sortOrder": 1,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T13:07:52.330Z",
+    "updatedAt": "2026-06-11T16:12:55.883Z",
+    "slug": "cement",
+    "__v": 0
+  },
+  {
+    "_id": "6a2adfdb7c77e716575cfca3",
+    "name": "Ultratech Cement",
+    "description": null,
+    "logo": {
+      "url": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781194711/structbay/brands/file_gqsmgb.jpg",
+      "publicId": "structbay/brands/file_gqsmgb"
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2adf5e7c77e716575cfc90",
+    "status": "ACTIVE",
+    "sortOrder": 1,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T16:18:35.574Z",
+    "updatedAt": "2026-06-18T16:07:01.230Z",
+    "slug": "ultratech-cement",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b02fe58828014d1d072e7",
+    "name": "ACC",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2adf5e7c77e716575cfc90",
+    "status": "ACTIVE",
+    "sortOrder": 2,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:30.997Z",
+    "updatedAt": "2026-06-18T16:07:01.843Z",
+    "slug": "acc",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b02ff58828014d1d072ea",
+    "name": "Ambuja Cement",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2adf5e7c77e716575cfc90",
+    "status": "ACTIVE",
+    "sortOrder": 3,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:31.070Z",
+    "updatedAt": "2026-06-18T16:07:02.404Z",
+    "slug": "ambuja-cement",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b02ff58828014d1d072ed",
+    "name": "Shree Cement",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2adf5e7c77e716575cfc90",
+    "status": "ACTIVE",
+    "sortOrder": 4,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:31.271Z",
+    "updatedAt": "2026-06-18T16:07:02.869Z",
+    "slug": "shree-cement",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b02ff58828014d1d072f0",
+    "name": "Dalmia Cement",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2adf5e7c77e716575cfc90",
+    "status": "ACTIVE",
+    "sortOrder": 5,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:31.442Z",
+    "updatedAt": "2026-06-18T16:07:03.484Z",
+    "slug": "dalmia-cement",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b02ff58828014d1d072f3",
+    "name": "JSW Cement",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2adf5e7c77e716575cfc90",
+    "status": "ACTIVE",
+    "sortOrder": 6,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:31.530Z",
+    "updatedAt": "2026-06-18T16:07:03.727Z",
+    "slug": "jsw-cement",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b02ff58828014d1d072f6",
+    "name": "Birla Cement",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2adf5e7c77e716575cfc90",
+    "status": "ACTIVE",
+    "sortOrder": 7,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:31.745Z",
+    "updatedAt": "2026-06-18T16:07:03.942Z",
+    "slug": "birla-cement",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b02ff58828014d1d072f9",
+    "name": "JK Cement",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2adf5e7c77e716575cfc90",
+    "status": "ACTIVE",
+    "sortOrder": 8,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:31.914Z",
+    "updatedAt": "2026-06-18T16:07:04.145Z",
+    "slug": "jk-cement",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b02ff58828014d1d072fc",
+    "name": "Tata Tiscon",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b029958828014d1d07240",
+    "status": "ACTIVE",
+    "sortOrder": 9,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:31.988Z",
+    "updatedAt": "2026-06-18T16:07:04.348Z",
+    "slug": "tata-tiscon",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b030058828014d1d072ff",
+    "name": "JSW Steel",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b029958828014d1d07240",
+    "status": "ACTIVE",
+    "sortOrder": 10,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:32.081Z",
+    "updatedAt": "2026-06-18T16:07:04.551Z",
+    "slug": "jsw-steel",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b030058828014d1d07302",
+    "name": "SAIL",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b029958828014d1d07240",
+    "status": "ACTIVE",
+    "sortOrder": 11,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:32.273Z",
+    "updatedAt": "2026-06-18T16:07:04.744Z",
+    "slug": "sail",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b030058828014d1d07305",
+    "name": "Jindal Steel",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b029958828014d1d07240",
+    "status": "ACTIVE",
+    "sortOrder": 12,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:32.334Z",
+    "updatedAt": "2026-06-18T16:07:04.960Z",
+    "slug": "jindal-steel",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b030058828014d1d07308",
+    "name": "Kamdhenu",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b029958828014d1d07240",
+    "status": "ACTIVE",
+    "sortOrder": 13,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:32.434Z",
+    "updatedAt": "2026-06-18T16:07:05.169Z",
+    "slug": "kamdhenu",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b030058828014d1d0730b",
+    "name": "Vizag Steel",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b029958828014d1d07240",
+    "status": "ACTIVE",
+    "sortOrder": 14,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:32.598Z",
+    "updatedAt": "2026-06-18T16:07:05.378Z",
+    "slug": "vizag-steel",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b030058828014d1d0730e",
+    "name": "RINL",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b029958828014d1d07240",
+    "status": "ACTIVE",
+    "sortOrder": 15,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:32.797Z",
+    "updatedAt": "2026-06-18T16:07:05.585Z",
+    "slug": "rinl",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b030058828014d1d07311",
+    "name": "APL Apollo",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b029958828014d1d07240",
+    "status": "ACTIVE",
+    "sortOrder": 16,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:32.900Z",
+    "updatedAt": "2026-06-18T16:07:05.853Z",
+    "slug": "apl-apollo",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b030258828014d1d07329",
+    "name": "Astral",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b029a58828014d1d07258",
+    "status": "ACTIVE",
+    "sortOrder": 38,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:34.734Z",
+    "updatedAt": "2026-06-18T16:07:18.222Z",
+    "slug": "astral",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b030258828014d1d0732c",
+    "name": "Finolex Pipes",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b029a58828014d1d07258",
+    "status": "ACTIVE",
+    "sortOrder": 39,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:34.885Z",
+    "updatedAt": "2026-06-18T16:07:18.412Z",
+    "slug": "finolex-pipes",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b030358828014d1d0732f",
+    "name": "Supreme",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b029a58828014d1d07258",
+    "status": "ACTIVE",
+    "sortOrder": 40,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:35.035Z",
+    "updatedAt": "2026-06-18T16:07:18.606Z",
+    "slug": "supreme",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b030358828014d1d07332",
+    "name": "Prince Pipes",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b029a58828014d1d07258",
+    "status": "ACTIVE",
+    "sortOrder": 41,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:35.258Z",
+    "updatedAt": "2026-06-18T16:07:18.804Z",
+    "slug": "prince-pipes",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b030358828014d1d07335",
+    "name": "Ashirvad",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b029a58828014d1d07258",
+    "status": "ACTIVE",
+    "sortOrder": 42,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:35.455Z",
+    "updatedAt": "2026-06-18T16:07:18.993Z",
+    "slug": "ashirvad",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b030358828014d1d07338",
+    "name": "Havells",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b029a58828014d1d07254",
+    "status": "ACTIVE",
+    "sortOrder": 43,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:35.562Z",
+    "updatedAt": "2026-06-18T16:07:19.192Z",
+    "slug": "havells",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b030358828014d1d0733b",
+    "name": "Polycab",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b029a58828014d1d07254",
+    "status": "ACTIVE",
+    "sortOrder": 44,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:35.770Z",
+    "updatedAt": "2026-06-18T16:07:19.396Z",
+    "slug": "polycab",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b030358828014d1d0733e",
+    "name": "Finolex Cables",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b029a58828014d1d07254",
+    "status": "ACTIVE",
+    "sortOrder": 45,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:35.974Z",
+    "updatedAt": "2026-06-18T16:07:19.589Z",
+    "slug": "finolex-cables",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b030458828014d1d07341",
+    "name": "Anchor",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b029a58828014d1d07254",
+    "status": "ACTIVE",
+    "sortOrder": 46,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:36.186Z",
+    "updatedAt": "2026-06-18T16:07:19.784Z",
+    "slug": "anchor",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b030458828014d1d07344",
+    "name": "Legrand",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b029a58828014d1d07254",
+    "status": "ACTIVE",
+    "sortOrder": 47,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:36.300Z",
+    "updatedAt": "2026-06-18T16:07:19.978Z",
+    "slug": "legrand",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b030458828014d1d07347",
+    "name": "Crompton",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b029a58828014d1d07256",
+    "status": "ACTIVE",
+    "sortOrder": 48,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:36.413Z",
+    "updatedAt": "2026-06-18T16:07:20.178Z",
+    "slug": "crompton",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b030458828014d1d0734a",
+    "name": "Philips",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b029a58828014d1d07256",
+    "status": "ACTIVE",
+    "sortOrder": 49,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:36.588Z",
+    "updatedAt": "2026-06-18T16:07:26.926Z",
+    "slug": "philips",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b030458828014d1d0734d",
+    "name": "Wipro Lighting",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b029a58828014d1d07256",
+    "status": "ACTIVE",
+    "sortOrder": 50,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:36.793Z",
+    "updatedAt": "2026-06-18T16:07:27.160Z",
+    "slug": "wipro-lighting",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b030458828014d1d07350",
+    "name": "Bajaj Electricals",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b029a58828014d1d07256",
+    "status": "ACTIVE",
+    "sortOrder": 51,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:36.896Z",
+    "updatedAt": "2026-06-18T16:07:27.849Z",
+    "slug": "bajaj-electricals",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b030558828014d1d07353",
+    "name": "Syska",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b029a58828014d1d07256",
+    "status": "ACTIVE",
+    "sortOrder": 52,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:48:37.098Z",
+    "updatedAt": "2026-06-18T16:07:28.152Z",
+    "slug": "syska",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03f3bf34fdffffcf6810",
+    "name": "Greenply",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b03f2bf34fdffffcf680d",
+    "status": "ACTIVE",
+    "sortOrder": 17,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:35.189Z",
+    "updatedAt": "2026-06-18T16:07:06.054Z",
+    "slug": "greenply",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03f3bf34fdffffcf6814",
+    "name": "CenturyPly",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b03f2bf34fdffffcf680d",
+    "status": "ACTIVE",
+    "sortOrder": 18,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:35.422Z",
+    "updatedAt": "2026-06-18T16:07:06.265Z",
+    "slug": "centuryply",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03f3bf34fdffffcf6818",
+    "name": "Kitply",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b03f2bf34fdffffcf680d",
+    "status": "ACTIVE",
+    "sortOrder": 19,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:35.700Z",
+    "updatedAt": "2026-06-18T16:07:06.470Z",
+    "slug": "kitply",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03f3bf34fdffffcf681c",
+    "name": "Austin Plywood",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b03f2bf34fdffffcf680d",
+    "status": "ACTIVE",
+    "sortOrder": 20,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:35.976Z",
+    "updatedAt": "2026-06-18T16:07:06.670Z",
+    "slug": "austin-plywood",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03f4bf34fdffffcf6820",
+    "name": "National Plywood",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b03f2bf34fdffffcf680d",
+    "status": "ACTIVE",
+    "sortOrder": 21,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:36.145Z",
+    "updatedAt": "2026-06-18T16:07:06.863Z",
+    "slug": "national-plywood",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03f4bf34fdffffcf6826",
+    "name": "Greenlam",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b03f4bf34fdffffcf6823",
+    "status": "ACTIVE",
+    "sortOrder": 22,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:36.437Z",
+    "updatedAt": "2026-06-18T16:07:07.072Z",
+    "slug": "greenlam",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03f4bf34fdffffcf682a",
+    "name": "Merino",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b03f4bf34fdffffcf6823",
+    "status": "ACTIVE",
+    "sortOrder": 23,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:36.725Z",
+    "updatedAt": "2026-06-18T16:07:07.271Z",
+    "slug": "merino",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03f5bf34fdffffcf682e",
+    "name": "Century Laminates",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b03f4bf34fdffffcf6823",
+    "status": "ACTIVE",
+    "sortOrder": 24,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:37.031Z",
+    "updatedAt": "2026-06-18T16:07:07.495Z",
+    "slug": "century-laminates",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03f5bf34fdffffcf6832",
+    "name": "Royal Touche",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b03f4bf34fdffffcf6823",
+    "status": "ACTIVE",
+    "sortOrder": 25,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:37.203Z",
+    "updatedAt": "2026-06-18T16:07:12.066Z",
+    "slug": "royal-touche",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03f5bf34fdffffcf6836",
+    "name": "Sunmica",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b03f4bf34fdffffcf6823",
+    "status": "ACTIVE",
+    "sortOrder": 26,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:37.443Z",
+    "updatedAt": "2026-06-18T16:07:12.596Z",
+    "slug": "sunmica",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03f5bf34fdffffcf683c",
+    "name": "Kajaria",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b03f5bf34fdffffcf6839",
+    "status": "ACTIVE",
+    "sortOrder": 27,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:37.859Z",
+    "updatedAt": "2026-06-18T16:07:13.211Z",
+    "slug": "kajaria",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03f6bf34fdffffcf6840",
+    "name": "Somany",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b03f5bf34fdffffcf6839",
+    "status": "ACTIVE",
+    "sortOrder": 28,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:38.082Z",
+    "updatedAt": "2026-06-18T16:07:13.723Z",
+    "slug": "somany",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03f6bf34fdffffcf6844",
+    "name": "Orientbell",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b03f5bf34fdffffcf6839",
+    "status": "ACTIVE",
+    "sortOrder": 29,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:38.362Z",
+    "updatedAt": "2026-06-18T16:07:14.235Z",
+    "slug": "orientbell",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03f6bf34fdffffcf6848",
+    "name": "Nitco",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b03f5bf34fdffffcf6839",
+    "status": "ACTIVE",
+    "sortOrder": 30,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:38.470Z",
+    "updatedAt": "2026-06-18T16:07:14.747Z",
+    "slug": "nitco",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03f6bf34fdffffcf684c",
+    "name": "Simpolo",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b03f5bf34fdffffcf6839",
+    "status": "ACTIVE",
+    "sortOrder": 31,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:38.708Z",
+    "updatedAt": "2026-06-18T16:07:15.338Z",
+    "slug": "simpolo",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03f6bf34fdffffcf6850",
+    "name": "Johnson Tiles",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b03f5bf34fdffffcf6839",
+    "status": "ACTIVE",
+    "sortOrder": 32,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:38.874Z",
+    "updatedAt": "2026-06-18T16:07:15.771Z",
+    "slug": "johnson-tiles",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03f7bf34fdffffcf6856",
+    "name": "Asian Paints",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b03f7bf34fdffffcf6853",
+    "status": "ACTIVE",
+    "sortOrder": 33,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:39.283Z",
+    "updatedAt": "2026-06-18T16:07:16.283Z",
+    "slug": "asian-paints",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03f7bf34fdffffcf685a",
+    "name": "Berger Paints",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b03f7bf34fdffffcf6853",
+    "status": "ACTIVE",
+    "sortOrder": 34,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:39.556Z",
+    "updatedAt": "2026-06-18T16:07:16.789Z",
+    "slug": "berger-paints",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03f7bf34fdffffcf685e",
+    "name": "Nerolac",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b03f7bf34fdffffcf6853",
+    "status": "ACTIVE",
+    "sortOrder": 35,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:39.795Z",
+    "updatedAt": "2026-06-18T16:07:17.197Z",
+    "slug": "nerolac",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03f8bf34fdffffcf6862",
+    "name": "Indigo Paints",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b03f7bf34fdffffcf6853",
+    "status": "ACTIVE",
+    "sortOrder": 36,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:40.103Z",
+    "updatedAt": "2026-06-18T16:07:17.812Z",
+    "slug": "indigo-paints",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03f8bf34fdffffcf6866",
+    "name": "Dulux",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b03f7bf34fdffffcf6853",
+    "status": "ACTIVE",
+    "sortOrder": 37,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:40.409Z",
+    "updatedAt": "2026-06-18T16:07:18.026Z",
+    "slug": "dulux",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03fbbf34fdffffcf6899",
+    "name": "Jaquar",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b03fbbf34fdffffcf6896",
+    "status": "ACTIVE",
+    "sortOrder": 53,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:43.612Z",
+    "updatedAt": "2026-06-18T16:07:28.769Z",
+    "slug": "jaquar",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03fbbf34fdffffcf689d",
+    "name": "Cera",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b03fbbf34fdffffcf6896",
+    "status": "ACTIVE",
+    "sortOrder": 54,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:43.893Z",
+    "updatedAt": "2026-06-18T16:07:29.179Z",
+    "slug": "cera",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03fcbf34fdffffcf68a1",
+    "name": "Parryware",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b03fbbf34fdffffcf6896",
+    "status": "ACTIVE",
+    "sortOrder": 55,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:44.098Z",
+    "updatedAt": "2026-06-18T16:07:29.793Z",
+    "slug": "parryware",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03fcbf34fdffffcf68a5",
+    "name": "Hindware",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b03fbbf34fdffffcf6896",
+    "status": "ACTIVE",
+    "sortOrder": 56,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:44.282Z",
+    "updatedAt": "2026-06-18T16:07:30.220Z",
+    "slug": "hindware",
+    "__v": 0
+  },
+  {
+    "_id": "6a2b03fcbf34fdffffcf68a9",
+    "name": "Kohler",
+    "description": null,
+    "logo": {
+      "url": null,
+      "publicId": null
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a2b03fbbf34fdffffcf6896",
+    "status": "ACTIVE",
+    "sortOrder": 57,
+    "isDeleted": true,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-11T18:52:44.406Z",
+    "updatedAt": "2026-06-18T16:07:30.415Z",
+    "slug": "kohler",
+    "__v": 0
+  },
+  {
+    "_id": "6a34517a3bc9e522932cd967",
+    "name": "Asian pass",
+    "description": "Asian paints",
+    "logo": {
+      "url": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781813597/structbay/brands/file_fnoipc.png",
+      "publicId": "structbay/brands/file_fnoipc"
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a34512b3bc9e522932cd948",
+    "status": "ACTIVE",
+    "sortOrder": 1,
+    "isDeleted": false,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-18T20:13:46.337Z",
+    "updatedAt": "2026-06-18T20:13:46.337Z",
+    "slug": "asian-pass",
+    "__v": 0
+  },
+  {
+    "_id": "6a34d8227f2c6c481fc9713f",
+    "name": "UltraTech",
+    "description": "",
+    "logo": {
+      "url": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781848091/structbay/brands/file_avmh6x.jpg",
+      "publicId": "structbay/brands/file_avmh6x"
+    },
+    "banner": {
+      "url": null,
+      "publicId": null
+    },
+    "category": "6a34d7f97f2c6c481fc97124",
+    "status": "ACTIVE",
+    "sortOrder": 2,
+    "isDeleted": false,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-19T05:48:18.964Z",
+    "updatedAt": "2026-06-19T05:48:18.964Z",
+    "slug": "ultratech",
+    "__v": 0
+  }
+]

@@ -8,6 +8,7 @@ const CityPricing  = require('../models/CityPricing');
 const Inventory    = require('../models/Inventory');
 const User         = require('../models/User');
 const { ROLES, VENDOR_STATUS } = require('../config/constants');
+const { productRequiresVariation } = require('../utils/productStructure');
 
 const populateCart = (query) =>
   query
@@ -62,6 +63,14 @@ exports.addItem = asyncHandler(async (req, res) => {
 
   const product = await Product.findById(productId);
   if (!product || product.status !== 'ACTIVE') throw new AppError('Product not available.', 404);
+
+  const needsVariant = await productRequiresVariation(productId);
+  if (needsVariant && !variationId) {
+    throw new AppError('This product requires a variant selection.', 400);
+  }
+  if (!needsVariant && variationId) {
+    throw new AppError('This simple product does not use variants.', 400);
+  }
 
   if (variationId) {
     const v = await ProductVariation.findOne({ _id: variationId, product: productId });

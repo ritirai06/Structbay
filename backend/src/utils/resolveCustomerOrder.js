@@ -1,13 +1,13 @@
-const mongoose = require('mongoose');
 const Order = require('../models/Order');
+const { isValidId } = require('../lib/apiShape');
 
 function customerOrderFilter(customerId, idOrNumber) {
   const raw = String(idOrNumber || '').trim();
   if (!raw) return null;
 
   const isObjectId =
-    mongoose.Types.ObjectId.isValid(raw) &&
-    String(new mongoose.Types.ObjectId(raw)) === raw;
+    isValidId(raw) &&
+    String(String(raw)) === raw;
 
   return isObjectId
     ? { _id: raw, customer: customerId }

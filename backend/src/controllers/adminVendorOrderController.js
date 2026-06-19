@@ -7,6 +7,7 @@ const User = require('../models/User');
 const VendorOrderStatusAudit = require('../models/VendorOrderStatusAudit');
 const VendorInvoice = require('../models/VendorInvoice');
 const VendorDispatch = require('../models/VendorDispatch');
+const DeliveryTypeOverrideLog = require('../models/DeliveryTypeOverrideLog');
 const { rowFromVendorOrder } = require('../utils/vendorDispatchEnrich');
 const { notifyVendor } = require('../services/vendorNotification.service');
 const { PAGINATION } = require('../config/constants');
@@ -103,6 +104,32 @@ const assignOrderToVendor = asyncHandler(async (req, res) => {
   });
 
   await Order.findByIdAndUpdate(masterOrderId, { $addToSet: { vendorOrders: vendorOrder._id } });
+
+  const masterDoc = await Order.findById(masterOrderId);
+  if (masterDoc) {
+    const voDt = deliveryType || 'vendor_delivery';
+    for (const ap of assignedProducts) {
+      const mid = ap.masterItemId;
+      if (!mid) continue;
+      const line = masterDoc.items.id(mid);
+      if (!line) continue;
+      line.assignedVendorUser = vendorId;
+      line.deliveryType = voDt;
+      if (!line.defaultDeliveryType) line.defaultDeliveryType = voDt;
+      line.vendorOrderId = vendorOrder._id;
+    }
+    if (!masterDoc.assignedVendor) masterDoc.assignedVendor = vendorId;
+    const allAssigned = masterDoc.items.every((ln) => ln.assignedVendorUser);
+    if (masterDoc.status === 'VENDOR_ASSIGNMENT_PENDING' && allAssigned) {
+      masterDoc.status = 'PROCESSING';
+      masterDoc.statusHistory.push({
+        status: 'PROCESSING',
+        changedBy: req.user._id,
+        note: 'All order lines assigned to vendors.',
+      });
+    }
+    await masterDoc.save();
+  }
 
   // Fire notification — non-blocking
   notifyVendor({
@@ -208,6 +235,28 @@ const updateVendorOrder = asyncHandler(async (req, res) => {
     if (locked.has(order.status)) {
       throw new AppError('Delivery type cannot be changed after dispatch has been approved.', 400);
     }
+    const oldDt = order.deliveryType || 'vendor_delivery';
+    if (oldDt !== dt) {
+      const master = await Order.findById(order.masterOrder);
+      if (master) {
+        for (const line of master.items) {
+          if (String(line.vendorOrderId) !== String(order._id)) continue;
+          await DeliveryTypeOverrideLog.create({
+            masterOrder: master._id,
+            masterItemId: line._id,
+            vendorOrder: order._id,
+            product: line.product,
+            productName: line.name,
+            oldType: line.deliveryType || line.defaultDeliveryType || oldDt,
+            newType: dt,
+            reason: (req.body.deliveryTypeReason || '').trim(),
+            changedBy: req.user._id,
+          });
+          line.deliveryType = dt;
+        }
+        await master.save();
+      }
+    }
     order.deliveryType = dt;
   }
 
@@ -290,7 +339,7 @@ const requestDispatch = asyncHandler(async (req, res) => {
 const cancelVendorOrder = asyncHandler(async (req, res) => {
   const order = await VendorOrder.findById(req.params.id);
   if (!order) throw new AppError('Vendor order not found.', 404);
-  await VendorOrder.updateOne({ _id: order._id }, { $set: { isDeleted: true } });
+  await VendorOrder.deleteOne({ _id: order._id });
   return ApiResponse.success(res, 200, 'Vendor order removed.', { id: order._id });
 });
 
@@ -310,7 +359,7 @@ const bulkDeleteVendorOrders = asyncHandler(async (req, res) => {
     try {
       const order = await VendorOrder.findById(id);
       if (!order) throw new AppError('Vendor order not found.', 404);
-      await VendorOrder.updateOne({ _id: order._id }, { $set: { isDeleted: true } });
+      await VendorOrder.deleteOne({ _id: order._id });
       ok += 1;
     } catch (e) {
       errors.push({

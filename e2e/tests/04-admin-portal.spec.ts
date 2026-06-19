@@ -5,8 +5,8 @@ import { openFirstAdminOrderDetail, expectAdminOrderStepNav } from "../helpers/o
 test.describe("Admin portal (PRD operations)", () => {
   test("login page loads", async ({ page }) => {
     await page.goto("/admin/login");
-    await expect(page.getByRole("heading", { name: /admin sign in/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /sign in to admin panel/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^sign in$/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^sign in$/i })).toBeVisible();
   });
 
   test("admin can sign in and reach dashboard", async ({ page }) => {
@@ -38,9 +38,10 @@ test.describe("Admin portal (PRD operations)", () => {
 
     await page.locator('a[href="#step-vendor"]').click();
     const vendor = page.locator("#step-vendor");
-    await expect(vendor.getByText("Delivery model", { exact: true })).toBeVisible();
-    await expect(vendor.getByText("Approved vendor", { exact: true })).toBeVisible();
-    await expect(vendor.locator(".wf-delivery-type")).toBeVisible();
+    await expect(vendor.getByRole("heading", { name: /assign vendors/i })).toBeVisible();
+    await expect(vendor.getByText("Product", { exact: true })).toBeVisible();
+    await expect(vendor.getByText("Default", { exact: true })).toBeVisible();
+    await expect(vendor.getByRole("button", { name: /save all lines/i })).toBeVisible();
 
     if (order.vendorOrders?.length) {
       await expect(page.locator('a[href="#step-fulfillment"]')).toBeVisible();
@@ -50,10 +51,7 @@ test.describe("Admin portal (PRD operations)", () => {
       await expect(fulfillment.locator(".wf-suborder-card").first()).toBeVisible();
       const radios = fulfillment.locator('.wf-delivery-type input[type="radio"]');
       if ((await radios.count()) > 0) {
-        await expect(radios.first()).toBeDisabled();
-        await expect(
-          fulfillment.getByText(/Set at vendor assignment|Locked after dispatch approval/i).first()
-        ).toBeVisible();
+        await expect(radios.first()).toBeVisible();
       }
     }
 

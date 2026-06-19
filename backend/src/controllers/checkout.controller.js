@@ -12,6 +12,9 @@ const { notifyAllAdmins } = require('../services/staffNotification.service');
 const { resolveUnitPriceFromCityPricing } = require('../services/checkoutPricing.service');
 const { generateMasterOrderNumber, logOrderActivity } = require('../services/order.service');
 const { deliveryCityMatchesSelected } = require('../utils/cityNameMatch');
+const { resolveProductDeliveryType } = require('../utils/productDeliveryType');
+const { productRequiresVariation } = require('../utils/productStructure');
+const { formatVariationLabel } = require('../utils/variationAttributes');
 
 const genOrderNumber = generateMasterOrderNumber;
 
@@ -29,7 +32,7 @@ exports.validate = asyncHandler(async (req, res) => {
   const gstRateOverride = [0, 12, 18].includes(Number(gstRateRaw)) ? Number(gstRateRaw) : null;
 
   const cart = await Cart.findOne({ customer: req.user._id })
-    .populate('items.product', 'name sku status gstPercentage')
+    .populate('items.product', 'name sku status gstPercentage productStructure')
     .populate('items.variation', 'attributes sku')
     .populate('items.vendorUser', 'name companyName');
 
@@ -57,6 +60,15 @@ exports.validate = asyncHandler(async (req, res) => {
   for (const item of activeItems) {
     if (!item.product || item.product.status !== 'ACTIVE') {
       errors.push(`${item.product?.name || 'A product'} is no longer available.`);
+      continue;
+    }
+
+    if (await productRequiresVariation(item.product._id) && !item.variation) {
+      errors.push(`Please select a variant for ${item.product.name}.`);
+      continue;
+    }
+    if (!(await productRequiresVariation(item.product._id)) && item.variation) {
+      errors.push(`${item.product.name} is a simple product — remove variant selection and add again.`);
       continue;
     }
 
@@ -92,6 +104,7 @@ exports.validate = asyncHandler(async (req, res) => {
       variation: item.variation?._id || null,
       name: item.product.name,
       sku: item.variation?.sku || item.product.sku,
+      variationLabel: item.variation ? formatVariationLabel(item.variation.attributes) : null,
       quantity: item.quantity,
       unitPrice,
       gstPercentage: gstPct,
@@ -130,7 +143,7 @@ exports.placeOrder = asyncHandler(async (req, res) => {
   }
 
   const cart = await Cart.findOne({ customer: req.user._id })
-    .populate('items.product', 'name sku status gstPercentage')
+    .populate('items.product', 'name sku status gstPercentage deliveryType isStructbayDelivery isExpress structbayDeliverySupported productStructure')
     .populate('items.variation', 'attributes sku')
     .populate('items.vendorUser', 'name companyName');
 
@@ -142,6 +155,13 @@ exports.placeOrder = asyncHandler(async (req, res) => {
   let subtotal = 0, gstTotal = 0;
 
   for (const item of activeItems) {
+    if (await productRequiresVariation(item.product._id) && !item.variation) {
+      throw new AppError(`Please select a variant for ${item.product.name}.`, 422);
+    }
+    if (!(await productRequiresVariation(item.product._id)) && item.variation) {
+      throw new AppError(`${item.product.name} is a simple product and does not use variants.`, 422);
+    }
+
     const pq = { product: item.product._id, city: cityId, isDeleted: false };
     if (item.variation) pq.variation = item.variation._id;
     const pricing = await CityPricing.findOne(pq).lean();
@@ -154,16 +174,21 @@ exports.placeOrder = asyncHandler(async (req, res) => {
     subtotal += lineTotal;
     gstTotal += gstAmt;
 
+    const productDeliveryType = resolveProductDeliveryType(item.product);
+
     orderItems.push({
       product: item.product._id,
       variation: item.variation?._id || null,
       name: item.product.name,
       sku: item.variation?.sku || item.product.sku,
+      variationLabel: item.variation ? formatVariationLabel(item.variation.attributes) : null,
       quantity: item.quantity,
       unitPrice,
       gstPercentage: gstPct,
       lineTotal,
       vendorUser: item.vendorUser?._id || null,
+      defaultDeliveryType: productDeliveryType,
+      deliveryType: productDeliveryType,
     });
 
     // Reserve inventory

@@ -165,9 +165,12 @@ export const api = {
     return req<any>('GET', `/products${q}`);
   },
 
-  getProductDetails: (slug: string, cityId?: string) => {
-    const q = cityId ? `?cityId=${cityId}` : '';
-    return req<any>('GET', `/products/${slug}${q}`);
+  getProductDetails: (slug: string, cityId?: string, cityName?: string) => {
+    const p = new URLSearchParams();
+    if (cityId) p.set("cityId", cityId);
+    if (cityName) p.set("cityName", cityName);
+    const q = p.toString();
+    return req<any>("GET", `/products/${slug}${q ? `?${q}` : ""}`);
   },
 
   getCategoryDetails: (slug: string, cityIdOrParams?: string | Record<string, string | number | boolean | undefined | null>) => {
@@ -254,6 +257,9 @@ export const api = {
     paymentMethod?: string;
     addressId?: string;
   }) => req<any>('POST', '/checkout/place-order', data),
+
+  // ─── Dashboard ───────────────────────────────────────────────────────────
+  getDashboard: () => req<any>('GET', '/dashboard'),
 
   // ─── Orders & invoices ───────────────────────────────────────────────────
   getOrders: (params?: Record<string, string>) => {

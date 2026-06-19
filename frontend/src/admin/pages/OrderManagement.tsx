@@ -20,6 +20,18 @@ const ALL_STATUSES = [
   "CANCELLED", "RETURNED",
 ];
 
+/** Orders in active logistics cannot be soft-deleted (matches backend). */
+const NON_DELETABLE_ORDER_STATUSES = new Set([
+  "READY_FOR_DISPATCH",
+  "PARTIALLY_DISPATCHED",
+  "DISPATCHED",
+  "PARTIALLY_DELIVERED",
+]);
+
+function orderCanSoftDelete(status: string) {
+  return !NON_DELETABLE_ORDER_STATUSES.has(status);
+}
+
 export function OrderManagement() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -40,6 +52,43 @@ export function OrderManagement() {
     if (q) setSearch(decodeURIComponent(q));
   }, [searchParams]);
 
+  const loadStats = useCallback(() => {
+    return apiFetch("/orders/stats")
+      .then((d) => {
+        if (d.data && typeof d.data === "object") setStats(d.data as typeof stats);
+      })
+      .catch(() => {
+        /* keep prior stats */
+      });
+  }, []);
+
+  const applyDeletedOrdersToStats = useCallback((deletedOrders: { status?: string }[]) => {
+    if (!deletedOrders.length) return;
+    setStats((prev) => {
+      const next = { ...prev };
+      for (const order of deletedOrders) {
+        next.total = Math.max(0, (next.total ?? 0) - 1);
+        const status = String(order.status || "");
+        if (["PENDING", "PAID", "VENDOR_ASSIGNMENT_PENDING"].includes(status)) {
+          next.pending = Math.max(0, (next.pending ?? 0) - 1);
+        }
+        if (["PROCESSING", "READY_FOR_DISPATCH", "PARTIALLY_DISPATCHED"].includes(status)) {
+          next.processing = Math.max(0, (next.processing ?? 0) - 1);
+        }
+        if (["DISPATCHED", "PARTIALLY_DELIVERED"].includes(status)) {
+          next.dispatched = Math.max(0, (next.dispatched ?? 0) - 1);
+        }
+        if (["DELIVERED", "COMPLETED"].includes(status)) {
+          next.delivered = Math.max(0, (next.delivered ?? 0) - 1);
+        }
+        if (status === "CANCELLED") {
+          next.cancelled = Math.max(0, (next.cancelled ?? 0) - 1);
+        }
+      }
+      return next;
+    });
+  }, []);
+
   const load = useCallback((page = 1) => {
     setLoading(true);
     setLoadError(null);
@@ -58,16 +107,8 @@ export function OrderManagement() {
         setLoadError(e instanceof Error ? e.message : "Failed to load orders.");
       });
 
-    const statsP = apiFetch("/orders/stats")
-      .then((d) => {
-        if (d.data && typeof d.data === "object") setStats(d.data as typeof stats);
-      })
-      .catch(() => {
-        /* keep prior stats; list error is more important */
-      });
-
-    void Promise.all([listP, statsP]).finally(() => setLoading(false));
-  }, [search, statusFilter]);
+    void Promise.all([listP, loadStats()]).finally(() => setLoading(false));
+  }, [search, statusFilter, loadStats]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -75,7 +116,12 @@ export function OrderManagement() {
   const deleteHook = useAdminListDelete({
     singleDeleteUrl: (id) => `/orders/${id}`,
     bulkDeleteUrl: "/orders/bulk-delete",
-    onSuccess: () => load(pagination.page || 1),
+    onSuccess: (deletedIds) => {
+      const removed = orders.filter((o) => deletedIds.includes(String(o._id)));
+      applyDeletedOrdersToStats(removed);
+      void loadStats();
+      load(pagination.page || 1);
+    },
     itemLabel: "orders",
   });
 
@@ -235,7 +281,12 @@ export function OrderManagement() {
                           onClick={() =>
                             deleteHook.requestDelete([rowId], `order ${order.orderNumber}`)
                           }
-                          disabled={deleteHook.busy}
+                          disabled={deleteHook.busy || !orderCanSoftDelete(order.status)}
+                          title={
+                            orderCanSoftDelete(order.status)
+                              ? "Delete"
+                              : "Cannot delete while order is in dispatch or delivery"
+                          }
                         />
                       </div>
                     </td>

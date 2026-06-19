@@ -3,6 +3,11 @@ import {
   humanizeAttrKey,
   formatVariationLabel,
 } from "./productAttributes";
+import {
+  canonicalAttributeValue,
+  attributeValuesEquivalent,
+  dedupeAttributeValues,
+} from "./attributeValueNormalize";
 import type { PricingSnapshot } from "./wholesalePricing";
 
 export type AttributeAxis = { key: string; label: string };
@@ -36,19 +41,23 @@ export function uniqueValuesForAxis(
   partial: Record<string, string>
 ): string[] {
   const k = axisKey.toLowerCase();
+  /** When filling one axis dropdown, ignore that axis in partial — show all sizes/colors. */
+  const partialOther = Object.fromEntries(
+    Object.entries(partial).filter(([pk]) => pk.toLowerCase() !== k)
+  );
   const vals = new Set<string>();
   for (const v of variations) {
     const rows = flattenVariationAttributes(v?.attributes);
-    const matchesPartial = Object.entries(partial).every(([pk, pv]) => {
+    const matchesPartial = Object.entries(partialOther).every(([pk, pv]) => {
       if (!pv) return true;
       const row = rows.find((r) => r.key.toLowerCase() === pk.toLowerCase());
-      return row?.value === pv;
+      return row?.value && attributeValuesEquivalent(row.value, pv, pk);
     });
     if (!matchesPartial) continue;
     const row = rows.find((r) => r.key.toLowerCase() === k);
-    if (row?.value) vals.add(row.value);
+    if (row?.value) vals.add(canonicalAttributeValue(row.value, k));
   }
-  return [...vals].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  return dedupeAttributeValues([...vals], k);
 }
 
 export function axesForVariations(
@@ -114,7 +123,7 @@ export function initSelectionsForVariation(
   const out: Record<string, string> = {};
   for (const axis of axes) {
     const row = rows.find((r) => r.key.toLowerCase() === axis.key.toLowerCase());
-    if (row?.value) out[axis.key] = row.value;
+    if (row?.value) out[axis.key] = canonicalAttributeValue(row.value, axis.key);
   }
   return out;
 }
@@ -128,7 +137,7 @@ export function resolveVariationFromSelections(variations: any[], selections: Re
     const rows = flattenVariationAttributes(v?.attributes);
     return active.every(([key, val]) => {
       const row = rows.find((r) => r.key.toLowerCase() === key.toLowerCase());
-      return row?.value === val;
+      return row?.value && attributeValuesEquivalent(row.value, val, key);
     });
   });
   if (exact) return exact;
@@ -140,7 +149,7 @@ export function resolveVariationFromSelections(variations: any[], selections: Re
     let score = 0;
     for (const [key, val] of active) {
       const row = rows.find((r) => r.key.toLowerCase() === key.toLowerCase());
-      if (row?.value === val) score += 1;
+      if (row?.value && attributeValuesEquivalent(row.value, val, key)) score += 1;
     }
     if (score > bestScore) {
       bestScore = score;
@@ -150,9 +159,37 @@ export function resolveVariationFromSelections(variations: any[], selections: Re
   return best;
 }
 
-export function variationOptionLabel(v: any, price: number): string {
+/** Pick variant id that best matches active category sidebar filters (e.g. Size: 20 KG). */
+export function findVariationForFilterSelections(
+  variations: any[],
+  filterSelections: Record<string, string[]>
+): string | null {
+  const active = Object.entries(filterSelections).filter(([, vals]) => vals?.length);
+  if (!active.length || !variations?.length) return null;
+
+  let best: any = null;
+  let bestScore = -1;
+  for (const v of variations) {
+    const rows = flattenVariationAttributes(v?.attributes);
+    let score = 0;
+    for (const [key, vals] of active) {
+      const row = rows.find((r) => r.key.toLowerCase() === key.toLowerCase());
+      if (!row?.value) continue;
+      if (vals.some((val) => attributeValuesEquivalent(row.value, val, key))) score += 1;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      best = v;
+    }
+  }
+  return bestScore > 0 && best?._id ? String(best._id) : null;
+}
+
+export function variationOptionLabel(v: any, price: number, city?: string): string {
   const label = formatVariationLabel(v);
-  return `${label} — ₹${price.toLocaleString("en-IN")}`;
+  const pricePart = price > 0 ? `₹${price.toLocaleString("en-IN")}` : "—";
+  const cityPart = city?.trim() ? ` · ${city.trim()}` : "";
+  return `${label} — ${pricePart}${cityPart}`;
 }
 
 export function lowestBulkSlabPrice(snap: PricingSnapshot | null | undefined): number | null {

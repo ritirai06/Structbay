@@ -66,6 +66,9 @@ export function Cart() {
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-muted-foreground">{item.brand}</p>
                   <h4 className="text-sm font-medium text-foreground line-clamp-2 leading-snug">{item.name}</h4>
+                  {item.variationLabel && (
+                    <p className="text-xs text-muted-foreground mt-0.5">{item.variationLabel}</p>
+                  )}
                   <p className="text-xs text-muted-foreground mt-0.5">per {item.unit}</p>
                   <div className="flex items-center gap-3 mt-3 flex-wrap">
                     <div className="flex items-center border border-border rounded-xl overflow-hidden">

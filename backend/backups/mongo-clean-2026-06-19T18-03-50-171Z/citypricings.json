@@ -1,0 +1,1080 @@
+[
+  {
+    "_id": "6a2af8c1c932764d0e62582e",
+    "product": "6a2ae313da1c10671c632f29",
+    "city": "6a2ab2b2637b3bb4c2b6baa7",
+    "isDeleted": true,
+    "__v": 0,
+    "createdAt": "2026-06-11T18:04:49.885Z",
+    "isVisible": true,
+    "regularPrice": 400,
+    "salePrice": 450,
+    "updatedAt": "2026-06-18T16:08:15.261Z",
+    "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+    "variation": null,
+    "wholesaleSlabs": [
+      {
+        "minQty": 15,
+        "maxQty": 30,
+        "price": 420
+      }
+    ]
+  },
+  {
+    "_id": "6a2b072fc932764d0e6258a8",
+    "isDeleted": true,
+    "product": "6a2b043cbf34fdffffcf68bf",
+    "city": "6a2ab2b2637b3bb4c2b6baa7",
+    "variation": null,
+    "__v": 0,
+    "createdAt": "2026-06-11T19:06:23.955Z",
+    "isVisible": true,
+    "regularPrice": 420,
+    "salePrice": 405,
+    "updatedAt": "2026-06-18T16:09:34.119Z",
+    "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+    "wholesaleSlabs": [
+      {
+        "minQty": 50,
+        "maxQty": 99,
+        "price": 400
+      },
+      {
+        "minQty": 100,
+        "maxQty": null,
+        "price": 395
+      }
+    ]
+  },
+  {
+    "_id": "6a2b072fc932764d0e6258a9",
+    "city": "6a2ab2b2637b3bb4c2b6baa7",
+    "isDeleted": true,
+    "product": "6a2b043dbf34fdffffcf68c6",
+    "variation": null,
+    "__v": 0,
+    "createdAt": "2026-06-11T19:06:24.116Z",
+    "isVisible": true,
+    "regularPrice": 390,
+    "salePrice": 375,
+    "updatedAt": "2026-06-18T16:08:17.675Z",
+    "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+    "wholesaleSlabs": [
+      {
+        "minQty": 50,
+        "maxQty": 99,
+        "price": 370
+      },
+      {
+        "minQty": 100,
+        "maxQty": null,
+        "price": 365
+      }
+    ]
+  },
+  {
+    "_id": "6a2b072fc932764d0e6258aa",
+    "variation": null,
+    "product": "6a2b043dbf34fdffffcf68cd",
+    "city": "6a2ab2b2637b3bb4c2b6baa7",
+    "isDeleted": true,
+    "__v": 0,
+    "createdAt": "2026-06-11T19:06:24.295Z",
+    "isVisible": true,
+    "regularPrice": 430,
+    "salePrice": 415,
+    "updatedAt": "2026-06-18T16:08:19.970Z",
+    "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+    "wholesaleSlabs": [
+      {
+        "minQty": 50,
+        "maxQty": 99,
+        "price": 410
+      },
+      {
+        "minQty": 100,
+        "maxQty": null,
+        "price": 405
+      }
+    ]
+  },
+  {
+    "_id": "6a2b0730c932764d0e6258ab",
+    "product": "6a2b0440bf34fdffffcf68f0",
+    "city": "6a2ab2b2637b3bb4c2b6baa7",
+    "variation": null,
+    "isDeleted": true,
+    "__v": 0,
+    "createdAt": "2026-06-11T19:06:24.558Z",
+    "isVisible": true,
+    "regularPrice": 65000,
+    "salePrice": 63500,
+    "updatedAt": "2026-06-18T16:09:36.111Z",
+    "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+    "wholesaleSlabs": [
+      {
+        "minQty": 5,
+        "maxQty": 9,
+        "price": 63000
+      },
+      {
+        "minQty": 10,
+        "maxQty": null,
+        "price": 62500
+      }
+    ]
+  },
+  {
+    "_id": "6a2b0730c932764d0e6258ac",
+    "variation": null,
+    "city": "6a2ab2b2637b3bb4c2b6baa7",
+    "product": "6a2b0443bf34fdffffcf692f",
+    "isDeleted": true,
+    "__v": 0,
+    "createdAt": "2026-06-11T19:06:24.865Z",
+    "isVisible": true,
+    "regularPrice": 650,
+    "salePrice": 620,
+    "updatedAt": "2026-06-18T16:08:22.574Z",
+    "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+    "wholesaleSlabs": [
+      {
+        "minQty": 50,
+        "maxQty": 99,
+        "price": 610
+      },
+      {
+        "minQty": 100,
+        "maxQty": null,
+        "price": 600
+      }
+    ]
+  },
+  {
+    "_id": "6a2b0730c932764d0e6258ad",
+    "variation": null,
+    "product": "6a2b0448bf34fdffffcf6991",
+    "isDeleted": true,
+    "city": "6a2ab2b2637b3bb4c2b6baa7",
+    "__v": 0,
+    "createdAt": "2026-06-11T19:06:25.172Z",
+    "isVisible": true,
+    "regularPrice": 120,
+    "salePrice": 110,
+    "updatedAt": "2026-06-18T16:09:29.779Z",
+    "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+    "wholesaleSlabs": [
+      {
+        "minQty": 50,
+        "maxQty": 99,
+        "price": 105
+      },
+      {
+        "minQty": 100,
+        "maxQty": null,
+        "price": 100
+      }
+    ]
+  },
+  {
+    "_id": "6a2b0731c932764d0e6258ae",
+    "city": "6a2ab305637b3bb4c2b6bab6",
+    "isDeleted": true,
+    "variation": null,
+    "product": "6a2b043ebf34fdffffcf68d4",
+    "__v": 0,
+    "createdAt": "2026-06-11T19:06:25.377Z",
+    "isVisible": true,
+    "regularPrice": 415,
+    "salePrice": 400,
+    "updatedAt": "2026-06-18T16:08:24.620Z",
+    "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+    "wholesaleSlabs": [
+      {
+        "minQty": 50,
+        "maxQty": 99,
+        "price": 395
+      },
+      {
+        "minQty": 100,
+        "maxQty": null,
+        "price": 390
+      }
+    ]
+  },
+  {
+    "_id": "6a2b0731c932764d0e6258af",
+    "product": "6a2b0440bf34fdffffcf68f7",
+    "isDeleted": true,
+    "city": "6a2ab305637b3bb4c2b6bab6",
+    "variation": null,
+    "__v": 0,
+    "createdAt": "2026-06-11T19:06:25.685Z",
+    "isVisible": true,
+    "regularPrice": 64500,
+    "salePrice": 63000,
+    "updatedAt": "2026-06-18T16:08:26.715Z",
+    "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+    "wholesaleSlabs": [
+      {
+        "minQty": 5,
+        "maxQty": 9,
+        "price": 62500
+      },
+      {
+        "minQty": 10,
+        "maxQty": null,
+        "price": 62000
+      }
+    ]
+  },
+  {
+    "_id": "6a2b0731c932764d0e6258b0",
+    "variation": null,
+    "product": "6a2b0440bf34fdffffcf68fe",
+    "isDeleted": true,
+    "city": "6a2ab305637b3bb4c2b6bab6",
+    "__v": 0,
+    "createdAt": "2026-06-11T19:06:25.856Z",
+    "isVisible": true,
+    "regularPrice": 65500,
+    "salePrice": 64000,
+    "updatedAt": "2026-06-18T07:28:55.817Z",
+    "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+    "wholesaleSlabs": [
+      {
+        "minQty": 5,
+        "maxQty": 9,
+        "price": 63500
+      },
+      {
+        "minQty": 10,
+        "maxQty": null,
+        "price": 63000
+      }
+    ]
+  },
+  {
+    "_id": "6a2b0731c932764d0e6258b1",
+    "variation": null,
+    "isDeleted": true,
+    "product": "6a2b0444bf34fdffffcf694b",
+    "city": "6a2ab305637b3bb4c2b6bab6",
+    "__v": 0,
+    "createdAt": "2026-06-11T19:06:26.093Z",
+    "isVisible": true,
+    "regularPrice": 5200,
+    "salePrice": 5000,
+    "updatedAt": "2026-06-18T16:08:34.439Z",
+    "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+    "wholesaleSlabs": [
+      {
+        "minQty": 10,
+        "maxQty": 19,
+        "price": 4900
+      },
+      {
+        "minQty": 20,
+        "maxQty": null,
+        "price": 4800
+      }
+    ]
+  },
+  {
+    "_id": "6a2b0731c932764d0e6258b2",
+    "product": "6a2b0446bf34fdffffcf6967",
+    "city": "6a2ab305637b3bb4c2b6bab6",
+    "isDeleted": true,
+    "variation": null,
+    "__v": 0,
+    "createdAt": "2026-06-11T19:06:26.288Z",
+    "isVisible": true,
+    "regularPrice": 320,
+    "salePrice": 300,
+    "updatedAt": "2026-06-18T16:08:29.308Z",
+    "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+    "wholesaleSlabs": [
+      {
+        "minQty": 50,
+        "maxQty": 99,
+        "price": 295
+      },
+      {
+        "minQty": 100,
+        "maxQty": null,
+        "price": 290
+      }
+    ]
+  },
+  {
+    "_id": "6a2b0732c932764d0e6258b3",
+    "isDeleted": true,
+    "product": "6a2b044abf34fdffffcf69a6",
+    "variation": null,
+    "city": "6a2ab305637b3bb4c2b6bab6",
+    "__v": 0,
+    "createdAt": "2026-06-11T19:06:26.515Z",
+    "isVisible": true,
+    "regularPrice": 2800,
+    "salePrice": 2650,
+    "updatedAt": "2026-06-18T16:08:32.161Z",
+    "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+    "wholesaleSlabs": [
+      {
+        "minQty": 10,
+        "maxQty": 19,
+        "price": 2600
+      },
+      {
+        "minQty": 20,
+        "maxQty": 500,
+        "price": 2550
+      }
+    ]
+  },
+  {
+    "_id": "6a33ecb3379e693679d210bf",
+    "variation": "6a33ecb2ec7f1b52b4d68f25",
+    "product": "6a33ecb2ec7f1b52b4d68f1b",
+    "city": "6a2ab2b2637b3bb4c2b6baa7",
+    "__v": 0,
+    "createdAt": "2026-06-18T13:03:46.775Z",
+    "isDeleted": true,
+    "isVisible": true,
+    "regularPrice": 3770,
+    "salePrice": 2074,
+    "updatedAt": "2026-06-18T16:08:36.938Z",
+    "updatedBy": null,
+    "wholesaleSlabs": [
+      {
+        "minQty": 10,
+        "maxQty": 49,
+        "price": 2012
+      },
+      {
+        "minQty": 50,
+        "maxQty": null,
+        "price": 1950
+      }
+    ]
+  },
+  {
+    "_id": "6a33ecb3379e693679d210c1",
+    "city": "6a2ab2b2637b3bb4c2b6baa7",
+    "product": "6a33ecb2ec7f1b52b4d68f1b",
+    "variation": "6a33ecb2ec7f1b52b4d68f27",
+    "__v": 0,
+    "createdAt": "2026-06-18T13:03:46.930Z",
+    "isDeleted": true,
+    "isVisible": true,
+    "regularPrice": 3790,
+    "salePrice": 2090,
+    "updatedAt": "2026-06-18T16:08:42.913Z",
+    "updatedBy": null,
+    "wholesaleSlabs": [
+      {
+        "minQty": 10,
+        "maxQty": 49,
+        "price": 2027
+      },
+      {
+        "minQty": 50,
+        "maxQty": null,
+        "price": 1965
+      }
+    ]
+  },
+  {
+    "_id": "6a33ecb3379e693679d210c3",
+    "city": "6a2ab2b2637b3bb4c2b6baa7",
+    "product": "6a33ecb2ec7f1b52b4d68f1b",
+    "variation": "6a33ecb2ec7f1b52b4d68f29",
+    "__v": 0,
+    "createdAt": "2026-06-18T13:03:47.029Z",
+    "isDeleted": true,
+    "isVisible": true,
+    "regularPrice": 4200,
+    "salePrice": 2450,
+    "updatedAt": "2026-06-18T16:08:40.252Z",
+    "updatedBy": null,
+    "wholesaleSlabs": [
+      {
+        "minQty": 10,
+        "maxQty": 49,
+        "price": 2377
+      },
+      {
+        "minQty": 50,
+        "maxQty": null,
+        "price": 2303
+      }
+    ]
+  },
+  {
+    "_id": "6a33ecb3379e693679d210c5",
+    "variation": "6a33ecb2ec7f1b52b4d68f2b",
+    "product": "6a33ecb2ec7f1b52b4d68f1b",
+    "city": "6a2ab2b2637b3bb4c2b6baa7",
+    "__v": 0,
+    "createdAt": "2026-06-18T13:03:47.233Z",
+    "isDeleted": true,
+    "isVisible": true,
+    "regularPrice": 4250,
+    "salePrice": 2480,
+    "updatedAt": "2026-06-18T16:08:46.498Z",
+    "updatedBy": null,
+    "wholesaleSlabs": [
+      {
+        "minQty": 10,
+        "maxQty": 49,
+        "price": 2406
+      },
+      {
+        "minQty": 50,
+        "maxQty": null,
+        "price": 2331
+      }
+    ]
+  },
+  {
+    "_id": "6a33ecb3379e693679d210c7",
+    "city": "6a2ab2b2637b3bb4c2b6baa7",
+    "product": "6a33ecb2ec7f1b52b4d68f1b",
+    "variation": "6a33ecb2ec7f1b52b4d68f2d",
+    "__v": 0,
+    "createdAt": "2026-06-18T13:03:47.438Z",
+    "isDeleted": true,
+    "isVisible": true,
+    "regularPrice": 6200,
+    "salePrice": 3890,
+    "updatedAt": "2026-06-18T16:09:01.536Z",
+    "updatedBy": null,
+    "wholesaleSlabs": [
+      {
+        "minQty": 10,
+        "maxQty": 49,
+        "price": 3773
+      },
+      {
+        "minQty": 50,
+        "maxQty": null,
+        "price": 3657
+      }
+    ]
+  },
+  {
+    "_id": "6a33ecb3379e693679d210c9",
+    "city": "6a2ab2b2637b3bb4c2b6baa7",
+    "product": "6a33ecb2ec7f1b52b4d68f1b",
+    "variation": "6a33ecb2ec7f1b52b4d68f2f",
+    "__v": 0,
+    "createdAt": "2026-06-18T13:03:47.543Z",
+    "isDeleted": true,
+    "isVisible": true,
+    "regularPrice": 6500,
+    "salePrice": 4120,
+    "updatedAt": "2026-06-18T16:08:55.303Z",
+    "updatedBy": null,
+    "wholesaleSlabs": [
+      {
+        "minQty": 10,
+        "maxQty": 49,
+        "price": 3996
+      },
+      {
+        "minQty": 50,
+        "maxQty": null,
+        "price": 3873
+      }
+    ]
+  },
+  {
+    "_id": "6a33ecb4379e693679d210cb",
+    "variation": "6a33ecb2ec7f1b52b4d68f25",
+    "city": "6a2ab305637b3bb4c2b6bab6",
+    "product": "6a33ecb2ec7f1b52b4d68f1b",
+    "__v": 0,
+    "createdAt": "2026-06-18T13:03:47.704Z",
+    "isDeleted": true,
+    "isVisible": true,
+    "regularPrice": 3770,
+    "salePrice": 2074,
+    "updatedAt": "2026-06-18T16:08:59.522Z",
+    "updatedBy": null,
+    "wholesaleSlabs": [
+      {
+        "minQty": 10,
+        "maxQty": 49,
+        "price": 2012
+      },
+      {
+        "minQty": 50,
+        "maxQty": null,
+        "price": 1950
+      }
+    ]
+  },
+  {
+    "_id": "6a33ecb4379e693679d210cd",
+    "variation": "6a33ecb2ec7f1b52b4d68f27",
+    "city": "6a2ab305637b3bb4c2b6bab6",
+    "product": "6a33ecb2ec7f1b52b4d68f1b",
+    "__v": 0,
+    "createdAt": "2026-06-18T13:03:47.780Z",
+    "isDeleted": true,
+    "isVisible": true,
+    "regularPrice": 3790,
+    "salePrice": 2090,
+    "updatedAt": "2026-06-18T16:09:18.399Z",
+    "updatedBy": null,
+    "wholesaleSlabs": [
+      {
+        "minQty": 10,
+        "maxQty": 49,
+        "price": 2027
+      },
+      {
+        "minQty": 50,
+        "maxQty": null,
+        "price": 1965
+      }
+    ]
+  },
+  {
+    "_id": "6a33ecb4379e693679d210cf",
+    "variation": "6a33ecb2ec7f1b52b4d68f29",
+    "city": "6a2ab305637b3bb4c2b6bab6",
+    "product": "6a33ecb2ec7f1b52b4d68f1b",
+    "__v": 0,
+    "createdAt": "2026-06-18T13:03:47.890Z",
+    "isDeleted": true,
+    "isVisible": true,
+    "regularPrice": 4200,
+    "salePrice": 2450,
+    "updatedAt": "2026-06-18T16:08:57.449Z",
+    "updatedBy": null,
+    "wholesaleSlabs": [
+      {
+        "minQty": 10,
+        "maxQty": 49,
+        "price": 2377
+      },
+      {
+        "minQty": 50,
+        "maxQty": null,
+        "price": 2303
+      }
+    ]
+  },
+  {
+    "_id": "6a33ecb4379e693679d210d1",
+    "variation": "6a33ecb2ec7f1b52b4d68f2b",
+    "product": "6a33ecb2ec7f1b52b4d68f1b",
+    "city": "6a2ab305637b3bb4c2b6bab6",
+    "__v": 0,
+    "createdAt": "2026-06-18T13:03:47.955Z",
+    "isDeleted": true,
+    "isVisible": true,
+    "regularPrice": 4250,
+    "salePrice": 2480,
+    "updatedAt": "2026-06-18T16:09:04.011Z",
+    "updatedBy": null,
+    "wholesaleSlabs": [
+      {
+        "minQty": 10,
+        "maxQty": 49,
+        "price": 2406
+      },
+      {
+        "minQty": 50,
+        "maxQty": null,
+        "price": 2331
+      }
+    ]
+  },
+  {
+    "_id": "6a33ecb4379e693679d210d3",
+    "city": "6a2ab305637b3bb4c2b6bab6",
+    "product": "6a33ecb2ec7f1b52b4d68f1b",
+    "variation": "6a33ecb2ec7f1b52b4d68f2d",
+    "__v": 0,
+    "createdAt": "2026-06-18T13:03:48.023Z",
+    "isDeleted": true,
+    "isVisible": true,
+    "regularPrice": 6200,
+    "salePrice": 3890,
+    "updatedAt": "2026-06-18T16:09:06.158Z",
+    "updatedBy": null,
+    "wholesaleSlabs": [
+      {
+        "minQty": 10,
+        "maxQty": 49,
+        "price": 3773
+      },
+      {
+        "minQty": 50,
+        "maxQty": null,
+        "price": 3657
+      }
+    ]
+  },
+  {
+    "_id": "6a33ecb4379e693679d210d5",
+    "city": "6a2ab305637b3bb4c2b6bab6",
+    "product": "6a33ecb2ec7f1b52b4d68f1b",
+    "variation": "6a33ecb2ec7f1b52b4d68f2f",
+    "__v": 0,
+    "createdAt": "2026-06-18T13:03:48.091Z",
+    "isDeleted": true,
+    "isVisible": true,
+    "regularPrice": 6500,
+    "salePrice": 4120,
+    "updatedAt": "2026-06-18T16:09:15.785Z",
+    "updatedBy": null,
+    "wholesaleSlabs": [
+      {
+        "minQty": 10,
+        "maxQty": 49,
+        "price": 3996
+      },
+      {
+        "minQty": 50,
+        "maxQty": null,
+        "price": 3873
+      }
+    ]
+  },
+  {
+    "_id": "6a33ee53379e693679d210f0",
+    "city": "6a2ab2b2637b3bb4c2b6baa7",
+    "product": "6a33ecb2ec7f1b52b4d68f1b",
+    "variation": "6a33ee528de3d09085a66d4a",
+    "__v": 0,
+    "createdAt": "2026-06-18T13:10:43.231Z",
+    "isDeleted": true,
+    "isVisible": true,
+    "regularPrice": 3770,
+    "salePrice": 2074,
+    "updatedAt": "2026-06-18T16:09:10.599Z",
+    "updatedBy": null,
+    "wholesaleSlabs": [
+      {
+        "minQty": 10,
+        "maxQty": 49,
+        "price": 2012
+      },
+      {
+        "minQty": 50,
+        "maxQty": null,
+        "price": 1950
+      }
+    ]
+  },
+  {
+    "_id": "6a33ee53379e693679d210f2",
+    "city": "6a2ab2b2637b3bb4c2b6baa7",
+    "product": "6a33ecb2ec7f1b52b4d68f1b",
+    "variation": "6a33ee528de3d09085a66d4c",
+    "__v": 0,
+    "createdAt": "2026-06-18T13:10:43.418Z",
+    "isDeleted": true,
+    "isVisible": true,
+    "regularPrice": 3790,
+    "salePrice": 2090,
+    "updatedAt": "2026-06-18T16:09:08.717Z",
+    "updatedBy": null,
+    "wholesaleSlabs": [
+      {
+        "minQty": 10,
+        "maxQty": 49,
+        "price": 2027
+      },
+      {
+        "minQty": 50,
+        "maxQty": null,
+        "price": 1965
+      }
+    ]
+  },
+  {
+    "_id": "6a33ee53379e693679d210f4",
+    "variation": "6a33ee528de3d09085a66d4e",
+    "product": "6a33ecb2ec7f1b52b4d68f1b",
+    "city": "6a2ab2b2637b3bb4c2b6baa7",
+    "__v": 0,
+    "createdAt": "2026-06-18T13:10:43.510Z",
+    "isDeleted": true,
+    "isVisible": true,
+    "regularPrice": 4200,
+    "salePrice": 2450,
+    "updatedAt": "2026-06-18T16:09:13.123Z",
+    "updatedBy": null,
+    "wholesaleSlabs": [
+      {
+        "minQty": 10,
+        "maxQty": 49,
+        "price": 2377
+      },
+      {
+        "minQty": 50,
+        "maxQty": null,
+        "price": 2303
+      }
+    ]
+  },
+  {
+    "_id": "6a33ee54379e693679d210f6",
+    "variation": "6a33ee538de3d09085a66d50",
+    "city": "6a2ab2b2637b3bb4c2b6baa7",
+    "product": "6a33ecb2ec7f1b52b4d68f1b",
+    "__v": 0,
+    "createdAt": "2026-06-18T13:10:43.612Z",
+    "isDeleted": true,
+    "isVisible": true,
+    "regularPrice": 4250,
+    "salePrice": 2480,
+    "updatedAt": "2026-06-18T16:09:23.369Z",
+    "updatedBy": null,
+    "wholesaleSlabs": [
+      {
+        "minQty": 10,
+        "maxQty": 49,
+        "price": 2406
+      },
+      {
+        "minQty": 50,
+        "maxQty": null,
+        "price": 2331
+      }
+    ]
+  },
+  {
+    "_id": "6a33ee54379e693679d210f8",
+    "variation": "6a33ee538de3d09085a66d52",
+    "city": "6a2ab2b2637b3bb4c2b6baa7",
+    "product": "6a33ecb2ec7f1b52b4d68f1b",
+    "__v": 0,
+    "createdAt": "2026-06-18T13:10:43.768Z",
+    "isDeleted": true,
+    "isVisible": true,
+    "regularPrice": 6200,
+    "salePrice": 3890,
+    "updatedAt": "2026-06-18T16:09:20.718Z",
+    "updatedBy": null,
+    "wholesaleSlabs": [
+      {
+        "minQty": 10,
+        "maxQty": 49,
+        "price": 3773
+      },
+      {
+        "minQty": 50,
+        "maxQty": null,
+        "price": 3657
+      }
+    ]
+  },
+  {
+    "_id": "6a33ee54379e693679d210fa",
+    "city": "6a2ab2b2637b3bb4c2b6baa7",
+    "product": "6a33ecb2ec7f1b52b4d68f1b",
+    "variation": "6a33ee538de3d09085a66d54",
+    "__v": 0,
+    "createdAt": "2026-06-18T13:10:43.918Z",
+    "isDeleted": true,
+    "isVisible": true,
+    "regularPrice": 6500,
+    "salePrice": 4120,
+    "updatedAt": "2026-06-18T16:09:28.044Z",
+    "updatedBy": null,
+    "wholesaleSlabs": [
+      {
+        "minQty": 10,
+        "maxQty": 49,
+        "price": 3996
+      },
+      {
+        "minQty": 50,
+        "maxQty": null,
+        "price": 3873
+      }
+    ]
+  },
+  {
+    "_id": "6a33ee54379e693679d210fc",
+    "city": "6a2ab305637b3bb4c2b6bab6",
+    "product": "6a33ecb2ec7f1b52b4d68f1b",
+    "variation": "6a33ee528de3d09085a66d4a",
+    "__v": 0,
+    "createdAt": "2026-06-18T13:10:44.016Z",
+    "isDeleted": true,
+    "isVisible": true,
+    "regularPrice": 3770,
+    "salePrice": 2074,
+    "updatedAt": "2026-06-18T16:08:04.610Z",
+    "updatedBy": null,
+    "wholesaleSlabs": [
+      {
+        "minQty": 10,
+        "maxQty": 49,
+        "price": 2012
+      },
+      {
+        "minQty": 50,
+        "maxQty": null,
+        "price": 1950
+      }
+    ]
+  },
+  {
+    "_id": "6a33ee54379e693679d210fe",
+    "variation": "6a33ee528de3d09085a66d4c",
+    "city": "6a2ab305637b3bb4c2b6bab6",
+    "product": "6a33ecb2ec7f1b52b4d68f1b",
+    "__v": 0,
+    "createdAt": "2026-06-18T13:10:44.182Z",
+    "isDeleted": true,
+    "isVisible": true,
+    "regularPrice": 3790,
+    "salePrice": 2090,
+    "updatedAt": "2026-06-18T16:09:31.969Z",
+    "updatedBy": null,
+    "wholesaleSlabs": [
+      {
+        "minQty": 10,
+        "maxQty": 49,
+        "price": 2027
+      },
+      {
+        "minQty": 50,
+        "maxQty": null,
+        "price": 1965
+      }
+    ]
+  },
+  {
+    "_id": "6a33ee54379e693679d21100",
+    "city": "6a2ab305637b3bb4c2b6bab6",
+    "product": "6a33ecb2ec7f1b52b4d68f1b",
+    "variation": "6a33ee528de3d09085a66d4e",
+    "__v": 0,
+    "createdAt": "2026-06-18T13:10:44.277Z",
+    "isDeleted": true,
+    "isVisible": true,
+    "regularPrice": 4200,
+    "salePrice": 2450,
+    "updatedAt": "2026-06-18T16:07:58.364Z",
+    "updatedBy": null,
+    "wholesaleSlabs": [
+      {
+        "minQty": 10,
+        "maxQty": 49,
+        "price": 2377
+      },
+      {
+        "minQty": 50,
+        "maxQty": null,
+        "price": 2303
+      }
+    ]
+  },
+  {
+    "_id": "6a33ee54379e693679d21102",
+    "variation": "6a33ee538de3d09085a66d50",
+    "product": "6a33ecb2ec7f1b52b4d68f1b",
+    "city": "6a2ab305637b3bb4c2b6bab6",
+    "__v": 0,
+    "createdAt": "2026-06-18T13:10:44.488Z",
+    "isDeleted": true,
+    "isVisible": true,
+    "regularPrice": 4250,
+    "salePrice": 2480,
+    "updatedAt": "2026-06-18T16:07:56.142Z",
+    "updatedBy": null,
+    "wholesaleSlabs": [
+      {
+        "minQty": 10,
+        "maxQty": 49,
+        "price": 2406
+      },
+      {
+        "minQty": 50,
+        "maxQty": null,
+        "price": 2331
+      }
+    ]
+  },
+  {
+    "_id": "6a33ee55379e693679d21104",
+    "variation": "6a33ee538de3d09085a66d52",
+    "product": "6a33ecb2ec7f1b52b4d68f1b",
+    "city": "6a2ab305637b3bb4c2b6bab6",
+    "__v": 0,
+    "createdAt": "2026-06-18T13:10:44.637Z",
+    "isDeleted": true,
+    "isVisible": true,
+    "regularPrice": 6200,
+    "salePrice": 3890,
+    "updatedAt": "2026-06-18T16:07:51.707Z",
+    "updatedBy": null,
+    "wholesaleSlabs": [
+      {
+        "minQty": 10,
+        "maxQty": 49,
+        "price": 3773
+      },
+      {
+        "minQty": 50,
+        "maxQty": null,
+        "price": 3657
+      }
+    ]
+  },
+  {
+    "_id": "6a33ee55379e693679d21106",
+    "variation": "6a33ee538de3d09085a66d54",
+    "product": "6a33ecb2ec7f1b52b4d68f1b",
+    "city": "6a2ab305637b3bb4c2b6bab6",
+    "__v": 0,
+    "createdAt": "2026-06-18T13:10:44.752Z",
+    "isDeleted": true,
+    "isVisible": true,
+    "regularPrice": 6500,
+    "salePrice": 4120,
+    "updatedAt": "2026-06-18T16:07:53.627Z",
+    "updatedBy": null,
+    "wholesaleSlabs": [
+      {
+        "minQty": 10,
+        "maxQty": 49,
+        "price": 3996
+      },
+      {
+        "minQty": 50,
+        "maxQty": null,
+        "price": 3873
+      }
+    ]
+  },
+  {
+    "_id": "6a3407ef379e693679d21240",
+    "variation": null,
+    "city": "6a2ab2b2637b3bb4c2b6baa7",
+    "product": "6a33ecb2ec7f1b52b4d68f1b",
+    "__v": 0,
+    "createdAt": "2026-06-18T15:00:00.527Z",
+    "isDeleted": true,
+    "isVisible": true,
+    "regularPrice": 0,
+    "salePrice": null,
+    "updatedAt": "2026-06-18T16:07:48.237Z",
+    "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+    "wholesaleSlabs": [
+      {
+        "minQty": 0,
+        "maxQty": null,
+        "price": 0
+      },
+      {
+        "minQty": 0,
+        "maxQty": null,
+        "price": 0
+      }
+    ]
+  },
+  {
+    "_id": "6a34e893379e693679d22296",
+    "city": "6a34d8f47f2c6c481fc97255",
+    "product": "6a34e47101900cf2463f89a9",
+    "variation": "6a34e537a2bec3916f1f241a",
+    "__v": 0,
+    "createdAt": "2026-06-19T06:58:27.809Z",
+    "deliveryCharge": 0,
+    "isDeleted": false,
+    "isVisible": true,
+    "mrp": 550,
+    "purchaseCost": 299,
+    "regularPrice": 550,
+    "salePrice": 500,
+    "taxPercentage": 18,
+    "updatedAt": "2026-06-19T06:59:07.672Z",
+    "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+    "wholesaleSlabs": []
+  },
+  {
+    "_id": "6a34e8da379e693679d2229e",
+    "city": "6a34d8f47f2c6c481fc97255",
+    "product": "6a34e47101900cf2463f89a9",
+    "variation": "6a34e861ca4ccb09839d3ccc",
+    "__v": 0,
+    "createdAt": "2026-06-19T06:59:39.210Z",
+    "deliveryCharge": 0,
+    "isDeleted": false,
+    "isVisible": true,
+    "mrp": 650,
+    "purchaseCost": 399,
+    "regularPrice": 650,
+    "salePrice": 600,
+    "taxPercentage": 18,
+    "updatedAt": "2026-06-19T06:59:39.210Z",
+    "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+    "wholesaleSlabs": []
+  },
+  {
+    "_id": "6a34e90b379e693679d222b3",
+    "city": "6a34d8f47f2c6c481fc97255",
+    "product": "6a34e47101900cf2463f89a9",
+    "variation": null,
+    "__v": 0,
+    "createdAt": "2026-06-19T07:00:27.770Z",
+    "deliveryCharge": 0,
+    "isDeleted": false,
+    "isVisible": true,
+    "mrp": 550,
+    "purchaseCost": 300,
+    "regularPrice": 550,
+    "salePrice": 500,
+    "taxPercentage": 18,
+    "updatedAt": "2026-06-19T07:00:27.770Z",
+    "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+    "wholesaleSlabs": []
+  },
+  {
+    "_id": "6a34f0ee379e693679d22378",
+    "city": "6a34d8f47f2c6c481fc97255",
+    "product": "6a34f0ab763b4da85a796d0d",
+    "variation": "6a34f0d5763b4da85a796d31",
+    "__v": 0,
+    "createdAt": "2026-06-19T07:34:06.420Z",
+    "deliveryCharge": 0,
+    "isDeleted": false,
+    "isVisible": true,
+    "mrp": 600,
+    "purchaseCost": 300,
+    "regularPrice": 600,
+    "salePrice": 550,
+    "taxPercentage": 18,
+    "updatedAt": "2026-06-19T07:56:14.010Z",
+    "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+    "wholesaleSlabs": []
+  },
+  {
+    "_id": "6a34f120379e693679d22381",
+    "variation": "6a34f108763b4da85a796d58",
+    "product": "6a34f0ab763b4da85a796d0d",
+    "city": "6a34d8f47f2c6c481fc97255",
+    "__v": 0,
+    "createdAt": "2026-06-19T07:34:57.241Z",
+    "deliveryCharge": 0,
+    "isDeleted": false,
+    "isVisible": true,
+    "mrp": 650,
+    "purchaseCost": 400,
+    "regularPrice": 650,
+    "salePrice": 600,
+    "taxPercentage": 18,
+    "updatedAt": "2026-06-19T07:56:20.456Z",
+    "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+    "wholesaleSlabs": []
+  }
+]

@@ -21,6 +21,8 @@ router.delete('/:id',                    ...adminOnly, ctrl.remove);
 // Variations
 router.get('/:id/variations',             ctrl.getVariations);
 router.post('/:id/variations',            ...adminOnly, ctrl.createVariation);
+router.get('/:id/variations/:varId/configuration', ...adminOnly, ctrl.getVariationConfiguration);
+router.patch('/:id/variations/:varId/configuration', ...adminOnly, ctrl.saveVariationConfiguration);
 router.patch('/:id/variations/:varId',    ...adminOnly, ctrl.updateVariation);
 router.delete('/:id/variations/:varId',   ...adminOnly, ctrl.deleteVariation);
 

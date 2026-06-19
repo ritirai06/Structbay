@@ -1,0 +1,951 @@
+[
+  {
+    "_id": "6a318565d1a54032dcb47fdc",
+    "masterOrder": "6a3184c5d1a54032dcb479ac",
+    "orderNumber": "2606160001-1",
+    "subOrderIndex": 1,
+    "vendor": "6a318251d1a54032dcb4766f",
+    "assignedBy": "6a2ab23e07a6b7f84fdcca12",
+    "assignedAt": "2026-06-16T17:18:29.668Z",
+    "items": [
+      {
+        "product": "6a2b043cbf34fdffffcf68bf",
+        "variation": null,
+        "masterItemId": "6a3184c5d1a54032dcb479ad",
+        "productName": "UltraTech Cement OPC 53 Grade",
+        "sku": "UTC-OPC53-001",
+        "quantity": 1,
+        "unitPrice": 405,
+        "gstPercentage": 18,
+        "lineTotal": 405,
+        "_id": "6a318565d1a54032dcb47fdd"
+      },
+      {
+        "product": "6a2b0440bf34fdffffcf68f0",
+        "variation": null,
+        "masterItemId": "6a3184c5d1a54032dcb479ae",
+        "productName": "Tata Tiscon 12mm TMT Bar",
+        "sku": "TIS-12MM-001",
+        "quantity": 3,
+        "unitPrice": 63500,
+        "gstPercentage": 18,
+        "lineTotal": 190500,
+        "_id": "6a318565d1a54032dcb47fde"
+      },
+      {
+        "product": "6a2b0443bf34fdffffcf692f",
+        "variation": null,
+        "masterItemId": "6a3184c5d1a54032dcb479af",
+        "productName": "Kajaria Vitrified Tile 600x600",
+        "sku": "KAJ-600-001",
+        "quantity": 1,
+        "unitPrice": 620,
+        "gstPercentage": 18,
+        "lineTotal": 620,
+        "_id": "6a318565d1a54032dcb47fdf"
+      },
+      {
+        "product": "6a2b0448bf34fdffffcf6991",
+        "variation": null,
+        "masterItemId": "6a3184c5d1a54032dcb479b0",
+        "productName": "Philips LED Bulb 9W",
+        "sku": "PHI-LED-001",
+        "quantity": 7,
+        "unitPrice": 110,
+        "gstPercentage": 18,
+        "lineTotal": 770,
+        "_id": "6a318565d1a54032dcb47fe0"
+      }
+    ],
+    "customerInfo": {
+      "name": "Riti Rai",
+      "phone": "8400818186"
+    },
+    "deliveryAddress": {
+      "line1": "Uttar Pradesh 201309",
+      "line2": "Others",
+      "city": "Bengaluru",
+      "state": "",
+      "pincode": "560001",
+      "contactPerson": "Riti Rai",
+      "contactPhone": "8400818186"
+    },
+    "deliveryType": "vendor_delivery",
+    "status": "COMPLETED",
+    "statusHistory": [
+      {
+        "status": "NEW_ASSIGNED",
+        "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+        "model": "User",
+        "note": "Vendor assigned from master order by admin.",
+        "timestamp": "2026-06-16T17:18:29.669Z",
+        "_id": "6a318565d1a54032dcb47fe1"
+      },
+      {
+        "status": "ACCEPTED",
+        "updatedBy": "6a318251d1a54032dcb4766f",
+        "model": "User",
+        "note": "Vendor accepted the order.",
+        "timestamp": "2026-06-16T17:19:22.317Z",
+        "_id": "6a31859ad1a54032dcb48084"
+      },
+      {
+        "status": "READY_FOR_DISPATCH",
+        "updatedBy": "6a318251d1a54032dcb4766f",
+        "model": "User",
+        "note": "tomorrow the order will be dispatch",
+        "timestamp": "2026-06-16T17:25:14.753Z",
+        "_id": "6a3186fad1a54032dcb48310"
+      },
+      {
+        "status": "DISPATCH_APPROVED",
+        "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+        "model": "User",
+        "note": "Admin approved dispatch.",
+        "timestamp": "2026-06-16T17:26:12.813Z",
+        "_id": "6a318734d1a54032dcb4841d"
+      },
+      {
+        "status": "VENDOR_INVOICE_SUBMITTED",
+        "updatedBy": "6a318251d1a54032dcb4766f",
+        "model": "User",
+        "note": "Vendor submitted final tax invoice.",
+        "timestamp": "2026-06-16T17:36:51.640Z",
+        "_id": "6a3189b3376963cf2535e17c"
+      },
+      {
+        "status": "SB_INVOICE_SENT",
+        "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+        "model": "User",
+        "note": "StructBay invoice and e-way bill sent to vendor.",
+        "timestamp": "2026-06-16T17:39:34.250Z",
+        "_id": "6a318a56376963cf2535e2db"
+      },
+      {
+        "status": "DISPATCHED",
+        "updatedBy": "6a318251d1a54032dcb4766f",
+        "model": "User",
+        "note": "Vendor marked order dispatched.",
+        "timestamp": "2026-06-16T17:40:51.835Z",
+        "_id": "6a318aa3376963cf2535e3cb"
+      },
+      {
+        "status": "DELIVERED",
+        "updatedBy": "6a318251d1a54032dcb4766f",
+        "model": "User",
+        "note": "Vendor uploaded POD and marked delivered.",
+        "timestamp": "2026-06-16T18:56:53.080Z",
+        "_id": "6a319c759a230381c5a1a466"
+      },
+      {
+        "status": "COMPLETED",
+        "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+        "model": "User",
+        "note": "Admin confirmed delivery (POD verified).",
+        "timestamp": "2026-06-16T18:57:33.413Z",
+        "_id": "6a319c9d9a230381c5a1a59d"
+      }
+    ],
+    "invoiceStatus": "UPLOADED",
+    "dispatchStatus": "DELIVERED",
+    "totalAmount": 226908,
+    "priority": "normal",
+    "structbayLogistics": {
+      "pickupScheduledText": null,
+      "companyName": null,
+      "driverContactDetails": null
+    },
+    "preDispatch": {
+      "packingFiles": [
+        {
+          "url": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781630712/structbay/vendor/documents/file_dyrrxr.jpg",
+          "cloudinaryId": "structbay/vendor/documents/file_dyrrxr",
+          "name": "images.jpg",
+          "_id": "6a3186fad1a54032dcb4830f"
+        }
+      ],
+      "invoiceFileUrl": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781630711/structbay/vendor/documents/file_gyktng.pdf",
+      "invoiceCloudinaryId": "structbay/vendor/documents/file_gyktng",
+      "remarks": "tomorrow the order will be dispatch"
+    },
+    "workflowVersion": 2,
+    "createdAt": "2026-06-16T17:18:29.675Z",
+    "updatedAt": "2026-06-16T18:57:33.417Z",
+    "__v": 8,
+    "expectedDispatchDate": "2026-06-17T00:00:00.000Z",
+    "structbayOutboundDocs": {
+      "invoicePdfUrl": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781631573/structbay/invoices/file_ovyhyj.pdf",
+      "invoicePdfCloudinaryId": "structbay/invoices/file_ovyhyj",
+      "invoiceNumber": "pdf1",
+      "ewayBillPdfUrl": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781631573/structbay/invoices/file_fx6055.pdf",
+      "ewayBillPdfCloudinaryId": "structbay/invoices/file_fx6055",
+      "ewayBillNumber": "pdf2",
+      "sentAt": "2026-06-16T17:39:34.249Z",
+      "sentBy": "6a2ab23e07a6b7f84fdcca12"
+    },
+    "actualDispatchDate": "2026-06-18T00:00:00.000Z",
+    "shipmentDispatch": {
+      "transporterName": "MG-09-AB-0987",
+      "vehicleNumber": "MG-09-AB-0987",
+      "lrNumber": "45613",
+      "trackingNumber": "YES",
+      "dispatchDate": "2026-06-18T00:00:00.000Z",
+      "proofUrl": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781631650/structbay/vendor/documents/file_t2v2w8.png",
+      "proofCloudinaryId": "structbay/vendor/documents/file_t2v2w8"
+    },
+    "actualDeliveryDate": "2026-06-18T00:00:00.000Z",
+    "deliveryProof": {
+      "deliveryDate": "2026-06-18T00:00:00.000Z",
+      "podUrl": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781636211/structbay/vendor/documents/file_txplmy.jpg",
+      "podCloudinaryId": "structbay/vendor/documents/file_txplmy",
+      "confirmedByAdmin": "6a2ab23e07a6b7f84fdcca12",
+      "confirmedAt": "2026-06-16T18:57:33.412Z"
+    }
+  },
+  {
+    "_id": "6a31a02a300560934d4a050a",
+    "masterOrder": "6a319f71300560934d4a0374",
+    "orderNumber": "2606170001-1",
+    "subOrderIndex": 1,
+    "vendor": "6a318251d1a54032dcb4766f",
+    "assignedBy": "6a2ab23e07a6b7f84fdcca12",
+    "assignedAt": "2026-06-16T19:12:42.450Z",
+    "items": [
+      {
+        "product": "6a2b043cbf34fdffffcf68bf",
+        "variation": null,
+        "masterItemId": "6a319f71300560934d4a0375",
+        "productName": "UltraTech Cement OPC 53 Grade",
+        "sku": "UTC-OPC53-001",
+        "quantity": 25,
+        "unitPrice": 405,
+        "gstPercentage": 18,
+        "lineTotal": 10125,
+        "_id": "6a31a02a300560934d4a050b"
+      }
+    ],
+    "customerInfo": {
+      "name": "Riti Rai",
+      "phone": "9876543212"
+    },
+    "deliveryAddress": {
+      "line1": "\"O\"-Pocket, Ganga Nagar, Meerut-250001",
+      "line2": "Others",
+      "city": "Bengaluru",
+      "state": "",
+      "pincode": "560001",
+      "contactPerson": "Riti Rai",
+      "contactPhone": "9876543212"
+    },
+    "deliveryType": "vendor_delivery",
+    "status": "DISPATCHED",
+    "statusHistory": [
+      {
+        "status": "NEW_ASSIGNED",
+        "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+        "model": "User",
+        "note": "Vendor assigned from master order by admin.",
+        "timestamp": "2026-06-16T19:12:42.466Z",
+        "_id": "6a31a02a300560934d4a050c"
+      },
+      {
+        "status": "ACCEPTED",
+        "updatedBy": "6a318251d1a54032dcb4766f",
+        "model": "User",
+        "note": "Vendor accepted the order.",
+        "timestamp": "2026-06-16T19:18:53.004Z",
+        "_id": "6a31a19dc34fc9e33510d431"
+      },
+      {
+        "status": "READY_FOR_DISPATCH",
+        "updatedBy": "6a318251d1a54032dcb4766f",
+        "model": "User",
+        "note": "Vendor marked ready for dispatch.",
+        "timestamp": "2026-06-16T19:19:09.848Z",
+        "_id": "6a31a1adc34fc9e33510d459"
+      },
+      {
+        "status": "DISPATCH_APPROVED",
+        "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+        "model": "User",
+        "note": "Admin approved dispatch.",
+        "timestamp": "2026-06-16T19:19:55.620Z",
+        "_id": "6a31a1dbc34fc9e33510d4bb"
+      },
+      {
+        "status": "VENDOR_INVOICE_SUBMITTED",
+        "updatedBy": "6a318251d1a54032dcb4766f",
+        "model": "User",
+        "note": "Vendor submitted final tax invoice.",
+        "timestamp": "2026-06-16T19:20:50.051Z",
+        "_id": "6a31a212c34fc9e33510d54e"
+      },
+      {
+        "status": "SB_INVOICE_SENT",
+        "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+        "model": "User",
+        "note": "StructBay invoice and e-way bill sent to vendor.",
+        "timestamp": "2026-06-16T19:21:29.042Z",
+        "_id": "6a31a239c34fc9e33510d5b8"
+      },
+      {
+        "status": "DISPATCHED",
+        "updatedBy": "6a318251d1a54032dcb4766f",
+        "model": "User",
+        "note": "Vendor marked order dispatched.",
+        "timestamp": "2026-06-17T18:50:17.325Z",
+        "_id": "6a32ec694b344ec568690c34"
+      }
+    ],
+    "invoiceStatus": "UPLOADED",
+    "dispatchStatus": "DISPATCHED",
+    "totalAmount": 11948,
+    "priority": "normal",
+    "structbayLogistics": {
+      "pickupScheduledText": null,
+      "companyName": null,
+      "driverContactDetails": null
+    },
+    "preDispatch": {
+      "packingFiles": []
+    },
+    "workflowVersion": 2,
+    "createdAt": "2026-06-16T19:12:42.472Z",
+    "updatedAt": "2026-06-17T18:50:17.348Z",
+    "__v": 6,
+    "expectedDispatchDate": "2026-06-17T00:00:00.000Z",
+    "structbayOutboundDocs": {
+      "invoicePdfUrl": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781637687/structbay/invoices/file_wox3lk.pdf",
+      "invoicePdfCloudinaryId": "structbay/invoices/file_wox3lk",
+      "invoiceNumber": "p1",
+      "ewayBillPdfUrl": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781637687/structbay/invoices/file_idi4cu.pdf",
+      "ewayBillPdfCloudinaryId": "structbay/invoices/file_idi4cu",
+      "ewayBillNumber": "p2",
+      "sentAt": "2026-06-16T19:21:29.042Z",
+      "sentBy": "6a2ab23e07a6b7f84fdcca12"
+    },
+    "actualDispatchDate": "2026-06-18T00:00:00.000Z",
+    "shipmentDispatch": {
+      "transporterName": "qwertyuiop",
+      "vehicleNumber": "7898545621",
+      "lrNumber": "789654521",
+      "dispatchDate": "2026-06-18T00:00:00.000Z",
+      "proofUrl": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781722215/structbay/vendor/documents/file_trkxkd.png",
+      "proofCloudinaryId": "structbay/vendor/documents/file_trkxkd"
+    }
+  },
+  {
+    "_id": "6a33cf65c069137406b4ada4",
+    "masterOrder": "6a33cf37c069137406b4acac",
+    "orderNumber": "2606180002-1",
+    "subOrderIndex": 1,
+    "vendor": "6a318251d1a54032dcb4766f",
+    "assignedBy": "6a2ab23e07a6b7f84fdcca12",
+    "assignedAt": "2026-06-18T10:58:45.609Z",
+    "items": [
+      {
+        "product": "6a2b043cbf34fdffffcf68bf",
+        "variation": null,
+        "masterItemId": "6a33cf37c069137406b4acad",
+        "productName": "UltraTech Cement OPC 53 Grade",
+        "sku": "UTC-OPC53-001",
+        "quantity": 1,
+        "unitPrice": 405,
+        "gstPercentage": 18,
+        "lineTotal": 405,
+        "_id": "6a33cf65c069137406b4ada5"
+      },
+      {
+        "product": "6a2b0440bf34fdffffcf68f0",
+        "variation": null,
+        "masterItemId": "6a33cf37c069137406b4acae",
+        "productName": "Tata Tiscon 12mm TMT Bar",
+        "sku": "TIS-12MM-001",
+        "quantity": 1,
+        "unitPrice": 63500,
+        "gstPercentage": 18,
+        "lineTotal": 63500,
+        "_id": "6a33cf65c069137406b4ada6"
+      }
+    ],
+    "customerInfo": {
+      "name": "Riti Rai",
+      "phone": "8450065478"
+    },
+    "deliveryAddress": {
+      "line1": "Uttar Pradesh 201309",
+      "line2": "Others",
+      "city": "Bengaluru",
+      "state": "",
+      "pincode": "560001",
+      "contactPerson": "Riti Rai",
+      "contactPhone": "8450065478"
+    },
+    "deliveryType": "structbay_delivery",
+    "status": "COMPLETED",
+    "statusHistory": [
+      {
+        "status": "NEW_ASSIGNED",
+        "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+        "model": "User",
+        "note": "Vendor assigned from master order by admin.",
+        "timestamp": "2026-06-18T10:58:45.609Z",
+        "_id": "6a33cf65c069137406b4ada7"
+      },
+      {
+        "status": "ACCEPTED",
+        "updatedBy": "6a318251d1a54032dcb4766f",
+        "model": "User",
+        "note": "Vendor accepted the order.",
+        "timestamp": "2026-06-18T11:01:22.970Z",
+        "_id": "6a33d002c069137406b4afbd"
+      },
+      {
+        "status": "READY_FOR_DISPATCH",
+        "updatedBy": "6a318251d1a54032dcb4766f",
+        "model": "User",
+        "note": "Vendor marked ready for dispatch.",
+        "timestamp": "2026-06-18T11:01:48.511Z",
+        "_id": "6a33d01cc069137406b4afe8"
+      },
+      {
+        "status": "DISPATCH_APPROVED",
+        "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+        "model": "User",
+        "note": "Admin approved dispatch.",
+        "timestamp": "2026-06-18T11:03:13.155Z",
+        "_id": "6a33d071c069137406b4b127"
+      },
+      {
+        "status": "VENDOR_INVOICE_SUBMITTED",
+        "updatedBy": "6a318251d1a54032dcb4766f",
+        "model": "User",
+        "note": "Vendor submitted final tax invoice.",
+        "timestamp": "2026-06-18T11:20:24.672Z",
+        "_id": "6a33d478c069137406b4b462"
+      },
+      {
+        "status": "SB_INVOICE_SENT",
+        "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+        "model": "User",
+        "note": "StructBay invoice and e-way bill sent to vendor.",
+        "timestamp": "2026-06-18T11:23:31.154Z",
+        "_id": "6a33d533c069137406b4b900"
+      },
+      {
+        "status": "DISPATCHED",
+        "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+        "model": "User",
+        "note": "StructBay marked out for delivery (Type B).",
+        "timestamp": "2026-06-18T11:24:09.171Z",
+        "_id": "6a33d559c069137406b4bab4"
+      },
+      {
+        "status": "DELIVERED",
+        "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+        "model": "User",
+        "note": "Delivered to customer",
+        "timestamp": "2026-06-18T11:24:17.847Z",
+        "_id": "6a33d561c069137406b4bafa"
+      },
+      {
+        "status": "COMPLETED",
+        "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+        "model": "User",
+        "note": "Admin confirmed delivery (POD verified).",
+        "timestamp": "2026-06-18T11:24:22.824Z",
+        "_id": "6a33d566c069137406b4bb41"
+      }
+    ],
+    "invoiceStatus": "UPLOADED",
+    "dispatchStatus": "DELIVERED",
+    "totalAmount": 75408,
+    "priority": "normal",
+    "structbayLogistics": {
+      "pickupScheduledText": "AGRA",
+      "companyName": "AGRA LOGISTICS",
+      "driverContactDetails": "7896541230",
+      "pickupContactName": "Ramesh Singh",
+      "pickupContactPhone": "8400818186"
+    },
+    "preDispatch": {
+      "packingFiles": [
+        {
+          "url": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781780508/structbay/vendor/documents/file_ugpoxs.png",
+          "cloudinaryId": "structbay/vendor/documents/file_ugpoxs",
+          "name": "banner iamge.png",
+          "_id": "6a33d01cc069137406b4afe7"
+        }
+      ],
+      "invoiceFileUrl": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781780507/structbay/vendor/documents/file_udpq9f.png",
+      "invoiceCloudinaryId": "structbay/vendor/documents/file_udpq9f"
+    },
+    "workflowVersion": 2,
+    "createdAt": "2026-06-18T10:58:45.616Z",
+    "updatedAt": "2026-06-18T11:24:22.827Z",
+    "__v": 8,
+    "expectedDispatchDate": "2026-06-18T00:00:00.000Z",
+    "structbayOutboundDocs": {
+      "invoicePdfUrl": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781781810/structbay/invoices/file_hch7gk.pdf",
+      "invoicePdfCloudinaryId": "structbay/invoices/file_hch7gk",
+      "invoiceNumber": "sb-01",
+      "ewayBillPdfUrl": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781781810/structbay/invoices/file_xme6lc.pdf",
+      "ewayBillPdfCloudinaryId": "structbay/invoices/file_xme6lc",
+      "ewayBillNumber": "e-way-01",
+      "sentAt": "2026-06-18T11:23:31.147Z",
+      "sentBy": "6a2ab23e07a6b7f84fdcca12"
+    },
+    "actualDispatchDate": "2026-06-18T11:24:09.171Z",
+    "actualDeliveryDate": "2026-06-18T11:24:17.846Z",
+    "deliveryProof": {
+      "deliveryDate": "2026-06-18T11:24:17.846Z",
+      "confirmedByAdmin": "6a2ab23e07a6b7f84fdcca12",
+      "confirmedAt": "2026-06-18T11:24:22.824Z"
+    }
+  },
+  {
+    "_id": "6a33db37c069137406b4d4c5",
+    "masterOrder": "6a33beccab967c7ecb6d2c3a",
+    "orderNumber": "2606180001-1",
+    "subOrderIndex": 1,
+    "vendor": "6a318251d1a54032dcb4766f",
+    "assignedBy": "6a2ab23e07a6b7f84fdcca12",
+    "assignedAt": "2026-06-18T11:49:11.765Z",
+    "items": [
+      {
+        "product": "6a2b0443bf34fdffffcf692f",
+        "variation": null,
+        "masterItemId": "6a33beccab967c7ecb6d2c3b",
+        "productName": "Kajaria Vitrified Tile 600x600",
+        "sku": "KAJ-600-001",
+        "quantity": 7,
+        "unitPrice": 620,
+        "gstPercentage": 18,
+        "lineTotal": 4340,
+        "_id": "6a33db37c069137406b4d4c6"
+      }
+    ],
+    "customerInfo": {
+      "name": "Riti Rai",
+      "phone": "9874554987"
+    },
+    "deliveryAddress": {
+      "line1": "h 201309",
+      "line2": "Others",
+      "city": "Bengaluru",
+      "state": "",
+      "pincode": "560001",
+      "contactPerson": "Riti Rai",
+      "contactPhone": "9874554987"
+    },
+    "deliveryType": "structbay_delivery",
+    "status": "READY_FOR_DISPATCH",
+    "statusHistory": [
+      {
+        "status": "NEW_ASSIGNED",
+        "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+        "model": "User",
+        "note": "Vendor assigned from master order by admin.",
+        "timestamp": "2026-06-18T11:49:11.765Z",
+        "_id": "6a33db37c069137406b4d4c7"
+      },
+      {
+        "status": "ACCEPTED",
+        "updatedBy": "6a318251d1a54032dcb4766f",
+        "model": "User",
+        "note": "Vendor accepted the order.",
+        "timestamp": "2026-06-18T11:57:54.305Z",
+        "_id": "6a33dd42c069137406b4e861"
+      },
+      {
+        "status": "READY_FOR_DISPATCH",
+        "updatedBy": "6a318251d1a54032dcb4766f",
+        "model": "User",
+        "note": "Packing Done",
+        "timestamp": "2026-06-18T11:58:26.504Z",
+        "_id": "6a33dd62c069137406b4eaa8"
+      }
+    ],
+    "invoiceStatus": "PENDING",
+    "dispatchStatus": "READY",
+    "totalAmount": 5121,
+    "priority": "normal",
+    "structbayLogistics": {
+      "pickupScheduledText": null,
+      "companyName": null,
+      "driverContactDetails": null,
+      "pickupContactName": null,
+      "pickupContactPhone": null
+    },
+    "preDispatch": {
+      "packingFiles": [
+        {
+          "url": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781783906/structbay/vendor/documents/file_smy52i.pdf",
+          "cloudinaryId": "structbay/vendor/documents/file_smy52i",
+          "name": "StructBay-2606180001.pdf",
+          "_id": "6a33dd62c069137406b4eaa7"
+        }
+      ],
+      "invoiceFileUrl": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781783906/structbay/vendor/documents/file_wqd2hp.pdf",
+      "invoiceCloudinaryId": "structbay/vendor/documents/file_wqd2hp",
+      "remarks": "Packing Done"
+    },
+    "workflowVersion": 2,
+    "createdAt": "2026-06-18T11:49:11.797Z",
+    "updatedAt": "2026-06-18T11:58:26.512Z",
+    "__v": 2,
+    "expectedDispatchDate": "2026-06-18T00:00:00.000Z"
+  },
+  {
+    "_id": "6a344df9f80d81de0043100e",
+    "masterOrder": "6a33beccab967c7ecb6d2c3a",
+    "orderNumber": "2606180001-2",
+    "subOrderIndex": 2,
+    "vendor": "6a318251d1a54032dcb4766f",
+    "assignedBy": "6a2ab23e07a6b7f84fdcca12",
+    "assignedAt": "2026-06-18T19:58:49.170Z",
+    "items": [
+      {
+        "product": "6a2b0443bf34fdffffcf692f",
+        "variation": null,
+        "masterItemId": "6a33beccab967c7ecb6d2c3b",
+        "productName": "Kajaria Vitrified Tile 600x600",
+        "sku": "KAJ-600-001",
+        "quantity": 7,
+        "unitPrice": 620,
+        "gstPercentage": 18,
+        "lineTotal": 4340,
+        "_id": "6a344df9f80d81de0043100f"
+      }
+    ],
+    "customerInfo": {
+      "name": "Riti Rai",
+      "phone": "9874554987"
+    },
+    "deliveryAddress": {
+      "line1": "h 201309",
+      "line2": "Others",
+      "city": "Bengaluru",
+      "state": "",
+      "pincode": "560001",
+      "contactPerson": "Riti Rai",
+      "contactPhone": "9874554987"
+    },
+    "deliveryType": "structbay_delivery",
+    "status": "SB_INVOICE_SENT",
+    "statusHistory": [
+      {
+        "status": "NEW_ASSIGNED",
+        "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+        "model": "User",
+        "note": "Vendor assigned from master order by admin.",
+        "timestamp": "2026-06-18T19:58:49.171Z",
+        "_id": "6a344df9f80d81de00431010"
+      },
+      {
+        "status": "ACCEPTED",
+        "updatedBy": "6a318251d1a54032dcb4766f",
+        "model": "User",
+        "note": "Vendor accepted the order.",
+        "timestamp": "2026-06-18T20:01:04.429Z",
+        "_id": "6a344e80f80d81de00431070"
+      },
+      {
+        "status": "READY_FOR_DISPATCH",
+        "updatedBy": "6a318251d1a54032dcb4766f",
+        "model": "User",
+        "note": "qwertyuio",
+        "timestamp": "2026-06-18T20:01:26.957Z",
+        "_id": "6a344e96f80d81de0043109c"
+      },
+      {
+        "status": "DISPATCH_APPROVED",
+        "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+        "model": "User",
+        "note": "Admin approved dispatch.",
+        "timestamp": "2026-06-18T20:01:55.279Z",
+        "_id": "6a344eb3f80d81de004310e8"
+      },
+      {
+        "status": "VENDOR_INVOICE_SUBMITTED",
+        "updatedBy": "6a318251d1a54032dcb4766f",
+        "model": "User",
+        "note": "Vendor submitted final tax invoice.",
+        "timestamp": "2026-06-18T20:19:07.608Z",
+        "_id": "6a3452bb69c4e6422beb1032"
+      },
+      {
+        "status": "SB_INVOICE_SENT",
+        "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+        "model": "User",
+        "note": "StructBay invoice and e-way bill sent to vendor.",
+        "timestamp": "2026-06-18T20:26:24.781Z",
+        "_id": "6a345470d1838f0abb2fd991"
+      }
+    ],
+    "invoiceStatus": "UPLOADED",
+    "dispatchStatus": "READY",
+    "totalAmount": 5121,
+    "priority": "normal",
+    "structbayLogistics": {
+      "pickupScheduledText": "20-06-2026",
+      "companyName": "EKART",
+      "driverContactDetails": "RAHUL-7896541230",
+      "pickupContactName": "AGRA LOGISTICS",
+      "pickupContactPhone": "7896541230"
+    },
+    "preDispatch": {
+      "packingFiles": [],
+      "remarks": "qwertyuio"
+    },
+    "workflowVersion": 2,
+    "isDeleted": false,
+    "createdAt": "2026-06-18T19:58:49.184Z",
+    "updatedAt": "2026-06-18T20:26:24.807Z",
+    "__v": 5,
+    "expectedDispatchDate": "2026-06-20T00:00:00.000Z",
+    "shipmentDispatch": {
+      "trackingNumber": "TRK190626001"
+    },
+    "structbayOutboundDocs": {
+      "invoicePdfUrl": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781814384/structbay/invoices/file_fagjuy.pdf",
+      "invoicePdfCloudinaryId": "structbay/invoices/file_fagjuy",
+      "invoiceNumber": "SBINV-01",
+      "ewayBillPdfUrl": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781814384/structbay/invoices/file_zwzqpj.pdf",
+      "ewayBillPdfCloudinaryId": "structbay/invoices/file_zwzqpj",
+      "ewayBillNumber": "EWB-01",
+      "sentAt": "2026-06-18T20:26:24.657Z",
+      "sentBy": "6a2ab23e07a6b7f84fdcca12"
+    }
+  },
+  {
+    "_id": "6a34d924f734442b5c3d4fc6",
+    "masterOrder": "6a33cf37c069137406b4acac",
+    "orderNumber": "2606180002-2",
+    "subOrderIndex": 2,
+    "vendor": "6a318251d1a54032dcb4766f",
+    "assignedBy": "6a2ab23e07a6b7f84fdcca12",
+    "assignedAt": "2026-06-19T05:52:36.262Z",
+    "items": [
+      {
+        "product": "6a2b043cbf34fdffffcf68bf",
+        "variation": null,
+        "masterItemId": "6a33cf37c069137406b4acad",
+        "productName": "UltraTech Cement OPC 53 Grade",
+        "sku": "UTC-OPC53-001",
+        "quantity": 1,
+        "unitPrice": 405,
+        "gstPercentage": 18,
+        "lineTotal": 405,
+        "_id": "6a34d924f734442b5c3d4fc7"
+      }
+    ],
+    "customerInfo": {
+      "name": "Riti Rai",
+      "phone": "8450065478"
+    },
+    "deliveryAddress": {
+      "line1": "Uttar Pradesh 201309",
+      "line2": "Others",
+      "city": "Bengaluru",
+      "state": "",
+      "pincode": "560001",
+      "contactPerson": "Riti Rai",
+      "contactPhone": "8450065478"
+    },
+    "deliveryType": "vendor_delivery",
+    "status": "NEW_ASSIGNED",
+    "statusHistory": [
+      {
+        "status": "NEW_ASSIGNED",
+        "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+        "model": "User",
+        "note": "Per-product vendor assignment by admin.",
+        "timestamp": "2026-06-19T05:52:36.262Z",
+        "_id": "6a34d924f734442b5c3d4fc8"
+      }
+    ],
+    "invoiceStatus": "PENDING",
+    "dispatchStatus": "PENDING",
+    "totalAmount": 405,
+    "priority": "normal",
+    "structbayLogistics": {
+      "pickupScheduledText": null,
+      "companyName": null,
+      "driverContactDetails": null,
+      "pickupContactName": null,
+      "pickupContactPhone": null
+    },
+    "preDispatch": {
+      "packingFiles": []
+    },
+    "workflowVersion": 2,
+    "isDeleted": false,
+    "createdAt": "2026-06-19T05:52:36.267Z",
+    "updatedAt": "2026-06-19T05:52:36.267Z",
+    "__v": 0
+  },
+  {
+    "_id": "6a350cc9db6ea6504d89f2d3",
+    "masterOrder": "6a350c8ddb6ea6504d89f1c0",
+    "orderNumber": "2606190001-1",
+    "subOrderIndex": 1,
+    "vendor": "6a318251d1a54032dcb4766f",
+    "assignedBy": "6a2ab23e07a6b7f84fdcca12",
+    "assignedAt": "2026-06-19T09:32:57.287Z",
+    "items": [
+      {
+        "product": "6a34f0ab763b4da85a796d0d",
+        "variation": "6a34f0d5763b4da85a796d31",
+        "masterItemId": "6a350c8ddb6ea6504d89f1c1",
+        "productName": "AMBUJA",
+        "sku": "CEM-AMB-001-10KG",
+        "variationLabel": "10 KG",
+        "quantity": 1,
+        "unitPrice": 550,
+        "gstPercentage": 18,
+        "lineTotal": 550,
+        "_id": "6a350cd7db6ea6504d89f318"
+      }
+    ],
+    "customerInfo": {
+      "name": "Riti",
+      "phone": "9876543212"
+    },
+    "deliveryAddress": {
+      "line1": "\"O\"-Pocket, Ganga Nagar, Meerut-250001",
+      "line2": "IIMT UNIVERSITY ,MEERUT",
+      "city": "Bengaluru",
+      "state": "",
+      "pincode": "560001",
+      "contactPerson": "Riti",
+      "contactPhone": "9876543212"
+    },
+    "deliveryType": "structbay_delivery",
+    "status": "COMPLETED",
+    "statusHistory": [
+      {
+        "status": "NEW_ASSIGNED",
+        "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+        "model": "User",
+        "note": "Per-product vendor assignment by admin.",
+        "timestamp": "2026-06-19T09:32:57.287Z",
+        "_id": "6a350cc9db6ea6504d89f2d5"
+      },
+      {
+        "status": "ACCEPTED",
+        "updatedBy": "6a318251d1a54032dcb4766f",
+        "model": "User",
+        "note": "Vendor accepted the order.",
+        "timestamp": "2026-06-19T09:34:23.420Z",
+        "_id": "6a350d1fdb6ea6504d89f3e6"
+      },
+      {
+        "status": "READY_FOR_DISPATCH",
+        "updatedBy": "6a318251d1a54032dcb4766f",
+        "model": "User",
+        "note": "OKAY",
+        "timestamp": "2026-06-19T09:34:51.739Z",
+        "_id": "6a350d3bdb6ea6504d89f411"
+      },
+      {
+        "status": "DISPATCH_APPROVED",
+        "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+        "model": "User",
+        "note": "Admin approved dispatch.",
+        "timestamp": "2026-06-19T09:35:32.629Z",
+        "_id": "6a350d64db6ea6504d89f476"
+      },
+      {
+        "status": "VENDOR_INVOICE_SUBMITTED",
+        "updatedBy": "6a318251d1a54032dcb4766f",
+        "model": "User",
+        "note": "Vendor submitted final tax invoice.",
+        "timestamp": "2026-06-19T09:40:13.128Z",
+        "_id": "6a350e7ddb6ea6504d89f677"
+      },
+      {
+        "status": "SB_INVOICE_SENT",
+        "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+        "model": "User",
+        "note": "StructBay invoice and e-way bill sent to vendor.",
+        "timestamp": "2026-06-19T09:49:13.285Z",
+        "_id": "6a351099db6ea6504d89fb40"
+      },
+      {
+        "status": "DISPATCHED",
+        "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+        "model": "User",
+        "note": "StructBay marked out for delivery (Type B).",
+        "timestamp": "2026-06-19T09:49:45.858Z",
+        "_id": "6a3510b9db6ea6504d89fc42"
+      },
+      {
+        "status": "DELIVERED",
+        "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+        "model": "User",
+        "note": "Delivered to customer",
+        "timestamp": "2026-06-19T09:50:34.475Z",
+        "_id": "6a3510eadb6ea6504d89fce2"
+      },
+      {
+        "status": "COMPLETED",
+        "updatedBy": "6a2ab23e07a6b7f84fdcca12",
+        "model": "User",
+        "note": "Admin confirmed delivery (POD verified).",
+        "timestamp": "2026-06-19T09:50:40.201Z",
+        "_id": "6a3510f0db6ea6504d89fd2c"
+      }
+    ],
+    "invoiceStatus": "UPLOADED",
+    "dispatchStatus": "DELIVERED",
+    "totalAmount": 550,
+    "priority": "normal",
+    "structbayLogistics": {
+      "pickupScheduledText": "20-06-2026",
+      "companyName": "EKART",
+      "driverContactDetails": "RITI-850045962",
+      "pickupContactName": "RAMESH WAREHOUSE",
+      "pickupContactPhone": "9874563210"
+    },
+    "preDispatch": {
+      "packingFiles": [
+        {
+          "url": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781861690/structbay/vendor/documents/file_wtaxce.png",
+          "cloudinaryId": "structbay/vendor/documents/file_wtaxce",
+          "name": "Bricks-Blocks.png",
+          "_id": "6a350d3bdb6ea6504d89f410"
+        }
+      ],
+      "invoiceFileUrl": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781861689/structbay/vendor/documents/file_jhxwue.jpg",
+      "invoiceCloudinaryId": "structbay/vendor/documents/file_jhxwue",
+      "remarks": "OKAY"
+    },
+    "workflowVersion": 2,
+    "isDeleted": false,
+    "createdAt": "2026-06-19T09:32:57.294Z",
+    "updatedAt": "2026-06-19T09:50:40.202Z",
+    "__v": 9,
+    "expectedDispatchDate": "2026-06-19T00:00:00.000Z",
+    "shipmentDispatch": {
+      "trackingNumber": "TRK190626002"
+    },
+    "structbayOutboundDocs": {
+      "invoicePdfUrl": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781862551/structbay/invoices/file_qfon3p.pdf",
+      "invoicePdfCloudinaryId": "structbay/invoices/file_qfon3p",
+      "invoiceNumber": "INV-001",
+      "ewayBillPdfUrl": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781862551/structbay/invoices/file_dqipth.pdf",
+      "ewayBillPdfCloudinaryId": "structbay/invoices/file_dqipth",
+      "ewayBillNumber": "INV-002",
+      "sentAt": "2026-06-19T09:49:13.285Z",
+      "sentBy": "6a2ab23e07a6b7f84fdcca12"
+    },
+    "actualDispatchDate": "2026-06-19T09:49:45.858Z",
+    "actualDeliveryDate": "2026-06-19T09:50:34.474Z",
+    "deliveryProof": {
+      "deliveryDate": "2026-06-19T09:50:34.474Z",
+      "confirmedByAdmin": "6a2ab23e07a6b7f84fdcca12",
+      "confirmedAt": "2026-06-19T09:50:40.200Z"
+    }
+  }
+]

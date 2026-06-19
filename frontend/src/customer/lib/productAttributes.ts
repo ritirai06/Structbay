@@ -3,6 +3,8 @@
  * Mirrors backend ProductVariation + CategoryFilter conventions.
  */
 
+import { canonicalAttributeValue } from "./attributeValueNormalize";
+
 export function humanizeAttrKey(key: string): string {
   return String(key)
     .replace(/[_\-]+/g, " ")
@@ -18,20 +20,33 @@ export function flattenVariationAttributes(attrs: Record<string, unknown> | null
   const rows: AttributeRow[] = [];
   if (!attrs || typeof attrs !== "object") return rows;
   const a = attrs as Record<string, unknown>;
+
   for (const k of FIXED_KEYS) {
     const v = a[k];
-    if (v != null && String(v).trim()) rows.push({ key: k, label: humanizeAttrKey(k), value: String(v).trim() });
+    if (v != null && String(v).trim()) rows.push({ key: k, label: humanizeAttrKey(k), value: canonicalAttributeValue(v, k) });
   }
+
   const custom = a.custom;
   if (Array.isArray(custom)) {
     for (const c of custom) {
       const row = c as { key?: string; value?: unknown };
       if (row?.key && row.value != null && String(row.value).trim()) {
         const key = String(row.key).trim();
-        rows.push({ key, label: humanizeAttrKey(key), value: String(row.value).trim() });
+        rows.push({ key, label: humanizeAttrKey(key), value: canonicalAttributeValue(row.value, key) });
       }
     }
   }
+
+  const used = new Set(rows.map((r) => r.key.toLowerCase()));
+  for (const [rawKey, rawVal] of Object.entries(a)) {
+    if (rawKey === "custom" || FIXED_KEYS.includes(rawKey as typeof FIXED_KEYS[number])) continue;
+    if (rawVal == null || !String(rawVal).trim()) continue;
+    const key = String(rawKey).trim();
+    if (used.has(key.toLowerCase())) continue;
+    rows.push({ key, label: humanizeAttrKey(key), value: canonicalAttributeValue(rawVal, key) });
+    used.add(key.toLowerCase());
+  }
+
   return rows;
 }
 

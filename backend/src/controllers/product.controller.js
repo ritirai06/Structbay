@@ -13,10 +13,14 @@ const Inventory = require('../models/Inventory');
 const { deleteFile } = require('../config/cloudinary');
 const { logAction } = require('../services/auditLog.service');
 const { generateRefNumber } = require('../services/refNumber.service');
-const { applySoftDelete } = require('../utils/softDeleteRelease');
 const { resolveCategoryFromRow, escRx } = require('../utils/resolveCategoryFromRow');
 const catalogBrowse = require('../services/catalogBrowse.service');
 const productFull = require('../services/productFull.service');
+const { resolveVariantSku } = require('../services/variationSku.service');
+const { normalizeVariationAttributes } = require('../utils/variationAttributes');
+const { attributeValuesEquivalent } = require('../utils/attributeValueNormalize');
+const { VALID_DELIVERY_TYPES } = require('../utils/productDeliveryType');
+const { VALID_PRODUCT_STRUCTURES } = require('../utils/productStructure');
 
 async function resolveBrandForProductRow(r) {
   const byId = String(r.brandId || r.brand_id || '').trim();
@@ -105,10 +109,13 @@ const create = asyncHandler(async (req, res) => {
   const {
     name, sku, category, brand, shortDescription, description,
     gstPercentage, priceIncludesGst, status, isFeatured, isTopSelling, isAssured, isExpress,
-    isStructbayAssured, isStructbayDelivery, assuredVerifiedAt, assuredVerifiedBy,
+    isStructbayAssured, isStructbayDelivery, deliveryType, assuredVerifiedAt, assuredVerifiedBy,
     structbayDeliverySupported, structbayDeliveryZones, structbayDeliveryLeadTimeDays,
-    displayOrder, seo, faqs, videos, documents, returnExchangePolicy,
+    displayOrder, seo, faqs, videos, documents, returnExchangePolicy, productStructure,
   } = productFields;
+
+  const structureRaw = String(productStructure || 'simple').toLowerCase();
+  const resolvedStructure = VALID_PRODUCT_STRUCTURES.includes(structureRaw) ? structureRaw : 'simple';
 
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -118,14 +125,15 @@ const create = asyncHandler(async (req, res) => {
     const [product] = await Product.create([{
     name, sku, category, brand, shortDescription, description,
     gstPercentage, priceIncludesGst, status, isFeatured, isTopSelling, isAssured, isExpress,
-    isStructbayAssured, isStructbayDelivery, assuredVerifiedAt, assuredVerifiedBy,
+    isStructbayAssured, isStructbayDelivery, deliveryType, assuredVerifiedAt, assuredVerifiedBy,
     structbayDeliverySupported, structbayDeliveryZones, structbayDeliveryLeadTimeDays,
     displayOrder, seo, faqs, videos, documents, returnExchangePolicy,
+    productStructure: resolvedStructure,
     referenceNumber,
     createdBy: req.user._id,
     }], { session });
 
-    if (cityPricing.length || inventory.length) {
+    if (resolvedStructure === 'simple' && (cityPricing.length || inventory.length)) {
       await productFull.saveProductConfiguration(
         product._id,
         { cityPricing, inventory },
@@ -167,18 +175,41 @@ const update = asyncHandler(async (req, res) => {
   const allowed = [
     'name', 'sku', 'category', 'brand', 'shortDescription', 'description',
     'gstPercentage', 'priceIncludesGst', 'status', 'isFeatured', 'isTopSelling', 'isAssured', 'isExpress',
-    'isStructbayAssured', 'isStructbayDelivery', 'assuredVerifiedAt', 'assuredVerifiedBy',
+    'isStructbayAssured', 'isStructbayDelivery', 'deliveryType', 'assuredVerifiedAt', 'assuredVerifiedBy',
     'structbayDeliverySupported', 'structbayDeliveryZones', 'structbayDeliveryLeadTimeDays',
-    'displayOrder', 'seo', 'faqs', 'videos', 'documents', 'returnExchangePolicy',
+    'displayOrder', 'seo', 'faqs', 'videos', 'documents', 'returnExchangePolicy', 'productStructure',
   ];
   allowed.forEach(f => { if (productFields[f] !== undefined) product[f] = productFields[f]; });
+
+  if (productFields.productStructure === 'simple') {
+    const vCount = await ProductVariation.countDocuments({
+      product: product._id,
+      status: 'ACTIVE',
+      isDeleted: { $ne: true },
+    });
+    if (vCount > 0) {
+      throw new AppError('Cannot switch to Simple Product while active variants exist. Remove variants first.', 400);
+    }
+  }
 
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
     await product.save({ session });
 
-    if (cityPricing.length || inventory.length) {
+    if (product.productStructure === 'variant') {
+      await CityPricing.deleteMany(
+        { product: product._id, variation: null },
+        { session }
+      );
+      await Inventory.deleteMany(
+        { product: product._id, variation: null },
+        { session }
+      );
+    }
+
+    const isVariantProduct = product.productStructure === 'variant';
+    if (!isVariantProduct && (cityPricing.length || inventory.length)) {
       await productFull.saveProductConfiguration(
         product._id,
         { cityPricing, inventory },
@@ -233,8 +264,12 @@ const remove = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id);
   if (!product) throw new AppError('Product not found.', 404);
   const oldName = product.name;
-  applySoftDelete(product, { fields: ['slug', 'sku'], nameMaxLength: 200 });
-  await product.save({ validateBeforeSave: false });
+  await Promise.all([
+    CityPricing.deleteMany({ product: product._id }),
+    Inventory.deleteMany({ product: product._id }),
+    ProductVariation.deleteMany({ product: product._id }),
+    Product.deleteOne({ _id: product._id }),
+  ]);
   await logAction({ adminId: req.user._id, action: 'DELETE', module: 'Product', targetId: product._id.toString(),
     description: `Deleted product: ${oldName}`, ipAddress: req.ip });
   return ApiResponse.success(res, 200, 'Product deleted.');
@@ -243,34 +278,188 @@ const remove = asyncHandler(async (req, res) => {
 // ─── Variations ────────────────────────────────────────────────────────────
 
 const getVariations = asyncHandler(async (req, res) => {
-  const vars = await ProductVariation.find({ product: req.params.id });
-  return ApiResponse.success(res, 200, 'Variations retrieved.', vars);
+  const product = await Product.findById(req.params.id).select('_id gstPercentage').lean();
+  if (!product) throw new AppError('Product not found.', 404);
+
+  const vars = await ProductVariation.find({ product: req.params.id }).sort({ sortOrder: 1, createdAt: 1 });
+  const enriched = await Promise.all(vars.map(async (v) => {
+    const config = await productFull.getVariationConfiguration(product._id, v._id);
+    return {
+      ...v.toJSON(),
+      cityConfigs: config.cityConfigs,
+    };
+  }));
+  return ApiResponse.success(res, 200, 'Variations retrieved.', enriched);
 });
 
 const createVariation = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id);
   if (!product) throw new AppError('Product not found.', 404);
-  const variation = await ProductVariation.create({ ...req.body, product: product._id });
-  return ApiResponse.created(res, 'Variation created.', variation);
+
+  if (product.productStructure === 'simple') {
+    throw new AppError('Change product structure to Variant Product and save before adding variants.', 400);
+  }
+
+  const attributes = normalizeVariationAttributes(req.body);
+  if (!Object.keys(attributes).length) {
+    throw new AppError('Add at least one attribute (e.g. Size → 10 KG).', 400);
+  }
+
+  const sku = await resolveVariantSku({
+    product,
+    requestedSku: req.body.sku,
+    attributes,
+  });
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const [variation] = await ProductVariation.create([{
+      product: product._id,
+      attributes,
+      sku,
+      status: req.body.status || 'ACTIVE',
+      sortOrder: req.body.sortOrder ?? 0,
+      mrp: req.body.mrp,
+      moq: req.body.moq,
+      leadTimeDays: req.body.leadTimeDays,
+      weightKg: req.body.weightKg,
+      vendorSku: req.body.vendorSku,
+      vendorPrice: req.body.vendorPrice,
+    }], { session });
+
+    const { cityPricing, inventory } = productFull.extractNestedPayload(req.body, product.gstPercentage);
+    if (cityPricing.length || inventory.length) {
+      await productFull.saveVariationConfiguration(
+        product._id,
+        variation._id,
+        { cityPricing, inventory },
+        req.user._id,
+        session,
+        product.gstPercentage ?? 18
+      );
+    }
+
+    await session.commitTransaction();
+
+    const config = await productFull.getVariationConfiguration(product._id, variation._id);
+    return ApiResponse.created(res, 'Variation created.', {
+      ...variation.toJSON(),
+      cityConfigs: config.cityConfigs,
+    });
+  } catch (err) {
+    await session.abortTransaction();
+    throw err;
+  } finally {
+    session.endSession();
+  }
 });
 
 const updateVariation = asyncHandler(async (req, res) => {
+  const product = await Product.findById(req.params.id);
+  if (!product) throw new AppError('Product not found.', 404);
+
   const variation = await ProductVariation.findOne({ _id: req.params.varId, product: req.params.id });
   if (!variation) throw new AppError('Variation not found.', 404);
+
+  if (req.body.attributePairs || req.body.attributes) {
+    variation.attributes = normalizeVariationAttributes(req.body);
+  }
+
+  if (req.body.sku !== undefined) {
+    variation.sku = await resolveVariantSku({
+      product,
+      requestedSku: req.body.sku,
+      attributes: variation.attributes,
+      variationId: variation._id,
+    });
+  } else if ((req.body.attributePairs || req.body.attributes) && !variation.sku) {
+    variation.sku = await resolveVariantSku({
+      product,
+      requestedSku: null,
+      attributes: variation.attributes,
+      variationId: variation._id,
+    });
+  }
+
   const allowed = [
-    'attributes', 'sku', 'images', 'status', 'sortOrder',
+    'images', 'status', 'sortOrder',
     'mrp', 'weightKg', 'leadTimeDays', 'moq', 'vendorSku', 'vendorPrice',
   ];
-  allowed.forEach(f => { if (req.body[f] !== undefined) variation[f] = req.body[f]; });
-  await variation.save();
-  return ApiResponse.success(res, 200, 'Variation updated.', variation);
+  allowed.forEach((f) => { if (req.body[f] !== undefined) variation[f] = req.body[f]; });
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    await variation.save({ session });
+
+    const nested = productFull.hasNestedPayload(req.body);
+    if (nested || Array.isArray(req.body.cityPricing) || Array.isArray(req.body.inventory)) {
+      const { cityPricing, inventory } = productFull.extractNestedPayload(req.body, product.gstPercentage);
+      if (cityPricing.length || inventory.length) {
+        await productFull.saveVariationConfiguration(
+          product._id,
+          variation._id,
+          { cityPricing, inventory },
+          req.user._id,
+          session,
+          product.gstPercentage ?? 18
+        );
+      }
+    }
+
+    await session.commitTransaction();
+
+    const config = await productFull.getVariationConfiguration(product._id, variation._id);
+    return ApiResponse.success(res, 200, 'Variation updated.', {
+      ...variation.toJSON(),
+      cityConfigs: config.cityConfigs,
+    });
+  } catch (err) {
+    await session.abortTransaction();
+    throw err;
+  } finally {
+    session.endSession();
+  }
+});
+
+const getVariationConfiguration = asyncHandler(async (req, res) => {
+  const product = await Product.findById(req.params.id).select('_id').lean();
+  if (!product) throw new AppError('Product not found.', 404);
+  const variation = await ProductVariation.findOne({ _id: req.params.varId, product: req.params.id }).select('_id').lean();
+  if (!variation) throw new AppError('Variation not found.', 404);
+  const config = await productFull.getVariationConfiguration(product._id, variation._id);
+  return ApiResponse.success(res, 200, 'Variation configuration retrieved.', config);
+});
+
+const saveVariationConfiguration = asyncHandler(async (req, res) => {
+  const product = await Product.findById(req.params.id);
+  if (!product) throw new AppError('Product not found.', 404);
+  const variation = await ProductVariation.findOne({ _id: req.params.varId, product: req.params.id });
+  if (!variation) throw new AppError('Variation not found.', 404);
+
+  const { cityPricing, inventory } = productFull.extractNestedPayload(req.body, product.gstPercentage);
+  await productFull.saveVariationConfiguration(
+    product._id,
+    variation._id,
+    { cityPricing, inventory },
+    req.user._id,
+    null,
+    product.gstPercentage ?? 18
+  );
+
+  const config = await productFull.getVariationConfiguration(product._id, variation._id);
+  return ApiResponse.success(res, 200, 'Variation configuration saved.', config);
 });
 
 const deleteVariation = asyncHandler(async (req, res) => {
   const variation = await ProductVariation.findOne({ _id: req.params.varId, product: req.params.id });
   if (!variation) throw new AppError('Variation not found.', 404);
-  applySoftDelete(variation, { fields: ['sku'] });
-  await variation.save({ validateBeforeSave: false });
+  await Promise.all([
+    CityPricing.deleteMany({ variation: variation._id }),
+    Inventory.deleteMany({ variation: variation._id }),
+    ProductVariation.deleteOne({ _id: variation._id }),
+  ]);
   return ApiResponse.success(res, 200, 'Variation deleted.');
 });
 
@@ -323,6 +512,16 @@ const bulkImport = asyncHandler(async (req, res) => {
       const statusRaw = String(r.status || 'DRAFT').toUpperCase();
       const status = ['DRAFT', 'ACTIVE', 'ARCHIVED'].includes(statusRaw) ? statusRaw : 'DRAFT';
 
+      const deliveryRaw = String(r.deliveryType || r.delivery_type || '').trim().toLowerCase();
+      let deliveryType = VALID_DELIVERY_TYPES.includes(deliveryRaw) ? deliveryRaw : null;
+      if (!deliveryType && boolField(r.isStructbayDelivery ?? r.structbayDelivery, false)) {
+        deliveryType = 'structbay_delivery';
+      }
+      if (!deliveryType) deliveryType = 'vendor_delivery';
+
+      const structureRaw = String(r.productStructure || r.product_structure || 'simple').toLowerCase();
+      const productStructure = VALID_PRODUCT_STRUCTURES.includes(structureRaw) ? structureRaw : 'simple';
+
       const referenceNumber = await generateRefNumber('PRODUCT');
 
       await Product.create({
@@ -335,12 +534,14 @@ const bulkImport = asyncHandler(async (req, res) => {
         gstPercentage: gst,
         priceIncludesGst: inclGst,
         status,
+        deliveryType,
+        productStructure,
         isFeatured: boolField(r.isFeatured, false),
         isTopSelling: boolField(r.isTopSelling, false),
         isAssured: boolField(r.isAssured, false),
         isExpress: boolField(r.isExpress, false),
         isStructbayAssured: boolField(r.isStructbayAssured ?? r.structbayAssured, false),
-        isStructbayDelivery: boolField(r.isStructbayDelivery ?? r.structbayDelivery, false),
+        isStructbayDelivery: deliveryType === 'structbay_delivery',
         displayOrder:
           r.displayOrder !== undefined && r.displayOrder !== '' && Number.isFinite(Number(r.displayOrder))
             ? Number(r.displayOrder)
@@ -374,70 +575,190 @@ const bulkImport = asyncHandler(async (req, res) => {
   });
 });
 
-const FIXED_ATTR = new Set(['weight', 'grade', 'size', 'color', 'finish', 'diameter']);
-
 const RESERVED_VARIANT_ROW_KEYS = new Set([
   'productSku', 'parent_sku', 'parentSku', 'product_sku',
   'variantSku', 'variant_sku',
-  'mrp', 'salePrice', 'price', 'selling_price', 'stock', 'cityId', 'city_id',
+  'mrp', 'salePrice', 'sale_price', 'price', 'selling_price', 'sellingPrice',
+  'purchaseCost', 'purchase_cost',
+  'wholesaleSlabs', 'wholesale_slabs', 'slabs',
+  'stock', 'quantity',
+  'reserved', 'reservedStock', 'reserved_stock',
+  'lowStockThreshold', 'low_stock_threshold', 'reorderLevel', 'reorder_level',
+  'safetyStock', 'safety_stock',
+  'cityId', 'city_id', 'cityName', 'city_name', 'citySlug', 'city_slug',
   'moq', 'leadTimeDays', 'lead_time', 'weightKg', 'weight_kg',
   'vendorSku', 'vendor_sku', 'vendorPrice', 'vendor_price',
+  'deliveryCharge', 'delivery_charge', 'taxPercentage', 'tax_percentage',
+  'isVisible', 'is_visible', 'visible',
 ]);
 
+function isReservedVariantKey(key) {
+  if (!key) return true;
+  const lower = String(key).toLowerCase();
+  if (RESERVED_VARIANT_ROW_KEYS.has(key) || RESERVED_VARIANT_ROW_KEYS.has(lower)) return true;
+  return false;
+}
+
 function mergeVariationAttributes(prev, next) {
-  const p = prev && typeof prev === 'object' ? prev : {};
-  const n = next && typeof next === 'object' ? next : {};
-  const out = { ...p, ...n };
-  delete out.custom;
-  const prevC = Array.isArray(p.custom) ? p.custom : [];
-  const nextC = Array.isArray(n.custom) ? n.custom : [];
-  const map = new Map();
-  prevC.forEach((c) => {
-    if (c?.key) map.set(String(c.key).toLowerCase(), c);
-  });
-  nextC.forEach((c) => {
-    if (c?.key) map.set(String(c.key).toLowerCase(), c);
-  });
-  out.custom = [...map.values()];
+  const a = normalizeVariationAttributes({ attributes: prev });
+  const b = normalizeVariationAttributes({ attributes: next });
+  return { ...a, ...b };
+}
+
+function variantAttributesFromRow(row, filterKeys = []) {
+  const attributePairs = [];
+
+  for (const [key, raw] of Object.entries(row)) {
+    if (raw == null || String(raw).trim() === '') continue;
+    if (isReservedVariantKey(key)) continue;
+    const lower = String(key).toLowerCase();
+    if (lower.startsWith('attr_') || lower.startsWith('attribute_')) {
+      const name = String(key).replace(/^attr_/i, '').replace(/^attribute_/i, '').trim();
+      if (name) attributePairs.push({ name, value: String(raw).trim() });
+    }
+  }
+
+  for (const fk of filterKeys) {
+    if (isReservedVariantKey(fk)) continue;
+    if (attributePairs.some((p) => p.name.toLowerCase() === String(fk).toLowerCase())) continue;
+    const raw = row[fk];
+    if (raw != null && String(raw).trim()) {
+      attributePairs.push({ name: fk, value: String(raw).trim() });
+    }
+  }
+
+  for (const [key, raw] of Object.entries(row)) {
+    if (raw == null || String(raw).trim() === '') continue;
+    if (isReservedVariantKey(key)) continue;
+    const lower = String(key).toLowerCase();
+    if (lower.startsWith('attr_') || lower.startsWith('attribute_')) continue;
+    if (attributePairs.some((p) => p.name.toLowerCase() === lower)) continue;
+    attributePairs.push({ name: String(key).trim(), value: String(raw).trim() });
+  }
+
+  return normalizeVariationAttributes({ attributePairs });
+}
+
+function attributesMatch(a, b) {
+  const na = normalizeVariationAttributes({ attributes: a });
+  const nb = normalizeVariationAttributes({ attributes: b });
+  if (!Object.keys(nb).length) return false;
+  const keys = new Set([...Object.keys(na), ...Object.keys(nb)]);
+  for (const k of keys) {
+    if (!attributeValuesEquivalent(na[k], nb[k], k)) return false;
+  }
+  return true;
+}
+
+function parseCompactWholesaleSlabs(s) {
+  const parts = s.split('|').map((p) => p.trim()).filter(Boolean);
+  if (parts.length > 100) throw new AppError('At most 100 wholesale slabs.', 400);
+  const out = [];
+  for (const seg of parts) {
+    const bits = seg.split(':').map((x) => x.trim());
+    if (bits.length === 2) {
+      const minQty = Number(bits[0]);
+      const price = Number(bits[1]);
+      if (!Number.isFinite(minQty) || minQty < 0) throw new AppError(`Invalid slab minQty in "${seg}".`, 400);
+      if (!Number.isFinite(price) || price < 0) throw new AppError(`Invalid slab price in "${seg}".`, 400);
+      out.push({ minQty, maxQty: null, price });
+    } else if (bits.length === 3) {
+      const minQty = Number(bits[0]);
+      const maxQty = Number(bits[1]);
+      const price = Number(bits[2]);
+      if (!Number.isFinite(minQty) || minQty < 0) throw new AppError(`Invalid slab minQty in "${seg}".`, 400);
+      if (!Number.isFinite(maxQty) || maxQty < minQty) throw new AppError(`Invalid slab maxQty in "${seg}".`, 400);
+      if (!Number.isFinite(price) || price < 0) throw new AppError(`Invalid slab price in "${seg}".`, 400);
+      out.push({ minQty, maxQty, price });
+    } else {
+      throw new AppError(
+        `Invalid wholesaleSlabs segment "${seg}". Use min:price tiers (50:400|100:395), or min:max:price, or a JSON array.`,
+        400
+      );
+    }
+  }
+  for (let i = 0; i < out.length; i += 1) {
+    if (out[i].maxQty === null && i < out.length - 1) {
+      const nextMin = out[i + 1].minQty;
+      out[i].maxQty = nextMin > out[i].minQty ? nextMin - 1 : out[i].minQty;
+    }
+  }
   return out;
 }
 
-function variantAttributesFromRow(row, filterKeys) {
-  const attrs = { custom: [] };
-  for (const fk of filterKeys) {
-    if (RESERVED_VARIANT_ROW_KEYS.has(fk)) continue;
-    const raw = row[fk];
-    if (raw === undefined || raw === null || String(raw).trim() === '') continue;
-    const val = String(raw).trim();
-    if (FIXED_ATTR.has(fk)) attrs[fk] = val;
-    else attrs.custom.push({ key: fk, value: val });
+function parseJsonWholesaleSlabs(s) {
+  let arr;
+  try {
+    arr = JSON.parse(s);
+  } catch {
+    throw new AppError('wholesaleSlabs must be valid JSON array.', 400);
   }
-  for (const k of FIXED_ATTR) {
-    if (attrs[k]) continue;
-    const raw = row[k];
-    if (raw !== undefined && raw !== null && String(raw).trim() !== '') {
-      attrs[k] = String(raw).trim();
-    }
+  if (!Array.isArray(arr)) throw new AppError('wholesaleSlabs must be a JSON array.', 400);
+  if (arr.length > 100) throw new AppError('At most 100 wholesale slabs.', 400);
+  return arr.map((sl, i) => {
+    const minQty = Number(sl.minQty);
+    const price = Number(sl.price);
+    const maxQty = sl.maxQty === null || sl.maxQty === '' || sl.maxQty === undefined ? null : Number(sl.maxQty);
+    if (!Number.isFinite(minQty) || minQty < 0) throw new AppError(`Invalid slab ${i + 1} minQty.`, 400);
+    if (!Number.isFinite(price) || price < 0) throw new AppError(`Invalid slab ${i + 1} price.`, 400);
+    if (maxQty != null && (!Number.isFinite(maxQty) || maxQty < minQty)) throw new AppError(`Invalid slab ${i + 1} maxQty.`, 400);
+    return { minQty, maxQty, price };
+  });
+}
+
+function parseWholesaleSlabsFromRow(r) {
+  const raw = r.wholesaleSlabs ?? r.wholesale_slabs ?? r.slabs;
+  if (raw == null || String(raw).trim() === '') return [];
+  const s = String(raw).trim();
+  if (s.startsWith('[') || s.startsWith('{')) return parseJsonWholesaleSlabs(s);
+  return parseCompactWholesaleSlabs(s);
+}
+
+async function resolveCityFromVariantRow(r, bodyCityId) {
+  const rowCity = r.cityId || r.city_id || bodyCityId;
+  if (rowCity && mongoose.Types.ObjectId.isValid(String(rowCity))) {
+    const city = await City.findOne({ _id: rowCity, status: 'ACTIVE', isServiceable: true }).select('_id').lean();
+    if (!city) throw new AppError('Invalid or non-serviceable cityId.', 400);
+    return city;
   }
-  return attrs;
+  const name = String(r.cityName || r.city_name || r.citySlug || r.city_slug || '').trim();
+  if (!name) {
+    throw new AppError('cityId or cityName is required on each row (or cityId once in request body).', 400);
+  }
+  const city = await City.findOne({
+    $or: [
+      { name: new RegExp(`^${escRx(name)}$`, 'i') },
+      { slug: name.toLowerCase().replace(/\s+/g, '-') },
+    ],
+    status: 'ACTIVE',
+    isServiceable: true,
+  }).select('_id').lean();
+  if (!city) throw new AppError(`City not found: ${name}.`, 404);
+  return city;
 }
 
 const getBulkImportTemplate = asyncHandler(async (req, res) => {
   const { categoryId, mode = 'variants' } = req.query;
-  if (!categoryId || !mongoose.Types.ObjectId.isValid(String(categoryId))) {
-    throw new AppError('Query parameter categoryId is required.', 400);
-  }
-  const category = await Category.findById(categoryId).select('name slug status').lean();
-  if (!category) throw new AppError('Category not found.', 404);
+  let category = null;
+  let dyn = [];
 
-  const cf = await CategoryFilter.findOne({ category: categoryId }).lean();
-  const dyn = (cf?.filters || [])
-    .filter((f) => f.isActive !== false)
-    .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  if (categoryId) {
+    if (!mongoose.Types.ObjectId.isValid(String(categoryId))) {
+      throw new AppError('Invalid categoryId.', 400);
+    }
+    category = await Category.findById(categoryId).select('name slug status').lean();
+    if (!category) throw new AppError('Category not found.', 404);
+    const cf = await CategoryFilter.findOne({ category: categoryId }).lean();
+    dyn = (cf?.filters || [])
+      .filter((f) => f.isActive !== false)
+      .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  } else if (mode === 'variants') {
+    throw new AppError('Query parameter categoryId is required for variant templates.', 400);
+  }
 
   const baseProductCols = [
     { key: 'name', label: 'Product Name', group: 'product', required: true },
-    { key: 'sku', label: 'Parent SKU', group: 'product', required: mode === 'products' },
+    { key: 'sku', label: 'Parent SKU', group: 'product', required: true },
     { key: 'brandName', label: 'Brand Name', group: 'product', required: true },
     { key: 'categorySlug', label: 'Category Slug', group: 'product', required: false },
     { key: 'shortDescription', label: 'Short Description', group: 'product', required: false },
@@ -446,11 +767,22 @@ const getBulkImportTemplate = asyncHandler(async (req, res) => {
 
   const variantCols = [
     { key: 'productSku', label: 'Parent Product SKU', group: 'variant', required: true },
-    { key: 'variantSku', label: 'Variant SKU', group: 'variant', required: true },
+    {
+      key: 'variantSku',
+      label: 'Variant SKU (optional — auto-generated from parent + attributes)',
+      group: 'variant',
+      required: false,
+    },
     { key: 'mrp', label: 'MRP', group: 'pricing', required: false },
     { key: 'salePrice', label: 'Sale Price (city)', group: 'pricing', required: true },
+    { key: 'purchaseCost', label: 'Purchase Cost', group: 'pricing', required: false },
+    { key: 'wholesaleSlabs', label: 'Wholesale tiers (50:400|100:395)', group: 'pricing', required: false },
     { key: 'stock', label: 'Stock (city)', group: 'inventory', required: true },
-    { key: 'cityId', label: 'City ID', group: 'inventory', required: true },
+    { key: 'reserved', label: 'Reserved stock', group: 'inventory', required: false },
+    { key: 'lowStockThreshold', label: 'Low stock threshold', group: 'inventory', required: false },
+    { key: 'safetyStock', label: 'Safety stock', group: 'inventory', required: false },
+    { key: 'cityId', label: 'City ID (or cityName)', group: 'inventory', required: false },
+    { key: 'cityName', label: 'City name', group: 'inventory', required: false },
     { key: 'moq', label: 'MOQ', group: 'variant', required: false },
     { key: 'leadTimeDays', label: 'Lead Time (days)', group: 'variant', required: false },
     { key: 'weightKg', label: 'Weight (kg)', group: 'variant', required: false },
@@ -466,6 +798,7 @@ const getBulkImportTemplate = asyncHandler(async (req, res) => {
     required: false,
     options: f.options || [],
     sortOrder: f.sortOrder,
+    hint: 'Use column key as header, or attr_KeyName for custom attributes',
   }));
 
   const columns = mode === 'products'
@@ -475,18 +808,69 @@ const getBulkImportTemplate = asyncHandler(async (req, res) => {
       { key: 'gstPercentage', label: 'GST %', group: 'product', required: false },
       { key: 'priceIncludesGst', label: 'Price incl. GST (true|false)', group: 'product', required: false },
       { key: 'status', label: 'Status (DRAFT|ACTIVE|ARCHIVED)', group: 'product', required: false },
-      { key: 'isAssured', label: 'Legacy Assured', group: 'badges', required: false },
-      { key: 'isExpress', label: 'Legacy Express', group: 'badges', required: false },
+      {
+        key: 'deliveryType',
+        label: 'Delivery (vendor_delivery|structbay_delivery)',
+        group: 'product',
+        required: false,
+      },
+      {
+        key: 'productStructure',
+        label: 'Structure (simple|variant)',
+        group: 'product',
+        required: false,
+      },
       { key: 'isStructbayAssured', label: 'StructBay Assured', group: 'badges', required: false },
-      { key: 'isStructbayDelivery', label: 'StructBay Delivery', group: 'badges', required: false },
+      { key: 'isFeatured', label: 'Featured', group: 'badges', required: false },
+      { key: 'isTopSelling', label: 'Top selling', group: 'badges', required: false },
+      { key: 'displayOrder', label: 'Display order', group: 'product', required: false },
     ]
     : [...variantCols.slice(0, 2), ...dynCols, ...variantCols.slice(2)];
 
+  const sampleVariantRow = {
+    productSku: 'PARENT-SKU-001',
+    variantSku: '',
+    mrp: '450',
+    salePrice: '420',
+    purchaseCost: '380',
+    wholesaleSlabs: '50:400|100:395',
+    stock: '500',
+    reserved: '0',
+    lowStockThreshold: '50',
+    safetyStock: '10',
+    cityName: 'Bengaluru',
+    moq: '1',
+  };
+  dyn.forEach((f) => {
+    sampleVariantRow[f.key] = (f.options && f.options[0]) || '';
+  });
+
+  const sampleProductRow = {
+    name: 'Sample Product',
+    sku: 'PARENT-SKU-001',
+    brandName: 'UltraTech',
+    categorySlug: category?.slug || 'cement',
+    gstPercentage: '18',
+    priceIncludesGst: 'false',
+    status: 'DRAFT',
+    deliveryType: 'vendor_delivery',
+    productStructure: 'simple',
+    shortDescription: 'Short text',
+    displayOrder: '0',
+    isStructbayAssured: 'false',
+    isFeatured: 'false',
+    isTopSelling: 'false',
+  };
+  dyn.forEach((f) => {
+    sampleProductRow[f.key] = (f.options && f.options[0]) || '';
+  });
+
   return ApiResponse.success(res, 200, 'Bulk import template.', {
     mode,
-    categoryId: String(category._id),
+    categoryId: category ? String(category._id) : null,
     category,
     columns,
+    sampleRows: mode === 'variants' ? [sampleVariantRow] : [sampleProductRow],
     generatedAt: new Date().toISOString(),
   });
 });
@@ -503,30 +887,54 @@ const bulkImportVariants = asyncHandler(async (req, res) => {
   let ok = 0;
   const batchId = new mongoose.Types.ObjectId().toString();
 
+  const boolFromRow = (v, def = true) => {
+    if (v === undefined || v === null || v === '') return def;
+    return !['false', '0', 'no', 'n'].includes(String(v).toLowerCase().trim());
+  };
+
   for (let i = 0; i < rows.length; i += 1) {
     const row = rows[i];
     try {
       const r = typeof row === 'object' && row !== null ? row : {};
       const productSku = String(r.productSku || r.parentSku || r.product_sku || r.parent_sku || '').trim().toUpperCase();
-      const variantSku = String(r.variantSku || r.variant_sku || '').trim();
-      const rowCity = r.cityId || r.city_id || bodyCityId;
+      const variantSkuInput = String(r.variantSku || r.variant_sku || '').trim();
       if (!productSku) throw new AppError('productSku (parent sku) is required.', 400);
-      if (!variantSku) throw new AppError('variantSku is required.', 400);
-      if (!rowCity || !mongoose.Types.ObjectId.isValid(String(rowCity))) {
-        throw new AppError('cityId is required on each row (or once in request body).', 400);
-      }
 
-      const city = await City.findOne({ _id: rowCity, status: 'ACTIVE', isServiceable: true }).select('_id').lean();
-      if (!city) throw new AppError('Invalid or non-serviceable cityId.', 400);
+      const city = await resolveCityFromVariantRow(r, bodyCityId);
 
       const product = await Product.findOne({ sku: productSku });
       if (!product) throw new AppError(`Product not found for sku ${productSku}.`, 404);
 
+      if (product.productStructure !== 'variant') {
+        product.productStructure = 'variant';
+        await product.save();
+        await CityPricing.deleteMany({ product: product._id, variation: null });
+        await Inventory.deleteMany({ product: product._id, variation: null });
+      }
+
       const cf = await CategoryFilter.findOne({ category: product.category }).lean();
       const filterKeys = (cf?.filters || []).filter((f) => f.isActive !== false).map((f) => f.key);
       const attrs = variantAttributesFromRow(r, filterKeys);
+      if (!Object.keys(attrs).length) {
+        throw new AppError('At least one variant attribute column is required (category filters or attr_* columns).', 400);
+      }
 
-      let variation = await ProductVariation.findOne({ product: product._id, sku: variantSku });
+      let variation = null;
+      if (variantSkuInput) {
+        variation = await ProductVariation.findOne({ product: product._id, sku: variantSkuInput.toUpperCase() });
+      } else {
+        const existing = await ProductVariation.find({ product: product._id, isDeleted: { $ne: true } }).lean();
+        const hit = existing.find((v) => attributesMatch(v.attributes, attrs));
+        if (hit) variation = await ProductVariation.findById(hit._id);
+      }
+
+      const resolvedSku = await resolveVariantSku({
+        product,
+        requestedSku: variantSkuInput || variation?.sku,
+        attributes: attrs,
+        variationId: variation?._id,
+      });
+
       const moq = r.moq !== undefined && r.moq !== '' && Number.isFinite(Number(r.moq)) ? Math.max(1, Number(r.moq)) : undefined;
       const leadRaw = r.leadTimeDays ?? r.lead_time;
       const leadTimeDays = leadRaw !== undefined && leadRaw !== '' ? Number(leadRaw) : null;
@@ -536,17 +944,29 @@ const bulkImportVariants = asyncHandler(async (req, res) => {
       const vendorSku = r.vendorSku || r.vendor_sku || null;
       const vendorPriceRaw = r.vendorPrice ?? r.vendor_price;
       const vendorPrice = vendorPriceRaw !== undefined && vendorPriceRaw !== '' ? Number(vendorPriceRaw) : null;
+      const purchaseCostRaw = r.purchaseCost ?? r.purchase_cost;
+      const purchaseCost = purchaseCostRaw !== undefined && purchaseCostRaw !== '' ? Number(purchaseCostRaw) : null;
 
-      const salePrice = Number(r.salePrice ?? r.price ?? r.selling_price);
+      const salePrice = Number(r.salePrice ?? r.sale_price ?? r.price ?? r.selling_price ?? r.sellingPrice);
       if (!Number.isFinite(salePrice) || salePrice < 0) throw new AppError('salePrice (or price) must be a valid number.', 400);
 
-      const stock = Number(r.stock);
+      const stock = Number(r.stock ?? r.quantity);
       if (!Number.isFinite(stock) || stock < 0) throw new AppError('stock must be a valid non-negative number.', 400);
+
+      const reservedRaw = r.reserved ?? r.reservedStock ?? r.reserved_stock;
+      const reserved = reservedRaw !== undefined && reservedRaw !== '' ? Number(reservedRaw) : null;
+      const thresholdRaw = r.lowStockThreshold ?? r.low_stock_threshold ?? r.reorderLevel ?? r.reorder_level;
+      const lowStockThreshold = thresholdRaw !== undefined && thresholdRaw !== '' ? Number(thresholdRaw) : null;
+      const safetyRaw = r.safetyStock ?? r.safety_stock;
+      const safetyStock = safetyRaw !== undefined && safetyRaw !== '' ? Number(safetyRaw) : null;
+
+      const wholesaleSlabs = parseWholesaleSlabsFromRow(r);
+      const isVisible = boolFromRow(r.isVisible ?? r.is_visible ?? r.visible, true);
 
       if (!variation) {
         variation = await ProductVariation.create({
           product: product._id,
-          sku: variantSku,
+          sku: resolvedSku,
           attributes: attrs,
           moq: moq ?? 1,
           leadTimeDays: Number.isFinite(leadTimeDays) ? leadTimeDays : null,
@@ -556,6 +976,7 @@ const bulkImportVariants = asyncHandler(async (req, res) => {
           vendorPrice: Number.isFinite(vendorPrice) && vendorPrice >= 0 ? vendorPrice : null,
         });
       } else {
+        variation.sku = resolvedSku;
         variation.attributes = mergeVariationAttributes(variation.attributes, attrs);
         if (moq !== undefined) variation.moq = moq;
         if (Number.isFinite(leadTimeDays)) variation.leadTimeDays = leadTimeDays;
@@ -568,29 +989,36 @@ const bulkImportVariants = asyncHandler(async (req, res) => {
 
       const reg = Number.isFinite(mrp) && mrp >= 0 ? mrp : salePrice;
 
+      const pricingSet = {
+        regularPrice: reg,
+        salePrice,
+        isVisible,
+        isDeleted: false,
+        updatedBy: req.user._id,
+      };
+      if (wholesaleSlabs.length) pricingSet.wholesaleSlabs = wholesaleSlabs;
+      if (Number.isFinite(purchaseCost) && purchaseCost >= 0) pricingSet.purchaseCost = purchaseCost;
+
       await CityPricing.findOneAndUpdate(
         { product: product._id, variation: variation._id, city: city._id },
-        {
-          $set: {
-            regularPrice: reg,
-            salePrice,
-            isVisible: true,
-            isDeleted: false,
-            updatedBy: req.user._id,
-          },
-        },
+        { $set: pricingSet },
         { upsert: true, new: true }
       );
 
+      const inventorySet = {
+        quantity: stock,
+        isDeleted: false,
+        updatedBy: req.user._id,
+      };
+      if (Number.isFinite(reserved) && reserved >= 0) inventorySet.reserved = reserved;
+      if (Number.isFinite(lowStockThreshold) && lowStockThreshold >= 0) {
+        inventorySet.lowStockThreshold = lowStockThreshold;
+      }
+      if (Number.isFinite(safetyStock) && safetyStock >= 0) inventorySet.safetyStock = safetyStock;
+
       await Inventory.findOneAndUpdate(
         { product: product._id, variation: variation._id, city: city._id },
-        {
-          $set: {
-            quantity: stock,
-            isDeleted: false,
-            updatedBy: req.user._id,
-          },
-        },
+        { $set: inventorySet },
         { upsert: true, new: true }
       );
 
@@ -622,4 +1050,5 @@ module.exports = {
   getAll, getById, getBySlug, create, update, addImages, removeImage, remove, bulkImport, bulkImportVariants,
   getBulkImportTemplate,
   getVariations, createVariation, updateVariation, deleteVariation,
+  getVariationConfiguration, saveVariationConfiguration,
 };
