@@ -9,19 +9,47 @@ const Inventory = require('../models/Inventory');
 
 /**
  * @param {string|undefined} cityId
+ * @param {string|undefined} [cityName] — fallback when cityId is stale (e.g. after DB re-seed)
  * @returns {Promise<import('mongoose').Types.ObjectId|null>}
  */
-async function resolveMarketplaceCityId(cityId) {
-  if (!cityId || !mongoose.Types.ObjectId.isValid(String(cityId))) return null;
-  const oid = new mongoose.Types.ObjectId(String(cityId));
-  const city = await City.findOne({
-    _id: oid,
-    status: 'ACTIVE',
-    isServiceable: true,
-  })
-    .select('_id')
-    .lean();
-  return city ? oid : null;
+async function resolveMarketplaceCityId(cityId, cityName) {
+  if (cityId && mongoose.Types.ObjectId.isValid(String(cityId))) {
+    const oid = new mongoose.Types.ObjectId(String(cityId));
+    const city = await City.findOne({
+      _id: oid,
+      status: 'ACTIVE',
+      isServiceable: true,
+    })
+      .select('_id')
+      .lean();
+    if (city) return oid;
+  }
+
+  const nameHint = cityName != null ? String(cityName).trim() : '';
+  if (nameHint) {
+    const { normalizeCityName } = require('../utils/cityNameMatch');
+    const norm = normalizeCityName(nameHint);
+    const cities = await City.find({ status: 'ACTIVE', isServiceable: true })
+      .select('name _id')
+      .lean();
+    const hit = cities.find((c) => normalizeCityName(c.name) === norm);
+    if (hit) return hit._id;
+  }
+
+  return null;
+}
+
+/**
+ * Product IDs with at least one visible CityPricing row in the city (in stock or OOS).
+ * @param {import('mongoose').Types.ObjectId} cityOid
+ * @returns {Promise<import('mongoose').Types.ObjectId[]>}
+ */
+async function getPricedProductIdsForCity(cityOid) {
+  return CityPricing.distinct('product', {
+    city: cityOid,
+    isVisible: true,
+    isDeleted: false,
+  });
 }
 
 /**
@@ -76,6 +104,7 @@ async function getPricedProductIdsForCity(cityOid) {
 
 module.exports = {
   resolveMarketplaceCityId,
+  getPricedProductIdsForCity,
   getSellableProductIdsForCity,
   getPricedProductIdsForCity,
   vendorServesCity,

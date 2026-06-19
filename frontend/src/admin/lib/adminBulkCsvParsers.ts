@@ -195,8 +195,9 @@ export function parseCityPricingBulkCsv(text: string): Record<string, string>[] 
 }
 
 /** Products → POST /products/bulk-import */
-export const PRODUCT_BULK_TEMPLATE = `name,sku,categorySlug,brandName,status,gstPercentage,priceIncludesGst,shortDescription,description,displayOrder,isFeatured,isTopSelling,isAssured,isExpress
-Sample Product,SKU-DEMO-001,cement,UltraTech,DRAFT,18,false,Short text,,0,false,false,false,false`;
+export const PRODUCT_BULK_TEMPLATE = `name,sku,categorySlug,brandName,productStructure,status,gstPercentage,priceIncludesGst,deliveryType,shortDescription,description,displayOrder,isFeatured,isTopSelling,isStructbayAssured
+Dr Fixit Waterproofing Liquid,DFL-001,chemicals,Dr Fixit,simple,DRAFT,18,false,vendor_delivery,Waterproofing liquid for terraces,,0,false,false,false
+UltraTech Cement PPC,UTCEM-001,cement,UltraTech,variant,DRAFT,18,false,vendor_delivery,PPC 53 Grade cement — add variants in Variants tab after import,,0,false,false,false`;
 
 export function parseProductBulkCsv(text: string): Record<string, string>[] {
   const lines = parseLines(text);
@@ -208,6 +209,7 @@ export function parseProductBulkCsv(text: string): Record<string, string>[] {
   const iCatId = headerIndex(header, ["categoryid", "category_id"]);
   const iBrandName = headerIndex(header, ["brandname", "brand_name", "brand"]);
   const iBrandId = headerIndex(header, ["brandid", "brand_id"]);
+  const iStructure = headerIndex(header, ["productstructure", "product_structure", "structure"]);
   if (iName < 0 || iSku < 0) throw new Error("CSV must include columns: name, sku");
   if ((iCatSlug < 0 && iCatId < 0) || (iBrandName < 0 && iBrandId < 0)) {
     throw new Error("CSV must include category (categorySlug or categoryId) and brand (brandName or brandId)");
@@ -215,12 +217,13 @@ export function parseProductBulkCsv(text: string): Record<string, string>[] {
   const iStatus = headerIndex(header, ["status"]);
   const iGst = headerIndex(header, ["gstpercentage", "gst_percentage", "gst"]);
   const iInclGst = headerIndex(header, ["priceincludesgst", "price_includes_gst", "gstincluded", "gst_included"]);
+  const iDelivery = headerIndex(header, ["deliverytype", "delivery_type"]);
   const iShort = headerIndex(header, ["shortdescription", "short_description"]);
   const iDesc = headerIndex(header, ["description"]);
   const iDisp = headerIndex(header, ["displayorder", "display_order"]);
   const iFeat = headerIndex(header, ["isfeatured", "is_featured"]);
   const iTop = headerIndex(header, ["istopselling", "is_top_selling"]);
-  const iAss = headerIndex(header, ["isassured", "is_assured"]);
+  const iAss = headerIndex(header, ["isstructbayassured", "is_structbay_assured", "isassured", "is_assured"]);
   const iExp = headerIndex(header, ["isexpress", "is_express"]);
   const out: Record<string, string>[] = [];
   for (let r = 1; r < lines.length; r += 1) {
@@ -239,12 +242,16 @@ export function parseProductBulkCsv(text: string): Record<string, string>[] {
     else row.categorySlug = catSlug;
     if (bid) row.brandId = bid;
     else row.brandName = bn;
+    const ps = get(iStructure);
+    if (ps) row.productStructure = ps;
     const st = get(iStatus);
     if (st) row.status = st;
     const gst = get(iGst);
     if (gst !== "") row.gstPercentage = gst;
     const incl = get(iInclGst);
     if (incl !== "") row.priceIncludesGst = incl;
+    const dt = get(iDelivery);
+    if (dt) row.deliveryType = dt;
     const sh = get(iShort);
     if (sh) row.shortDescription = sh;
     const d = get(iDesc);
@@ -256,10 +263,53 @@ export function parseProductBulkCsv(text: string): Record<string, string>[] {
     const t = get(iTop);
     if (t !== "") row.isTopSelling = t;
     const a = get(iAss);
-    if (a !== "") row.isAssured = a;
+    if (a !== "") row.isStructbayAssured = a;
     const e = get(iExp);
     if (e !== "") row.isExpress = e;
     out.push(row);
+  }
+  return out;
+}
+
+export type BulkTemplateColumn = { key: string; label?: string };
+
+function escapeCsvCell(val: string) {
+  if (/[",\r\n]/.test(val)) return `"${val.replace(/"/g, '""')}"`;
+  return val;
+}
+
+/** Build CSV text from API template columns + optional sample rows. */
+export function buildCsvFromTemplateColumns(
+  columns: BulkTemplateColumn[],
+  sampleRows?: Record<string, string>[]
+): string {
+  const keys = columns.map((c) => c.key);
+  const header = keys.join(",");
+  const samples = sampleRows?.length ? sampleRows : [{}];
+  const body = samples
+    .map((row) => keys.map((k) => escapeCsvCell(row[k] ?? "")).join(","))
+    .join("\n");
+  return `${header}\n${body}`;
+}
+
+/** Variants → POST /products/bulk-import-variants (headers preserved as-is). */
+export function parseGenericBulkCsv(text: string): Record<string, string>[] {
+  const lines = parseLines(text);
+  if (lines.length < 2) return [];
+  const rawHeader = lines[0].map((h) => h.trim().replace(/^\ufeff/, ""));
+  const out: Record<string, string>[] = [];
+  for (let r = 1; r < lines.length; r += 1) {
+    const cells = lines[r];
+    const row: Record<string, string> = {};
+    let hasData = false;
+    for (let c = 0; c < rawHeader.length; c += 1) {
+      const key = rawHeader[c];
+      if (!key) continue;
+      const val = cells[c] !== undefined ? String(cells[c]).trim() : "";
+      if (val) hasData = true;
+      row[key] = val;
+    }
+    if (hasData) out.push(row);
   }
   return out;
 }

@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { useNavigate, useParams, Link } from "react-router";
+import { useNavigate, useParams, Link, useLocation } from "react-router";
 import { ArrowLeft, Plus, Trash2, Loader2, Save, Shield, Zap, TrendingUp, Star, Info, Upload, RefreshCw } from "lucide-react";
 import { adminPath } from "../../lib/portalRoutes";
 import { adminFetch as apiFetch, adminUploadImage, getAdminToken } from "../../lib/adminApi";
 import { AdminDeleteConfirmModal } from "../components/AdminDeleteConfirmModal";
 import { useAdminDeleteFlow } from "../hooks/useAdminDeleteFlow";
 import { ProductCityConfig } from "../components/ProductCityConfig";
+import { ProductVariantManager } from "../components/ProductVariantManager";
 import {
   type ActiveCity,
   type CityConfig,
@@ -13,22 +14,6 @@ import {
   cityConfigsToPayload,
   validateCityConfigs,
 } from "../lib/productCityConfig";
-
-const VARIATION_ATTRS = ["size", "thickness", "length", "diameter", "weight", "grade", "color", "finish"];
-
-const emptyVariation = {
-  size: "",
-  thickness: "",
-  length: "",
-  diameter: "",
-  weight: "",
-  grade: "",
-  color: "",
-  finish: "",
-  sku: "",
-  customKey: "",
-  customValue: "",
-};
 
 const emptyReturnExchangePolicy = {
   return: {
@@ -50,6 +35,8 @@ const emptyForm = {
   name: "", sku: "", category: "", brand: "",
   shortDescription: "", description: "",
   gstPercentage: 18, priceIncludesGst: false, status: "DRAFT",
+  deliveryType: "vendor_delivery" as "vendor_delivery" | "structbay_delivery",
+  productStructure: "simple" as "simple" | "variant",
   isFeatured: false, isTopSelling: false, isAssured: false, isExpress: false,
   displayOrder: 0,
   seo: { metaTitle: "", metaDescription: "", metaKeywords: [] },
@@ -233,12 +220,12 @@ function PolicyStringList({
 
 export function AddProduct() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams();
   const isEdit = !!id;
 
   const [form, setForm] = useState(emptyForm);
   const [variations, setVariations] = useState<any[]>([]);
-  const [newVar, setNewVar] = useState(emptyVariation);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEdit);
   const [newFaq, setNewFaq] = useState({ question: "", answer: "" });
@@ -248,13 +235,42 @@ export function AddProduct() {
   const [dirty, setDirty] = useState(false);
   const initialSnapshot = useRef<string>("");
   const [images, setImages] = useState<{ _id?: string; url: string; publicId?: string }[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [pendingPreviews, setPendingPreviews] = useState<string[]>([]);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [mediaMsg, setMediaMsg] = useState<null | { type: "ok" | "err"; text: string }>(null);
   const [catalogCategories, setCatalogCategories] = useState<{ _id: string; name: string }[]>([]);
   /** `categoryId` = brand's linked category (Brands admin); null = legacy / any category */
   const [catalogBrands, setCatalogBrands] = useState<{ _id: string; name: string; categoryId: string | null }[]>([]);
-  const variationDelete = useAdminDeleteFlow();
   const imageDelete = useAdminDeleteFlow();
+
+  useEffect(() => {
+    const tabFromState = (location.state as { tab?: string } | null)?.tab;
+    const allowed = ["info", "cities", "media", "variations", "seo", "faqs", "policy"] as const;
+    if (tabFromState && (allowed as readonly string[]).includes(tabFromState)) {
+      setTab(tabFromState as typeof tab);
+    }
+  }, [location.state]);
+
+  useEffect(() => {
+    return () => {
+      pendingPreviews.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [pendingPreviews]);
+
+  const uploadFilesToProduct = async (productId: string, files: File[]) => {
+    const uploaded: { url: string; publicId: string }[] = [];
+    for (const file of files) {
+      const { url, publicId } = await adminUploadImage("/upload/product-image", file);
+      uploaded.push({ url, publicId });
+    }
+    const res = await apiFetch(`/products/${productId}/images`, {
+      method: "POST",
+      body: JSON.stringify({ images: uploaded }),
+    });
+    const product = res.data as { images?: typeof images } | undefined;
+    return product?.images || [];
+  };
 
   useEffect(() => {
     apiFetch("/categories?limit=200&status=ACTIVE")
@@ -352,6 +368,13 @@ export function AddProduct() {
           brand: p.brand?._id || p.brand, shortDescription: p.shortDescription || "",
           description: p.description || "", gstPercentage: p.gstPercentage,
           priceIncludesGst: !!p.priceIncludesGst,
+          deliveryType: p.deliveryType === "structbay_delivery" || p.isStructbayDelivery || p.isExpress
+            ? "structbay_delivery"
+            : "vendor_delivery",
+          productStructure:
+            p.productStructure === "variant" || (p.variations?.length > 0)
+              ? "variant"
+              : "simple",
           status: p.status, isFeatured: p.isFeatured, isTopSelling: p.isTopSelling,
           isAssured: p.isAssured, isExpress: p.isExpress, displayOrder: p.displayOrder,
           seo: p.seo || { metaTitle: "", metaDescription: "", metaKeywords: [] },
@@ -359,6 +382,11 @@ export function AddProduct() {
           returnExchangePolicy: normalizeReturnExchangePolicy(p.returnExchangePolicy),
         });
         setVariations(p.variations || []);
+        if (p._id) {
+          apiFetch(`/products/${id}/variations`)
+            .then((vr) => setVariations(vr.data || []))
+            .catch(() => {});
+        }
         setImages((p.images || []).map((img: { _id?: string; url: string; publicId?: string }) => ({
           _id: img._id, url: img.url, publicId: img.publicId,
         })));
@@ -394,60 +422,109 @@ export function AddProduct() {
     if (!form.name || !form.sku || !form.category || !form.brand) {
       return alert("Name, SKU, category, and brand are required.");
     }
-    const validationError = validateCityConfigs(cityConfigs);
-    if (validationError) return alert(validationError);
+    if (!form.deliveryType) {
+      return alert("Delivery type is required.");
+    }
+    const isVariantProduct = form.productStructure === "variant";
+    if (!isVariantProduct) {
+      const validationError = validateCityConfigs(cityConfigs);
+      if (validationError) return alert(validationError);
+    } else if (isEdit && variations.length === 0) {
+      const proceed = window.confirm(
+        "This is a Variant Product but no variants exist yet. Save anyway and add variants in the Variations tab?"
+      );
+      if (!proceed) return;
+    }
+
+    const publishStatus = overrideStatus ?? form.status;
+    if (publishStatus === "ACTIVE") {
+      if (!isVariantProduct) {
+        const { cityPricing } = cityConfigsToPayload(cityConfigs);
+        if (!cityPricing.length) {
+          return alert(
+            "To publish on the storefront, set a selling price for at least one city (e.g. Bengaluru) in the Cities tab."
+          );
+        }
+      } else if (isEdit && variations.length > 0) {
+        const missingCity = variations.some((v) => {
+          const configs = v.cityConfigs || [];
+          return !configs.some(
+            (c: { pricing?: { sellingPrice?: number } | null }) =>
+              c.pricing?.sellingPrice != null && Number(c.pricing.sellingPrice) >= 0
+          );
+        });
+        if (missingCity) {
+          return alert(
+            "To publish a variant product, each variant needs city pricing. Open Variations → expand each variant → set Bengaluru price & stock → Save."
+          );
+        }
+      }
+    }
 
     setSaving(true);
     try {
       const product = {
         ...form,
+        isStructbayDelivery: form.deliveryType === "structbay_delivery",
+        structbayDeliverySupported: form.deliveryType === "structbay_delivery",
         status: overrideStatus ?? form.status,
         documents: form.documents.filter(d => d.name.trim() && d.url.trim()),
         videos: form.videos.filter(v => v.title.trim() || v.url.trim()),
         returnExchangePolicy: serializeReturnExchangePolicy(form.returnExchangePolicy),
       };
-      const { cityPricing, inventory } = cityConfigsToPayload(cityConfigs);
-      const body = { product, cityPricing, inventory };
+      const body: Record<string, unknown> = { product };
+      if (!isVariantProduct) {
+        const { cityPricing, inventory } = cityConfigsToPayload(cityConfigs);
+        body.cityPricing = cityPricing;
+        body.inventory = inventory;
+      }
 
       if (isEdit) {
         await apiFetch(`/products/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+        setDirty(false);
+        initialSnapshot.current = snapshotState();
+        navigate(adminPath("products"));
       } else {
         const res = await apiFetch("/products", { method: "POST", body: JSON.stringify(body) });
-        const createdId = res.data?._id;
-        if (createdId && images.length === 0) {
-          navigate(adminPath("products", String(createdId), "edit"));
-          return;
+        const created = res.data as { _id?: string } | undefined;
+        const createdId = created?._id;
+        if (!createdId) {
+          throw new Error("Product created but no id returned — refresh the product list.");
         }
+        if (pendingFiles.length > 0) {
+          try {
+            const nextImages = await uploadFilesToProduct(String(createdId), pendingFiles);
+            setImages(nextImages.map((img: { _id?: string; url: string; publicId?: string }) => ({
+              _id: img._id,
+              url: img.url,
+              publicId: img.publicId,
+            })));
+            pendingPreviews.forEach((url) => URL.revokeObjectURL(url));
+            setPendingFiles([]);
+            setPendingPreviews([]);
+          } catch (uploadErr) {
+            setSaving(false);
+            navigate(adminPath("products", String(createdId), "edit"), {
+              replace: true,
+              state: { tab: "media" },
+            });
+            alert(
+              uploadErr instanceof Error
+                ? `Product saved but image upload failed: ${uploadErr.message}`
+                : "Product saved but image upload failed."
+            );
+            return;
+          }
+        }
+        setDirty(false);
+        initialSnapshot.current = snapshotState();
+        navigate(adminPath("products", String(createdId), "edit"), {
+          replace: true,
+          state: { tab: "media" },
+        });
       }
-      setDirty(false);
-      initialSnapshot.current = snapshotState();
-      navigate(adminPath("products"));
     } catch (e: any) { alert(e.message); }
     setSaving(false);
-  };
-
-  const addVariation = async () => {
-    if (!isEdit) return alert("Save product first to add variations.");
-    try {
-      const { sku, customKey, customValue, ...attrFields } = newVar;
-      const attributes: Record<string, unknown> = {};
-      for (const [k, val] of Object.entries(attrFields)) {
-        if (val != null && String(val).trim()) attributes[k] = String(val).trim();
-      }
-      if (customKey?.trim() && customValue?.trim()) {
-        attributes.custom = [{ key: customKey.trim(), value: customValue.trim() }];
-      }
-      const v = await apiFetch(`/products/${id}/variations`, {
-        method: "POST",
-        body: JSON.stringify({ attributes, sku: sku?.trim() || undefined }),
-      });
-      setVariations(prev => [...prev, v.data]);
-      setNewVar({ ...emptyVariation });
-    } catch (e: any) { alert(e.message); }
-  };
-
-  const deleteVariation = (varId: string) => {
-    variationDelete.requestDelete({ kind: "single", ids: [varId], label: "this variation" });
   };
 
   const removeProductImage = (imageId: string) => {
@@ -481,24 +558,27 @@ export function AddProduct() {
       navigate("/admin/login", { state: { from: window.location.pathname } });
       return;
     }
-    if (!isEdit) return alert("Save the product first to upload images.");
+
+    if (!isEdit) {
+      setPendingFiles((prev) => [...prev, ...files]);
+      const previews = files.map((f) => URL.createObjectURL(f));
+      setPendingPreviews((prev) => [...prev, ...previews]);
+      setMediaMsg({
+        type: "ok",
+        text: `${files.length} image${files.length > 1 ? "s" : ""} selected — will upload when you save the product.`,
+      });
+      setDirty(true);
+      return;
+    }
+
     setMediaMsg(null);
     setUploadingImages(true);
     try {
-      const uploaded: { url: string; publicId: string }[] = [];
-      for (const file of files) {
-        const { url, publicId } = await adminUploadImage("/upload/product-image", file);
-        uploaded.push({ url, publicId });
-      }
-      const res = await apiFetch(`/products/${id}/images`, {
-        method: "POST",
-        body: JSON.stringify({ images: uploaded }),
-      });
-      const next = (res.data as { images?: typeof images })?.images || [];
-      setImages(next.map(img => ({ _id: img._id, url: img.url, publicId: img.publicId })));
+      const nextImages = await uploadFilesToProduct(id!, files);
+      setImages(nextImages.map((img) => ({ _id: img._id, url: img.url, publicId: img.publicId })));
       setMediaMsg({
         type: "ok",
-        text: `${uploaded.length} image${uploaded.length > 1 ? "s" : ""} saved. They will show on the product page and listings.`,
+        text: `${files.length} image${files.length > 1 ? "s" : ""} saved. They will show on the product page and listings.`,
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Image upload failed";
@@ -513,21 +593,44 @@ export function AddProduct() {
     }
   };
 
+  const removePendingImage = (index: number) => {
+    setPendingFiles((prev) => prev.filter((_, i) => i !== index));
+    setPendingPreviews((prev) => {
+      const url = prev[index];
+      if (url) URL.revokeObjectURL(url);
+      return prev.filter((_, i) => i !== index);
+    });
+    setDirty(true);
+  };
+
   const executeRemoveImage = async (imageId: string) => {
     const res = await apiFetch(`/products/${id}/images/${imageId}`, { method: "DELETE" });
     const next = (res.data as { images?: typeof images })?.images || [];
     setImages(next.map(img => ({ _id: img._id, url: img.url, publicId: img.publicId })));
   };
 
-  const TABS = [
-    { key: "info", label: "General" },
-    { key: "cities", label: "Pricing & Inventory" },
-    { key: "media", label: "Media" },
-    { key: "variations", label: "Variations" },
-    { key: "seo", label: "SEO" },
-    { key: "faqs", label: "FAQs" },
-    { key: "policy", label: "Return & Exchange" },
-  ] as const;
+  const TABS = useMemo(() => {
+    const all = [
+      { key: "info", label: "General" },
+      { key: "cities", label: "Pricing & Inventory", simpleOnly: true },
+      { key: "media", label: "Media" },
+      { key: "variations", label: "Variants", variantOnly: true },
+      { key: "seo", label: "SEO" },
+      { key: "faqs", label: "FAQs" },
+      { key: "policy", label: "Return & Exchange" },
+    ] as const;
+    const isVariant = form.productStructure === "variant";
+    return all.filter((t) => {
+      if ("simpleOnly" in t && t.simpleOnly && isVariant) return false;
+      if ("variantOnly" in t && t.variantOnly && !isVariant) return false;
+      return true;
+    });
+  }, [form.productStructure]);
+
+  useEffect(() => {
+    if (form.productStructure === "variant" && tab === "cities") setTab("info");
+    if (form.productStructure === "simple" && tab === "variations") setTab("info");
+  }, [form.productStructure, tab]);
 
   if (loading) return <div className="flex justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-sb-orange" /></div>;
 
@@ -601,7 +704,9 @@ export function AddProduct() {
                 </select>
               </Field>
               <p className="text-xs text-sb-ink/50 -mt-2">
-                City prices are stored ex-GST. Use the <strong>Pricing &amp; Inventory</strong> tab to set per-city selling price, MRP, stock, and wholesale slabs.
+                {form.productStructure === "variant"
+                  ? "Variant products use per-variant pricing in the Variants tab."
+                  : "City prices are stored ex-GST. Use the Pricing & Inventory tab to set per-city selling price, MRP, stock, and wholesale slabs."}
               </p>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Category" required>
@@ -622,6 +727,54 @@ export function AddProduct() {
                 <Link to={adminPath("brands")} className="text-sb-orange hover:underline">Brands</Link>
                 {" "}(legacy brands with no category stay available for every category).
               </p>
+
+              <Field label="Product structure" required>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <label
+                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      form.productStructure === "simple"
+                        ? "border-sb-orange bg-sb-orange/5"
+                        : "border-sb-ink/12 hover:border-sb-ink/20"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="productStructure"
+                      className="mt-1 accent-sb-orange"
+                      checked={form.productStructure === "simple"}
+                      onChange={() => set("productStructure", "simple")}
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold text-sb-ink">Simple product</span>
+                      <span className="block text-xs text-sb-ink/50 mt-0.5">
+                        One SKU, one price, one inventory per city (chemicals, tools, helmets).
+                      </span>
+                    </span>
+                  </label>
+                  <label
+                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      form.productStructure === "variant"
+                        ? "border-sb-orange bg-sb-orange/5"
+                        : "border-sb-ink/12 hover:border-sb-ink/20"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="productStructure"
+                      className="mt-1 accent-sb-orange"
+                      checked={form.productStructure === "variant"}
+                      onChange={() => set("productStructure", "variant")}
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold text-sb-ink">Variant product</span>
+                      <span className="block text-xs text-sb-ink/50 mt-0.5">
+                        Multiple sizes/specs — each variant has its own SKU, city pricing &amp; stock.
+                      </span>
+                    </span>
+                  </label>
+                </div>
+              </Field>
+
               <Field label="Short Description">
                 <textarea className={`${inp} resize-none`} rows={2} placeholder="Brief description (max 500 chars)" value={form.shortDescription} onChange={e => set("shortDescription", e.target.value)} />
               </Field>
@@ -665,10 +818,13 @@ export function AddProduct() {
                 {!isEdit && (
                   <p className="text-xs text-sb-ink/50 bg-sb-cream-secondary border border-sb-ink/10 rounded-lg p-3 flex items-start gap-2 mb-3">
                     <Info className="w-4 h-4 shrink-0 text-sb-orange mt-0.5" aria-hidden />
-                    <span>Save the product first, then upload images here.</span>
+                    <span>
+                      You can select images now — they upload automatically when you <strong>Save Draft</strong> or{" "}
+                      <strong>Publish</strong>. After save you stay on this page to add more.
+                    </span>
                   </p>
                 )}
-                {images.length > 0 && (
+                {(images.length > 0 || pendingPreviews.length > 0) && (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
                     {images.map(img => (
                       <div key={img._id || img.url} className="relative group rounded-lg overflow-hidden border border-sb-ink/10 bg-[#111] aspect-square">
@@ -681,17 +837,32 @@ export function AddProduct() {
                         )}
                       </div>
                     ))}
+                    {pendingPreviews.map((url, i) => (
+                      <div key={url} className="relative group rounded-lg overflow-hidden border border-dashed border-sb-orange/40 bg-[#111] aspect-square">
+                        <img src={url} alt="" className="w-full h-full object-cover opacity-90" />
+                        <span className="absolute bottom-2 left-2 text-[10px] font-semibold bg-sb-orange/90 text-white px-1.5 py-0.5 rounded">
+                          Pending save
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removePendingImage(i)}
+                          className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600/90"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
                 <label className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors flex flex-col items-center gap-3 ${
-                  isEdit ? "border-sb-ink/15 hover:border-sb-orange/40 cursor-pointer" : "border-sb-ink/10 opacity-60 cursor-not-allowed"
+                  uploadingImages ? "border-sb-ink/10 opacity-60 cursor-wait" : "border-sb-ink/15 hover:border-sb-orange/40 cursor-pointer"
                 }`}>
                   <input
                     type="file"
                     accept="image/jpeg,image/png,image/webp,image/jpg"
                     multiple
                     className="hidden"
-                    disabled={!isEdit || uploadingImages}
+                    disabled={uploadingImages}
                     onChange={onPickProductImages}
                   />
                   {uploadingImages
@@ -759,74 +930,30 @@ export function AddProduct() {
           )}
 
           {/* Variations */}
-          {tab === "variations" && (
-            <Section title="Product Variations">
+          {tab === "variations" && form.productStructure === "variant" && (
+            <Section title="Variant configuration">
               {!isEdit && (
                 <p className="text-xs text-sb-ink/50 bg-sb-cream-secondary border border-sb-ink/10 rounded-lg p-3 flex items-start gap-2">
                   <Info className="w-4 h-4 shrink-0 text-sb-orange mt-0.5" aria-hidden />
-                  <span>Save the product first to add variations.</span>
+                  <span>Save the product first (structure = Variant Product), then add variants with dynamic attributes and per-city pricing.</span>
                 </p>
               )}
-              {variations.length > 0 && (
-                <div className="space-y-2">
-                  {variations.map(v => (
-                    <div key={v._id} className="flex items-center gap-3 p-3 bg-[#111] border border-sb-ink/10 rounded-lg">
-                      <div className="flex-1 flex flex-wrap gap-2">
-                        {Object.entries(v.attributes || {}).filter(([k, val]) => k !== 'custom' && val).map(([k, val]) => (
-                          <span key={k} className="text-xs bg-sb-cream-secondary border border-sb-ink/10 text-sb-ink/60 px-2 py-0.5 rounded-full capitalize">
-                            {k}: {val as string}
-                          </span>
-                        ))}
-                        {(v.attributes?.custom || []).map((c: { key?: string; value?: string }, i: number) => (
-                          c?.key && c?.value ? (
-                            <span key={`${c.key}-${i}`} className="text-xs bg-sb-cream-secondary border border-sb-ink/10 text-sb-ink/60 px-2 py-0.5 rounded-full">
-                              {c.key}: {c.value}
-                            </span>
-                          ) : null
-                        ))}
-                        {v.sku && <span className="text-xs font-mono text-sb-ink/50">{v.sku}</span>}
-                      </div>
-                      <span className={`text-xs px-2 py-0.5 rounded-full border ${v.status === "ACTIVE" ? "bg-sb-orange/12 text-sb-orange border-sb-orange/22" : "bg-sb-cream-secondary text-sb-ink/55 border-sb-ink/12"}`}>{v.status}</span>
-                      <button onClick={() => deleteVariation(v._id)} className="p-1.5 text-sb-ink/55 hover:bg-sb-cream-secondary rounded-lg">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {isEdit && (
-                <div className="border border-sb-ink/10 rounded-lg p-4 space-y-3 bg-sb-cream">
-                  <p className="text-xs font-semibold text-sb-ink/55 uppercase tracking-wider">Add New Variation</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {VARIATION_ATTRS.map(attr => (
-                      <div key={attr}>
-                        <label className="text-xs text-sb-ink/50 mb-1 block capitalize">{attr}</label>
-                        <input className={inp} placeholder={`e.g. ${attr === "weight" ? "50kg" : attr === "grade" ? "M30" : attr}`}
-                          value={(newVar as any)[attr]} onChange={e => setNewVar(v => ({ ...v, [attr]: e.target.value }))} />
-                      </div>
-                    ))}
-                    <div>
-                      <label className="text-xs text-sb-ink/50 mb-1 block">SKU (optional)</label>
-                      <input className={inp} placeholder="Variant SKU" value={newVar.sku} onChange={e => setNewVar(v => ({ ...v, sku: e.target.value }))} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-xs text-sb-ink/50 mb-1 block">Custom label (optional)</label>
-                      <input className={inp} placeholder="e.g. Coil Size" value={newVar.customKey} onChange={e => setNewVar(v => ({ ...v, customKey: e.target.value }))} />
-                    </div>
-                    <div>
-                      <label className="text-xs text-sb-ink/50 mb-1 block">Custom value</label>
-                      <input className={inp} placeholder="e.g. 90 Meters" value={newVar.customValue} onChange={e => setNewVar(v => ({ ...v, customValue: e.target.value }))} />
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-sb-ink/45 leading-relaxed">
-                    Add at least <strong>2 variations</strong> with different size/thickness/color (or custom labels) so customers see dropdowns on category and shop pages.
-                  </p>
-                  <button onClick={addVariation} className="flex items-center gap-2 bg-sb-orange/15 hover:bg-sb-orange/25 text-sb-orange font-medium px-4 py-2 rounded-lg text-sm transition-colors">
-                    <Plus className="w-4 h-4" /> Add Variation
-                  </button>
-                </div>
+              {isEdit && id && (
+                <>
+                  {variations.length === 0 && (
+                    <p className="text-xs text-sb-ink/50 mb-3">
+                      Add variants with dynamic attributes (Size, Thickness, etc.). Each variant has its own SKU, city pricing, inventory, and wholesale slabs.
+                    </p>
+                  )}
+                  <ProductVariantManager
+                    productId={id}
+                    productSku={form.sku}
+                    gstPercentage={form.gstPercentage}
+                    activeCities={activeCities}
+                    variations={variations}
+                    onVariationsChange={setVariations}
+                  />
+                </>
               )}
             </Section>
           )}
@@ -980,6 +1107,23 @@ export function AddProduct() {
 
         {/* Sidebar */}
         <div className="space-y-5">
+          <Section title="Delivery Type">
+            <Field label="Fulfillment model" required>
+              <select
+                className={inp}
+                value={form.deliveryType}
+                onChange={(e) => set("deliveryType", e.target.value)}
+                required
+              >
+                <option value="vendor_delivery">Type A — Vendor delivery</option>
+                <option value="structbay_delivery">Type B — StructBay delivery</option>
+              </select>
+            </Field>
+            <p className="text-xs text-sb-ink/50 mt-2">
+              Sets the default fulfillment workflow for this product on new orders.
+            </p>
+          </Section>
+
           <Section title="Product Badges">
             <div className="space-y-2">
               <Toggle checked={form.isAssured} onChange={v => set("isAssured", v)} label="StructBay Assured" icon={Shield} />
@@ -1013,20 +1157,6 @@ export function AddProduct() {
           )}
         </div>
       </div>
-
-      <AdminDeleteConfirmModal
-        open={!!variationDelete.pending}
-        title={variationDelete.modalTitle}
-        description={variationDelete.modalDescription}
-        busy={variationDelete.busy}
-        onCancel={variationDelete.cancelDelete}
-        onConfirm={() =>
-          void variationDelete.executeDelete(async (varId) => {
-            await apiFetch(`/products/${id}/variations/${varId}`, { method: "DELETE" });
-            setVariations((prev) => prev.filter((v) => v._id !== varId));
-          })
-        }
-      />
 
       <AdminDeleteConfirmModal
         open={!!imageDelete.pending}

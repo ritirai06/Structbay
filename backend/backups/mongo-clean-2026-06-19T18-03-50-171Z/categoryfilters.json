@@ -1,0 +1,39 @@
+[
+  {
+    "_id": "6a33ecb2ec7f1b52b4d68f1f",
+    "category": "6a2b029a58828014d1d07254",
+    "filters": [
+      {
+        "label": "Coil Size",
+        "key": "size",
+        "type": "MULTI_SELECT",
+        "sortOrder": 0,
+        "isActive": true,
+        "_id": "6a33ee528de3d09085a66d45",
+        "options": []
+      },
+      {
+        "label": "Wire Thickness",
+        "key": "thickness",
+        "type": "MULTI_SELECT",
+        "sortOrder": 1,
+        "isActive": true,
+        "_id": "6a33ee528de3d09085a66d46",
+        "options": []
+      },
+      {
+        "label": "Colour",
+        "key": "color",
+        "type": "MULTI_SELECT",
+        "sortOrder": 2,
+        "isActive": true,
+        "_id": "6a33ee528de3d09085a66d47",
+        "options": []
+      }
+    ],
+    "updatedBy": null,
+    "createdAt": "2026-06-18T13:03:46.280Z",
+    "updatedAt": "2026-06-18T13:10:42.668Z",
+    "__v": 1
+  }
+]

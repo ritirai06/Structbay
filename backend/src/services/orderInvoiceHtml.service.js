@@ -68,7 +68,7 @@ function buildOrderAcknowledgementHtml(order) {
 
   const rows = (o.items || [])
     .map((it) => {
-      const vLabel = formatVariationLine(it.variation);
+      const vLabel = it.variationLabel || formatVariationLine(it.variation);
       const desc = [esc(it.name), vLabel ? `<span style="color:#5c5c5c;font-size:12px;display:block;margin-top:4px">${esc(vLabel)}</span>` : '']
         .filter(Boolean)
         .join('');

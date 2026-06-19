@@ -1,0 +1,238 @@
+{
+  "createdAt": "2026-06-19T18:03:52.293Z",
+  "database": "structbay",
+  "collections": [
+    {
+      "collection": "addresses",
+      "count": 0
+    },
+    {
+      "collection": "advertisements",
+      "count": 0
+    },
+    {
+      "collection": "analyticssnapshots",
+      "count": 0
+    },
+    {
+      "collection": "announcements",
+      "count": 1
+    },
+    {
+      "collection": "auditlogs",
+      "count": 304
+    },
+    {
+      "collection": "banners",
+      "count": 2
+    },
+    {
+      "collection": "blogs",
+      "count": 0
+    },
+    {
+      "collection": "brands",
+      "count": 60
+    },
+    {
+      "collection": "bulkenquiries",
+      "count": 1
+    },
+    {
+      "collection": "carts",
+      "count": 1
+    },
+    {
+      "collection": "categories",
+      "count": 38
+    },
+    {
+      "collection": "categoryfilters",
+      "count": 1
+    },
+    {
+      "collection": "cities",
+      "count": 1
+    },
+    {
+      "collection": "citypricings",
+      "count": 43
+    },
+    {
+      "collection": "cms",
+      "count": 1
+    },
+    {
+      "collection": "communicationlogs",
+      "count": 0
+    },
+    {
+      "collection": "concreterfqs",
+      "count": 1
+    },
+    {
+      "collection": "deliverytypeoverridelogs",
+      "count": 0
+    },
+    {
+      "collection": "financedocuments",
+      "count": 0
+    },
+    {
+      "collection": "financeleads",
+      "count": 0
+    },
+    {
+      "collection": "footersubscribers",
+      "count": 1
+    },
+    {
+      "collection": "generatedcatalogs",
+      "count": 0
+    },
+    {
+      "collection": "inventories",
+      "count": 35
+    },
+    {
+      "collection": "inventorylogs",
+      "count": 13
+    },
+    {
+      "collection": "notifications",
+      "count": 17
+    },
+    {
+      "collection": "notificationtemplates",
+      "count": 0
+    },
+    {
+      "collection": "orderactivitylogs",
+      "count": 7
+    },
+    {
+      "collection": "orderchats",
+      "count": 3
+    },
+    {
+      "collection": "orderdocuments",
+      "count": 0
+    },
+    {
+      "collection": "orders",
+      "count": 7
+    },
+    {
+      "collection": "paymenttransactions",
+      "count": 0
+    },
+    {
+      "collection": "pickupschedules",
+      "count": 0
+    },
+    {
+      "collection": "products",
+      "count": 40
+    },
+    {
+      "collection": "productvariations",
+      "count": 10
+    },
+    {
+      "collection": "referenceallocations",
+      "count": 369
+    },
+    {
+      "collection": "referencecounters",
+      "count": 28
+    },
+    {
+      "collection": "refreshtokens",
+      "count": 303
+    },
+    {
+      "collection": "replacementrequests",
+      "count": 0
+    },
+    {
+      "collection": "reportschedules",
+      "count": 0
+    },
+    {
+      "collection": "seos",
+      "count": 0
+    },
+    {
+      "collection": "services",
+      "count": 0
+    },
+    {
+      "collection": "sessions",
+      "count": 303
+    },
+    {
+      "collection": "shipments",
+      "count": 0
+    },
+    {
+      "collection": "shippinglabels",
+      "count": 2
+    },
+    {
+      "collection": "staffnotifications",
+      "count": 36
+    },
+    {
+      "collection": "testimonials",
+      "count": 0
+    },
+    {
+      "collection": "users",
+      "count": 4
+    },
+    {
+      "collection": "vendoractivitylogs",
+      "count": 108
+    },
+    {
+      "collection": "vendorassignments",
+      "count": 0
+    },
+    {
+      "collection": "vendordispatches",
+      "count": 2
+    },
+    {
+      "collection": "vendordocuments",
+      "count": 0
+    },
+    {
+      "collection": "vendorinvoices",
+      "count": 5
+    },
+    {
+      "collection": "vendornotifications",
+      "count": 21
+    },
+    {
+      "collection": "vendororders",
+      "count": 7
+    },
+    {
+      "collection": "vendororderstatusaudits",
+      "count": 37
+    },
+    {
+      "collection": "vendors",
+      "count": 0
+    },
+    {
+      "collection": "vendorvariantpricings",
+      "count": 0
+    },
+    {
+      "collection": "verificationtokens",
+      "count": 0
+    }
+  ]
+}

@@ -16,6 +16,7 @@ import {
   uniqueValuesForAxis,
   lowestBulkSlabPrice,
 } from "../lib/variationSelectors";
+import { isVariantProduct, validateCartLine } from "../lib/productStructure";
 import {
   pricingSnapshotFromProduct,
   resolveUnitPriceFromSnapshot,
@@ -24,6 +25,8 @@ import {
 } from "../lib/wholesalePricing";
 import { displayUnitFromExGst, displayPriceMeta, productGstPct } from "../lib/displayPricing";
 import { productHref } from "../lib/productRoutes";
+import { availabilityForProduct } from "../lib/productAvailability";
+import { ProductAvailabilityBadge } from "../components/ProductAvailabilityBadge";
 
 function PdpAccordion({
   title,
@@ -173,7 +176,7 @@ export function ProductDetails() {
     if (!productSlug) return;
     setLoading(true);
     api
-      .getProductDetails(productSlug, cityId || undefined)
+      .getProductDetails(productSlug, cityId || undefined, city || undefined)
       .then((res: any) => {
         if (!res.data) {
           navigate("/shop", { replace: true });
@@ -183,40 +186,59 @@ export function ProductDetails() {
       })
       .catch(() => navigate("/shop", { replace: true }))
       .finally(() => setLoading(false));
-  }, [productSlug, cityId, navigate]);
+  }, [productSlug, cityId, city, navigate]);
 
   useEffect(() => {
     if (!product) return;
-    const vars = product.variations || [];
-    setSelectedVid(vars.length ? String(vars[0]._id) : null);
+    if (isVariantProduct(product)) {
+      const vars = product.variations || [];
+      setSelectedVid(vars.length ? String(vars[0]._id) : null);
+    } else {
+      setSelectedVid(null);
+    }
     setActiveImage(0);
     setOpenSection("highlights");
   }, [productSlug, product]);
 
-  const variations: any[] = product?.variations || [];
+  const isVariant = isVariantProduct(product);
+  const variations: any[] = isVariant ? (product?.variations || []) : [];
   const axes = useMemo(
-    () => axesForVariations(variations, product?.categoryFilters || []),
-    [variations, product?.categoryFilters]
+    () => (isVariant ? axesForVariations(variations, product?.categoryFilters || []) : []),
+    [isVariant, variations, product?.categoryFilters]
   );
 
   const selectedVar = variations.find((v: any) => String(v._id) === selectedVid);
 
+  const displayImages = useMemo(() => {
+    const fromVar = (selectedVar?.images || [])
+      .map((i: any) => (typeof i === "string" ? i : i?.url))
+      .filter(Boolean);
+    if (fromVar.length) return fromVar as string[];
+    return (product?.images || [])
+      .map((i: any) => (typeof i === "string" ? i : i?.url))
+      .filter(Boolean) as string[];
+  }, [product?.images, selectedVar?.images]);
+
+  useEffect(() => {
+    setActiveImage(0);
+  }, [selectedVid]);
+
   useEffect(() => {
     if (!selectedVar || !axes.length) return;
     setAttrSelections(initSelectionsForVariation(selectedVar, axes));
-  }, [selectedVid, axes.length]);
+  }, [selectedVid, axes.length, selectedVar]);
 
   useEffect(() => {
     if (!product) return;
     const v = variations.find((x: any) => String(x._id) === selectedVid);
     const moq = Math.max(1, Math.floor(Number(v?.moq) || 1));
     setQty((q) => (q < moq ? moq : q));
-  }, [selectedVid, product]);
+  }, [selectedVid, product, variations]);
 
   const pricingSnap = useMemo(() => {
     if (!product) return null;
-    return pricingSnapshotFromProduct(product, selectedVid);
-  }, [product, selectedVid]);
+    return pricingSnapshotFromProduct(product, isVariant ? selectedVid : null);
+  }, [product, selectedVid, isVariant]);
 
   const effectiveUnit = useMemo(() => {
     if (pricingSnap) return resolveUnitPriceFromSnapshot(pricingSnap, qty);
@@ -286,9 +308,7 @@ export function ProductDetails() {
     );
   }
 
-  const images: string[] = (product.images || [])
-    .map((i: any) => (typeof i === "string" ? i : i?.url))
-    .filter(Boolean);
+  const images: string[] = displayImages;
   const faqs: any[] = product.faqs || [];
   const related: any[] = product.related || [];
   const brandName = product.brand?.name || product.brand || "";
@@ -296,17 +316,28 @@ export function ProductDetails() {
   const categoryName = product.category?.name || "";
   const moq = Math.max(1, Math.floor(Number(selectedVar?.moq) || 1));
   const showExpress = !!(product.isExpress || product.isStructbayDelivery || product.displayStructbayDelivery);
-  const inStock = selectedVar?.inStock !== false && product.inStock !== false;
+  const hasPrice = effectiveUnit > 0;
+  const availability = availabilityForProduct(product, isVariant ? selectedVid : null, hasPrice);
+  const inStock = availability.canAddToCart;
 
   const handleAddToCart = () => {
+    const check = validateCartLine(product, isVariant ? selectedVid : undefined);
+    if (!check.ok) {
+      alert(check.message);
+      return;
+    }
+    if (!inStock) {
+      alert("This product is out of stock in your city.");
+      return;
+    }
     const pslug = product.slug || product._id;
-    const vid = selectedVid || undefined;
+    const vid = isVariant ? selectedVid || undefined : undefined;
     const cartId = `${pslug}::${vid || "base"}`;
     addToCart({
       id: cartId,
       productSlug: pslug,
       variationId: vid,
-      variationLabel: selectedVar ? formatVariationLabel(selectedVar) : undefined,
+      variationLabel: isVariant && selectedVar ? formatVariationLabel(selectedVar) : undefined,
       name: product.name,
       brand: brandName,
       price: effectiveUnit,
@@ -377,10 +408,13 @@ export function ProductDetails() {
 
             <h1 className="sf-pdp-title">{product.name}</h1>
 
-            <p className={`sf-pdp-stock ${inStock ? "sf-pdp-stock--in" : "sf-pdp-stock--out"}`}>
-              <span className="sf-pdp-stock__dot" aria-hidden />
-              {inStock ? "IN STOCK" : "OUT OF STOCK"}
-            </p>
+            <ProductAvailabilityBadge info={availability} variant="pdp" />
+
+            {selectedVar?.leadTimeDays != null && Number(selectedVar.leadTimeDays) > 0 && (
+              <p className="sf-pdp-lead text-xs text-gray-500 mb-3">
+                Lead time: {selectedVar.leadTimeDays} day{Number(selectedVar.leadTimeDays) === 1 ? "" : "s"}
+              </p>
+            )}
 
             {effectiveUnit > 0 ? (
               <div className="sf-pdp-price-block">
@@ -407,12 +441,12 @@ export function ProductDetails() {
               </div>
             ) : (
               <p className="text-sm text-gray-500 mb-4">
-                {cityId ? "Pricing not available for this product in your city" : "Select your city for pricing"}
+                {cityId ? availability.label : "Select your city for pricing and availability"}
               </p>
             )}
 
             {/* Variant pills by attribute axis */}
-            {axes.length > 0 &&
+            {isVariant && axes.length > 0 &&
               axes.map((axis) => {
                 const options = uniqueValuesForAxis(variations, axis.key, attrSelections);
                 if (!options.length) return null;
@@ -422,14 +456,25 @@ export function ProductDetails() {
                     <div className="sf-pdp-pills">
                       {options.map((opt) => {
                         const active = attrSelections[axis.key] === opt;
+                        const partial = { ...attrSelections, [axis.key]: opt };
+                        const v = resolveVariationFromSelections(variations, partial);
+                        const vidOpt = v?._id ? String(v._id) : "";
+                        const snapOpt = vidOpt ? pricingSnapshotFromProduct(product, vidOpt) : null;
+                        const unitOpt = snapOpt
+                          ? resolveUnitPriceFromSnapshot(snapOpt, 1)
+                          : listingUnitPrice(product, vidOpt || null);
+                        const infoOpt = availabilityForProduct(product, vidOpt || null, unitOpt > 0);
                         return (
                           <button
                             key={opt}
                             type="button"
-                            className={`sf-pdp-pill ${active ? "sf-pdp-pill--active" : ""}`}
+                            className={`sf-pdp-pill ${active ? "sf-pdp-pill--active" : ""} ${infoOpt.stockStatus === "OUT_OF_STOCK" ? "sf-pdp-pill--oos" : ""}`}
                             onClick={() => setAxis(axis.key, opt)}
                           >
-                            {opt}
+                            <span>{opt}</span>
+                            {unitOpt > 0 && (
+                              <span className="sf-pdp-pill__price">₹{displayUnitFromExGst(unitOpt, product).toLocaleString("en-IN")}</span>
+                            )}
                           </button>
                         );
                       })}
@@ -438,20 +483,29 @@ export function ProductDetails() {
                 );
               })}
 
-            {axes.length === 0 && variations.length > 1 && (
+            {isVariant && axes.length === 0 && variations.length > 1 && (
               <div className="sf-pdp-variant-group">
                 <p className="sf-pdp-variant-label">Size</p>
                 <div className="sf-pdp-pills">
                   {variations.map((v: any) => {
                     const active = String(v._id) === selectedVid;
+                    const vidOpt = String(v._id);
+                    const snapOpt = pricingSnapshotFromProduct(product, vidOpt);
+                    const unitOpt = snapOpt
+                      ? resolveUnitPriceFromSnapshot(snapOpt, 1)
+                      : listingUnitPrice(product, vidOpt);
+                    const infoOpt = availabilityForProduct(product, vidOpt, unitOpt > 0);
                     return (
                       <button
                         key={v._id}
                         type="button"
-                        className={`sf-pdp-pill ${active ? "sf-pdp-pill--active" : ""}`}
-                        onClick={() => setSelectedVid(String(v._id))}
+                        className={`sf-pdp-pill ${active ? "sf-pdp-pill--active" : ""} ${infoOpt.stockStatus === "OUT_OF_STOCK" ? "sf-pdp-pill--oos" : ""}`}
+                        onClick={() => setSelectedVid(vidOpt)}
                       >
-                        {formatVariationLabel(v)}
+                        <span>{formatVariationLabel(v)}</span>
+                        {unitOpt > 0 && (
+                          <span className="sf-pdp-pill__price">₹{displayUnitFromExGst(unitOpt, product).toLocaleString("en-IN")}</span>
+                        )}
                       </button>
                     );
                   })}
@@ -473,11 +527,19 @@ export function ProductDetails() {
               </div>
             </div>
 
-            {effectiveUnit > 0 && inStock && (
+            {moq > 1 && (
+              <p className="text-xs text-gray-500 mb-2">Minimum order quantity: {moq} units</p>
+            )}
+
+            {effectiveUnit > 0 && inStock ? (
               <button type="button" className="sf-pdp-add-cart" onClick={handleAddToCart}>
                 Add to cart
               </button>
-            )}
+            ) : effectiveUnit > 0 ? (
+              <button type="button" className="sf-pdp-add-cart sf-pdp-add-cart--disabled" disabled>
+                {availability.stockStatus === "OUT_OF_STOCK" ? "Out of stock" : "Unavailable"}
+              </button>
+            ) : null}
 
             {/* Accordions */}
             <div className="sf-pdp-accordions mt-6">
@@ -605,13 +667,13 @@ export function ProductDetails() {
       </div>
 
       {/* Mobile sticky add */}
-      {effectiveUnit > 0 && inStock && (
+      {effectiveUnit > 0 && inStock ? (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 lg:hidden z-40">
           <button type="button" className="sf-pdp-add-cart w-full" onClick={handleAddToCart}>
             Add to cart · ₹{(effectiveUnit * qty).toLocaleString("en-IN")}
           </button>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

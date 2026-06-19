@@ -1,5 +1,7 @@
 import type { CartItem } from "../context/AppContext";
 import { api } from "./api";
+import { validateCartLine, isVariantProduct } from "./productStructure";
+import { listingUnitPrice } from "./wholesalePricing";
 
 /** Resolve slug used on product URLs from a client cart line. */
 export function cartItemProductSlug(item: CartItem): string | null {
@@ -26,11 +28,29 @@ export async function pushClientCartToServer(cart: CartItem[], cityId: string) {
     if (!product?._id) {
       throw new Error(`Product not found or unavailable: ${slug}`);
     }
+
+    const check = validateCartLine(product, item.variationId);
+    if (!check.ok) {
+      throw new Error(check.message);
+    }
+
+    const variationId = isVariantProduct(product) ? item.variationId || undefined : undefined;
+
     await api.addToCart({
       productId: product._id,
-      variationId: item.variationId || undefined,
+      variationId,
       quantity: item.qty,
       cityId,
     });
   }
+}
+
+/** Best-effort unit price for homepage/brand cards from enriched listing payload. */
+export function listingCardUnitPrice(product: {
+  productStructure?: string;
+  pricing?: { salePrice?: number; regularPrice?: number };
+  variationPricing?: Array<{ salePrice?: number; regularPrice?: number }>;
+  variations?: unknown[];
+}): number {
+  return listingUnitPrice(product, null);
 }

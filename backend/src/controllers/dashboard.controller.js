@@ -9,18 +9,17 @@ const Brand = require('../models/Brand');
 const Category = require('../models/Category');
 const City = require('../models/City');
 const Order = require('../models/Order');
-const Inventory = require('../models/Inventory');
 const BulkEnquiry = require('../models/BulkEnquiry');
 const ConcreteRFQ = require('../models/ConcreteRFQ');
 const { getLogs } = require('../services/auditLog.service');
 
 const getDashboard = asyncHandler(async (req, res) => {
+  const activeOrders = { isDeleted: { $ne: true } };
   const [
     totalCustomers, totalVendors, pendingVendors,
     totalProducts, activeProducts,
     totalBrands, totalCategories, totalCities,
     totalOrders, pendingOrders, pendingDispatch, cancelledOrders,
-    lowStock, outOfStock,
     newBulkEnquiries, pendingRFQs,
     activeBanners, publishedBlogs,
     recentAuditLogs,
@@ -33,12 +32,10 @@ const getDashboard = asyncHandler(async (req, res) => {
     Brand.countDocuments({ status: 'ACTIVE' }),
     Category.countDocuments({ status: 'ACTIVE' }),
     City.countDocuments({ status: 'ACTIVE' }),
-    Order.countDocuments(),
-    Order.countDocuments({ status: 'PENDING' }),
-    Order.countDocuments({ status: { $in: ['CONFIRMED', 'PROCESSING'] } }),
-    Order.countDocuments({ status: 'CANCELLED' }),
-    Inventory.countDocuments({ $expr: { $and: [{ $gt: ['$quantity', 0] }, { $lte: ['$quantity', '$lowStockThreshold'] }] } }),
-    Inventory.countDocuments({ quantity: 0 }),
+    Order.countDocuments(activeOrders),
+    Order.countDocuments({ ...activeOrders, status: 'PENDING' }),
+    Order.countDocuments({ ...activeOrders, status: { $in: ['PAID', 'VENDOR_ASSIGNMENT_PENDING', 'PROCESSING'] } }),
+    Order.countDocuments({ ...activeOrders, status: 'CANCELLED' }),
     BulkEnquiry.countDocuments({ status: 'NEW' }),
     ConcreteRFQ.countDocuments({ status: 'PENDING' }),
     Banner.countDocuments({ status: 'ACTIVE' }),
@@ -51,10 +48,9 @@ const getDashboard = asyncHandler(async (req, res) => {
     products: { total: totalProducts, active: activeProducts },
     catalog: { brands: totalBrands, categories: totalCategories, cities: totalCities },
     orders: { total: totalOrders, pending: pendingOrders, pendingDispatch, cancelled: cancelledOrders },
-    inventory: { lowStock, outOfStock },
     enquiries: { bulkEnquiries: newBulkEnquiries, rfqs: pendingRFQs },
     cms: { activeBanners, publishedBlogs },
-    recentActivity: recentAuditLogs.logs,
+    recentActivity: recentAuditLogs?.logs || [],
   });
 });
 

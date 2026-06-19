@@ -68,10 +68,10 @@ router.post(
   uploadCtrl.imageUploadResult
 );
 
-// Guest / customer — BOQ / drawing / PDF for bulk enquiries (no login required)
+// Guest / customer — BOQ / drawing / PDF / Excel for bulk enquiries (no login required)
 router.post(
   '/enquiry-document',
-  ...uploadDocument(UPLOAD_FOLDERS.CUSTOMER_DOCS).single('document'),
+  ...uploadDocument(UPLOAD_FOLDERS.BULK_ENQUIRY).single('document'),
   handleUploadError,
   uploadCtrl.documentUploadResult
 );

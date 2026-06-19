@@ -42,11 +42,7 @@ exports.markAllRead = asyncHandler(async (req, res) => {
 
 // DELETE /customer/notifications/:id
 exports.remove = asyncHandler(async (req, res) => {
-  const n = await Notification.findOneAndUpdate(
-    { _id: req.params.id, customer: req.user._id },
-    { isDeleted: true },
-    { new: true }
-  );
-  if (!n) throw new AppError('Notification not found.', 404);
+  const result = await Notification.deleteOne({ _id: req.params.id, customer: req.user._id });
+  if (!result.deletedCount) throw new AppError('Notification not found.', 404);
   return ApiResponse.success(res, 200, 'Notification deleted.');
 });

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Search, RefreshCw, Eye, FileText, Loader2, Briefcase } from "lucide-react";
 import { adminFetch as apiFetch } from "../../lib/adminApi";
+import { adminToast } from "../lib/adminToast";
 
 const STATUS_COLORS: Record<string, string> = {
   NEW: "bg-sb-orange/15 text-sb-orange border-sb-orange/25",
@@ -11,6 +12,15 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const inp = "w-full bg-sb-cream border border-sb-ink/10 rounded-lg px-3 py-2 text-sm text-sb-ink placeholder:text-sb-ink/40 focus:outline-none focus:border-sb-orange transition-colors";
+
+type AdminMini = { _id: string; name?: string; email?: string };
+
+function assignedId(row: { assignedTo?: { _id?: string } | string | null }) {
+  const a = row.assignedTo;
+  if (!a) return "";
+  if (typeof a === "object" && a._id) return String(a._id);
+  return String(a);
+}
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
@@ -35,6 +45,8 @@ export function BulkEnquiryManagement() {
   const [selected, setSelected] = useState<any>(null);
   const [stats, setStats] = useState({ total: 0, new: 0, inProgress: 0, quoted: 0, converted: 0 });
   const [saving, setSaving] = useState(false);
+  const [admins, setAdmins] = useState<AdminMini[]>([]);
+  const [assignDraft, setAssignDraft] = useState("");
 
   const load = useCallback(() => {
     setLoading(true);
@@ -51,12 +63,37 @@ export function BulkEnquiryManagement() {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    apiFetch("/admin/users?role=ADMIN&limit=100")
+      .then((d) => {
+        const raw = d.data;
+        setAdmins(Array.isArray(raw) ? (raw as AdminMini[]) : []);
+      })
+      .catch(() => setAdmins([]));
+  }, []);
+
+  useEffect(() => {
+    if (selected) setAssignDraft(assignedId(selected));
+  }, [selected]);
+
   const update = async (id: string, patch: any) => {
     setSaving(true);
-    await apiFetch(`/bulk-enquiries/${id}`, { method: "PATCH", body: JSON.stringify(patch) }).catch(e => alert(e.message));
-    load();
-    setSaving(false);
-    if (patch.status && selected) setSelected((prev: any) => ({ ...prev, ...patch }));
+    try {
+      const res = await apiFetch(`/bulk-enquiries/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+      if (patch.status) adminToast.success("Status updated");
+      else if (patch.assignedTo !== undefined) adminToast.success("Assignment updated");
+      else if (patch.adminNotes !== undefined) adminToast.success("Notes saved");
+      load();
+      if (selected?._id === id) {
+        const next = res?.data ?? selected;
+        setSelected(next);
+        setAssignDraft(assignedId(next));
+      }
+    } catch (e) {
+      adminToast.error(e instanceof Error ? e.message : "Update failed");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const filtered = items.filter(i => {
@@ -204,15 +241,48 @@ export function BulkEnquiryManagement() {
               </div>
             )}
             <div>
-              <p className="text-xs font-semibold text-sb-ink/55 uppercase tracking-wider mb-2">Update Status</p>
-              <div className="grid grid-cols-3 gap-2">
-                {["NEW", "IN_PROGRESS", "QUOTED", "CONVERTED", "CLOSED"].map(s => (
-                  <button key={s} onClick={() => update(selected._id, { status: s })}
-                    className={`py-2 rounded-lg text-xs font-bold border transition-colors ${selected.status === s ? "bg-sb-orange text-white border-sb-orange" : "border-sb-ink/10 text-sb-ink/65 hover:border-sb-orange/40 hover:text-sb-orange"}`}>
-                    {s}
-                  </button>
+              <p className="text-xs font-semibold text-sb-ink/55 uppercase tracking-wider mb-2">Status</p>
+              <select
+                value={selected.status}
+                disabled={saving}
+                onChange={(e) => void update(selected._id, { status: e.target.value })}
+                className={inp}
+              >
+                {["NEW", "IN_PROGRESS", "QUOTED", "CONVERTED", "CLOSED"].map((s) => (
+                  <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
                 ))}
+              </select>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-sb-ink/55 uppercase tracking-wider mb-2">Assign to admin</p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <select
+                  className={`${inp} cursor-pointer`}
+                  value={assignDraft}
+                  onChange={(e) => setAssignDraft(e.target.value)}
+                  disabled={saving}
+                >
+                  <option value="">Unassigned</option>
+                  {admins.map((a) => (
+                    <option key={a._id} value={a._id}>
+                      {(a.name || "Admin").trim()}{a.email ? ` · ${a.email}` : ""}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  disabled={saving || assignDraft === assignedId(selected)}
+                  onClick={() => void update(selected._id, { assignedTo: assignDraft === "" ? null : assignDraft })}
+                  className="shrink-0 px-4 py-2 rounded-lg text-sm font-medium bg-sb-orange text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Assign
+                </button>
               </div>
+              {selected.assignedTo?.name && (
+                <p className="text-xs text-sb-ink/50 mt-2">
+                  Currently assigned to <span className="font-medium text-sb-ink">{selected.assignedTo.name}</span>
+                </p>
+              )}
             </div>
             <div>
               <p className="text-xs font-semibold text-sb-ink/55 uppercase tracking-wider mb-2">Admin Notes</p>

@@ -1,12 +1,11 @@
-const mongoose = require('mongoose');
 const asyncHandler = require('../utils/asyncHandler');
+const { isValidId } = require('../lib/apiShape');
 const ApiResponse = require('../utils/apiResponse');
 const AppError = require('../utils/AppError');
 const slugify = require('slugify');
 const City = require('../models/City');
 const { logAction } = require('../services/auditLog.service');
 const { generateRefNumber } = require('../services/refNumber.service');
-const { applySoftDelete } = require('../utils/softDeleteRelease');
 
 /** Split comma/newline/space separated PINs into unique 6-digit strings. */
 function normalizePincodes(input) {
@@ -46,7 +45,7 @@ const getAll = asyncHandler(async (req, res) => {
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(200, parseInt(limit));
   const [cities, total] = await Promise.all([
-    City.find(filter).sort({ sortOrder: 1, name: 1 }).skip((pageNum - 1) * limitNum).limit(limitNum),
+    City.find(filter).populate('pincodes').sort({ sortOrder: 1, name: 1 }).skip((pageNum - 1) * limitNum).limit(limitNum),
     City.countDocuments(filter),
   ]);
   return ApiResponse.success(res, 200, 'Cities retrieved.', cities, {
@@ -55,7 +54,7 @@ const getAll = asyncHandler(async (req, res) => {
 });
 
 const getById = asyncHandler(async (req, res) => {
-  const city = await City.findById(req.params.id);
+  const city = await City.findById(req.params.id).populate('pincodes');
   if (!city) throw new AppError('City not found.', 404);
   return ApiResponse.success(res, 200, 'City retrieved.', city);
 });
@@ -88,7 +87,7 @@ const create = asyncHandler(async (req, res) => {
 });
 
 const update = asyncHandler(async (req, res) => {
-  const city = await City.findById(req.params.id);
+  const city = await City.findById(req.params.id).populate('pincodes');
   if (!city) throw new AppError('City not found.', 404);
   const allowed = ['name', 'state', 'status', 'isServiceable', 'priority', 'sortOrder'];
   allowed.forEach((f) => {
@@ -123,8 +122,7 @@ const remove = asyncHandler(async (req, res) => {
   const city = await City.findById(req.params.id);
   if (!city) throw new AppError('City not found.', 404);
   const oldName = city.name;
-  applySoftDelete(city, { fields: ['name', 'slug'], nameMaxLength: 100 });
-  await city.save({ validateBeforeSave: false });
+  await city.deleteOne();
   await logAction({
     adminId: req.user._id,
     action: 'DELETE',
@@ -154,7 +152,7 @@ const bulkImport = asyncHandler(async (req, res) => {
     throw new AppError(`Too many rows (max ${BULK_MAX_ROWS}).`, 400);
   }
 
-  const batchId = new mongoose.Types.ObjectId().toString();
+  const batchId = generateObjectIdString();
   const errors = [];
   let ok = 0;
 
@@ -222,7 +220,7 @@ const bulkImport = asyncHandler(async (req, res) => {
  * Body: { raw?: string, pincodes?: string|string[], mode?: 'append' | 'replace' }
  */
 const bulkImportPincodes = asyncHandler(async (req, res) => {
-  const city = await City.findById(req.params.id);
+  const city = await City.findById(req.params.id).populate('pincodes');
   if (!city) throw new AppError('City not found.', 404);
 
   const mode = String(req.body.mode || 'append').toLowerCase() === 'replace' ? 'replace' : 'append';

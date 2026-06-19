@@ -54,6 +54,16 @@ const ALLOWED_DOC_TYPES = [
   'application/pdf',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel',
+  'text/csv',
+  'application/csv',
+];
+
+/** Fallback when browsers send application/octet-stream for Office files */
+const ALLOWED_DOC_EXTENSIONS = [
+  '.pdf', '.jpg', '.jpeg', '.png', '.webp',
+  '.doc', '.docx', '.xlsx', '.xls', '.csv',
 ];
 
 // ─── Pagination Defaults ──────────────────────────────────────────────────────
@@ -71,5 +81,6 @@ module.exports = {
   FILE_SIZE_LIMITS,
   ALLOWED_IMAGE_TYPES,
   ALLOWED_DOC_TYPES,
+  ALLOWED_DOC_EXTENSIONS,
   PAGINATION,
 };

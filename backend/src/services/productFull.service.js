@@ -93,25 +93,48 @@ async function enrichProductsSummary(products) {
   if (!products.length) return products;
 
   const ids = products.map((p) => p._id);
-  const [pricingRows, inventoryRows] = await Promise.all([
-    CityPricing.find({ product: { $in: ids }, variation: null, isVisible: true })
-      .populate('city', 'name slug')
-      .select('product city regularPrice salePrice mrp isVisible')
-      .lean(),
-    Inventory.find({ product: { $in: ids }, variation: null })
-      .select('product city quantity reserved')
-      .lean(),
+  const variantIds = products
+    .filter((p) => {
+      const j = typeof p.toJSON === 'function' ? p.toJSON() : p;
+      return j.productStructure === 'variant';
+    })
+    .map((p) => p._id);
+  const simpleIds = ids.filter((id) => !variantIds.some((vid) => String(vid) === String(id)));
+
+  const [basePricingRows, baseInventoryRows, varPricingRows, varInventoryRows] = await Promise.all([
+    simpleIds.length
+      ? CityPricing.find({ product: { $in: simpleIds }, variation: null, isVisible: true, isDeleted: false })
+        .populate('city', 'name slug')
+        .select('product city regularPrice salePrice mrp isVisible')
+        .lean()
+      : [],
+    simpleIds.length
+      ? Inventory.find({ product: { $in: simpleIds }, variation: null, isDeleted: false })
+        .select('product city quantity reserved')
+        .lean()
+      : [],
+    variantIds.length
+      ? CityPricing.find({ product: { $in: variantIds }, variation: { $ne: null }, isVisible: true, isDeleted: false })
+        .populate('city', 'name slug')
+        .select('product city regularPrice salePrice mrp isVisible')
+        .lean()
+      : [],
+    variantIds.length
+      ? Inventory.find({ product: { $in: variantIds }, variation: { $ne: null }, isDeleted: false })
+        .select('product city quantity reserved')
+        .lean()
+      : [],
   ]);
 
   const pricingByProduct = new Map();
-  for (const row of pricingRows) {
+  for (const row of [...basePricingRows, ...varPricingRows]) {
     const key = String(row.product);
     if (!pricingByProduct.has(key)) pricingByProduct.set(key, []);
     pricingByProduct.get(key).push(row);
   }
 
   const inventoryByProduct = new Map();
-  for (const row of inventoryRows) {
+  for (const row of [...baseInventoryRows, ...varInventoryRows]) {
     const key = String(row.product);
     if (!inventoryByProduct.has(key)) inventoryByProduct.set(key, []);
     inventoryByProduct.get(key).push(row);
@@ -135,7 +158,7 @@ async function enrichProductsSummary(products) {
 
     return {
       ...json,
-      citiesAvailable: cities,
+      citiesAvailable: [...new Set(cities)],
       lowestPrice: prices.length ? Math.min(...prices) : null,
       highestPrice: prices.length ? Math.max(...prices) : null,
       totalStock,
@@ -199,9 +222,74 @@ async function getProductConfiguration(productId) {
   return { cityPricing, inventory, cityConfigs, activeCities: cities };
 }
 
-async function saveProductConfiguration(productId, { cityPricing = [], inventory = [] }, userId, session, productGst = 18) {
+async function getVariationConfiguration(productId, variationId) {
+  const variationOid = new mongoose.Types.ObjectId(String(variationId));
+  const productOid = new mongoose.Types.ObjectId(String(productId));
+
+  const [cityPricing, inventory, cities] = await Promise.all([
+    CityPricing.find({ product: productOid, variation: variationOid })
+      .populate('city', 'name slug state status isServiceable')
+      .sort({ 'city.name': 1 })
+      .lean(),
+    Inventory.find({ product: productOid, variation: variationOid })
+      .populate('city', 'name slug state')
+      .lean(),
+    City.find({ status: 'ACTIVE', isServiceable: true }).select('name slug state').sort({ name: 1 }).lean(),
+  ]);
+
+  const pricingByCity = new Map(cityPricing.map((p) => [String(p.city?._id || p.city), p]));
+  const inventoryByCity = new Map(inventory.map((i) => [String(i.city?._id || i.city), i]));
+
+  const cityConfigs = cities.map((city) => {
+    const cid = String(city._id);
+    const pricing = pricingByCity.get(cid);
+    const inv = inventoryByCity.get(cid);
+    const qty = inv?.quantity ?? 0;
+    const reorder = inv?.lowStockThreshold ?? 50;
+    let stockStatus = 'IN_STOCK';
+    if (qty === 0) stockStatus = 'OUT_OF_STOCK';
+    else if (qty <= reorder) stockStatus = 'LOW_STOCK';
+
+    return {
+      city,
+      pricing: pricing ? {
+        _id: pricing._id,
+        sellingPrice: pricing.salePrice ?? pricing.regularPrice,
+        mrp: pricing.mrp ?? pricing.regularPrice,
+        purchaseCost: pricing.purchaseCost ?? null,
+        deliveryCharge: pricing.deliveryCharge ?? 0,
+        taxPercentage: pricing.taxPercentage ?? null,
+        isAvailable: pricing.isVisible !== false,
+        wholesaleSlabs: pricing.wholesaleSlabs || [],
+      } : null,
+      inventory: inv ? {
+        _id: inv._id,
+        quantity: inv.quantity,
+        reserved: inv.reserved,
+        reorderLevel: inv.lowStockThreshold,
+        safetyStock: inv.safetyStock ?? 0,
+        stockStatus,
+        available: Math.max(0, (inv.quantity || 0) - (inv.reserved || 0)),
+      } : null,
+    };
+  });
+
+  return { cityPricing, inventory, cityConfigs, activeCities: cities };
+}
+
+async function saveScopedConfiguration(
+  productId,
+  variationId,
+  { cityPricing = [], inventory = [] },
+  userId,
+  session,
+  productGst = 18
+) {
   const opts = session ? { session } : {};
   const productOid = new mongoose.Types.ObjectId(String(productId));
+  const variationOid = variationId
+    ? new mongoose.Types.ObjectId(String(variationId))
+    : null;
 
   for (const row of cityPricing) {
     const hasPrice = row.sellingPrice != null || row.salePrice != null || row.regularPrice != null;
@@ -210,7 +298,11 @@ async function saveProductConfiguration(productId, { cityPricing = [], inventory
       ...row,
       taxPercentage: row.taxPercentage ?? productGst,
     });
-    const pricingQuery = { product: productOid, city: normalized.city, variation: null };
+    const pricingQuery = {
+      product: productOid,
+      city: normalized.city,
+      variation: variationOid,
+    };
     await reviveSoftDeleted(CityPricing, pricingQuery);
     await CityPricing.findOneAndUpdate(
       pricingQuery,
@@ -234,7 +326,11 @@ async function saveProductConfiguration(productId, { cityPricing = [], inventory
 
   for (const row of inventory) {
     const normalized = normalizeInventoryRow(row);
-    const inventoryQuery = { product: productOid, city: normalized.city, variation: null };
+    const inventoryQuery = {
+      product: productOid,
+      city: normalized.city,
+      variation: variationOid,
+    };
     await reviveSoftDeleted(Inventory, inventoryQuery);
     await Inventory.findOneAndUpdate(
       inventoryQuery,
@@ -251,6 +347,23 @@ async function saveProductConfiguration(productId, { cityPricing = [], inventory
       { upsert: true, new: true, setDefaultsOnInsert: true, ...opts }
     );
   }
+}
+
+async function saveProductConfiguration(productId, payload, userId, session, productGst = 18) {
+  const Product = require('../models/Product');
+  const product = await Product.findById(productId).select('productStructure').lean();
+  const hasScopedData = (payload.cityPricing?.length || payload.inventory?.length);
+  if (product?.productStructure === 'variant' && hasScopedData) {
+    throw new AppError(
+      'Variant products use per-variant pricing and inventory. Configure cities on each variant in the Variations tab.',
+      400
+    );
+  }
+  return saveScopedConfiguration(productId, null, payload, userId, session, productGst);
+}
+
+async function saveVariationConfiguration(productId, variationId, payload, userId, session, productGst = 18) {
+  return saveScopedConfiguration(productId, variationId, payload, userId, session, productGst);
 }
 
 function hasNestedPayload(body) {
@@ -297,7 +410,9 @@ module.exports = {
   normalizeInventoryRow,
   enrichProductsSummary,
   getProductConfiguration,
+  getVariationConfiguration,
   saveProductConfiguration,
+  saveVariationConfiguration,
   hasNestedPayload,
   extractNestedPayload,
 };

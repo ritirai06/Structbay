@@ -3,6 +3,8 @@
  * Tries `/api/v1/customer/cities` first, then `/api/v1/cities` so the UI works even if one route misbehaves.
  */
 
+import { cityNamesMatch, normalizeCityName } from "./cityNameMatch";
+
 export type StorefrontCity = {
   id: string;
   name: string;
@@ -64,4 +66,50 @@ export async function loadStorefrontCities(): Promise<StorefrontCity[]> {
     (c: any) => c && c.status === "ACTIVE" && c.isServiceable !== false && c.name
   );
   return citiesFromApiData(filtered);
+}
+
+export type StoredCityLike = {
+  id: string;
+  name: string;
+  state?: string;
+  slug?: string;
+};
+
+/** Match stored city to current API list (handles stale Mongo ids after re-seed). */
+export function findMatchingStorefrontCity(
+  stored: StoredCityLike,
+  list: StorefrontCity[]
+): StorefrontCity | null {
+  const byId = list.find((c) => c.id === stored.id);
+  if (byId) return byId;
+
+  const normStored = normalizeCityName(stored.name);
+  return (
+    list.find((c) => {
+      if (stored.slug && c.slug && stored.slug === c.slug) return true;
+      return normalizeCityName(c.name) === normStored || cityNamesMatch(c.name, stored.name);
+    }) ?? null
+  );
+}
+
+/**
+ * Reconcile localStorage city with live serviceable cities.
+ * Returns null when the stored city no longer exists (user must re-select).
+ */
+export async function reconcileStoredCity(
+  stored: StoredCityLike | null
+): Promise<StoredCityLike | null> {
+  if (!stored?.id || !stored?.name) return null;
+  const list = await loadStorefrontCities();
+  if (!list.length) return stored;
+
+  const match = findMatchingStorefrontCity(stored, list);
+  if (!match) return null;
+
+  return {
+    id: match.id,
+    name: match.name,
+    state: match.state || stored.state || "",
+    slug: match.slug,
+  };
 }

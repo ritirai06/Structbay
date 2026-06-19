@@ -1,0 +1,12 @@
+[
+  {
+    "_id": "6a2ebffee45ec221bc1fa192",
+    "customer": "6a2eb00ef93fe4f1ddc07da5",
+    "city": "6a34d8f47f2c6c481fc97255",
+    "items": [],
+    "coupon": null,
+    "createdAt": "2026-06-14T14:51:42.928Z",
+    "updatedAt": "2026-06-19T17:27:55.148Z",
+    "__v": 14
+  }
+]

@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
 const asyncHandler = require('../utils/asyncHandler');
+const { isValidId } = require('../lib/apiShape');
 const ApiResponse = require('../utils/apiResponse');
 const AppError = require('../utils/AppError');
 const Brand = require('../models/Brand');
@@ -7,7 +7,6 @@ const Category = require('../models/Category');
 const { deleteFile } = require('../config/cloudinary');
 const { resolveCategoryFromRow, escRx } = require('../utils/resolveCategoryFromRow');
 const { logAction } = require('../services/auditLog.service');
-const { applySoftDelete } = require('../utils/softDeleteRelease');
 
 async function applyImageSubdoc(brand, field, incoming) {
   if (incoming === undefined) return;
@@ -35,7 +34,7 @@ const getAll = asyncHandler(async (req, res) => {
   const filter = {};
   if (status) filter.status = status;
   if (search) filter.name = { $regex: search, $options: 'i' };
-  if (category && mongoose.Types.ObjectId.isValid(category)) filter.category = category;
+  if (category && isValidId(category)) filter.category = category;
 
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(100, parseInt(limit));
@@ -64,7 +63,7 @@ const getBySlug = asyncHandler(async (req, res) => {
 const create = asyncHandler(async (req, res) => {
   const { name, description, sortOrder, status, category, logo, banner } = req.body;
 
-  if (!mongoose.Types.ObjectId.isValid(category)) {
+  if (!isValidId(category)) {
     throw new AppError('Invalid category.', 400);
   }
   const cat = await Category.findById(category);
@@ -106,7 +105,7 @@ const update = asyncHandler(async (req, res) => {
     if (req.body.category === null || req.body.category === '') {
       brand.category = null;
     } else {
-      if (!mongoose.Types.ObjectId.isValid(req.body.category)) {
+      if (!isValidId(req.body.category)) {
         throw new AppError('Invalid category.', 400);
       }
       const cat = await Category.findById(req.body.category);
@@ -164,8 +163,7 @@ const remove = asyncHandler(async (req, res) => {
   if (brand.logo?.publicId) await deleteFile(brand.logo.publicId).catch(() => {});
   if (brand.banner?.publicId) await deleteFile(brand.banner.publicId).catch(() => {});
   const oldName = brand.name;
-  applySoftDelete(brand, { fields: ['name', 'slug'], nameMaxLength: 100 });
-  await brand.save({ validateBeforeSave: false });
+  await brand.deleteOne();
   await logAction({
     adminId: req.user._id,
     action: 'DELETE',
@@ -193,7 +191,7 @@ const bulkImport = asyncHandler(async (req, res) => {
     throw new AppError(`Too many rows (max ${BULK_MAX_ROWS}).`, 400);
   }
 
-  const batchId = new mongoose.Types.ObjectId().toString();
+  const batchId = generateObjectIdString();
   const errors = [];
   let ok = 0;
   const stats = { categoriesCreated: 0 };

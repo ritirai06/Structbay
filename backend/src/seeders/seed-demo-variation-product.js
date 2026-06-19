@@ -11,7 +11,6 @@
  */
 require('dotenv').config({ path: require('path').join(__dirname, '../../.env') });
 
-const mongoose = require('mongoose');
 const slugify = require('slugify');
 const connectDB = require('../config/db');
 const Product = require('../models/Product');

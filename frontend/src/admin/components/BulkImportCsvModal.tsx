@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Loader2, Upload, Download } from "lucide-react";
 import { adminFetch as apiFetch } from "../../lib/adminApi";
+import { adminToast } from "../lib/adminToast";
 
 export type BulkImportResult = {
   batchId?: string;
@@ -24,6 +25,9 @@ type Props = {
   parseRows: (csvText: string) => Record<string, string>[];
   onSuccess: () => void;
   panelClassName?: string;
+  /** Render only the form body (no overlay/header) for embedding in another modal. */
+  embedded?: boolean;
+  disableTemplateDownload?: boolean;
 };
 
 export function BulkImportCsvModal({
@@ -37,6 +41,8 @@ export function BulkImportCsvModal({
   parseRows,
   onSuccess,
   panelClassName = "max-w-3xl",
+  embedded = false,
+  disableTemplateDownload = false,
 }: Props) {
   const [rows, setRows] = useState<Record<string, string>[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -83,7 +89,10 @@ export function BulkImportCsvModal({
   };
 
   const submit = async () => {
-    if (rows.length === 0) return alert("Choose a CSV with at least one valid row.");
+    if (rows.length === 0) {
+      adminToast.warning("Choose a CSV with at least one valid row.");
+      return;
+    }
     setSubmitting(true);
     setResult(null);
     try {
@@ -96,8 +105,9 @@ export function BulkImportCsvModal({
         setResult(d as BulkImportResult);
       }
       onSuccess();
+      adminToast.success("Bulk import completed");
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Bulk import failed");
+      adminToast.error(e instanceof Error ? e.message : "Bulk import failed");
     }
     setSubmitting(false);
   };
@@ -112,26 +122,22 @@ export function BulkImportCsvModal({
 
   const previewKeys = rows[0] ? Object.keys(rows[0]) : [];
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-      <div className={`bg-sb-cream-secondary border border-sb-ink/10 rounded-xl w-full ${panelClassName}`}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-sb-ink/10">
-          <h3 className="font-bold text-sb-ink">{title}</h3>
-          <button type="button" onClick={close} className="text-sb-ink/55 hover:text-sb-ink text-xl leading-none">
-            ×
+  const body = (
+    <div className={embedded ? "" : "p-5"}>
+      {instructions ? (
+        <p className="text-xs text-sb-ink/50 mb-4 leading-relaxed whitespace-pre-line">{instructions}</p>
+      ) : null}
+      <div className="flex flex-wrap gap-2 mb-4">
+        {!disableTemplateDownload && templateCsv ? (
+          <button
+            type="button"
+            onClick={downloadTemplate}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold bg-sb-cream border border-sb-ink/12 text-sb-ink hover:border-sb-orange/40 transition-colors"
+          >
+            <Download className="w-4 h-4 text-sb-orange" />
+            Download template
           </button>
-        </div>
-        <div className="p-5">
-          <p className="text-xs text-sb-ink/50 mb-4 leading-relaxed whitespace-pre-line">{instructions}</p>
-          <div className="flex flex-wrap gap-2 mb-4">
-            <button
-              type="button"
-              onClick={downloadTemplate}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold bg-sb-cream border border-sb-ink/12 text-sb-ink hover:border-sb-orange/40 transition-colors"
-            >
-              <Download className="w-4 h-4 text-sb-orange" />
-              Download template
-            </button>
+        ) : null}
             <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold bg-sb-orange hover:bg-sb-orange-hover text-white cursor-pointer transition-colors">
               <Upload className="w-4 h-4" />
               Choose CSV
@@ -221,6 +227,23 @@ export function BulkImportCsvModal({
             </button>
           </div>
         </div>
+  );
+
+  if (embedded) {
+    if (!open) return null;
+    return body;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+      <div className={`bg-sb-cream-secondary border border-sb-ink/10 rounded-xl w-full ${panelClassName}`}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-sb-ink/10">
+          <h3 className="font-bold text-sb-ink">{title}</h3>
+          <button type="button" onClick={close} className="text-sb-ink/55 hover:text-sb-ink text-xl leading-none">
+            ×
+          </button>
+        </div>
+        {body}
       </div>
     </div>
   );

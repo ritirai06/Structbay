@@ -12,9 +12,9 @@ export const ADMIN_PASSWORD =
 
 export async function adminLogin(page: Page) {
   await page.goto("/admin/login");
-  await page.getByRole("heading", { name: /admin sign in/i }).waitFor({ timeout: 15_000 });
+  await page.getByRole("heading", { name: /^sign in$/i }).waitFor({ timeout: 15_000 });
   await page.locator('input[type="email"]').fill(ADMIN_EMAIL);
   await page.locator('input[type="password"]').fill(ADMIN_PASSWORD);
-  await page.getByRole("button", { name: /sign in to admin panel/i }).click();
+  await page.getByRole("button", { name: /^sign in$/i }).click();
   await page.waitForURL(/\/admin(?!\/login)/, { timeout: 30_000 });
 }

@@ -1,7 +1,7 @@
 const asyncHandler = require('../utils/asyncHandler');
+const { isValidId } = require('../lib/apiShape');
 const ApiResponse = require('../utils/apiResponse');
 const AppError = require('../utils/AppError');
-const mongoose = require('mongoose');
 const ConcreteRFQ = require('../models/ConcreteRFQ');
 const User = require('../models/User');
 const { ROLES } = require('../config/constants');
@@ -156,14 +156,13 @@ const getStats = asyncHandler(async (req, res) => {
 const remove = asyncHandler(async (req, res) => {
   const item = await ConcreteRFQ.findById(req.params.id);
   if (!item) throw new AppError('RFQ not found.', 404);
-  item.isDeleted = true;
-  await item.save();
+  await item.deleteOne();
   await logAction({
     adminId: req.user._id,
     action: 'DELETE',
     module: 'ConcreteRFQ',
     targetId: item._id.toString(),
-    description: `Soft-deleted concrete RFQ ${item.rfqNumber}`,
+    description: `Deleted concrete RFQ ${item.rfqNumber}`,
     ipAddress: req.ip,
   });
   return ApiResponse.success(res, 200, 'RFQ deleted.', { id: item._id });
@@ -172,22 +171,19 @@ const remove = asyncHandler(async (req, res) => {
 const bulkRemove = asyncHandler(async (req, res) => {
   const raw = req.body?.ids;
   const ids = Array.isArray(raw) ? raw.map((x) => String(x).trim()).filter(Boolean) : [];
-  const objectIds = ids.filter((id) => mongoose.Types.ObjectId.isValid(id));
+  const objectIds = ids.filter((id) => isValidId(id));
   if (!objectIds.length) throw new AppError('No valid RFQ ids provided.', 400);
-  const result = await ConcreteRFQ.updateMany(
-    { _id: { $in: objectIds }, isDeleted: { $ne: true } },
-    { $set: { isDeleted: true } }
-  );
+  const result = await ConcreteRFQ.deleteMany({ _id: { $in: objectIds } });
   await logAction({
     adminId: req.user._id,
     action: 'DELETE',
     module: 'ConcreteRFQ',
     targetId: ids.slice(0, 20).join(','),
-    description: `Bulk soft-deleted ${result.modifiedCount} concrete RFQ(s)`,
+    description: `Bulk deleted ${result.deletedCount} concrete RFQ(s)`,
     ipAddress: req.ip,
   });
-  return ApiResponse.success(res, 200, `${result.modifiedCount} RFQ(s) deleted.`, {
-    modifiedCount: result.modifiedCount,
+  return ApiResponse.success(res, 200, `${result.deletedCount} RFQ(s) deleted.`, {
+    deletedCount: result.deletedCount,
   });
 });
 

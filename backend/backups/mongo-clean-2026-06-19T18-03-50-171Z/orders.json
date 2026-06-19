@@ -1,0 +1,835 @@
+[
+  {
+    "_id": "6a2ec003e45ec221bc1fa21c",
+    "orderNumber": "2606140001",
+    "customer": "6a2eb00ef93fe4f1ddc07da5",
+    "city": "6a2ab2b2637b3bb4c2b6baa7",
+    "items": [
+      {
+        "product": "6a2b043cbf34fdffffcf68bf",
+        "variation": null,
+        "name": "UltraTech Cement OPC 53 Grade",
+        "sku": "UTC-OPC53-001",
+        "quantity": 1,
+        "unitPrice": 405,
+        "gstPercentage": 18,
+        "gstAmount": 0,
+        "lineTotal": 405,
+        "assignedVendor": null,
+        "vendorAssignmentId": null,
+        "vendorOrderId": null,
+        "_id": "6a2ec003e45ec221bc1fa21d"
+      },
+      {
+        "product": "6a2b043dbf34fdffffcf68c6",
+        "variation": null,
+        "name": "UltraTech PPC Cement",
+        "sku": "UTC-PPC-002",
+        "quantity": 1,
+        "unitPrice": 375,
+        "gstPercentage": 18,
+        "gstAmount": 0,
+        "lineTotal": 375,
+        "assignedVendor": null,
+        "vendorAssignmentId": null,
+        "vendorOrderId": null,
+        "_id": "6a2ec003e45ec221bc1fa21e"
+      },
+      {
+        "product": "6a2b043dbf34fdffffcf68cd",
+        "variation": null,
+        "name": "ACC Gold Cement",
+        "sku": "ACC-GOLD-001",
+        "quantity": 1,
+        "unitPrice": 415,
+        "gstPercentage": 18,
+        "gstAmount": 0,
+        "lineTotal": 415,
+        "assignedVendor": null,
+        "vendorAssignmentId": null,
+        "vendorOrderId": null,
+        "_id": "6a2ec003e45ec221bc1fa21f"
+      },
+      {
+        "product": "6a2b0440bf34fdffffcf68f0",
+        "variation": null,
+        "name": "Tata Tiscon 12mm TMT Bar",
+        "sku": "TIS-12MM-001",
+        "quantity": 1,
+        "unitPrice": 63500,
+        "gstPercentage": 18,
+        "gstAmount": 0,
+        "lineTotal": 63500,
+        "assignedVendor": null,
+        "vendorAssignmentId": null,
+        "vendorOrderId": null,
+        "_id": "6a2ec003e45ec221bc1fa220"
+      }
+    ],
+    "shippingAddress": {
+      "name": "ANSH YADAV",
+      "phone": "8400818186",
+      "line1": "\"O\"-Pocket, Ganga Nagar, Meerut-250001",
+      "line2": "IIMT UNIVERSITY ,MEERUT",
+      "city": "Bengaluru",
+      "state": "",
+      "pincode": "560001"
+    },
+    "subtotal": 64695,
+    "gstTotal": 11645,
+    "discount": 0,
+    "grandTotal": 76340,
+    "status": "PENDING",
+    "paymentStatus": "PENDING",
+    "paymentMethod": "online",
+    "paymentTransactionId": null,
+    "vendorOrders": [],
+    "structbayInvoiceUrl": null,
+    "customerInvoiceNumber": null,
+    "ewayBillUrl": null,
+    "ewayBillNumber": null,
+    "deliveryChallanNumber": null,
+    "invoiceUrl": null,
+    "notes": null,
+    "adminNotes": null,
+    "deliveryDetails": "",
+    "statusHistory": [
+      {
+        "status": "VENDOR_ASSIGNMENT_PENDING",
+        "changedBy": "6a2eb00ef93fe4f1ddc07da5",
+        "note": "Order placed by customer.",
+        "changedAt": "2026-06-14T14:51:47.947Z"
+      },
+      {
+        "status": "VENDOR_ASSIGNMENT_PENDING",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "",
+        "changedAt": "2026-06-14T15:06:02.989Z"
+      },
+      {
+        "status": "PAID",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "",
+        "changedAt": "2026-06-14T15:06:03.616Z"
+      },
+      {
+        "status": "PENDING",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "",
+        "changedAt": "2026-06-14T15:06:04.817Z"
+      },
+      {
+        "status": "PAID",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "",
+        "changedAt": "2026-06-16T05:32:10.140Z"
+      },
+      {
+        "status": "READY_FOR_DISPATCH",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "",
+        "changedAt": "2026-06-16T05:32:11.580Z"
+      },
+      {
+        "status": "PENDING",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "",
+        "changedAt": "2026-06-16T05:32:13.116Z"
+      }
+    ],
+    "isSplit": false,
+    "splitFromOrder": null,
+    "isDeleted": true,
+    "createdAt": "2026-06-14T14:51:47.954Z",
+    "updatedAt": "2026-06-19T06:40:01.358Z",
+    "__v": 6,
+    "assignedVendor": "6a2b00ac25d6ba0c932658c3"
+  },
+  {
+    "_id": "6a3184c5d1a54032dcb479ac",
+    "orderNumber": "2606160001",
+    "customer": "6a2eb00ef93fe4f1ddc07da5",
+    "city": "6a2ab2b2637b3bb4c2b6baa7",
+    "items": [
+      {
+        "product": "6a2b043cbf34fdffffcf68bf",
+        "variation": null,
+        "name": "UltraTech Cement OPC 53 Grade",
+        "sku": "UTC-OPC53-001",
+        "quantity": 1,
+        "unitPrice": 405,
+        "gstPercentage": 18,
+        "gstAmount": 0,
+        "lineTotal": 405,
+        "vendorUser": null,
+        "assignedVendor": null,
+        "vendorAssignmentId": null,
+        "vendorOrderId": null,
+        "_id": "6a3184c5d1a54032dcb479ad"
+      },
+      {
+        "product": "6a2b0440bf34fdffffcf68f0",
+        "variation": null,
+        "name": "Tata Tiscon 12mm TMT Bar",
+        "sku": "TIS-12MM-001",
+        "quantity": 3,
+        "unitPrice": 63500,
+        "gstPercentage": 18,
+        "gstAmount": 0,
+        "lineTotal": 190500,
+        "vendorUser": null,
+        "assignedVendor": null,
+        "vendorAssignmentId": null,
+        "vendorOrderId": null,
+        "_id": "6a3184c5d1a54032dcb479ae"
+      },
+      {
+        "product": "6a2b0443bf34fdffffcf692f",
+        "variation": null,
+        "name": "Kajaria Vitrified Tile 600x600",
+        "sku": "KAJ-600-001",
+        "quantity": 1,
+        "unitPrice": 620,
+        "gstPercentage": 18,
+        "gstAmount": 0,
+        "lineTotal": 620,
+        "vendorUser": null,
+        "assignedVendor": null,
+        "vendorAssignmentId": null,
+        "vendorOrderId": null,
+        "_id": "6a3184c5d1a54032dcb479af"
+      },
+      {
+        "product": "6a2b0448bf34fdffffcf6991",
+        "variation": null,
+        "name": "Philips LED Bulb 9W",
+        "sku": "PHI-LED-001",
+        "quantity": 7,
+        "unitPrice": 110,
+        "gstPercentage": 18,
+        "gstAmount": 0,
+        "lineTotal": 770,
+        "vendorUser": null,
+        "assignedVendor": null,
+        "vendorAssignmentId": null,
+        "vendorOrderId": null,
+        "_id": "6a3184c5d1a54032dcb479b0"
+      }
+    ],
+    "shippingAddress": {
+      "name": "Riti Rai",
+      "phone": "8400818186",
+      "line1": "Uttar Pradesh 201309",
+      "line2": "Others",
+      "city": "Bengaluru",
+      "state": "",
+      "pincode": "560001"
+    },
+    "subtotal": 192295,
+    "gstTotal": 34613,
+    "discount": 0,
+    "grandTotal": 226908,
+    "status": "COMPLETED",
+    "paymentStatus": "PAID",
+    "paymentMethod": "cod",
+    "paymentTransactionId": null,
+    "assignedVendor": "6a318251d1a54032dcb4766f",
+    "vendorOrders": [
+      "6a318565d1a54032dcb47fdc"
+    ],
+    "structbayInvoiceUrl": null,
+    "customerInvoiceNumber": null,
+    "ewayBillUrl": null,
+    "ewayBillNumber": null,
+    "deliveryChallanNumber": null,
+    "invoiceUrl": null,
+    "notes": null,
+    "adminNotes": null,
+    "deliveryDetails": null,
+    "statusHistory": [
+      {
+        "status": "VENDOR_ASSIGNMENT_PENDING",
+        "changedBy": "6a2eb00ef93fe4f1ddc07da5",
+        "note": "Order placed by customer.",
+        "changedAt": "2026-06-16T17:15:49.266Z"
+      },
+      {
+        "status": "VENDOR_ASSIGNMENT_PENDING",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "",
+        "changedAt": "2026-06-16T17:18:23.636Z"
+      },
+      {
+        "status": "PROCESSING",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "Vendor assigned by admin.",
+        "changedAt": "2026-06-16T17:18:29.205Z"
+      },
+      {
+        "status": "READY_FOR_DISPATCH",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "",
+        "changedAt": "2026-06-16T17:35:12.002Z"
+      },
+      {
+        "status": "PROCESSING",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "",
+        "changedAt": "2026-06-16T17:35:16.628Z"
+      },
+      {
+        "status": "READY_FOR_DISPATCH",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "",
+        "changedAt": "2026-06-16T17:41:42.049Z"
+      },
+      {
+        "status": "PARTIALLY_DISPATCHED",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "",
+        "changedAt": "2026-06-16T17:41:42.700Z"
+      },
+      {
+        "status": "DISPATCHED",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "",
+        "changedAt": "2026-06-16T17:41:43.585Z"
+      },
+      {
+        "status": "DELIVERED",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "",
+        "changedAt": "2026-06-16T18:57:31.463Z"
+      },
+      {
+        "status": "COMPLETED",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "",
+        "changedAt": "2026-06-16T18:57:37.506Z"
+      },
+      {
+        "status": "COMPLETED",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "Payment received and verified",
+        "changedAt": "2026-06-16T19:06:45.476Z"
+      }
+    ],
+    "isSplit": false,
+    "splitFromOrder": null,
+    "isDeleted": true,
+    "createdAt": "2026-06-16T17:15:49.272Z",
+    "updatedAt": "2026-06-19T17:39:17.631Z",
+    "__v": 10
+  },
+  {
+    "_id": "6a319f71300560934d4a0374",
+    "orderNumber": "2606170001",
+    "customer": "6a2eb00ef93fe4f1ddc07da5",
+    "city": "6a2ab2b2637b3bb4c2b6baa7",
+    "items": [
+      {
+        "product": "6a2b043cbf34fdffffcf68bf",
+        "variation": null,
+        "name": "UltraTech Cement OPC 53 Grade",
+        "sku": "UTC-OPC53-001",
+        "quantity": 25,
+        "unitPrice": 405,
+        "gstPercentage": 18,
+        "gstAmount": 0,
+        "lineTotal": 10125,
+        "vendorUser": null,
+        "assignedVendor": null,
+        "vendorAssignmentId": null,
+        "vendorOrderId": null,
+        "_id": "6a319f71300560934d4a0375"
+      }
+    ],
+    "shippingAddress": {
+      "name": "Riti Rai",
+      "phone": "9876543212",
+      "line1": "\"O\"-Pocket, Ganga Nagar, Meerut-250001",
+      "line2": "Others",
+      "city": "Bengaluru",
+      "state": "",
+      "pincode": "560001"
+    },
+    "subtotal": 10125,
+    "gstTotal": 1823,
+    "discount": 0,
+    "grandTotal": 11948,
+    "status": "READY_FOR_DISPATCH",
+    "paymentStatus": "PAID",
+    "paymentMethod": "cod",
+    "paymentTransactionId": null,
+    "assignedVendor": "6a318251d1a54032dcb4766f",
+    "vendorOrders": [
+      "6a31a02a300560934d4a050a"
+    ],
+    "structbayInvoiceUrl": null,
+    "customerInvoiceNumber": null,
+    "ewayBillUrl": null,
+    "ewayBillNumber": null,
+    "deliveryChallanNumber": null,
+    "invoiceUrl": null,
+    "notes": null,
+    "adminNotes": null,
+    "deliveryDetails": "",
+    "statusHistory": [
+      {
+        "status": "VENDOR_ASSIGNMENT_PENDING",
+        "changedBy": "6a2eb00ef93fe4f1ddc07da5",
+        "note": "Order placed by customer.",
+        "changedAt": "2026-06-16T19:09:37.623Z"
+      },
+      {
+        "status": "PROCESSING",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "",
+        "changedAt": "2026-06-16T19:10:51.527Z"
+      },
+      {
+        "status": "PROCESSING",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "",
+        "changedAt": "2026-06-16T19:10:52.078Z"
+      },
+      {
+        "status": "VENDOR_ASSIGNMENT_PENDING",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "",
+        "changedAt": "2026-06-16T19:12:37.905Z"
+      },
+      {
+        "status": "PROCESSING",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "Vendor assigned by admin.",
+        "changedAt": "2026-06-16T19:12:41.804Z"
+      },
+      {
+        "status": "PROCESSING",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "",
+        "changedAt": "2026-06-16T19:12:43.664Z"
+      },
+      {
+        "status": "READY_FOR_DISPATCH",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "",
+        "changedAt": "2026-06-16T19:20:01.289Z"
+      },
+      {
+        "status": "READY_FOR_DISPATCH",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "Payment received and verified",
+        "changedAt": "2026-06-18T05:17:41.362Z"
+      },
+      {
+        "status": "DISPATCHED",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "",
+        "changedAt": "2026-06-18T06:47:42.941Z"
+      },
+      {
+        "status": "READY_FOR_DISPATCH",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "",
+        "changedAt": "2026-06-18T06:48:13.354Z"
+      }
+    ],
+    "isSplit": false,
+    "splitFromOrder": null,
+    "isDeleted": true,
+    "createdAt": "2026-06-16T19:09:37.625Z",
+    "updatedAt": "2026-06-19T06:40:00.025Z",
+    "__v": 9
+  },
+  {
+    "_id": "6a33beccab967c7ecb6d2c3a",
+    "orderNumber": "2606180001",
+    "customer": "6a2eb00ef93fe4f1ddc07da5",
+    "city": "6a2ab2b2637b3bb4c2b6baa7",
+    "items": [
+      {
+        "product": "6a2b0443bf34fdffffcf692f",
+        "variation": null,
+        "name": "Kajaria Vitrified Tile 600x600",
+        "sku": "KAJ-600-001",
+        "quantity": 7,
+        "unitPrice": 620,
+        "gstPercentage": 18,
+        "gstAmount": 0,
+        "lineTotal": 4340,
+        "vendorUser": null,
+        "assignedVendor": null,
+        "vendorAssignmentId": null,
+        "vendorOrderId": null,
+        "_id": "6a33beccab967c7ecb6d2c3b"
+      }
+    ],
+    "shippingAddress": {
+      "name": "Riti Rai",
+      "phone": "9874554987",
+      "line1": "h 201309",
+      "line2": "Others",
+      "city": "Bengaluru",
+      "state": "",
+      "pincode": "560001"
+    },
+    "subtotal": 4340,
+    "gstTotal": 781,
+    "discount": 0,
+    "grandTotal": 5121,
+    "status": "PROCESSING",
+    "paymentStatus": "PENDING",
+    "paymentMethod": "online",
+    "paymentTransactionId": null,
+    "assignedVendor": "6a318251d1a54032dcb4766f",
+    "vendorOrders": [
+      "6a33db37c069137406b4d4c5",
+      "6a344df9f80d81de0043100e"
+    ],
+    "structbayInvoiceUrl": null,
+    "customerInvoiceNumber": null,
+    "ewayBillUrl": null,
+    "ewayBillNumber": null,
+    "deliveryChallanNumber": null,
+    "invoiceUrl": null,
+    "notes": null,
+    "adminNotes": null,
+    "deliveryDetails": null,
+    "statusHistory": [
+      {
+        "status": "VENDOR_ASSIGNMENT_PENDING",
+        "changedBy": "6a2eb00ef93fe4f1ddc07da5",
+        "note": "Order placed by customer.",
+        "changedAt": "2026-06-18T09:47:56.383Z"
+      },
+      {
+        "status": "PROCESSING",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "Vendor assigned by admin.",
+        "changedAt": "2026-06-18T11:49:11.091Z"
+      },
+      {
+        "status": "READY_FOR_DISPATCH",
+        "changedBy": "6a318251d1a54032dcb4766f",
+        "note": "Sub-order 2606180001-1 ready for dispatch.",
+        "changedAt": "2026-06-18T11:58:26.726Z"
+      },
+      {
+        "status": "PROCESSING",
+        "changedBy": "6a318251d1a54032dcb4766f",
+        "note": "Vendor invoice submitted for 2606180001-2.",
+        "changedAt": "2026-06-18T20:19:07.756Z"
+      }
+    ],
+    "isSplit": false,
+    "splitFromOrder": null,
+    "isDeleted": true,
+    "createdAt": "2026-06-18T09:47:56.387Z",
+    "updatedAt": "2026-06-19T06:39:59.314Z",
+    "__v": 3
+  },
+  {
+    "_id": "6a33cf37c069137406b4acac",
+    "orderNumber": "2606180002",
+    "customer": "6a2eb00ef93fe4f1ddc07da5",
+    "city": "6a2ab2b2637b3bb4c2b6baa7",
+    "items": [
+      {
+        "product": "6a2b043cbf34fdffffcf68bf",
+        "variation": null,
+        "name": "UltraTech Cement OPC 53 Grade",
+        "sku": "UTC-OPC53-001",
+        "quantity": 1,
+        "unitPrice": 405,
+        "gstPercentage": 18,
+        "gstAmount": 0,
+        "lineTotal": 405,
+        "vendorUser": null,
+        "assignedVendor": null,
+        "vendorAssignmentId": null,
+        "vendorOrderId": "6a34d924f734442b5c3d4fc6",
+        "_id": "6a33cf37c069137406b4acad",
+        "assignedVendorUser": "6a318251d1a54032dcb4766f"
+      },
+      {
+        "product": "6a2b0440bf34fdffffcf68f0",
+        "variation": null,
+        "name": "Tata Tiscon 12mm TMT Bar",
+        "sku": "TIS-12MM-001",
+        "quantity": 1,
+        "unitPrice": 63500,
+        "gstPercentage": 18,
+        "gstAmount": 0,
+        "lineTotal": 63500,
+        "vendorUser": null,
+        "assignedVendor": null,
+        "vendorAssignmentId": null,
+        "vendorOrderId": null,
+        "_id": "6a33cf37c069137406b4acae"
+      }
+    ],
+    "shippingAddress": {
+      "name": "Riti Rai",
+      "phone": "8450065478",
+      "line1": "Uttar Pradesh 201309",
+      "line2": "Others",
+      "city": "Bengaluru",
+      "state": "",
+      "pincode": "560001"
+    },
+    "subtotal": 63905,
+    "gstTotal": 11503,
+    "discount": 0,
+    "grandTotal": 75408,
+    "status": "COMPLETED",
+    "paymentStatus": "PAID",
+    "paymentMethod": "cod",
+    "paymentTransactionId": null,
+    "assignedVendor": "6a318251d1a54032dcb4766f",
+    "vendorOrders": [
+      "6a33cf65c069137406b4ada4",
+      "6a34d924f734442b5c3d4fc6"
+    ],
+    "structbayInvoiceUrl": null,
+    "customerInvoiceNumber": null,
+    "ewayBillUrl": null,
+    "ewayBillNumber": null,
+    "deliveryChallanNumber": null,
+    "invoiceUrl": null,
+    "notes": null,
+    "adminNotes": null,
+    "deliveryDetails": null,
+    "statusHistory": [
+      {
+        "status": "VENDOR_ASSIGNMENT_PENDING",
+        "changedBy": "6a2eb00ef93fe4f1ddc07da5",
+        "note": "Order placed by customer.",
+        "changedAt": "2026-06-18T10:57:59.810Z"
+      },
+      {
+        "status": "PROCESSING",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "Vendor assigned by admin.",
+        "changedAt": "2026-06-18T10:58:45.017Z"
+      },
+      {
+        "status": "READY_FOR_DISPATCH",
+        "changedBy": "6a318251d1a54032dcb4766f",
+        "note": "Sub-order 2606180002-1 ready for dispatch.",
+        "changedAt": "2026-06-18T11:01:48.737Z"
+      },
+      {
+        "status": "PROCESSING",
+        "changedBy": "6a318251d1a54032dcb4766f",
+        "note": "Vendor invoice submitted for 2606180002-1.",
+        "changedAt": "2026-06-18T11:20:24.966Z"
+      },
+      {
+        "status": "DISPATCHED",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "Sub-order 2606180002-1 out for delivery (Type B).",
+        "changedAt": "2026-06-18T11:24:09.416Z"
+      },
+      {
+        "status": "DELIVERED",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "Sub-order 2606180002-1 delivered to customer (Type B).",
+        "changedAt": "2026-06-18T11:24:18.217Z"
+      },
+      {
+        "status": "COMPLETED",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "Sub-order 2606180002-1 completed.",
+        "changedAt": "2026-06-18T11:24:23.143Z"
+      },
+      {
+        "status": "COMPLETED",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "Payment received and verified",
+        "changedAt": "2026-06-18T11:24:35.733Z"
+      }
+    ],
+    "isSplit": false,
+    "splitFromOrder": null,
+    "isDeleted": true,
+    "createdAt": "2026-06-18T10:57:59.812Z",
+    "updatedAt": "2026-06-19T06:42:44.194Z",
+    "__v": 7
+  },
+  {
+    "_id": "6a350c8ddb6ea6504d89f1c0",
+    "orderNumber": "2606190001",
+    "customer": "6a2eb00ef93fe4f1ddc07da5",
+    "city": "6a34d8f47f2c6c481fc97255",
+    "items": [
+      {
+        "product": "6a34f0ab763b4da85a796d0d",
+        "variation": "6a34f0d5763b4da85a796d31",
+        "name": "AMBUJA",
+        "sku": "CEM-AMB-001-10KG",
+        "variationLabel": "10 KG",
+        "quantity": 1,
+        "unitPrice": 550,
+        "gstPercentage": 18,
+        "gstAmount": 0,
+        "lineTotal": 550,
+        "vendorUser": null,
+        "defaultDeliveryType": "structbay_delivery",
+        "deliveryType": "structbay_delivery",
+        "assignedVendor": null,
+        "assignedVendorUser": "6a318251d1a54032dcb4766f",
+        "vendorAssignmentId": null,
+        "vendorOrderId": "6a350cc9db6ea6504d89f2d3",
+        "_id": "6a350c8ddb6ea6504d89f1c1"
+      }
+    ],
+    "shippingAddress": {
+      "name": "Riti",
+      "phone": "9876543212",
+      "line1": "\"O\"-Pocket, Ganga Nagar, Meerut-250001",
+      "line2": "IIMT UNIVERSITY ,MEERUT",
+      "city": "Bengaluru",
+      "state": "",
+      "pincode": "560001"
+    },
+    "subtotal": 550,
+    "gstTotal": 99,
+    "discount": 0,
+    "grandTotal": 649,
+    "status": "COMPLETED",
+    "paymentStatus": "PENDING",
+    "paymentMethod": "cod",
+    "paymentTransactionId": null,
+    "assignedVendor": "6a318251d1a54032dcb4766f",
+    "vendorOrders": [
+      "6a350cc9db6ea6504d89f2d3"
+    ],
+    "structbayInvoiceUrl": null,
+    "customerInvoiceNumber": null,
+    "ewayBillUrl": null,
+    "ewayBillNumber": null,
+    "deliveryChallanNumber": null,
+    "invoiceUrl": null,
+    "notes": null,
+    "adminNotes": null,
+    "deliveryDetails": null,
+    "statusHistory": [
+      {
+        "status": "VENDOR_ASSIGNMENT_PENDING",
+        "changedBy": "6a2eb00ef93fe4f1ddc07da5",
+        "note": "Order placed by customer.",
+        "changedAt": "2026-06-19T09:31:57.165Z"
+      },
+      {
+        "status": "PROCESSING",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "All order lines assigned to vendors.",
+        "changedAt": "2026-06-19T09:32:57.454Z"
+      },
+      {
+        "status": "READY_FOR_DISPATCH",
+        "changedBy": "6a318251d1a54032dcb4766f",
+        "note": "Sub-order 2606190001-1 ready for dispatch.",
+        "changedAt": "2026-06-19T09:34:52.079Z"
+      },
+      {
+        "status": "PROCESSING",
+        "changedBy": "6a318251d1a54032dcb4766f",
+        "note": "Vendor invoice submitted for 2606190001-1.",
+        "changedAt": "2026-06-19T09:40:13.307Z"
+      },
+      {
+        "status": "DISPATCHED",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "Sub-order 2606190001-1 out for delivery (Type B).",
+        "changedAt": "2026-06-19T09:49:46.249Z"
+      },
+      {
+        "status": "DELIVERED",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "Sub-order 2606190001-1 delivered to customer (Type B).",
+        "changedAt": "2026-06-19T09:50:34.785Z"
+      },
+      {
+        "status": "COMPLETED",
+        "changedBy": "6a2ab23e07a6b7f84fdcca12",
+        "note": "Sub-order 2606190001-1 completed.",
+        "changedAt": "2026-06-19T09:50:40.412Z"
+      }
+    ],
+    "isSplit": false,
+    "splitFromOrder": null,
+    "isDeleted": true,
+    "createdAt": "2026-06-19T09:31:57.168Z",
+    "updatedAt": "2026-06-19T17:39:15.020Z",
+    "__v": 6
+  },
+  {
+    "_id": "6a357c1baf39c49a5de223bd",
+    "orderNumber": "2606190002",
+    "customer": "6a2eb00ef93fe4f1ddc07da5",
+    "city": "6a34d8f47f2c6c481fc97255",
+    "items": [
+      {
+        "product": "6a34f0ab763b4da85a796d0d",
+        "variation": "6a34f108763b4da85a796d58",
+        "name": "AMBUJA",
+        "sku": "CEM-AMB-001-20KG",
+        "quantity": 1,
+        "unitPrice": 600,
+        "gstPercentage": 18,
+        "gstAmount": 0,
+        "lineTotal": 600,
+        "vendorUser": null,
+        "assignedVendor": null,
+        "vendorAssignmentId": null,
+        "vendorOrderId": null,
+        "_id": "6a357c1baf39c49a5de223be"
+      }
+    ],
+    "shippingAddress": {
+      "name": "Riti",
+      "phone": "9876543212",
+      "line1": "\"O\"-Pocket, Ganga Nagar, Meerut-250001",
+      "line2": "IIMT UNIVERSITY ,MEERUT",
+      "city": "Bengaluru",
+      "state": "",
+      "pincode": "560001"
+    },
+    "subtotal": 600,
+    "gstTotal": 108,
+    "discount": 0,
+    "grandTotal": 708,
+    "status": "VENDOR_ASSIGNMENT_PENDING",
+    "paymentStatus": "PENDING",
+    "paymentMethod": "cod",
+    "paymentTransactionId": null,
+    "assignedVendor": null,
+    "vendorOrders": [],
+    "structbayInvoiceUrl": null,
+    "customerInvoiceNumber": null,
+    "ewayBillUrl": null,
+    "ewayBillNumber": null,
+    "deliveryChallanNumber": null,
+    "invoiceUrl": null,
+    "notes": null,
+    "adminNotes": null,
+    "deliveryDetails": null,
+    "statusHistory": [
+      {
+        "status": "VENDOR_ASSIGNMENT_PENDING",
+        "changedBy": "6a2eb00ef93fe4f1ddc07da5",
+        "note": "Order placed by customer.",
+        "changedAt": "2026-06-19T17:27:55.067Z"
+      }
+    ],
+    "isSplit": false,
+    "splitFromOrder": null,
+    "isDeleted": true,
+    "createdAt": "2026-06-19T17:27:55.069Z",
+    "updatedAt": "2026-06-19T17:34:48.081Z",
+    "__v": 0
+  }
+]

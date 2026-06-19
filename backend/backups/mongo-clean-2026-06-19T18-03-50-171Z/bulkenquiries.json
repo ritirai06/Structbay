@@ -1,0 +1,31 @@
+[
+  {
+    "_id": "6a3512f4db6ea6504d8a0197",
+    "enquiryNumber": "BULK190626001",
+    "customer": "6a2eb00ef93fe4f1ddc07da5",
+    "customerName": "Riti",
+    "customerPhone": "9845632100",
+    "customerEmail": "riti@hsdadigital.com",
+    "companyName": "Others",
+    "deliveryAddress": "\"O\"-Pocket, Ganga Nagar, Meerut-250001",
+    "city": "Noida",
+    "requirement": "Cement: Portland, Pozzolana, and White cement used for binding aggregates and concrete.Steel (TMT Bars): High-tensile bars used to reinforce concrete and provide tensile strength.Aggregates & Sand: Coarse stone chips (20mm, 10mm) and fine sand/manufactured sand (M-Sand) for concrete mixing",
+    "remarks": null,
+    "notes": null,
+    "attachments": [
+      {
+        "name": "Construction-Power-Tools (1).png",
+        "url": "https://res.cloudinary.com/dr3bbkrv7/image/upload/v1781863154/structbay/customer/documents/file_xslwvi.png",
+        "publicId": "structbay/customer/documents/file_xslwvi",
+        "_id": "6a3512f4db6ea6504d8a0198"
+      }
+    ],
+    "status": "QUOTED",
+    "assignedTo": "6a2ab23e07a6b7f84fdcca12",
+    "adminNotes": null,
+    "isDeleted": false,
+    "createdAt": "2026-06-19T09:59:16.293Z",
+    "updatedAt": "2026-06-19T17:39:41.443Z",
+    "__v": 0
+  }
+]

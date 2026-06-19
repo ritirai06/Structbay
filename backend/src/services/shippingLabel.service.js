@@ -68,17 +68,27 @@ function resolveShipFrom(vo) {
 }
 
 function buildProducts(vo) {
-  return (vo.items || []).map((item) => ({
-    name: item.productName || 'Product',
-    sku: item.sku || '',
-    quantity: item.quantity || 1,
-    weight: null,
-  }));
+  const { formatVariationLabel } = require('../utils/variationAttributes');
+  return (vo.items || []).map((item) => {
+    const variationLabel = item.variationLabel
+      || (item.variation?.attributes ? formatVariationLabel(item.variation.attributes) : '');
+    return {
+      name: item.productName || 'Product',
+      sku: item.sku || '',
+      variationLabel,
+      quantity: item.quantity || 1,
+      weight: null,
+    };
+  });
 }
 
 function buildLogistics(vo) {
   const lg = vo.structbayLogistics || {};
   const sd = vo.shipmentDispatch || {};
+  const pickupPhone =
+    lg.pickupContactPhone ||
+    vo.vendor?.phone ||
+    null;
   return {
     partner: lg.companyName || sd.transporterName || null,
     pickupWindow: lg.pickupScheduledText || null,
@@ -86,21 +96,61 @@ function buildLogistics(vo) {
       ? new Date(vo.expectedDeliveryDate).toLocaleDateString('en-IN')
       : null,
     driver: lg.driverContactDetails || null,
-    driverContact: lg.pickupContactPhone || sd.trackingNumber || null,
+    driverContact: pickupPhone || sd.trackingNumber || null,
   };
 }
 
-function buildQrPayload(order, vo, shipmentId, trackingNumber) {
-  const orderUrl = `${storefrontOrigin()}/orders/${order._id}`;
-  return JSON.stringify({
-    orderId: String(order._id),
-    orderNumber: order.orderNumber,
-    vendorOrderId: String(vo._id),
+/**
+ * Scan payloads must match what is printed on the label.
+ * - Code128 barcode: tracking number (logistics primary key on label)
+ * - QR: full JSON snapshot of all visible label fields
+ */
+function buildLabelScanPayload(labelData) {
+  const trackingNumber = String(labelData.trackingNumber || '').trim();
+  const shipmentId = String(labelData.shipmentId || '').trim();
+  const orderNumber = String(labelData.orderNumber || '').trim();
+
+  if (!trackingNumber || !shipmentId || !orderNumber) {
+    throw new Error('Label scan payload requires orderNumber, shipmentId, and trackingNumber.');
+  }
+
+  const barcodeValue = trackingNumber;
+
+  const qrPayload = {
+    type: 'structbay_shipping_label',
+    version: 1,
+    orderNumber,
     shipmentId,
     trackingNumber,
-    orderUrl,
-    trackingUrl: orderUrl,
-  });
+    deliveryType: labelData.deliveryType || null,
+    shipTo: labelData.shipTo || null,
+    shipFrom: labelData.shipFrom || null,
+    products: labelData.products || [],
+    packageCount: labelData.packageCount ?? 1,
+    totalWeight: labelData.totalWeight ?? null,
+    logistics: labelData.logistics || null,
+    trackUrl: `${storefrontOrigin()}/track-order?orderNumber=${encodeURIComponent(orderNumber)}`,
+  };
+
+  return {
+    barcodeValue,
+    qrValue: JSON.stringify(qrPayload),
+  };
+}
+
+function assembleLabelData(order, vo, shipmentId, trackingNumber) {
+  return {
+    orderNumber: order.orderNumber,
+    shipmentId,
+    trackingNumber,
+    shipTo: resolveShipTo(order, vo),
+    shipFrom: resolveShipFrom(vo),
+    products: buildProducts(vo),
+    packageCount: 1,
+    totalWeight: null,
+    logistics: buildLogistics(vo),
+    deliveryType: vo.deliveryType,
+  };
 }
 
 function formatLabelResponse(label, generatedByUser, sharedByUser) {
@@ -158,23 +208,11 @@ async function generateShippingLabel({
     trackingNumber = await generateRefNumber('TRACKING');
   }
 
-  const barcodeValue = shipmentId;
-  const qrValue = buildQrPayload(order, vo, shipmentId, trackingNumber);
-
-  const labelData = {
-    orderNumber: order.orderNumber,
-    shipmentId,
-    trackingNumber,
-    barcodeValue,
-    qrValue,
-    shipTo: resolveShipTo(order, vo),
-    shipFrom: resolveShipFrom(vo),
-    products: buildProducts(vo),
-    packageCount: 1,
-    totalWeight: null,
-    logistics: buildLogistics(vo),
-    deliveryType: vo.deliveryType,
-  };
+  const labelData = assembleLabelData(order, vo, shipmentId, trackingNumber);
+  const scan = buildLabelScanPayload(labelData);
+  labelData.barcodeValue = scan.barcodeValue;
+  labelData.qrValue = scan.qrValue;
+  const { barcodeValue, qrValue } = scan;
 
   const pdfBuffer = await buildShippingLabelPdf(labelData);
   const fileName = `label-${shipmentId}.pdf`;
@@ -324,30 +362,24 @@ async function getShippingLabelPdfBuffer(orderId, vendorOrderId) {
   const label = await ShippingLabel.findOne({ order: orderId, vendorOrder: vendorOrderId });
   if (!label) throw new AppError('Shipping label not found. Generate a label first.', 404);
 
+  let labelData;
   if (label.labelSnapshot) {
-    return buildShippingLabelPdf({
+    labelData = {
       ...label.labelSnapshot,
-      orderNumber: label.labelSnapshot.orderNumber,
+      orderNumber: label.labelSnapshot.orderNumber || label.orderNumber,
       shipmentId: label.shipmentId,
       trackingNumber: label.trackingNumber,
-      barcodeValue: label.barcodeValue,
-      qrValue: label.qrValue,
-    });
+    };
+  } else {
+    const { order, vo } = await loadOrderContext(orderId, vendorOrderId);
+    labelData = assembleLabelData(order, vo, label.shipmentId, label.trackingNumber);
   }
 
-  const { order, vo } = await loadOrderContext(orderId, vendorOrderId);
-  return buildShippingLabelPdf({
-    orderNumber: order.orderNumber,
-    shipmentId: label.shipmentId,
-    trackingNumber: label.trackingNumber,
-    barcodeValue: label.barcodeValue,
-    qrValue: label.qrValue,
-    shipTo: resolveShipTo(order, vo),
-    shipFrom: resolveShipFrom(vo),
-    products: buildProducts(vo),
-    packageCount: 1,
-    logistics: buildLogistics(vo),
-  });
+  const scan = buildLabelScanPayload(labelData);
+  labelData.barcodeValue = scan.barcodeValue;
+  labelData.qrValue = scan.qrValue;
+
+  return buildShippingLabelPdf(labelData);
 }
 
 module.exports = {
@@ -357,4 +389,6 @@ module.exports = {
   shareShippingLabelWithVendor,
   revokeShippingLabelFromVendor,
   loadOrderContext,
+  buildLabelScanPayload,
+  assembleLabelData,
 };

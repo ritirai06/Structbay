@@ -2277,6 +2277,31 @@
   margin: 0;
 }
 
+.sf-listing-card__stock {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  margin: 0.25rem 0 0;
+}
+
+.sf-listing-card__stock--in {
+  color: #15803d;
+}
+
+.sf-listing-card__stock--low {
+  color: #b45309;
+}
+
+.sf-listing-card__stock--out,
+.sf-listing-card__stock--unknown {
+  color: #b91c1c;
+}
+
+.sf-listing-card__moq {
+  font-size: 0.625rem;
+  color: #6b7280;
+  margin: 0.15rem 0 0;
+}
+
 .sf-listing-card__express {
   font-size: 0.625rem;
   font-weight: 600;
@@ -2734,8 +2759,22 @@
   color: #15803d;
 }
 
+.sf-pdp-stock--low {
+  color: #b45309;
+}
+
 .sf-pdp-stock--out {
   color: #b91c1c;
+}
+
+.sf-pdp-stock--unknown {
+  color: #6b7280;
+}
+
+.sf-pdp-stock__qty {
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 .sf-pdp-stock__dot {
@@ -2816,6 +2855,21 @@
   color: #111827;
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  min-width: 4.5rem;
+}
+
+.sf-pdp-pill__price {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  opacity: 0.9;
+}
+
+.sf-pdp-pill--oos {
+  opacity: 0.55;
 }
 
 .sf-pdp-pill:hover {
@@ -2873,6 +2927,18 @@
 
 .sf-pdp-add-cart:hover {
   background: #facc15;
+}
+
+.sf-pdp-add-cart--disabled,
+.sf-pdp-add-cart:disabled {
+  background: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.sf-pdp-add-cart--disabled:hover,
+.sf-pdp-add-cart:disabled:hover {
+  background: #e5e7eb;
 }
 
 .sf-pdp-accordions {

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Search, RefreshCw, Eye, CheckCircle, XCircle, Loader2, Users, Plus } from "lucide-react";
 import { adminFetch as apiFetch } from "../../lib/adminApi";
+import { adminToast } from "../lib/adminToast";
+import { AdminInputModal } from "../components/AdminInputModal";
 import { useAdminListDelete } from "../hooks/useAdminListDelete";
 import {
   AdminListDeleteControls,
@@ -55,6 +57,8 @@ export function VendorManagement() {
   const [addOpen, setAddOpen] = useState(false);
   const [addForm, setAddForm] = useState(emptyVendorForm);
   const [addSaving, setAddSaving] = useState(false);
+  const [rejectTarget, setRejectTarget] = useState<string | null>(null);
+  const [rejectBusy, setRejectBusy] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -69,14 +73,22 @@ export function VendorManagement() {
   useEffect(() => { load(); }, [load]);
 
   const approve = async (id: string) => {
-    await apiFetch(`/admin/vendors/${id}/approve`, { method: "PUT" }).catch(e => alert(e.message));
+    try {
+      await apiFetch(`/admin/vendors/${id}/approve`, { method: "PUT" });
+      adminToast.success("Vendor approved");
+    } catch (e) {
+      adminToast.error(e instanceof Error ? e.message : "Approve failed");
+    }
     load(); setSelected(null);
   };
 
-  const reject = async (id: string) => {
-    const reason = prompt("Rejection reason:");
-    if (!reason) return;
-    await apiFetch(`/admin/vendors/${id}/reject`, { method: "PUT", body: JSON.stringify({ reason }) }).catch(e => alert(e.message));
+  const reject = async (id: string, reason: string) => {
+    try {
+      await apiFetch(`/admin/vendors/${id}/reject`, { method: "PUT", body: JSON.stringify({ reason }) });
+      adminToast.success("Vendor rejected");
+    } catch (e) {
+      adminToast.error(e instanceof Error ? e.message : "Reject failed");
+    }
     load(); setSelected(null);
   };
 
@@ -101,8 +113,9 @@ export function VendorManagement() {
       setAddOpen(false);
       setAddForm(emptyVendorForm);
       load();
+      adminToast.success("Vendor created");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to create vendor");
+      adminToast.error(err instanceof Error ? err.message : "Failed to create vendor");
     } finally {
       setAddSaving(false);
     }
@@ -242,7 +255,7 @@ export function VendorManagement() {
                             className="p-1.5 border border-sb-orange/22 rounded-lg text-sb-orange hover:bg-sb-orange/10 transition-colors">
                             <CheckCircle className="w-3.5 h-3.5" />
                           </button>
-                          <button onClick={() => reject(v._id)} title="Reject"
+                          <button onClick={() => setRejectTarget(v._id)} title="Reject"
                             className="p-1.5 border border-sb-ink/18 rounded-lg text-sb-ink/55 hover:bg-sb-cream-secondary transition-colors">
                             <XCircle className="w-3.5 h-3.5" />
                           </button>
@@ -344,7 +357,7 @@ export function VendorManagement() {
                   className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-sb-orange hover:bg-sb-orange-hover text-white font-bold rounded-lg text-sm transition-colors">
                   <CheckCircle className="w-4 h-4" /> Approve Vendor
                 </button>
-                <button onClick={() => reject(selected._id)}
+                <button onClick={() => setRejectTarget(selected._id)}
                   className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-sb-ink hover:bg-sb-ink/90 text-white font-bold rounded-lg text-sm transition-colors">
                   <XCircle className="w-4 h-4" /> Reject Vendor
                 </button>
@@ -353,6 +366,27 @@ export function VendorManagement() {
           </div>
         </Modal>
       )}
+
+      <AdminInputModal
+        open={!!rejectTarget}
+        title="Reject vendor"
+        label="Rejection reason"
+        required
+        multiline
+        confirmLabel="Reject vendor"
+        busy={rejectBusy}
+        onCancel={() => setRejectTarget(null)}
+        onConfirm={async (reason) => {
+          if (!rejectTarget) return;
+          setRejectBusy(true);
+          try {
+            await reject(rejectTarget, reason);
+            setRejectTarget(null);
+          } finally {
+            setRejectBusy(false);
+          }
+        }}
+      />
     </div>
   );
 }

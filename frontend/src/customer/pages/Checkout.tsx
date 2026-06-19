@@ -482,6 +482,9 @@ export function Checkout() {
                       <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded-xl bg-muted shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium line-clamp-2 text-foreground">{item.name}</p>
+                        {item.variationLabel && (
+                          <p className="text-[10px] text-muted-foreground mt-0.5">{item.variationLabel}</p>
+                        )}
                         <p className="text-[10px] text-muted-foreground mt-0.5">{item.unit}</p>
                         <div className="mt-1.5 flex items-center gap-2">
                           <div className="inline-flex items-stretch rounded-lg border border-border overflow-hidden bg-muted/40">

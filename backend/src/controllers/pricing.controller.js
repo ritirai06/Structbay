@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
 const asyncHandler = require('../utils/asyncHandler');
+const { isValidId } = require('../lib/apiShape');
 const ApiResponse = require('../utils/apiResponse');
 const AppError = require('../utils/AppError');
 const CityPricing = require('../models/CityPricing');
@@ -215,8 +215,7 @@ const upsert = asyncHandler(async (req, res) => {
 const remove = asyncHandler(async (req, res) => {
   const pricing = await CityPricing.findById(req.params.id);
   if (!pricing) throw new AppError('Pricing record not found.', 404);
-  pricing.isDeleted = true;
-  await pricing.save({ validateBeforeSave: false });
+  await pricing.deleteOne();
   return ApiResponse.success(res, 200, 'Pricing removed.');
 });
 
@@ -230,7 +229,7 @@ const bulkImport = asyncHandler(async (req, res) => {
     throw new AppError(`Too many rows (max ${BULK_MAX_ROWS}).`, 400);
   }
 
-  const batchId = new mongoose.Types.ObjectId().toString();
+  const batchId = generateObjectIdString();
   const errors = [];
   let ok = 0;
 

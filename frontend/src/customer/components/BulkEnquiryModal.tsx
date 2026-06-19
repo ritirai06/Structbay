@@ -23,6 +23,15 @@ import {
   downloadBulkEnquiryTemplate,
 } from "../lib/bulkEnquiryTemplate";
 
+const ACCEPTED_FILE_TYPES = ".pdf,.doc,.docx,.xlsx,.xls,.csv,.jpg,.jpeg,.png,.webp";
+const ACCEPTED_MIME_PREFIXES = ["image/", "application/pdf", "application/msword", "application/vnd.", "text/csv"];
+
+function isAcceptedFile(file: File) {
+  const name = file.name.toLowerCase();
+  if (/\.(pdf|doc|docx|xlsx|xls|csv|jpe?g|png|webp)$/.test(name)) return true;
+  return ACCEPTED_MIME_PREFIXES.some((p) => file.type.startsWith(p) || file.type === p);
+}
+
 const fieldClass =
   "w-full border border-[#d4d4d4] rounded-none px-3 py-2.5 text-sm bg-white text-black focus:outline-none focus:border-[#E85A00]";
 
@@ -87,7 +96,15 @@ export function BulkEnquiryModal({ open, onClose }: Props) {
   const update = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) setFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
+    if (!e.target.files) return;
+    const picked = Array.from(e.target.files);
+    const rejected = picked.filter((f) => !isAcceptedFile(f));
+    if (rejected.length) {
+      setError(`Unsupported file: ${rejected.map((f) => f.name).join(", ")}. Use PDF, JPG, PNG, Word, or Excel.`);
+      return;
+    }
+    setFiles((prev) => [...prev, ...picked]);
+    setError("");
   };
   const removeFile = (i: number) => setFiles((prev) => prev.filter((_, idx) => idx !== i));
 
@@ -101,8 +118,12 @@ export function BulkEnquiryModal({ open, onClose }: Props) {
     e.preventDefault();
     setError("");
 
-    if (!form.requirement.trim() && files.length === 0) {
-      setError("Please provide either requirement details or upload a document.");
+    if (!form.name.trim() || !form.mobile.trim()) {
+      setError("Full name and mobile are required.");
+      return;
+    }
+    if (files.length === 0) {
+      setError("Please upload at least one document (PDF, image, or Excel).");
       return;
     }
 
@@ -292,7 +313,7 @@ export function BulkEnquiryModal({ open, onClose }: Props) {
                     placeholder={'e.g.\nUltratech Cement OPC 53 Grade — 500 bags\nAsian Paints Apex Ultima — 120 buckets'}
                   />
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
-                    <p className="text-xs text-gray-500">Requirement text or a document upload is required.</p>
+                    <p className="text-xs text-gray-500">Optional — add product lines here or in your uploaded file.</p>
                     <button
                       type="button"
                       onClick={() => update("requirement", BULK_ENQUIRY_TEXT_EXAMPLE)}
@@ -329,15 +350,17 @@ export function BulkEnquiryModal({ open, onClose }: Props) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wide">Upload documents</label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wide">
+                    Upload documents <span className="text-red-600">*</span>
+                  </label>
                   <div
                     onClick={() => fileRef.current?.click()}
                     className="border-2 border-dashed border-gray-300 p-6 text-center cursor-pointer hover:border-[#E85A00] transition-colors rounded-none"
                   >
                     <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                     <p className="text-sm text-gray-600">Drop files or click to upload</p>
-                    <p className="text-xs text-gray-500 mt-1">PDF, Excel, images — max 10MB each</p>
-                    <input ref={fileRef} type="file" multiple accept=".pdf,.xlsx,.csv,.xls,.jpg,.jpeg,.png" onChange={handleFiles} className="hidden" />
+                    <p className="text-xs text-gray-500 mt-1">PDF, JPG, PNG, Word, Excel — required · max 10MB each</p>
+                    <input ref={fileRef} type="file" multiple accept={ACCEPTED_FILE_TYPES} onChange={handleFiles} className="hidden" />
                   </div>
                   {files.length > 0 && (
                     <div className="mt-3 space-y-2">

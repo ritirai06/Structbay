@@ -1,0 +1,22 @@
+[
+  {
+    "_id": "6a34d8f47f2c6c481fc97255",
+    "name": "Bengaluru",
+    "referenceNumber": "CITY190626002",
+    "state": "Karnataka",
+    "pincodes": [
+      "560001",
+      "560002"
+    ],
+    "status": "ACTIVE",
+    "isServiceable": true,
+    "priority": 3,
+    "sortOrder": 1,
+    "isDeleted": false,
+    "createdBy": "6a2ab23e07a6b7f84fdcca12",
+    "createdAt": "2026-06-19T05:51:48.936Z",
+    "updatedAt": "2026-06-19T05:51:48.936Z",
+    "slug": "bengaluru",
+    "__v": 0
+  }
+]

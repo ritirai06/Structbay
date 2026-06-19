@@ -132,7 +132,7 @@ function buildOrderAcknowledgementPdf(order) {
         doc.addPage();
         y = 48;
       }
-      const vLabel = formatVariationLine(it.variation);
+      const vLabel = it.variationLabel || formatVariationLine(it.variation);
       const itemText = vLabel ? `${it.name || '—'}\n${vLabel}` : String(it.name || '—');
       doc.text(itemText, cols.item, y, { width: 250, lineGap: 1 });
       const rowH = Math.max(28, doc.heightOfString(itemText, { width: 250 }) + 4);

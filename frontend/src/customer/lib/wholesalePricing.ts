@@ -3,6 +3,8 @@
  * so PDP, cart, and checkout previews match server order totals.
  */
 
+import { isVariantProduct } from "./productStructure";
+
 export type WholesaleSlab = { minQty: number; maxQty: number | null; price: number };
 
 export type PricingSnapshot = {
@@ -42,17 +44,48 @@ export function normalizeWholesaleSlabs(raw: unknown): WholesaleSlab[] {
   return sorted;
 }
 
+export function variationIdFromRow(row: { variation?: unknown } | null | undefined): string {
+  if (!row?.variation) return "";
+  const v = row.variation;
+  if (typeof v === "string") return v;
+  if (v && typeof v === "object") {
+    if ("_id" in v && (v as { _id?: unknown })._id) return String((v as { _id: unknown })._id);
+    if (typeof (v as { toString?: () => string }).toString === "function") {
+      const s = (v as { toString: () => string }).toString();
+      if (/^[a-f0-9]{24}$/i.test(s)) return s;
+    }
+  }
+  return String(v);
+}
+
 export function buildPricingSnapshotFromRow(row: {
   regularPrice?: unknown;
   salePrice?: unknown;
+  sellingPrice?: unknown;
+  mrp?: unknown;
   wholesaleSlabs?: unknown;
 } | null | undefined): PricingSnapshot | null {
   if (!row || typeof row !== "object") return null;
-  const regularPrice = Number((row as any).regularPrice);
-  if (!Number.isFinite(regularPrice) || regularPrice < 0) return null;
-  const sp = (row as any).salePrice;
+
+  const saleRaw = (row as any).salePrice ?? (row as any).sellingPrice;
   const salePrice =
-    sp !== undefined && sp !== null && sp !== "" && Number.isFinite(Number(sp)) ? Number(sp) : null;
+    saleRaw !== undefined && saleRaw !== null && saleRaw !== "" && Number.isFinite(Number(saleRaw))
+      ? Number(saleRaw)
+      : null;
+
+  const regularRaw = (row as any).regularPrice ?? (row as any).mrp ?? salePrice;
+  const regularPrice = Number(regularRaw);
+  if (!Number.isFinite(regularPrice) || regularPrice < 0) {
+    if (salePrice != null && salePrice >= 0) {
+      return {
+        regularPrice: salePrice,
+        salePrice,
+        wholesaleSlabs: normalizeWholesaleSlabs((row as any).wholesaleSlabs),
+      };
+    }
+    return null;
+  }
+
   return {
     regularPrice,
     salePrice,
@@ -60,20 +93,31 @@ export function buildPricingSnapshotFromRow(row: {
   };
 }
 
-export function variationIdFromRow(row: { variation?: unknown } | null | undefined): string {
-  if (!row?.variation) return "";
-  const v = row.variation;
-  return String(typeof v === "object" && v !== null && "_id" in v ? (v as { _id: unknown })._id : v);
-}
-
-/** Pick pricing row: variation city row, else base product `pricing`. */
+/** Pick pricing row: variation city row, inline variation.pricing, else base product `pricing` (simple only). */
 export function pricingSnapshotFromProduct(product: any, variationId: string | null): PricingSnapshot | null {
   if (!product) return null;
-  if (variationId && Array.isArray(product.variationPricing)) {
-    const vp = product.variationPricing.find((x: any) => variationIdFromRow(x) === variationId);
-    const s = buildPricingSnapshotFromRow(vp);
-    if (s) return s;
+  const isVariant = isVariantProduct(product);
+
+  if (variationId) {
+    if (Array.isArray(product.variationPricing)) {
+      const vp = product.variationPricing.find((x: any) => variationIdFromRow(x) === variationId);
+      const s = buildPricingSnapshotFromRow(vp);
+      if (s) return s;
+    }
+    const vars = product.variations || [];
+    const v = vars.find((x: any) => String(x._id) === variationId);
+    const inline = buildPricingSnapshotFromRow(v?.pricing);
+    if (inline) return inline;
   }
+
+  if (isVariant) {
+    const bounds = listingPriceBounds(product);
+    if (bounds.min > 0) {
+      return { regularPrice: bounds.max || bounds.min, salePrice: bounds.min, wholesaleSlabs: [] };
+    }
+    return null;
+  }
+
   return buildPricingSnapshotFromRow(product.pricing);
 }
 
@@ -81,6 +125,9 @@ export function pricingSnapshotFromProduct(product: any, variationId: string | n
 export function listingUnitPrice(product: any, variationId: string | null = null): number {
   const snap = pricingSnapshotFromProduct(product, variationId);
   if (snap) return resolveUnitPriceFromSnapshot(snap, 1);
+  if (isVariantProduct(product) && !variationId) {
+    return listingPriceBounds(product).min;
+  }
   const vars = product?.variations || [];
   if (variationId) {
     const v = vars.find((x: any) => String(x._id) === variationId);
@@ -103,9 +150,21 @@ export function listingPriceBounds(product: any): { min: number; max: number } {
       }
     }
   }
-  if (!prices.length) {
-    const base = listingUnitPrice(product, null);
-    if (base > 0) prices.push(base);
+  if (!prices.length && Array.isArray(product?.variations)) {
+    for (const v of product.variations) {
+      const snap = buildPricingSnapshotFromRow(v?.pricing);
+      if (snap) {
+        const p = resolveUnitPriceFromSnapshot(snap, 1);
+        if (p > 0) prices.push(p);
+      }
+    }
+  }
+  if (!prices.length && !isVariantProduct(product)) {
+    const snap = buildPricingSnapshotFromRow(product?.pricing);
+    if (snap) {
+      const p = resolveUnitPriceFromSnapshot(snap, 1);
+      if (p > 0) prices.push(p);
+    }
   }
   if (!prices.length) return { min: 0, max: 0 };
   return { min: Math.min(...prices), max: Math.max(...prices) };

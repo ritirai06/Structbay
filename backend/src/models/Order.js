@@ -14,9 +14,20 @@ const orderItemSchema = new mongoose.Schema(
     /** Customer-selected vendor user at checkout (optional; procurement may reassign). */
     vendorUser: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     // Vendor assignment per item (set after order placement)
+    assignedVendorUser: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     assignedVendor:     { type: mongoose.Schema.Types.ObjectId, ref: 'Vendor', default: null },
     vendorAssignmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'VendorAssignment', default: null },
     vendorOrderId:      { type: mongoose.Schema.Types.ObjectId, ref: 'VendorOrder', default: null },
+    defaultDeliveryType: {
+      type: String,
+      enum: ['vendor_delivery', 'structbay_delivery'],
+      default: null,
+    },
+    deliveryType: {
+      type: String,
+      enum: ['vendor_delivery', 'structbay_delivery'],
+      default: null,
+    },
   },
   { _id: true }
 );

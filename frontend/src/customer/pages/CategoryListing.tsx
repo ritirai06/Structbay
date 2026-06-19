@@ -10,6 +10,8 @@ import { api } from "../lib/api";
 import { fetchNavCategories } from "../lib/navCategories";
 import { useApp } from "../context/AppContext";
 import { ListingProductCard } from "../components/ListingProductCard";
+import { SandAggregatesQuoteModal } from "../components/SandAggregatesQuoteModal";
+import { findVariationForFilterSelections } from "../lib/variationSelectors";
 import {
   listingUnitPrice,
   listingPriceBounds,
@@ -230,6 +232,15 @@ function categoryPageTitle(name: string | undefined, isShopAll: boolean): string
   return `Buy high-quality ${label.toLowerCase()} at the best prices`;
 }
 
+function isSandAggregatesCategory(value: string | undefined): boolean {
+  const text = String(value || "").toLowerCase().replace(/&/g, "and");
+  return (
+    /m[-\s]*sand/.test(text) ||
+    (text.includes("sand") && text.includes("aggregate")) ||
+    text.includes("aggregates")
+  );
+}
+
 export function CategoryListing() {
   const { category } = useParams<{ category?: string }>();
   const { addToCart, updateQty, cart, city, cityId } = useApp();
@@ -261,6 +272,7 @@ export function CategoryListing() {
   const [showAssured, setShowAssured]       = useState(false);
   const [showExpress, setShowExpress]       = useState(false);
   const [inStockOnly, setInStockOnly]       = useState(false);
+  const [sandQuoteOpen, setSandQuoteOpen]   = useState(false);
   const [selectedWeights, setSelectedWeights] = useState<string[]>([]);
   const [filterOpen, setFilterOpen]         = useState(false);
   const [page, setPage]                     = useState(1);
@@ -310,6 +322,15 @@ export function CategoryListing() {
     return fromNav?.name || catData?.name || decodeURIComponent(String(category || "Category"));
   }, [isShopAll, allCategories, category, catData?.name]);
 
+  const isSandAggregates = useMemo(
+    () => !isShopAll && (isSandAggregatesCategory(category) || isSandAggregatesCategory(categoryTitle)),
+    [category, categoryTitle, isShopAll]
+  );
+
+  useEffect(() => {
+    if (isSandAggregates) setSandQuoteOpen(true);
+  }, [category, isSandAggregates]);
+
   // ── Fetch data from API ────────────────────────────────────────────────────
   useEffect(() => {
     const gen = ++fetchGenRef.current;
@@ -322,9 +343,13 @@ export function CategoryListing() {
         sort: SORT_API_MAP[sortBy] || sortBy,
         page,
       };
-      if (cid) params.cityId = cid;
+      if (cid) {
+        params.cityId = cid;
+        if (city) params.cityName = city;
+      }
       if (showAssured) params.assured = "true";
       if (showExpress) params.express = "true";
+      if (inStockOnly) params.availability = "in_stock";
       const brandIds = resolveBrandIds(selectedBrands, brandNameToIdRef.current);
       if (brandIds.length) params.brands = brandIds.join(",");
       const minP = parsePriceMin(debouncedPriceMin);
@@ -363,9 +388,13 @@ export function CategoryListing() {
         page: String(page),
         limit: String(PAGE_SIZE),
       };
-      if (cid) qp.cityId = cid;
+      if (cid) {
+        qp.cityId = cid;
+        if (city) qp.cityName = city;
+      }
       if (showAssured) qp.assured = "true";
       if (showExpress) qp.express = "true";
+      if (inStockOnly) qp.availability = "in_stock";
       const minP = parsePriceMin(debouncedPriceMin);
       const maxP = parsePriceMax(debouncedPriceMax);
       if (minP != null) qp.minPrice = String(minP);
@@ -405,14 +434,19 @@ export function CategoryListing() {
           if (gen === fetchGenRef.current) setLoading(false);
         });
     }
-  }, [category, cityId, isShopAll, sortBy, page, showAssured, showExpress, selectedBrands, debouncedPriceMin, debouncedPriceMax, JSON.stringify(dynAttrSelections), JSON.stringify(dynRangeSelections), navigate]);
+  }, [category, cityId, isShopAll, sortBy, page, showAssured, showExpress, inStockOnly, selectedBrands, debouncedPriceMin, debouncedPriceMax, JSON.stringify(dynAttrSelections), JSON.stringify(dynRangeSelections), navigate]);
 
   // Quick-nav pills: city-scoped — only categories shoppable in selected city.
   useEffect(() => {
     fetchNavCategories({ cityId })
       .then(setAllCategories)
       .catch(() => setAllCategories([]));
-  }, [cityId]);
+  }, [category, cityId]);
+
+  /** Reset per-card variant pick when sidebar filters change so filter + dropdown stay in sync. */
+  useEffect(() => {
+    setVarChoice({});
+  }, [category, cityId, JSON.stringify(dynAttrSelections)]);
 
   const toggleDynFilter = (key: string, value: string) => {
     setDynAttrSelections((prev) => {
@@ -796,6 +830,7 @@ export function CategoryListing() {
 
   return (
     <div className="bg-white min-h-screen">
+      <SandAggregatesQuoteModal open={sandQuoteOpen} onClose={() => setSandQuoteOpen(false)} />
 
       {/* ── Simple category header (no banner image) ───────────────────────── */}
       <div className="sf-category-head">
@@ -947,13 +982,32 @@ export function CategoryListing() {
 
             {/* Empty state */}
             {!loading && paginated.length === 0 && products.length === 0 && (
-              <div className="text-center py-20 bg-white border border-sb-ink/10 rounded-2xl">
+              <div className="text-center py-20 bg-white border border-sb-ink/10 rounded-2xl px-6">
                 <BarChart3 className="w-12 h-12 text-sb-ink-muted/20 mx-auto mb-4" />
                 <p className="font-semibold text-sb-ink mb-1">No products found</p>
-                <p className="text-sm text-sb-ink-muted/50 mb-4">Try adjusting your filters</p>
-                <button onClick={clearFilters} className="text-sm text-[#E85A00] hover:text-[#CC4E00] font-semibold underline transition-colors">
-                  Clear all filters
-                </button>
+                {activeFilters > 0 ? (
+                  <>
+                    <p className="text-sm text-sb-ink-muted/50 mb-4">Try adjusting your filters</p>
+                    <button onClick={clearFilters} className="text-sm text-[#E85A00] hover:text-[#CC4E00] font-semibold underline transition-colors">
+                      Clear all filters
+                    </button>
+                  </>
+                ) : (
+                  <div className="text-sm text-sb-ink-muted/60 max-w-md mx-auto text-left space-y-2 mt-3">
+                    <p className="text-center mb-3">
+                      {cityId
+                        ? `No active products with ${city || "your city"} pricing in this category yet.`
+                        : "Select a delivery city to see products with local pricing."}
+                    </p>
+                    {cityId && (
+                      <ul className="list-disc list-inside space-y-1 text-xs">
+                        <li>Admin: product status must be <strong>Active</strong> (not Draft)</li>
+                        <li>Set <strong>city price</strong> for {city || "Bengaluru"} in Cities tab (simple) or per variant (variant products)</li>
+                        <li>Add <strong>stock quantity</strong> for that city to enable ordering</li>
+                      </ul>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -963,7 +1017,11 @@ export function CategoryListing() {
                 {paginated.map((product: any) => {
                   const variations = product.variations || [];
                   const slug = product.slug || product._id || product.id;
-                  const selVid = varChoice[slug] || (variations[0]?._id ? String(variations[0]._id) : "");
+                  const filterVid = findVariationForFilterSelections(variations, dynAttrSelections);
+                  const selVid =
+                    varChoice[slug]
+                    || filterVid
+                    || (variations[0]?._id ? String(variations[0]._id) : "");
                   const vidForCart = selVid || undefined;
                   const cartId = `${slug}::${vidForCart || "base"}`;
                   const cartLine = cart.find((i) => i.id === cartId);

@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useMemo } from "react";
 import { getApiV1Base } from "../../lib/apiBase";
 import { clearCustomerSession, getCustomerAccessToken, getCustomerRefreshToken, refreshCustomerAccessToken, CUSTOMER_TOKEN_KEY } from "../lib/authStorage";
-import { loadStorefrontCities } from "../lib/storefrontCities";
+import { loadStorefrontCities, reconcileStoredCity } from "../lib/storefrontCities";
 import {
   isLocationOnboardingComplete,
   markLocationOnboardingComplete,
@@ -209,6 +209,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem(LEGACY_CITY_KEY);
       } catch {
         /* keep legacy key until cities load later */
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /** Reconcile stored city id with live API (fixes stale ids after DB re-seed). */
+  useEffect(() => {
+    if (!isLocationOnboardingComplete()) return;
+    const stored = readStoredCity();
+    if (!stored) return;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const reconciled = await reconcileStoredCity(stored);
+        if (cancelled) return;
+        if (!reconciled) {
+          setSelectedCityState(null);
+          persistCity(null);
+          return;
+        }
+        if (
+          reconciled.id !== stored.id ||
+          reconciled.name !== stored.name ||
+          reconciled.state !== stored.state
+        ) {
+          setSelectedCityState(reconciled);
+          persistCity(reconciled);
+        }
+      } catch {
+        /* keep stored city until cities API is reachable */
       }
     })();
 

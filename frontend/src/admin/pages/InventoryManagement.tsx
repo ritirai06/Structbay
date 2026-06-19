@@ -248,6 +248,7 @@ export function InventoryManagement() {
         method: "POST",
         body: JSON.stringify({
           product: modal.item.product?._id || modal.item.product,
+          variation: modal.item.variation?._id || modal.item.variation || undefined,
           city: modal.item.city?._id || modal.item.city,
           type: adjType, quantity: adjQty, reason: adjReason,
         }),
@@ -580,6 +581,14 @@ export function InventoryManagement() {
                         <td className="py-3.5 px-4">
                           <p className="font-medium text-sb-ink">{item.product?.name}</p>
                           <p className="text-xs font-mono text-sb-ink/50">{item.product?.sku}</p>
+                          {item.variation && (
+                            <p className="text-xs text-sb-orange/90 mt-0.5">
+                              {item.variation.sku
+                                || (item.variation.attributes
+                                  ? Object.values(item.variation.attributes).filter(Boolean).join(" · ")
+                                  : "Variant")}
+                            </p>
+                          )}
                         </td>
                         <td className="py-3.5 px-4 text-sb-ink/65">{cityLabel(item)}</td>
                         <td className="py-3.5 px-4 font-semibold text-sb-ink">{item.quantity.toLocaleString()}</td>

@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { createBrowserRouter, RouterProvider, Outlet, useLocation, Navigate, useParams } from "react-router";
+import { Toaster } from "sonner";
 import { AppProvider } from "./customer/context/AppContext";
 import { BulkEnquiryModalProvider } from "./customer/context/BulkEnquiryModalContext";
 import { Header as CustomerHeader } from "./customer/components/Header";
@@ -249,8 +250,11 @@ const router = createBrowserRouter([
 
 export default function App() {
   return (
-    <Suspense fallback={<RouteFallback />}>
-      <RouterProvider router={router} />
-    </Suspense>
+    <>
+      <Toaster position="top-right" richColors closeButton duration={4000} />
+      <Suspense fallback={<RouteFallback />}>
+        <RouterProvider router={router} />
+      </Suspense>
+    </>
   );
 }

@@ -1,0 +1,27 @@
+[
+  {
+    "_id": "6a2ebab03ae38f0270b2dd2e",
+    "rfqNumber": "RFQCON2606140001",
+    "customer": "6a2eb00ef93fe4f1ddc07da5",
+    "customerName": "Riti",
+    "companyName": "Others",
+    "customerPhone": "9876543212",
+    "customerEmail": "riti@hsdadigital.com",
+    "grade": "M25",
+    "floorLevel": null,
+    "quantity": 324,
+    "deliveryDate": null,
+    "pumpRequired": false,
+    "location": "Raj Coliving Pg, Sector 66, Noida, Uttar Pradesh 201309",
+    "city": "Noida",
+    "notes": null,
+    "status": "PENDING",
+    "assignedTo": "6a2ab23e07a6b7f84fdcca12",
+    "quotationUrl": null,
+    "adminNotes": null,
+    "isDeleted": true,
+    "createdAt": "2026-06-14T14:29:04.881Z",
+    "updatedAt": "2026-06-19T06:41:07.713Z",
+    "__v": 0
+  }
+]

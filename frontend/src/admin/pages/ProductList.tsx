@@ -4,13 +4,12 @@ import {
   Search, Plus, MoreVertical, Edit, Trash2, Archive, Loader2, RefreshCw, Shield, Zap, Star, TrendingUp,
   Copy, Check, Upload, ChevronDown, FileDown, Eye, BookOpen, FileText,
 } from "lucide-react";
-import { BulkImportCsvModal } from "../components/BulkImportCsvModal";
+import { ProductBulkImportModal } from "../components/ProductBulkImportModal";
 import { CatalogGenerateModal, type CatalogModalScope } from "../components/CatalogGenerateModal";
 import { AdminBulkToolbar } from "../components/AdminBulkToolbar";
 import { AdminDeleteConfirmModal } from "../components/AdminDeleteConfirmModal";
 import { useAdminDeleteFlow } from "../hooks/useAdminDeleteFlow";
 import { adminToast } from "../lib/adminToast";
-import { parseProductBulkCsv, PRODUCT_BULK_TEMPLATE } from "../lib/adminBulkCsvParsers";
 import { adminPath } from "../../lib/portalRoutes";
 import {
   DropdownMenu,
@@ -295,7 +294,7 @@ export function ProductList() {
             onClick={() => setBulkOpen(true)}
             className="admin-btn-outline"
           >
-            <Upload className="w-4 h-4 text-sb-orange" /> Import products
+            <Upload className="w-4 h-4 text-sb-orange" /> Bulk import
           </button>
           <button
             type="button"
@@ -725,15 +724,9 @@ export function ProductList() {
         )}
       </div>
 
-      <BulkImportCsvModal
+      <ProductBulkImportModal
         open={bulkOpen}
         onClose={() => setBulkOpen(false)}
-        title="Import products (CSV)"
-        instructions={`Up to 200 rows per upload. Required: name, sku, category (categorySlug or categoryId), brand (brandName or brandId).\nOptional: status (DRAFT|ACTIVE|ARCHIVED), gstPercentage, shortDescription, description, displayOrder, isFeatured, isTopSelling, isAssured, isExpress (true/false).\nSlug is generated from name; images can be added after import.`}
-        templateCsv={PRODUCT_BULK_TEMPLATE}
-        templateFileName="structbay-products-bulk-template.csv"
-        apiPath="/products/bulk-import"
-        parseRows={parseProductBulkCsv}
         onSuccess={() => load(pagination.page)}
       />
 

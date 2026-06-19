@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
 const Product = require('../models/Product');
+const { isValidId } = require('../lib/apiShape');
 const ProductVariation = require('../models/ProductVariation');
 const VendorVariantPricing = require('../models/VendorVariantPricing');
 
@@ -59,7 +59,7 @@ async function resolveProductsForScope({ scope, productId, categoryId, brandId, 
   let truncated = false;
 
   if (scope === 'PRODUCT') {
-    if (!mongoose.isValidObjectId(productId)) return { products: [], truncated: false };
+    if (!isValidId(productId)) return { products: [], truncated: false };
     const p = await Product.findOne({ _id: productId, ...base })
       .populate('category', 'name slug')
       .populate('brand', 'name slug')
@@ -68,7 +68,7 @@ async function resolveProductsForScope({ scope, productId, categoryId, brandId, 
   }
 
   if (scope === 'CATEGORY') {
-    if (!mongoose.isValidObjectId(categoryId)) return { products: [], truncated: false };
+    if (!isValidId(categoryId)) return { products: [], truncated: false };
     const q = { ...base, category: categoryId };
     const total = await Product.countDocuments(q);
     const list = await Product.find(q)
@@ -82,7 +82,7 @@ async function resolveProductsForScope({ scope, productId, categoryId, brandId, 
   }
 
   if (scope === 'BRAND') {
-    if (!mongoose.isValidObjectId(brandId)) return { products: [], truncated: false };
+    if (!isValidId(brandId)) return { products: [], truncated: false };
     const q = { ...base, brand: brandId };
     const total = await Product.countDocuments(q);
     const list = await Product.find(q)
@@ -96,7 +96,7 @@ async function resolveProductsForScope({ scope, productId, categoryId, brandId, 
   }
 
   if (scope === 'VENDOR') {
-    if (!mongoose.isValidObjectId(vendorUserId)) return { products: [], truncated: false };
+    if (!isValidId(vendorUserId)) return { products: [], truncated: false };
     const vps = await VendorVariantPricing.find({ vendorUser: vendorUserId, isActive: true })
       .select('variant')
       .lean();
@@ -116,7 +116,7 @@ async function resolveProductsForScope({ scope, productId, categoryId, brandId, 
   }
 
   if (scope === 'CUSTOM') {
-    const ids = (productIds || []).filter((id) => mongoose.isValidObjectId(id)).slice(0, MAX_ROWS);
+    const ids = (productIds || []).filter((id) => isValidId(id)).slice(0, MAX_ROWS);
     truncated = (productIds || []).length > MAX_ROWS;
     if (!ids.length) return { products: [], truncated };
     const list = await Product.find({ _id: { $in: ids }, ...base })
