@@ -40,10 +40,11 @@ const getBySlug = asyncHandler(async (req, res) => {
 
 // ─── POST /api/v1/categories ──────────────────────────────────────────────────
 const create = asyncHandler(async (req, res) => {
-  const { name, description, icon, sortOrder, status, image } = req.body;
+  const { name, description, listingHeadline, icon, sortOrder, status, image } = req.body;
   const payload = {
     name,
     description,
+    listingHeadline,
     icon,
     sortOrder,
     status,
@@ -74,7 +75,7 @@ const update = asyncHandler(async (req, res) => {
   if (!category) throw new AppError('Category not found.', 404);
 
   const oldData = { name: category.name, status: category.status };
-  const allowed = ['name', 'description', 'icon', 'sortOrder', 'status'];
+  const allowed = ['name', 'description', 'listingHeadline', 'icon', 'sortOrder', 'status'];
   allowed.forEach(f => { if (req.body[f] !== undefined) category[f] = req.body[f]; });
 
   if (req.body.image !== undefined) {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, type FormEvent } from "react";
 import { NavLink, Link, useNavigate, useLocation } from "react-router";
 import {
   Search, User, MapPin, ChevronDown, Menu, X,
@@ -63,6 +63,17 @@ const MARQUEE_SEGMENTS_DEFAULT = [
 
 const MARQUEE_HOLD_MS = 3000;
 const MARQUEE_FADE_MS = 450;
+const SAND_AGGREGATES_QUOTE_EVENT = "structbay:open-sand-aggregates-quote";
+
+function isSandAggregatesCategory(cat: any): boolean {
+  const text = `${cat?.slug || ""} ${cat?.name || ""}`.toLowerCase().replace(/&/g, "and");
+  return /m[-\s]*sand/.test(text) || (text.includes("sand") && text.includes("aggregate")) || text.includes("aggregates");
+}
+
+function signalSandAggregatesQuoteOpen(cat: any) {
+  if (!isSandAggregatesCategory(cat)) return;
+  globalThis.window?.dispatchEvent(new Event(SAND_AGGREGATES_QUOTE_EVENT));
+}
 
 function TopMarquee({ segments }: { segments: string[] }) {
   const items = segments.length ? segments : MARQUEE_SEGMENTS_DEFAULT;
@@ -257,12 +268,14 @@ export function Header() {
   useEffect(() => {
     if (!isLoggedIn || notifOpen) return;
     const schedule = () => void loadNotifications();
-    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-      const id = window.requestIdleCallback(schedule, { timeout: 4000 });
-      return () => window.cancelIdleCallback(id);
+    const win = globalThis.window;
+    if (!win) return;
+    if ("requestIdleCallback" in win) {
+      const id = win.requestIdleCallback(schedule, { timeout: 4000 });
+      return () => win.cancelIdleCallback(id);
     }
-    const id = window.setTimeout(schedule, 2500);
-    return () => window.clearTimeout(id);
+    const id = setTimeout(schedule, 2500);
+    return () => clearTimeout(id);
   }, [isLoggedIn, notifOpen, loadNotifications, cityId]);
 
   const openContextualNotice = (n: ContextualNotice) => {
@@ -296,7 +309,7 @@ export function Header() {
     navigate(notificationPath(n));
   };
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = (e: FormEvent) => {
     e.preventDefault();
     const q = searchQuery.trim();
     // Backend global search requires ≥2 chars; match that so results and typeahead stay aligned.
@@ -371,7 +384,10 @@ export function Header() {
                   <DropdownMenuItem key={cat.slug} asChild className="p-0 rounded-none focus:bg-orange-50">
                     <NavLink
                       to={`/category/${cat.slug}`}
-                      onClick={() => setCatOpen(false)}
+                      onClick={() => {
+                        setCatOpen(false);
+                        signalSandAggregatesQuoteOpen(cat);
+                      }}
                       className="block w-full px-4 py-2.5 hover:bg-orange-50 cursor-pointer"
                     >
                       {cat.name}
@@ -631,7 +647,10 @@ export function Header() {
                 <NavLink
                   key={cat.slug}
                   to={`/category/${cat.slug}`}
-                  onClick={() => setMenuOpen(false)}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    signalSandAggregatesQuoteOpen(cat);
+                  }}
                   className={({ isActive }) =>
                     `flex items-center gap-2.5 py-2.5 text-sm transition-colors ${
                       isActive ? "font-semibold pl-1 border-l-2" : ""

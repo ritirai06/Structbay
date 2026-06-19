@@ -36,6 +36,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 const emptyForm = {
   name: "",
   description: "",
+  listingHeadline: "",
   icon: "",
   sortOrder: 0,
   status: "ACTIVE",
@@ -167,6 +168,7 @@ export function CategoryManagement() {
     setForm({
       name: c.name,
       description: c.description || "",
+      listingHeadline: c.listingHeadline || "",
       icon: c.icon || "",
       sortOrder: c.sortOrder,
       status: c.status,
@@ -437,6 +439,18 @@ export function CategoryManagement() {
             <div>
               <label className="text-xs text-sb-ink/55 mb-1 block">Description</label>
               <Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} />
+            </div>
+            <div>
+              <label className="text-xs text-sb-ink/55 mb-1 block">Customer page headline</label>
+              <p className="text-[10px] text-sb-ink/45 mb-1">
+                Controls the category page line like “Buy high-quality m sand & aggregates at the best prices”.
+              </p>
+              <Input
+                value={form.listingHeadline}
+                onChange={e => setForm(f => ({ ...f, listingHeadline: e.target.value }))}
+                placeholder="e.g. Buy high-quality M Sand & Aggregates at the best prices"
+                maxLength={180}
+              />
             </div>
             <div>
               <label className="text-xs text-sb-ink/55 mb-1 block">Customer-facing image</label>

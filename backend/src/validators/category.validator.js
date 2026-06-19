@@ -11,6 +11,11 @@ const categoryValidator = [
     .trim()
     .isLength({ max: 500 }).withMessage('Description cannot exceed 500 characters'),
 
+  body('listingHeadline')
+    .optional()
+    .trim()
+    .isLength({ max: 180 }).withMessage('Listing headline cannot exceed 180 characters'),
+
   body('status')
     .optional()
     .isIn(['ACTIVE', 'INACTIVE']).withMessage('Status must be ACTIVE or INACTIVE'),

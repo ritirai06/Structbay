@@ -17,6 +17,12 @@ const categorySchema = new mongoose.Schema(
       maxlength: [500, 'Description cannot exceed 500 characters'],
       default: null,
     },
+    listingHeadline: {
+      type: String,
+      trim: true,
+      maxlength: [180, 'Listing headline cannot exceed 180 characters'],
+      default: null,
+    },
     icon: { type: String, trim: true, default: null }, // icon class or emoji
     image: {
       url: { type: String, default: null },

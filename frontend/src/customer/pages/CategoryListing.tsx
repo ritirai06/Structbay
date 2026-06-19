@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Link, useParams, useNavigate } from "react-router";
+import { Link, useParams, useNavigate, useLocation } from "react-router";
 import {
   SlidersHorizontal, Shield, Zap,
   ChevronRight, FileText, ChevronLeft, ChevronDown, X,
@@ -19,6 +19,7 @@ import {
 } from "../lib/wholesalePricing";
 
 const PAGE_SIZE = 12;
+const SAND_AGGREGATES_QUOTE_EVENT = "structbay:open-sand-aggregates-quote";
 
 /** Treat blank / zero min as "no minimum" so filters and API stay in sync. */
 function parsePriceMin(raw: string): number | null {
@@ -226,14 +227,19 @@ function AccordionSection({ title, children, defaultOpen = true }: AccordionSect
   );
 }
 
-function categoryPageTitle(name: string | undefined, isShopAll: boolean): string {
+function categoryPageTitle(name: string | undefined, isShopAll: boolean, customHeadline?: string): string {
+  const headline = String(customHeadline || "").trim();
+  if (headline) return headline;
   if (isShopAll) return "Shop all construction materials at the best prices";
   const label = (name || "products").trim();
   return `Buy high-quality ${label.toLowerCase()} at the best prices`;
 }
 
 function isSandAggregatesCategory(value: string | undefined): boolean {
-  const text = String(value || "").toLowerCase().replace(/&/g, "and");
+  const text = decodeURIComponent(String(value || ""))
+    .toLowerCase()
+    .replace(/\+/g, " ")
+    .replace(/&/g, "and");
   return (
     /m[-\s]*sand/.test(text) ||
     (text.includes("sand") && text.includes("aggregate")) ||
@@ -245,6 +251,7 @@ export function CategoryListing() {
   const { category } = useParams<{ category?: string }>();
   const { addToCart, updateQty, cart, city, cityId } = useApp();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const isShopAll = !category || category === "all";
 
@@ -323,13 +330,23 @@ export function CategoryListing() {
   }, [isShopAll, allCategories, category, catData?.name]);
 
   const isSandAggregates = useMemo(
-    () => !isShopAll && (isSandAggregatesCategory(category) || isSandAggregatesCategory(categoryTitle)),
-    [category, categoryTitle, isShopAll]
+    () => !isShopAll && (
+      isSandAggregatesCategory(category) ||
+      isSandAggregatesCategory(categoryTitle) ||
+      isSandAggregatesCategory(location.pathname)
+    ),
+    [category, categoryTitle, isShopAll, location.pathname]
   );
 
   useEffect(() => {
     if (isSandAggregates) setSandQuoteOpen(true);
-  }, [category, isSandAggregates]);
+  }, [category, isSandAggregates, location.key]);
+
+  useEffect(() => {
+    const openQuote = () => setSandQuoteOpen(true);
+    window.addEventListener(SAND_AGGREGATES_QUOTE_EVENT, openQuote);
+    return () => window.removeEventListener(SAND_AGGREGATES_QUOTE_EVENT, openQuote);
+  }, []);
 
   // ── Fetch data from API ────────────────────────────────────────────────────
   useEffect(() => {
@@ -847,7 +864,7 @@ export function CategoryListing() {
             )}
           </nav>
           <h1 className="sf-category-head__title">
-            {categoryPageTitle(categoryTitle, isShopAll)}
+            {categoryPageTitle(categoryTitle, isShopAll, catData?.listingHeadline)}
           </h1>
           <p className="sf-category-head__meta">
             {displayTotal == null ? (
