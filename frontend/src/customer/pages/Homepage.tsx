@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo, type CSSProperties } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, type CSSProperties, type FormEvent } from "react";
 import { Link } from "react-router";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -22,7 +22,6 @@ import {
 } from "../lib/homepageCatalog";
 import { TopSellingProductsCarousel } from "../components/TopSellingProductsCarousel";
 import { FeaturedBrandsMarquee } from "../components/FeaturedBrandsMarquee";
-import { pricingSnapshotFromProduct, resolveUnitPriceFromSnapshot } from "../lib/wholesalePricing";
 import { productHref } from "../lib/productRoutes";
 import { isVariantProduct, validateCartLine } from "../lib/productStructure";
 import { useCmsPageSeo } from "../hooks/useCmsPageSeo";
@@ -279,7 +278,7 @@ function HomeContactForm({ fallbackEmail }: { fallbackEmail: string }) {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setStatus(null);
     setLoading(true);
@@ -771,7 +770,7 @@ function ProductCard({ product, compact = false }: { product: any; compact?: boo
               onClick={() => {
                 const snap = pricingSnapshotFromProduct(product, null);
                 const check = validateCartLine(product, undefined);
-                if (!check.ok) {
+                if (check.ok === false) {
                   alert(check.message);
                   return;
                 }
