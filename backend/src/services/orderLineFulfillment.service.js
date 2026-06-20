@@ -255,7 +255,7 @@ async function bulkAssignOrderLineFulfillment({ orderId, assignments, adminUserI
     .populate('customer', 'name email phone')
     .populate('city', 'name state')
     .populate('assignedVendor', 'name companyName')
-    .populate('items.product', 'name sku images deliveryType')
+    .populate('items.product', 'name sku images deliveryType isStructbayDelivery isExpress structbayDeliverySupported')
     .populate('items.assignedVendorUser', 'name companyName email')
     .populate({
       path: 'vendorOrders',
