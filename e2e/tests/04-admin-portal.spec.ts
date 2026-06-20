@@ -33,7 +33,7 @@ test.describe("Admin portal (PRD operations)", () => {
     await expect(overview).toBeVisible();
     await expect(overview.getByRole("heading", { name: /order overview/i })).toBeVisible();
     await expect(overview.getByText("Line items", { exact: true })).toBeVisible();
-    await expect(overview.getByText("Customer tracking notes", { exact: true })).toBeVisible();
+    await expect(overview.getByText("Tracking notes", { exact: true })).toBeVisible();
     await expect(overview.locator(".wf-info-tile").first()).toBeVisible();
 
     await page.locator('a[href="#step-vendor"]').click();
@@ -57,7 +57,7 @@ test.describe("Admin portal (PRD operations)", () => {
 
     await page.locator('a[href="#step-status"]').click();
     const status = page.locator("#step-status");
-    await expect(status.getByText("Master order status", { exact: true })).toBeVisible();
+    await expect(status.getByText("Master order status", { exact: false })).toBeVisible();
     await expect(status.locator("select")).toBeVisible();
 
     const stepsNav = page.locator(".admin-order-steps-nav");

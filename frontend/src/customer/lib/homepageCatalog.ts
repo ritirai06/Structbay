@@ -58,18 +58,8 @@ export async function loadHomepageCategories(
   return uniqueCatalogRows(await fetchAllActiveCategories(limit), limit);
 }
 
-/** Homepage brands: city-scoped first, then all ACTIVE brands. */
-export async function loadHomepageBrands(cityId: string | null | undefined, limit = 24): Promise<any[]> {
-  if (cityId) {
-    try {
-      const scoped = await api.getBrands({ status: "ACTIVE", limit: String(limit), cityId });
-      const rows = (scoped as { data?: unknown[] }).data || [];
-      if (rows.length > 0) return uniqueCatalogRows(rows, limit);
-    } catch {
-      /* fall through */
-    }
-  }
-
+/** Homepage brands: always fetch all ACTIVE brands — brands are catalog-level, not city-scoped. */
+export async function loadHomepageBrands(_cityId: string | null | undefined, limit = 24): Promise<any[]> {
   const res = await api.getBrands({ status: "ACTIVE", limit: String(limit) });
   return uniqueCatalogRows(((res as { data?: unknown[] }).data || []) as any[], limit);
 }

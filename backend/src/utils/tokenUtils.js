@@ -34,10 +34,13 @@ const verifyResetToken = (token) => jwt.verify(token, process.env.JWT_RESET_SECR
  * Build standard JWT payload from user document.
  * Keep minimal — only what's needed for auth checks.
  */
+const crypto = require('crypto');
+
 const buildTokenPayload = (user) => ({
   id: user._id,
   email: user.email,
   role: user.role,
+  jti: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2),
 });
 
 module.exports = {

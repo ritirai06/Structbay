@@ -792,30 +792,17 @@ router.get(
 router.get(
   '/brands',
   asyncHandler(async (req, res) => {
-    const { status = 'ACTIVE', limit = 50, cityId } = req.query;
+    const { status = 'ACTIVE', limit = 50 } = req.query;
     const lim = Math.min(100, parseInt(limit));
 
-    const { cityOid } = await resolveStorefrontCityOid(req.query);
-    let brandFilter = { status };
-    if (cityOid) {
-      const priced = await marketplaceCity.getPricedProductIdsForCity(cityOid);
-      const brandIds = await Product.distinct('brand', { status: 'ACTIVE', _id: { $in: priced } });
-      brandFilter._id = { $in: brandIds };
-      let productIds = await marketplaceCity.getPricedProductIdsForCity(cityOid);
-      if (productIds.length === 0) {
-        productIds = await marketplaceCity.getSellableProductIdsForCity(cityOid);
-      }
-      if (productIds.length > 0) {
-        const brandIds = await Product.distinct('brand', { status: 'ACTIVE', _id: { $in: productIds } });
-        if (brandIds.length > 0) brandFilter._id = { $in: brandIds };
-      }
-    }
-
-    const brands = await Brand.find(brandFilter)
+    // Brands are catalog-level entities — always return all ACTIVE brands
+    // regardless of city selection or inventory. City filtering only applies to products.
+    const brands = await Brand.find({ status })
       .select('name slug logo banner description sortOrder category')
       .populate('category', 'name slug')
       .sort({ sortOrder: 1 })
       .limit(lim);
+
     return ApiResponse.success(res, 200, 'Brands retrieved.', brands);
   })
 );
