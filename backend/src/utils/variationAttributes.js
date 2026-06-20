@@ -113,6 +113,33 @@ function buildVariationAttributeValueMatch(key, vals) {
   };
 }
 
+function packageAttributesForSave(flatAttributes) {
+  const structured = {
+    weight: null,
+    grade: null,
+    size: null,
+    thickness: null,
+    length: null,
+    color: null,
+    finish: null,
+    diameter: null,
+    custom: []
+  };
+
+  if (!flatAttributes || typeof flatAttributes !== 'object') return structured;
+
+  for (const [k, v] of Object.entries(flatAttributes)) {
+    if (v == null || String(v).trim() === '') continue;
+    const lowerKey = k.toLowerCase().trim();
+    if (FIXED_LEGACY_KEYS.includes(lowerKey)) {
+      structured[lowerKey] = String(v).trim();
+    } else {
+      structured.custom.push({ key: k.trim(), value: String(v).trim() });
+    }
+  }
+  return structured;
+}
+
 module.exports = {
   FIXED_LEGACY_KEYS,
   normalizeVariationAttributes,
@@ -121,4 +148,5 @@ module.exports = {
   getAttributeValue,
   formatVariationLabel,
   buildVariationAttributeValueMatch,
+  packageAttributesForSave,
 };

@@ -48,6 +48,8 @@ const productSchema = new mongoose.Schema(
     /** When true, storefront shows city prices including GST (admin setting per product). */
     priceIncludesGst: { type: Boolean, default: false },
 
+    productStructure: { type: String, enum: ['simple', 'variant'], default: 'simple' },
+
     status: { type: String, enum: ['DRAFT', 'ACTIVE', 'ARCHIVED'], default: 'DRAFT' },
     isFeatured: { type: Boolean, default: false },
     isTopSelling: { type: Boolean, default: false },

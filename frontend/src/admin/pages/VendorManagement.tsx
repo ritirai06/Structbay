@@ -206,7 +206,7 @@ export function VendorManagement() {
                   checked={deleteHook.allVisibleSelected(visibleIds)}
                   onChange={() => deleteHook.toggleAllVisible(visibleIds)}
                 />
-                {["Vendor", "Company", "Contact", "GST", "Vendor Status", "Account", "Joined", "Actions"].map(h => (
+                {["Vendor", "Vendor ID", "Company", "Contact", "GST", "Vendor Status", "Account", "Joined", "Actions"].map(h => (
                   <th key={h} className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wider text-sb-ink/50">{h}</th>
                 ))}
               </tr>
@@ -228,6 +228,12 @@ export function VendorManagement() {
                       </div>
                       <p className="font-medium text-sb-ink">{v.name}</p>
                     </div>
+                  </td>
+                  <td className="py-3.5 px-4">
+                    {v.referenceNumber
+                      ? <span className="font-mono text-xs bg-sb-orange/10 text-sb-orange border border-sb-orange/20 rounded px-1.5 py-0.5">{v.referenceNumber}</span>
+                      : <span className="text-xs text-sb-ink/35">—</span>
+                    }
                   </td>
                   <td className="py-3.5 px-4 text-sb-ink/65">{v.companyName}</td>
                   <td className="py-3.5 px-4">
@@ -336,6 +342,12 @@ export function VendorManagement() {
       {selected && (
         <Modal title={`Vendor — ${selected.name}`} onClose={() => setSelected(null)}>
           <div className="space-y-4">
+            {selected.referenceNumber && (
+              <div className="flex items-center gap-2 p-3 bg-sb-orange/8 border border-sb-orange/20 rounded-lg mb-1">
+                <span className="text-[10px] text-sb-orange/70 uppercase tracking-wide font-semibold">Vendor ID</span>
+                <span className="ml-auto font-mono text-sm font-bold text-sb-orange">{selected.referenceNumber}</span>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               {[
                 ["Company", selected.companyName],

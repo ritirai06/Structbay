@@ -53,7 +53,8 @@ export function flattenVariationAttributes(attrs: Record<string, unknown> | null
 export function formatVariationLabel(v: { attributes?: Record<string, unknown> } | null | undefined): string {
   const rows = flattenVariationAttributes(v?.attributes);
   if (!rows.length) return "Option";
-  return rows.map((r) => r.value).join(" · ");
+  const uniqueVals = Array.from(new Set(rows.map((r) => r.value)));
+  return uniqueVals.join(" · ");
 }
 
 export function topAttributeChipsForListing(

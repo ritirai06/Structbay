@@ -1,7 +1,7 @@
 import { api } from "./api";
 import { fetchAllActiveCategories, fetchNavCategories, normalizeNavCategories } from "./navCategories";
 
-const HOMEPAGE_CATEGORY_LIMIT = 10;
+const HOMEPAGE_CATEGORY_LIMIT = 14;
 
 type CmsCategory = {
   _id?: string;
@@ -55,18 +55,6 @@ export async function loadHomepageCategories(
   cityId: string | null | undefined,
   limit = HOMEPAGE_CATEGORY_LIMIT
 ): Promise<any[]> {
-  const fromCms = categoriesFromCmsFeatured(cmsHome, limit);
-  if (fromCms.length > 0) return fromCms;
-
-  if (cityId) {
-    try {
-      const cityScoped = await fetchNavCategories({ cityId, max: limit });
-      if (cityScoped.length > 0) return uniqueCatalogRows(cityScoped, limit);
-    } catch {
-      /* fall through */
-    }
-  }
-
   return uniqueCatalogRows(await fetchAllActiveCategories(limit), limit);
 }
 

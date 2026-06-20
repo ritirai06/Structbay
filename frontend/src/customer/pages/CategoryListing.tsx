@@ -230,9 +230,9 @@ function AccordionSection({ title, children, defaultOpen = true }: AccordionSect
 function categoryPageTitle(name: string | undefined, isShopAll: boolean, customHeadline?: string): string {
   const headline = String(customHeadline || "").trim();
   if (headline) return headline;
-  if (isShopAll) return "Shop all construction materials at the best prices";
+  if (isShopAll) return "Top quality construction materials";
   const label = (name || "products").trim();
-  return `Buy high-quality ${label.toLowerCase()} at the best prices`;
+  return `Top quality ${label.toLowerCase()} for construction`;
 }
 
 function isSandAggregatesCategory(value: string | undefined): boolean {
@@ -708,9 +708,23 @@ export function CategoryListing() {
       </AccordionSection>
 
       {!isShopAll &&
-        categoryFilters
-          .filter((f: any) => f?.key && f?.isActive !== false)
-          .sort((a: any, b: any) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0))
+        (() => {
+          const visibleFilters: any[] = [];
+          const seenOptions = new Set<string>();
+          const sortedFilters = [...categoryFilters]
+            .filter((f: any) => f?.key && f?.isActive !== false)
+            .sort((a: any, b: any) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
+          for (const f of sortedFilters) {
+            const opts = f.options || [];
+            if (f.type !== "RANGE" && opts.length > 0) {
+              const sig = opts.map((o: any) => String(o.value ?? o.label ?? "").trim().toLowerCase()).sort().join("|");
+              if (seenOptions.has(sig)) continue;
+              seenOptions.add(sig);
+            }
+            visibleFilters.push(f);
+          }
+          return visibleFilters;
+        })()
           .map((f: any) => {
             const fKey = String(f.key);
             const opts = f.options || [];

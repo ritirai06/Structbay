@@ -17,7 +17,7 @@ const { resolveCategoryFromRow, escRx } = require('../utils/resolveCategoryFromR
 const catalogBrowse = require('../services/catalogBrowse.service');
 const productFull = require('../services/productFull.service');
 const { resolveVariantSku } = require('../services/variationSku.service');
-const { normalizeVariationAttributes } = require('../utils/variationAttributes');
+const { normalizeVariationAttributes, packageAttributesForSave } = require('../utils/variationAttributes');
 const { attributeValuesEquivalent } = require('../utils/attributeValueNormalize');
 const { VALID_DELIVERY_TYPES } = require('../utils/productDeliveryType');
 const { VALID_PRODUCT_STRUCTURES } = require('../utils/productStructure');
@@ -300,10 +300,11 @@ const createVariation = asyncHandler(async (req, res) => {
     throw new AppError('Change product structure to Variant Product and save before adding variants.', 400);
   }
 
-  const attributes = normalizeVariationAttributes(req.body);
-  if (!Object.keys(attributes).length) {
+  const flatAttributes = normalizeVariationAttributes(req.body);
+  if (!Object.keys(flatAttributes).length) {
     throw new AppError('Add at least one attribute (e.g. Size → 10 KG).', 400);
   }
+  const attributes = packageAttributesForSave(flatAttributes);
 
   const sku = await resolveVariantSku({
     product,
@@ -363,7 +364,8 @@ const updateVariation = asyncHandler(async (req, res) => {
   if (!variation) throw new AppError('Variation not found.', 404);
 
   if (req.body.attributePairs || req.body.attributes) {
-    variation.attributes = normalizeVariationAttributes(req.body);
+    const flatAttributes = normalizeVariationAttributes(req.body);
+    variation.attributes = packageAttributesForSave(flatAttributes);
   }
 
   if (req.body.sku !== undefined) {
@@ -967,7 +969,7 @@ const bulkImportVariants = asyncHandler(async (req, res) => {
         variation = await ProductVariation.create({
           product: product._id,
           sku: resolvedSku,
-          attributes: attrs,
+          attributes: packageAttributesForSave(attrs),
           moq: moq ?? 1,
           leadTimeDays: Number.isFinite(leadTimeDays) ? leadTimeDays : null,
           weightKg: Number.isFinite(weightKg) ? weightKg : null,
@@ -977,7 +979,7 @@ const bulkImportVariants = asyncHandler(async (req, res) => {
         });
       } else {
         variation.sku = resolvedSku;
-        variation.attributes = mergeVariationAttributes(variation.attributes, attrs);
+        variation.attributes = packageAttributesForSave(mergeVariationAttributes(variation.attributes, attrs));
         if (moq !== undefined) variation.moq = moq;
         if (Number.isFinite(leadTimeDays)) variation.leadTimeDays = leadTimeDays;
         if (Number.isFinite(weightKg)) variation.weightKg = weightKg;

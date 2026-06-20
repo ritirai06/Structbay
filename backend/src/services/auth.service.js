@@ -124,8 +124,8 @@ const registerVendor = async (
     vendorStatus: VENDOR_STATUS.PENDING_APPROVAL,
     companyName,
     contactPerson,
-    gstNumber,
-    businessRegNumber,
+    gstNumber: gstNumber && String(gstNumber).trim() ? String(gstNumber).trim().toUpperCase() : null,
+    businessRegNumber: businessRegNumber && String(businessRegNumber).trim() ? String(businessRegNumber).trim() : null,
     referenceNumber,
   });
 

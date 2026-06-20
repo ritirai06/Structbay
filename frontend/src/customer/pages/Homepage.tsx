@@ -115,8 +115,8 @@ function IntroBodyText({ text }: { text: string }) {
 const CATEGORIES_SUB =
   "From trusted materials to seamless procurement — StructBay simplifies your construction journey. Explore our wide range of products.";
 
-/** Homepage shows two rows only (5 × 2 on desktop). */
-const HOMEPAGE_CATEGORY_LIMIT = 10;
+/** Homepage shows up to 14 categories. */
+const HOMEPAGE_CATEGORY_LIMIT = 14;
 
 const WHY_CHOOSE_STATS = [
   { icon: iconStatProducts, target: 2000, label: "Products from Top Brands" },

@@ -167,12 +167,12 @@ export function Header() {
   const pageNotices = contextualNotices.filter((n) => n.scope === "page");
   const panelTitle = contextualPanelTitle(city, location.pathname);
 
-  // Shop dropdown: only categories with products in the selected city.
+  // Shop dropdown: all active categories (not filtered by city).
   useEffect(() => {
-    fetchNavCategories({ cityId })
+    fetchNavCategories()
       .then(setCategories)
       .catch(() => setCategories([]));
-  }, [cityId]);
+  }, []);
 
   useEffect(() => {
     api

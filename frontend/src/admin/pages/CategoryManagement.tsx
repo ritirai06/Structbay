@@ -443,12 +443,12 @@ export function CategoryManagement() {
             <div>
               <label className="text-xs text-sb-ink/55 mb-1 block">Customer page headline</label>
               <p className="text-[10px] text-sb-ink/45 mb-1">
-                Controls the category page line like “Buy high-quality m sand & aggregates at the best prices”.
+                Controls the category page line like “Top quality m sand & aggregates for construction”.
               </p>
               <Input
                 value={form.listingHeadline}
                 onChange={e => setForm(f => ({ ...f, listingHeadline: e.target.value }))}
-                placeholder="e.g. Buy high-quality M Sand & Aggregates at the best prices"
+                placeholder="e.g. Top quality M Sand & Aggregates for construction"
                 maxLength={180}
               />
             </div>

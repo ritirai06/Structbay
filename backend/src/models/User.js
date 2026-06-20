@@ -88,10 +88,13 @@ const userSchema = new mongoose.Schema(
       trim: true,
       uppercase: true,
       default: null,
-      match: [
-        /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/,
-        'Please enter a valid GST number',
-      ],
+      validate: {
+        validator: function (v) {
+          if (!v || String(v).trim() === '') return true; // optional — skip if blank
+          return /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(String(v).trim().toUpperCase());
+        },
+        message: 'Please enter a valid GST number',
+      },
       sparse: true,
     },
     businessRegNumber: { type: String, trim: true, default: null },

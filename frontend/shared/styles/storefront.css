@@ -960,10 +960,11 @@
   border: 1px solid #e5e5e5;
   box-shadow: 0 32px 80px rgba(0, 0, 0, 0.35);
   overflow: hidden;
+  border-radius: 1rem !important;
 }
 
 .sf-city-modal__hero {
-  background: #f7f7f7;
+  background: #ffffff;
   padding: 1.25rem 1.25rem 0.75rem;
 }
 
@@ -974,6 +975,7 @@
   height: auto;
   object-fit: contain;
   margin: 0 auto;
+  mix-blend-mode: multiply;
 }
 
 .sf-city-modal__body {
@@ -2106,7 +2108,7 @@
 .sf-category-head__title {
   margin: 0;
   font-size: clamp(1.2rem, 2.4vw, 1.65rem);
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.35;
   color: #e85a00;
   max-width: 48rem;
