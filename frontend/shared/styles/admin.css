@@ -341,3 +341,49 @@
   color: var(--primary);
   border-color: rgba(232, 90, 0, 0.2);
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   ADMIN RESPONSIVE FIXES — mobile / tablet / desktop
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* Tables — horizontal scroll on small screens */
+.admin-shell .sb-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 1023px) {
+  /* Admin panel toolbar wrapping on mobile */
+  .admin-shell .admin-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.625rem;
+    padding: 0.75rem;
+  }
+
+  /* Admin order steps nav — wraps on mobile */
+  .admin-shell .admin-order-steps-nav {
+    flex-wrap: wrap;
+  }
+
+  .admin-shell .admin-order-steps-nav__link {
+    min-width: 4rem;
+    font-size: 0.75rem;
+  }
+
+  /* Admin panel header stacks on mobile */
+  .admin-shell .admin-panel-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+/* Mobile search bar in header adjusts */
+@media (max-width: 639px) {
+  .admin-shell .sb-header .relative.w-96 {
+    width: 100%;
+  }
+}

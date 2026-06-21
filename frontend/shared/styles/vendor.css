@@ -120,3 +120,38 @@
   font-size: 0.8125rem;
   font-weight: 600;
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   VENDOR PORTAL RESPONSIVE FIXES — mobile / tablet / desktop
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* Tables — horizontal scroll on small screens */
+.vendor-portal .sb-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Search bar in vendor header */
+@media (max-width: 639px) {
+  .vendor-portal .sb-header form.relative {
+    max-width: 100%;
+  }
+}
+
+/* Typography adjusts on small screens */
+@media (max-width: 479px) {
+  .vendor-portal .vendor-page-title {
+    font-size: 1rem;
+  }
+
+  .vendor-portal .vendor-metric {
+    font-size: 0.9375rem;
+  }
+}
+
+/* Cards — less padding on mobile */
+@media (max-width: 639px) {
+  .vendor-portal .rounded-2xl.p-5 {
+    padding: 0.875rem !important;
+  }
+}

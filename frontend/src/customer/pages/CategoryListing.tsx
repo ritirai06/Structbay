@@ -904,7 +904,7 @@ export function CategoryListing() {
         <div className="max-w-7xl mx-auto px-4 flex gap-1 py-2">
           <Link
             to="/shop"
-            className={`text-xs px-3.5 py-1.5 rounded-full whitespace-nowrap font-medium transition-all ${
+            className={`shrink-0 text-xs px-3.5 py-1.5 rounded-full whitespace-nowrap font-medium transition-all ${
               isShopAll
                 ? "bg-[#E85A00] text-white"
                 : "text-sb-ink-muted/60 hover:text-sb-ink hover:bg-white-2 border border-sb-ink/10"
@@ -916,7 +916,7 @@ export function CategoryListing() {
             <Link
               key={cat.slug || cat._id}
               to={`/category/${cat.slug}`}
-              className={`text-xs px-3.5 py-1.5 rounded-full whitespace-nowrap font-medium transition-all ${
+              className={`shrink-0 text-xs px-3.5 py-1.5 rounded-full whitespace-nowrap font-medium transition-all ${
                 categorySlugMatches(category, cat)
                   ? "bg-[#E85A00] text-white"
                   : "text-sb-ink-muted/60 hover:text-sb-ink hover:bg-white-2 border border-sb-ink/10"

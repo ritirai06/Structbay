@@ -402,9 +402,12 @@ export function Header() {
           </nav>
 
           <div className="sf-header-actions">
+            {/* Search (Mobile/Tablet) */}
             <button type="button" onClick={() => setSearchOpen((v) => !v)} className="hidden sm:flex p-2 text-white hover:text-sb-orange transition-colors" aria-label="Search">
               <Search className="w-5 h-5" />
             </button>
+
+            {/* Desktop Actions (Hidden on smaller screens) */}
             <Link to="/tools/cement-calculator" className="sf-btn-outline hidden lg:inline-flex">
               Cement Calc
             </Link>
@@ -415,12 +418,43 @@ export function Header() {
             >
               Bulk Order
             </button>
-            <NavLink to="/cart" className="sf-btn-outline relative">
+            <NavLink to="/cart" className="sf-btn-outline relative hidden md:inline-flex">
               View Cart &gt;&gt;
               {cartCount > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 min-w-[1.1rem] h-[1.1rem] rounded-full bg-sb-orange text-white text-[10px] font-bold flex items-center justify-center px-0.5">{cartCount}</span>
               )}
             </NavLink>
+
+            {/* Quick Actions Dropdown (Mobile only) */}
+            <div className="md:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="sf-btn-outline inline-flex px-3" aria-label="Quick Actions">
+                    <Zap className="w-4 h-4 text-sb-orange" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48 bg-white border border-gray-100 shadow-xl rounded-xl p-1 z-50">
+                  <DropdownMenuItem asChild className="rounded-lg hover:bg-orange-50 focus:bg-orange-50 cursor-pointer">
+                    <Link to="/tools/cement-calculator" className="flex items-center w-full px-3 py-2 text-sm text-gray-800">
+                      Cement Calculator
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="rounded-lg hover:bg-orange-50 focus:bg-orange-50 cursor-pointer">
+                    <button onClick={() => openBulkEnquiry()} className="flex items-center w-full px-3 py-2 text-sm text-gray-800">
+                      Bulk Order
+                    </button>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="rounded-lg hover:bg-orange-50 focus:bg-orange-50 cursor-pointer">
+                    <Link to="/cart" className="flex items-center justify-between w-full px-3 py-2 text-sm text-gray-800">
+                      <span>View Cart</span>
+                      {cartCount > 0 && (
+                        <span className="bg-sb-orange text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{cartCount}</span>
+                      )}
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
             <div className="relative hidden lg:block" ref={userRef}>
               <button type="button" onClick={() => setUserOpen((v) => !v)} className="p-2 text-white/80 hover:text-white" aria-label="Account">
                 <User className="w-5 h-5" />

@@ -596,6 +596,50 @@ function StructBayHero({
   const bgColor = normalizeCssColor(slide.backgroundColor) || "transparent";
   const align = slide.textAlign;
 
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+  const touchEndY = useRef<number | null>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.targetTouches[0].clientX;
+    touchStartY.current = e.targetTouches[0].clientY;
+    touchEndX.current = e.targetTouches[0].clientX;
+    touchEndY.current = e.targetTouches[0].clientY;
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+    touchEndY.current = e.targetTouches[0].clientY;
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (
+      touchStartX.current === null ||
+      touchStartY.current === null ||
+      touchEndX.current === null ||
+      touchEndY.current === null
+    ) {
+      return;
+    }
+    const diffX = touchStartX.current - touchEndX.current;
+    const diffY = touchStartY.current - touchEndY.current;
+    const threshold = 50;
+
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > threshold) {
+      if (diffX > 0) {
+        next();
+      } else {
+        prev();
+      }
+    }
+
+    touchStartX.current = null;
+    touchStartY.current = null;
+    touchEndX.current = null;
+    touchEndY.current = null;
+  }, [next, prev]);
+
   return (
     <section
       className="sf-hero-ref"
@@ -604,6 +648,9 @@ function StructBayHero({
       onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={() => setPaused(false)}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
       aria-roledescription="carousel"
       aria-label="Homepage banners"
     >
@@ -1256,37 +1303,53 @@ export function Homepage() {
       )}
 
       {/* ── Contact Us (footer CMS) ────────────────────────────────────────── */}
-      <section className="sf-dot-grid py-16 px-4" id="contact">
+      <section className="sf-dot-grid py-20 px-4" id="contact">
         <div className="sf-section-heading">
           <h2>Contact Us</h2>
           <p className="sf-sub">Keep In Touch</p>
         </div>
-        <div className="max-w-5xl mx-auto sf-contact-cards mb-12">
-          <div className="sf-contact-card">
-            <Phone className="w-8 h-8 mx-auto text-gray-500" />
-            <h3>Call Us</h3>
-            <p>{footerCms.phone}</p>
-          </div>
-          <div className="sf-contact-card">
-            <Mail className="w-8 h-8 mx-auto text-gray-500" />
-            <h3>Email Us</h3>
-            <p>{footerCms.email}</p>
-          </div>
-          <div className="sf-contact-card">
-            <MapPin className="w-8 h-8 mx-auto text-gray-500" />
-            <h3>Address</h3>
-            <p>{footerCms.address}</p>
+        
+        <div className="max-w-7xl mx-auto mb-10">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white rounded-2xl p-8 text-center shadow-[0_4px_20px_rgb(0,0,0,0.05)] border border-gray-100">
+              <div className="w-14 h-14 mx-auto bg-orange-50 rounded-full flex items-center justify-center mb-5">
+                <Phone className="w-6 h-6 text-sb-orange" />
+              </div>
+              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest mb-2">Call Us</h3>
+              <p className="text-gray-600 font-medium">{footerCms.phone}</p>
+            </div>
+            <div className="bg-white rounded-2xl p-8 text-center shadow-[0_4px_20px_rgb(0,0,0,0.05)] border border-gray-100">
+              <div className="w-14 h-14 mx-auto bg-orange-50 rounded-full flex items-center justify-center mb-5">
+                <Mail className="w-6 h-6 text-sb-orange" />
+              </div>
+              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest mb-2">Email Us</h3>
+              <p className="text-gray-600 font-medium">{footerCms.email}</p>
+            </div>
+            <div className="bg-white rounded-2xl p-8 text-center shadow-[0_4px_20px_rgb(0,0,0,0.05)] border border-gray-100">
+              <div className="w-14 h-14 mx-auto bg-orange-50 rounded-full flex items-center justify-center mb-5">
+                <MapPin className="w-6 h-6 text-sb-orange" />
+              </div>
+              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest mb-2">Address</h3>
+              <p className="text-gray-600 font-medium">{footerCms.address}</p>
+            </div>
           </div>
         </div>
-        <div className="max-w-5xl mx-auto sf-contact-split">
-          <HomeContactForm fallbackEmail={footerCms.email} />
-          <div className="min-h-[320px] bg-gray-100">
-            <iframe
-              title="StructBay office location"
-              className="w-full h-full min-h-[320px] border-0"
-              loading="lazy"
-              src={`https://maps.google.com/maps?q=${mapQuery}&output=embed`}
-            />
+
+        <div className="max-w-7xl mx-auto bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100 overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-2">
+            <div className="p-8 md:p-12 lg:p-16">
+              <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Send us a message</h3>
+              <p className="text-gray-500 mb-8">We'd love to hear from you. Fill out the form below and our team will get back to you shortly.</p>
+              <HomeContactForm fallbackEmail={footerCms.email} />
+            </div>
+            <div className="min-h-[400px] lg:min-h-full w-full bg-gray-100 relative">
+              <iframe
+                title="StructBay office location"
+                className="absolute inset-0 w-full h-full border-0"
+                loading="lazy"
+                src={`https://maps.google.com/maps?q=${mapQuery}&output=embed`}
+              />
+            </div>
           </div>
         </div>
       </section>

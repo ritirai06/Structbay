@@ -69,7 +69,19 @@ const app = express();
 app.set('trust proxy', 1);
 
 // ─── Security Headers ─────────────────────────────────────────────────────────
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        imgSrc: ["'self'", "data:", "blob:", "https://maps.gstatic.com", "https://maps.googleapis.com", "https://*.googleusercontent.com"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://maps.googleapis.com"],
+        connectSrc: ["'self'", "https://maps.googleapis.com"],
+        frameSrc: ["'self'", "https://www.google.com"],
+      },
+    },
+  })
+);
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
 const allowedOrigins = [
