@@ -659,6 +659,14 @@ export function CategoryListing() {
     dynAttrActiveCount +
     dynRangeActiveCount;
 
+  if (isSandAggregates) {
+    return (
+      <div className="bg-white min-h-screen">
+        <SandAggregatesQuoteModal open={true} onClose={() => navigate("/")} />
+      </div>
+    );
+  }
+
   if (!catData && !loading && !isShopAll) return null;
 
   const showFullSkeleton = loading && products.length === 0;

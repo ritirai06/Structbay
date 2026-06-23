@@ -8,9 +8,9 @@
 }
 
 /* All UI boxes — square; keep intentional circles (avatars, spinners, slider thumbs) */
-.sb-storefront *:not(.rounded-full):not(.animate-spin):not(.sf-dual-range):not(.sf-range-single) {
-  border-radius: 0 !important;
-}
+/* .sb-storefront *:not(.rounded-full):not(.animate-spin):not(.sf-dual-range):not(.sf-range-single) {
+
+} */
 
 .sb-storefront .sf-dual-range::-webkit-slider-thumb {
   border-radius: 50% !important;

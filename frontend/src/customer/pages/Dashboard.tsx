@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { api } from "../lib/api";
+import { useBulkEnquiryModal } from "../context/BulkEnquiryModalContext";
 import { openOrderInvoices } from "../lib/orderInvoices";
 import { canCustomerCancelOrder } from "../lib/orderEligibility";
 import { clearCustomerSession } from "../lib/authStorage";
@@ -185,6 +186,7 @@ function DashboardHome({ user, setActive, orders, stats, savedAddrCount }: {
   const rfqs = stats?.rfqs ?? 0;
   const bulkEnquiries = stats?.bulkEnquiries ?? 0;
   const addressCount = stats?.savedAddresses ?? savedAddrCount;
+  const { openBulkEnquiry } = useBulkEnquiryModal();
 
   const widgets = [
     { label: "Total Orders",   value: String(totalOrders),    icon: Package,    accent: "bg-[#E85A00]/12", iconColor: "text-[#E85A00]" },
@@ -198,7 +200,7 @@ function DashboardHome({ user, setActive, orders, stats, savedAddrCount }: {
   const quickActions = [
     { label: "Shop Materials",   icon: ShoppingBag,   to: "/shop",     color: "bg-[#E85A00]", solid: true },
     { label: "Browse Categories",icon: ClipboardList, to: "/shop", color: "bg-[#E85A00]", solid: true },
-    { label: "Bulk Enquiry",     icon: MessageSquare, to: "/bulk-enquiry", color: "bg-black", solid: true },
+    { label: "Bulk Enquiry",     icon: MessageSquare, onClick: openBulkEnquiry, color: "bg-black", solid: true },
     { label: "Concrete RFQ",     icon: Zap,           to: "/rfq",      color: "bg-[#CC4E00]", solid: true },
     { label: "My Orders",        icon: Package,       onClick: () => setActive("orders"), color: "bg-white border-2 border-[#E85A00]", solid: false },
     { label: "Download Invoices",icon: Download,      onClick: () => setActive("invoices"), color: "bg-white border-2 border-gray-200", solid: false },

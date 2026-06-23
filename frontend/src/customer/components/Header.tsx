@@ -151,6 +151,77 @@ export function Header() {
   const searchRef = useRef<HTMLDivElement>(null);
   const userRef   = useRef<HTMLDivElement>(null);
 
+  const headerRef = useRef<HTMLElement>(null);
+  const marqueeRef = useRef<HTMLDivElement>(null);
+  const [headerVisible, setHeaderVisible] = useState(true);
+  
+  const marqueeHeightRef = useRef(0);
+  const totalHeightRef = useRef(0);
+  const prevScrollY = useRef(0);
+
+  const updateHeights = useCallback(() => {
+    if (marqueeRef.current) {
+      marqueeHeightRef.current = marqueeRef.current.offsetHeight;
+      document.documentElement.style.setProperty(
+        "--sf-marquee-height",
+        `${marqueeRef.current.offsetHeight}px`
+      );
+    }
+    if (headerRef.current) {
+      totalHeightRef.current = headerRef.current.offsetHeight;
+      document.documentElement.style.setProperty(
+        "--sf-total-height",
+        `${headerRef.current.offsetHeight}px`
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    updateHeights();
+    window.addEventListener("resize", updateHeights);
+    return () => window.removeEventListener("resize", updateHeights);
+  }, [updateHeights]);
+
+  useEffect(() => {
+    updateHeights();
+  }, [searchOpen, searchFocused, updateHeights]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      const direction = currentScrollY > prevScrollY.current ? "down" : "up";
+      const marqueeHeight = marqueeHeightRef.current || 32;
+
+      if (currentScrollY <= marqueeHeight) {
+        setHeaderVisible(true);
+      } else if (direction === "down") {
+        setHeaderVisible(false);
+      } else if (direction === "up") {
+        setHeaderVisible(true);
+      }
+
+      prevScrollY.current = currentScrollY;
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const marqueeHeight = marqueeHeightRef.current || 32;
+    const totalHeight = totalHeightRef.current || 120;
+
+    let stickyOffset = 20;
+    if (headerVisible) {
+      stickyOffset = totalHeight + 20;
+    } else {
+      stickyOffset = marqueeHeight + 20;
+    }
+
+    document.documentElement.style.setProperty("--sf-chrome-sticky", `${stickyOffset}px`);
+  }, [headerVisible, searchOpen, searchFocused, updateHeights]);
+
+
   const contextualNotices = useMemo(
     () =>
       buildContextualNotices({
@@ -328,22 +399,25 @@ export function Header() {
       />
 
       {/* ── Reference storefront header ─────────────────────────────────── */}
-      <header className="sf-header">
-        {promoEnabled && topBarText ? (
-          <div className="sf-announce" style={{ background: topBarBg, color: topBarTextColor }}>
-            {topBarText}
-          </div>
-        ) : (
-          <div className="sf-announce flex items-center justify-center gap-3">
-            <ChevronLeft className="w-3.5 h-3.5 opacity-50 shrink-0" aria-hidden />
-            <div className="flex-1 min-w-0 overflow-hidden">
-              <TopMarquee segments={marqueeFromCms} />
+      <header ref={headerRef} className="sf-header">
+        <div ref={marqueeRef} className="sf-marquee-wrapper">
+          {promoEnabled && topBarText ? (
+            <div className="sf-announce" style={{ background: topBarBg, color: topBarTextColor }}>
+              {topBarText}
             </div>
-            <ChevronRight className="w-3.5 h-3.5 opacity-50 shrink-0" aria-hidden />
-          </div>
-        )}
+          ) : (
+            <div className="sf-announce flex items-center justify-center gap-3">
+              <ChevronLeft className="w-3.5 h-3.5 opacity-50 shrink-0" aria-hidden />
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <TopMarquee segments={marqueeFromCms} />
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 opacity-50 shrink-0" aria-hidden />
+            </div>
+          )}
+        </div>
 
-        <div className="sf-header-main">
+        <div className={`sf-header-content ${headerVisible ? "" : "sf-header-content--hidden"}`}>
+          <div className="sf-header-main">
           <button
             onClick={() => setMenuOpen(true)}
             className="lg:hidden p-2 text-white/80 hover:text-white"
@@ -628,6 +702,7 @@ export function Header() {
             </form>
           </div>
         )}
+        </div>
       </header>
 
       <FloatingCityPill onChangeCity={() => setCityModalOpen(true)} />

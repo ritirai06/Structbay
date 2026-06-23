@@ -20,9 +20,11 @@ import {
   UtilitySectionLabel,
 } from "../components/UtilityPageLayout";
 import { useCmsPageSeo } from "../hooks/useCmsPageSeo";
+import { useBulkEnquiryModal } from "../context/BulkEnquiryModalContext";
 
 export function ToolsQuantityEstimator() {
   useCmsPageSeo("cement-calculator");
+  const { openBulkEnquiry } = useBulkEnquiryModal();
 
   const [lengthM, setLengthM] = useState("10");
   const [widthM, setWidthM] = useState("5");
@@ -183,9 +185,13 @@ export function ToolsQuantityEstimator() {
                   <Package aria-hidden />
                   Shop cement
                 </Link>
-                <Link to="/bulk-enquiry" className="sf-utility-btn-secondary">
+                <button
+                  type="button"
+                  onClick={() => openBulkEnquiry()}
+                  className="sf-utility-btn-secondary"
+                >
                   Bulk order enquiry
-                </Link>
+                </button>
                 <Link to="/rfq" className="sf-utility-btn-secondary">
                   Concrete RFQ
                 </Link>

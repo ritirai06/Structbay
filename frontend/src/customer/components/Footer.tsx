@@ -38,11 +38,11 @@ export function Footer() {
 
   return (
     <footer className="sf-footer mt-0">
-      <div className="relative max-w-6xl mx-auto px-4 py-14">
+      <div className="relative max-w-7xl mx-auto px-5 lg:px-6 py-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           {/* Brand */}
           <div>
-            <img src={logoImg} alt="StructBay" className="h-14 w-auto object-contain mb-4" />
+            <img src={logoImg} alt="StructBay" className="h-24 w-auto object-contain mb-4" />
             <p className="text-sm text-white/75 leading-relaxed">{cms.companyDescription}</p>
           </div>
 
@@ -110,7 +110,7 @@ export function Footer() {
           </div>
         </div>
 
-        <hr className="border-white/10 my-10" />
+        <hr className="border-white/10 my-5" />
 
         <p className="text-center text-xs text-white/45">{cms.copyrightText}</p>
       </div>

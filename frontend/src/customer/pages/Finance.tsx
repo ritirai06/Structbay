@@ -54,7 +54,7 @@ export function Finance() {
           projectLocation: form.location.trim(),
           loanAmountRequired,
           projectValue: form.projectValue.trim() || undefined,
-          remarks: "Builder finance — submitted via storefront",
+          remarks: "StructBay finance — submitted via storefront",
         }),
       });
       const text = await res.text();
@@ -105,12 +105,12 @@ export function Finance() {
 
   return (
     <UtilityPage width="medium">
-      <UtilityBreadcrumb items={[{ label: "Home", to: "/" }, { label: "Builder finance" }]} />
+      <UtilityBreadcrumb items={[{ label: "Home", to: "/" }, { label: "StructBay finance" }]} />
 
       <UtilityHero
         variant="brand"
         icon={TrendingUp}
-        title="Builder finance"
+        title="StructBay finance"
         description="Construction finance up to ₹5 Crore. Fast approval, competitive rates, and flexible repayment for builders and developers across South India."
         features={["Up to ₹5 Cr", "From 10.5% interest", "48-hour approval"]}
       />
@@ -132,7 +132,7 @@ export function Finance() {
       </div>
 
       <UtilityCard>
-        <h3 className="font-semibold text-foreground mb-5 text-sm uppercase tracking-wider">Apply for builder finance</h3>
+        <h3 className="font-semibold text-foreground mb-5 text-sm uppercase tracking-wider">Apply for StructBay finance</h3>
         {error && (
           <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 mb-4">
             <AlertCircle className="w-4 h-4 shrink-0" />

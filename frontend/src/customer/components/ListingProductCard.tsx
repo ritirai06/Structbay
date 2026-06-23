@@ -44,6 +44,7 @@ type Props = {
     image: string;
   }) => void;
   onUpdateQty: (delta: number) => void;
+  simple?: boolean;
 };
 
 export function ListingProductCard({
@@ -55,6 +56,7 @@ export function ListingProductCard({
   cartLine,
   onAdd,
   onUpdateQty,
+  simple = false,
 }: Props) {
   const slug = product.slug || product._id || product.id;
   const isVariant = isVariantProduct(product);
@@ -219,7 +221,7 @@ export function ListingProductCard({
       </Link>
 
       <div className="sf-listing-card__body">
-        {showAssured && (
+        {!simple && showAssured && (
           <div className="sf-listing-card__assured">
             <Shield className="w-3.5 h-3.5 text-[#E85A00]" aria-hidden />
             <span>StructBay Assured</span>
@@ -233,7 +235,7 @@ export function ListingProductCard({
           ) : null}
         </Link>
 
-        {brandName && <p className="sf-listing-card__brand">{brandName}</p>}
+        {!simple && brandName && <p className="sf-listing-card__brand">{brandName}</p>}
 
         <div className="sf-listing-card__price-row">
           <span className="sf-listing-card__price">₹{Number(displayUnit).toLocaleString("en-IN")}</span>
@@ -243,15 +245,17 @@ export function ListingProductCard({
             </span>
           )}
         </div>
-        <p className="sf-listing-card__price-meta">
-          {displayPriceMeta(product, effectiveQty > 1 ? `qty ${effectiveQty}` : undefined)}
-        </p>
-        <ProductAvailabilityBadge info={availability} />
-        {Number(selectedVar?.moq) > 1 && (
+        {!simple && (
+          <p className="sf-listing-card__price-meta">
+            {displayPriceMeta(product, effectiveQty > 1 ? `qty ${effectiveQty}` : undefined)}
+          </p>
+        )}
+        {!simple && <ProductAvailabilityBadge info={availability} />}
+        {!simple && Number(selectedVar?.moq) > 1 && (
           <p className="sf-listing-card__moq">Min order: {selectedVar.moq} units</p>
         )}
 
-        {isVariant && variations.length > 1 && (
+        {!simple && isVariant && variations.length > 1 && (
           <label className="sf-listing-card__field">
             <span className="sf-listing-card__field-label">
               {axes.length === 1 ? axes[0].label : axes.length > 1 ? "Select option" : "Size / pack"}
@@ -275,22 +279,22 @@ export function ListingProductCard({
           </label>
         )}
 
-        {showExpress && (
+        {!simple && showExpress && (
           <p className="sf-listing-card__express">
             <Zap className="w-3 h-3" aria-hidden /> Express delivery
             {city ? ` · ${city}` : ""}
           </p>
         )}
 
-        <p className="sf-listing-card__policy">7 day replacement · GST invoice</p>
+        {!simple && <p className="sf-listing-card__policy">7 day replacement · GST invoice</p>}
 
-        {bulkApplied && bulkFrom != null && bulkFrom < baseUnit && (
+        {!simple && bulkApplied && bulkFrom != null && bulkFrom < baseUnit && (
           <p className="sf-listing-card__bulk-applied">
             Bulk price applied · ₹{displayBulkFrom?.toLocaleString("en-IN")}/unit
           </p>
         )}
 
-        {!bulkApplied && bulkFrom != null && bulkFrom < baseUnit && (
+        {!simple && !bulkApplied && bulkFrom != null && bulkFrom < baseUnit && (
           <button type="button" className="sf-listing-card__bulk-hint" onClick={handleUnlockBulk}>
             Unlock bulk prices from ₹{displayBulkFrom?.toLocaleString("en-IN")}
             {bulkMinQty && bulkMinQty > 1 ? ` (${bulkMinQty}+ ${product.unit || "units"})` : ""}
@@ -310,8 +314,7 @@ export function ListingProductCard({
                 </button>
               </div>
               <span className="sf-listing-card__add sf-listing-card__add--added" aria-live="polite">
-                <Check className="w-3.5 h-3.5 shrink-0" aria-hidden />
-                Added
+                Add
               </span>
             </>
           ) : (
