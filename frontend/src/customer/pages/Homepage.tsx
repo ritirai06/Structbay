@@ -12,6 +12,7 @@ import {
   Phone, Mail, MessageSquare, User,
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
+import { useBulkEnquiryModal } from "../context/BulkEnquiryModalContext";
 import { api } from "../lib/api";
 import { fetchNavCategories } from "../lib/navCategories";
 import { pricingSnapshotFromProduct, resolveUnitPriceFromSnapshot, listingUnitPrice } from "../lib/wholesalePricing";
@@ -21,6 +22,7 @@ import {
   loadHomepageProducts,
 } from "../lib/homepageCatalog";
 import { TopSellingProductsCarousel } from "../components/TopSellingProductsCarousel";
+import { ListingProductCard } from "../components/ListingProductCard";
 import { FeaturedBrandsMarquee } from "../components/FeaturedBrandsMarquee";
 import { productHref } from "../lib/productRoutes";
 import { isVariantProduct, validateCartLine } from "../lib/productStructure";
@@ -850,7 +852,9 @@ function ProductCard({ product, compact = false }: { product: any; compact?: boo
 // ── Main ─────────────────────────────────────────────────────────────────────
 export function Homepage() {
   useCmsPageSeo("home");
-  const { city, cityId } = useApp();
+  const { city, cityId, cart, addToCart, updateQty } = useApp();
+  const { openBulkEnquiry } = useBulkEnquiryModal();
+  const [varChoice, setVarChoice] = useState<Record<string, string>>({});
 
   const [banners, setBanners]           = useState<any[]>([]);
   const [categories, setCategories]     = useState<any[]>([]);
@@ -1122,8 +1126,8 @@ export function Homepage() {
 
  {/* ── Featured brands (logo carousel) ─────────────────────────────────── */}
       {(catalogLoading || brands.length > 0) && (
-        <section className="sf-brands-section py-16 sm:py-20 px-3 sm:px-5 lg:px-6 xl:px-8 border-y border-[#E85A00]/15" aria-label="Featured brands">
-          <div className="max-w-screen-2xl mx-auto w-full">
+        <section className="sf-brands-section py-16 sm:py-20 border-y border-[#E85A00]/15" aria-label="Featured brands">
+          <div className="max-w-7xl mx-auto px-5 lg:px-6 w-full">
             <div className="text-center mb-10 sm:mb-12">
               <h2 className="text-sb-ink">Featured Brands</h2>
               <p className="sf-brands-section__subtitle text-sm sm:text-base mt-2 max-w-2xl mx-auto">
@@ -1140,7 +1144,7 @@ export function Homepage() {
       )}
       
       {/* ── Why StructBay? ─────────────────────────────────────────────────── */}
-      <section className="sf-dot-grid border-y border-black/8 py-14 px-4">
+      <section className="sf-dot-grid border-y border-black/8 py-14 px-5 lg:px-6">
         <div className="max-w-5xl mx-auto text-center mb-10">
           <h2 className="text-sb-ink text-3xl font-black mb-3">Why Choose StructBay?</h2>
           <p className="text-sb-ink-muted/70 text-sm leading-relaxed max-w-2xl mx-auto mb-6">
@@ -1171,8 +1175,8 @@ export function Homepage() {
 
       {/* ── Top Selling Products ───────────────────────────────────────────── */}
       {(catalogLoading || topProducts.length > 0) && (
-        <section className="sf-dot-grid py-16 px-3 sm:px-5 lg:px-6 xl:px-8" aria-label="Top selling products">
-          <div className="max-w-screen-2xl mx-auto w-full">
+        <section className="sf-dot-grid py-16 px-5 lg:px-6" aria-label="Top selling products">
+          <div className="max-w-7xl mx-auto w-full">
             <div className="text-center mb-11 sm:mb-12">
               <h2 className="text-sb-ink">Top Selling Products</h2>
               <p className="text-sb-ink-muted/60 text-sm mt-1">
@@ -1184,7 +1188,47 @@ export function Homepage() {
             ) : (
               <TopSellingProductsCarousel
                 products={topProducts}
-                renderProduct={(p) => <ProductCard product={p} compact />}
+                renderProduct={(p) => {
+                  const slug = p.slug || p._id || p.id;
+                  const selVid = varChoice[slug] || (p.variations?.[0]?._id ? String(p.variations[0]._id) : "");
+                  const cartId = `${slug}::${selVid || "base"}`;
+                  const cartLine = cart.find((item) => item.id === cartId);
+                  const brandName = p.brand?.name || p.brand || "";
+
+                  return (
+                    <ListingProductCard
+                      simple={true}
+                      product={p}
+                      categoryFilters={[]}
+                      city={city}
+                      selectedVariationId={selVid}
+                      onVariationChange={(vid) => setVarChoice((v) => ({ ...v, [slug]: vid }))}
+                      cartLine={cartLine}
+                      onAdd={({ qty, variationId, variationLabel, unitPrice, pricingSnapshot, image }) => {
+                        const id = `${slug}::${variationId || "base"}`;
+                        addToCart({
+                          id,
+                          productSlug: slug,
+                          variationId,
+                          variationLabel,
+                          name: p.name,
+                          brand: brandName,
+                          price: unitPrice,
+                          qty,
+                          unit: p.unit || "unit",
+                          image,
+                          pricingSnapshot: pricingSnapshot || undefined,
+                          gstPercentage: Number.isFinite(Number(p.gstPercentage))
+                            ? Number(p.gstPercentage)
+                            : 18,
+                        });
+                      }}
+                      onUpdateQty={(delta) => {
+                        if (cartLine) updateQty(cartId, cartLine.qty + delta);
+                      }}
+                    />
+                  );
+                }}
               />
             )}
           </div>
@@ -1195,7 +1239,7 @@ export function Homepage() {
 
       {/* ── CTA Banners Row ────────────────────────────────────────────────── */}
       <section
-        className={`max-w-7xl mx-auto px-4 py-12 grid gap-5 ${showHomeFinance ? "md:grid-cols-3" : "md:grid-cols-2"}`}
+        className={`max-w-7xl mx-auto px-5 lg:px-6 py-12 grid gap-5 ${showHomeFinance ? "md:grid-cols-3" : "md:grid-cols-2"}`}
       >
         <div className="bg-white border border-black/10 rounded-2xl p-6 flex flex-col justify-between hover:border-[#E85A00]/40 transition-colors shadow-sm">
           <div>
@@ -1203,9 +1247,13 @@ export function Homepage() {
             <h3 className="text-sb-ink mb-2">Bulk Orders</h3>
             <p className="text-sb-ink-muted/60 text-sm">Get exclusive pricing for orders above 100 MT. Dedicated account manager included.</p>
           </div>
-          <Link to="/bulk-enquiry" className="mt-5 inline-flex items-center gap-2 bg-[#E85A00] hover:bg-[#CC4E00] text-sb-on-orange px-4 py-2.5 rounded-xl text-sm font-bold transition-colors">
+          <button
+            type="button"
+            onClick={() => openBulkEnquiry()}
+            className="mt-5 inline-flex items-center gap-2 bg-[#E85A00] hover:bg-[#CC4E00] text-sb-on-orange px-4 py-2.5 rounded-xl text-sm font-bold transition-colors justify-center w-full"
+          >
             Request Bulk Pricing <ArrowRight className="w-4 h-4" />
-          </Link>
+          </button>
         </div>
         <div className="bg-white border border-black/10 rounded-2xl p-6 flex flex-col justify-between hover:border-[#E85A00]/40 transition-colors shadow-sm">
           <div>
@@ -1238,7 +1286,7 @@ export function Homepage() {
 
       {/* ── Blog ───────────────────────────────────────────────────────────── */}
       {blogs.length > 0 && (
-        <section className="sf-dot-grid max-w-7xl mx-auto px-4 py-12">
+        <section className="sf-dot-grid max-w-7xl mx-auto px-5 lg:px-6 py-12">
           <div className="flex items-center justify-between mb-7">
             <div>
               <h2 className="text-sb-ink">Construction Guides & Insights</h2>
@@ -1276,7 +1324,7 @@ export function Homepage() {
 
       {/* ── Testimonials ───────────────────────────────────────────────────── */}
       {testimonials.length > 0 && (
-        <section className="sf-dot-grid border-y border-black/8 py-14 px-4">
+        <section className="sf-dot-grid border-y border-black/8 py-14 px-5 lg:px-6">
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-10">
               <h2 className="text-sb-ink">What Our Customers Say</h2>
@@ -1303,7 +1351,7 @@ export function Homepage() {
       )}
 
       {/* ── Contact Us (footer CMS) ────────────────────────────────────────── */}
-      <section className="sf-dot-grid py-20 px-4" id="contact">
+      <section className="sf-dot-grid py-20 px-5 lg:px-6" id="contact">
         <div className="sf-section-heading">
           <h2>Contact Us</h2>
           <p className="sf-sub">Keep In Touch</p>

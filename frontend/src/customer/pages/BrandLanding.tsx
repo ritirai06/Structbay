@@ -8,7 +8,8 @@ import { productHref } from "../lib/productRoutes";
 import { isVariantProduct, validateCartLine } from "../lib/productStructure";
 
 export function BrandLanding() {
-  const { brand: brandSlug } = useParams<{ brand: string }>();
+  const params = useParams();
+  const brandSlug = params.slug || params.brand;
   const { addToCart, city, cityId } = useApp();
   const navigate = useNavigate();
 
@@ -32,7 +33,10 @@ export function BrandLanding() {
   }, [brandSlug]);
 
   useEffect(() => {
-    if (!brandSlug) return;
+    if (!brandSlug) {
+      navigate("/shop", { replace: true });
+      return;
+    }
     setLoading(true);
     const cid = cityId || undefined;
     const params: Record<string, string> = { page: String(page), limit: "24" };
