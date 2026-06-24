@@ -306,15 +306,15 @@ export function ListingProductCard({
             <>
               <div className="sf-listing-card__qty sf-listing-card__qty--active">
                 <button type="button" aria-label="Decrease" onClick={() => onUpdateQty(-1)}>
-                  <Minus className="w-4 h-4" />
+                  <Minus className="w-3.5 h-3.5" />
                 </button>
                 <span>{cartLine.qty}</span>
                 <button type="button" aria-label="Increase" onClick={() => onUpdateQty(1)}>
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-3.5 h-3.5" />
                 </button>
               </div>
               <span className="sf-listing-card__add sf-listing-card__add--added" aria-live="polite">
-                Add
+                Added
               </span>
             </>
           ) : (

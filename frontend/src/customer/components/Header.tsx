@@ -3,7 +3,7 @@ import { NavLink, Link, useNavigate, useLocation } from "react-router";
 import {
   Search, User, MapPin, ChevronDown, Menu, X,
   Bell, LogOut, Phone, FileText, TrendingUp, ChevronRight, ChevronLeft,
-  Zap,
+  Zap, ShoppingCart,
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { api } from "../lib/api";
@@ -418,268 +418,327 @@ export function Header() {
 
         <div className={`sf-header-content ${headerVisible ? "" : "sf-header-content--hidden"}`}>
           <div className="sf-header-main">
-          <button
-            onClick={() => setMenuOpen(true)}
-            className="lg:hidden p-2 text-white/80 hover:text-white"
-            aria-label="Open menu"
-          >
-            <Menu className="w-6 h-6" />
-          </button>
-
-          <Link to="/" className="shrink-0 sf-header-logo-link">
-            <img src={logoImg} alt="StructBay" className="sf-header-logo" />
-          </Link>
-
-          <nav className="sf-nav" aria-label="Main">
-            <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>Home</NavLink>
-            <DropdownMenu open={catOpen} onOpenChange={setCatOpen}>
-              <DropdownMenuTrigger asChild>
-                <button type="button" className="sf-nav-shop" aria-expanded={catOpen}>
-                  Shop <ChevronDown className={`w-3.5 h-3.5 transition-transform ${catOpen ? "rotate-180" : ""}`} />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="center"
-                side="bottom"
-                sideOffset={8}
-                collisionPadding={12}
-                className="sf-shop-dropdown w-56 max-h-[min(70vh,420px)] overflow-y-auto rounded-lg shadow-2xl z-[60] p-0 py-1.5 bg-white border border-gray-200 text-gray-800"
+            {/* Desktop & Tablet Header (Visible on md and up: >= 768px) */}
+            <div className="hidden md:flex items-center justify-between w-full gap-4">
+              <button
+                onClick={() => setMenuOpen(true)}
+                className="lg:hidden p-2 text-white/80 hover:text-white"
+                aria-label="Open menu"
               >
-                <DropdownMenuItem asChild className="p-0 rounded-none focus:bg-transparent">
-                  <Link
-                    to="/shop"
-                    onClick={() => setCatOpen(false)}
-                    className="sf-shop-dropdown__all px-4 py-2.5 cursor-pointer"
-                  >
-                    All Categories <ChevronRight className="w-3.5 h-3.5" />
-                  </Link>
-                </DropdownMenuItem>
-                {categories.map((cat) => (
-                  <DropdownMenuItem key={cat.slug} asChild className="p-0 rounded-none focus:bg-orange-50">
-                    <NavLink
-                      to={`/category/${cat.slug}`}
-                      onClick={() => {
-                        setCatOpen(false);
-                        signalSandAggregatesQuoteOpen(cat);
-                      }}
-                      className="block w-full px-4 py-2.5 hover:bg-orange-50 cursor-pointer"
-                    >
-                      {cat.name}
-                    </NavLink>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Link to="/blogs">Blog</Link>
-            <a href="/#about">About Us</a>
-            <a href="/#contact">Contact Us</a>
-          </nav>
-
-          <div className="sf-header-actions">
-            {/* Search (Mobile/Tablet) */}
-            <button type="button" onClick={() => setSearchOpen((v) => !v)} className="hidden sm:flex p-2 text-white hover:text-sb-orange transition-colors" aria-label="Search">
-              <Search className="w-5 h-5" />
-            </button>
-
-            {/* Desktop Actions (Hidden on smaller screens) */}
-            <Link to="/tools/cement-calculator" className="sf-btn-outline hidden lg:inline-flex">
-              Cement Calc
-            </Link>
-            <button
-              type="button"
-              onClick={() => openBulkEnquiry()}
-              className="sf-btn-outline hidden md:inline-flex"
-            >
-              Bulk Order
-            </button>
-            <NavLink to="/cart" className="sf-btn-outline relative hidden md:inline-flex">
-              View Cart &gt;&gt;
-              {cartCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[1.1rem] h-[1.1rem] rounded-full bg-sb-orange text-white text-[10px] font-bold flex items-center justify-center px-0.5">{cartCount}</span>
-              )}
-            </NavLink>
-
-            {/* Quick Actions Dropdown (Mobile only) */}
-            <div className="md:hidden">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="sf-btn-outline inline-flex px-3" aria-label="Quick Actions">
-                    <Zap className="w-4 h-4 text-sb-orange" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48 bg-white border border-gray-100 shadow-xl rounded-xl p-1 z-50">
-                  <DropdownMenuItem asChild className="rounded-lg hover:bg-orange-50 focus:bg-orange-50 cursor-pointer">
-                    <Link to="/tools/cement-calculator" className="flex items-center w-full px-3 py-2 text-sm text-gray-800">
-                      Cement Calculator
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild className="rounded-lg hover:bg-orange-50 focus:bg-orange-50 cursor-pointer">
-                    <button onClick={() => openBulkEnquiry()} className="flex items-center w-full px-3 py-2 text-sm text-gray-800">
-                      Bulk Order
-                    </button>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild className="rounded-lg hover:bg-orange-50 focus:bg-orange-50 cursor-pointer">
-                    <Link to="/cart" className="flex items-center justify-between w-full px-3 py-2 text-sm text-gray-800">
-                      <span>View Cart</span>
-                      {cartCount > 0 && (
-                        <span className="bg-sb-orange text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{cartCount}</span>
-                      )}
-                    </Link>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            <div className="relative hidden lg:block" ref={userRef}>
-              <button type="button" onClick={() => setUserOpen((v) => !v)} className="p-2 text-white/80 hover:text-white" aria-label="Account">
-                <User className="w-5 h-5" />
+                <Menu className="w-6 h-6" />
               </button>
-              {userOpen && (
-                <div className="absolute right-0 top-full mt-2 rounded-lg shadow-2xl w-52 z-50 py-1.5 bg-white border border-gray-200">
-                  {isLoggedIn ? (
-                    <>
-                      <NavLink to="/dashboard" onClick={() => setUserOpen(false)} className="block px-4 py-2.5 text-sm text-gray-800 hover:bg-gray-50">My Dashboard</NavLink>
-                      <button type="button" onClick={() => { clearCustomerSession(); setUser(null); setIsLoggedIn(false); setUserOpen(false); }} className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-gray-800 hover:bg-gray-50">
-                        <LogOut className="w-4 h-4" /> Logout
+
+              <Link to="/" className="shrink-0 sf-header-logo-link">
+                <img src={logoImg} alt="StructBay" className="sf-header-logo" />
+              </Link>
+
+              <nav className="sf-nav" aria-label="Main">
+                <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>Home</NavLink>
+                <DropdownMenu open={catOpen} onOpenChange={setCatOpen}>
+                  <DropdownMenuTrigger asChild>
+                    <button type="button" className="sf-nav-shop" aria-expanded={catOpen}>
+                      Shop <ChevronDown className={`w-3.5 h-3.5 transition-transform ${catOpen ? "rotate-180" : ""}`} />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="center"
+                    side="bottom"
+                    sideOffset={8}
+                    collisionPadding={12}
+                    className="sf-shop-dropdown w-56 max-h-[min(70vh,420px)] overflow-y-auto rounded-lg shadow-2xl z-[60] p-0 py-1.5 bg-white border border-gray-200 text-gray-800"
+                  >
+                    <DropdownMenuItem asChild className="p-0 rounded-none focus:bg-transparent">
+                      <Link
+                        to="/shop"
+                        onClick={() => setCatOpen(false)}
+                        className="sf-shop-dropdown__all px-4 py-2.5 cursor-pointer"
+                      >
+                        All Categories <ChevronRight className="w-3.5 h-3.5" />
+                      </Link>
+                    </DropdownMenuItem>
+                    {categories.map((cat) => (
+                      <DropdownMenuItem key={cat.slug} asChild className="p-0 rounded-none focus:bg-orange-50">
+                        <NavLink
+                          to={`/category/${cat.slug}`}
+                          onClick={() => {
+                            setCatOpen(false);
+                            signalSandAggregatesQuoteOpen(cat);
+                          }}
+                          className="block w-full px-4 py-2.5 hover:bg-orange-50 cursor-pointer"
+                        >
+                          {cat.name}
+                        </NavLink>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Link to="/blogs">Blog</Link>
+                <a href="/#about">About Us</a>
+                <a href="/#contact">Contact Us</a>
+              </nav>
+
+              <div className="sf-header-actions">
+                {/* Search (Mobile/Tablet) */}
+                <button type="button" onClick={() => setSearchOpen((v) => !v)} className="hidden sm:flex p-2 text-white hover:text-sb-orange transition-colors" aria-label="Search">
+                  <Search className="w-5 h-5" />
+                </button>
+
+                {/* Desktop Actions (Hidden on smaller screens) */}
+                <Link to="/tools/cement-calculator" className="sf-btn-outline hidden lg:inline-flex">
+                  Cement Calc
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => openBulkEnquiry()}
+                  className="sf-btn-outline hidden md:inline-flex"
+                >
+                  Bulk Order
+                </button>
+                <NavLink to="/cart" className="sf-btn-outline relative hidden md:inline-flex">
+                  View Cart &gt;&gt;
+                  {cartCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[1.1rem] h-[1.1rem] rounded-full bg-sb-orange text-white text-[10px] font-bold flex items-center justify-center px-0.5">{cartCount}</span>
+                  )}
+                </NavLink>
+
+                {/* Quick Actions Dropdown (Mobile only) */}
+                <div className="md:hidden">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="sf-btn-outline inline-flex px-3" aria-label="Quick Actions">
+                        <Zap className="w-4 h-4 text-sb-orange" />
                       </button>
-                    </>
-                  ) : (
-                    <>
-                      <NavLink to="/login" onClick={() => setUserOpen(false)} className="block px-4 py-2.5 text-sm text-gray-800 hover:bg-gray-50">Login</NavLink>
-                      <NavLink to="/register" onClick={() => setUserOpen(false)} className="block px-4 py-2.5 text-sm text-gray-800 hover:bg-gray-50">Register</NavLink>
-                    </>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48 bg-white border border-gray-100 shadow-xl rounded-xl p-1 z-50">
+                      <DropdownMenuItem asChild className="rounded-lg hover:bg-orange-50 focus:bg-orange-50 cursor-pointer">
+                        <Link to="/tools/cement-calculator" className="flex items-center w-full px-3 py-2 text-sm text-gray-800">
+                          Cement Calculator
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild className="rounded-lg hover:bg-orange-50 focus:bg-orange-50 cursor-pointer">
+                        <button onClick={() => openBulkEnquiry()} className="flex items-center w-full px-3 py-2 text-sm text-gray-800">
+                          Bulk Order
+                        </button>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild className="rounded-lg hover:bg-orange-50 focus:bg-orange-50 cursor-pointer">
+                        <Link to="/cart" className="flex items-center justify-between w-full px-3 py-2 text-sm text-gray-800">
+                          <span>View Cart</span>
+                          {cartCount > 0 && (
+                            <span className="bg-sb-orange text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{cartCount}</span>
+                          )}
+                        </Link>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <div className="relative hidden lg:block" ref={userRef}>
+                  <button type="button" onClick={() => setUserOpen((v) => !v)} className="p-2 text-white/80 hover:text-white" aria-label="Account">
+                    <User className="w-5 h-5" />
+                  </button>
+                  {userOpen && (
+                    <div className="absolute right-0 top-full mt-2 rounded-lg shadow-2xl w-52 z-50 py-1.5 bg-white border border-gray-200">
+                      {isLoggedIn ? (
+                        <>
+                          <NavLink to="/dashboard" onClick={() => setUserOpen(false)} className="block px-4 py-2.5 text-sm text-gray-800 hover:bg-gray-50">My Dashboard</NavLink>
+                          <button type="button" onClick={() => { clearCustomerSession(); setUser(null); setIsLoggedIn(false); setUserOpen(false); }} className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-gray-800 hover:bg-gray-50">
+                            <LogOut className="w-4 h-4" /> Logout
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <NavLink to="/login" onClick={() => setUserOpen(false)} className="block px-4 py-2.5 text-sm text-gray-800 hover:bg-gray-50">Login</NavLink>
+                          <NavLink to="/register" onClick={() => setUserOpen(false)} className="block px-4 py-2.5 text-sm text-gray-800 hover:bg-gray-50">Register</NavLink>
+                        </>
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
-            </div>
-            <DropdownMenu open={notifOpen} onOpenChange={(open) => {
-                setNotifOpen(open);
-                if (open && isLoggedIn) void loadNotifications();
-              }}>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className="relative p-2 text-white/80 hover:text-white"
-                    aria-label="Notifications and updates"
-                  >
-                    <Bell className="w-5 h-5" />
-                    {isLoggedIn && unreadCount > 0 && (
-                      <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-sb-orange px-1 text-[10px] font-medium text-white">
-                        {unreadCount > 9 ? "9+" : unreadCount}
-                      </span>
-                    )}
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80 border-gray-200 bg-white p-0 text-black shadow-lg z-[70]">
-                  <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100">
-                    <div>
-                      <DropdownMenuLabel className="p-0 text-xs font-semibold text-black">
-                        {panelTitle}
-                      </DropdownMenuLabel>
-                      <p className="text-[10px] text-gray-400 mt-0.5">Updates for this page & city</p>
-                    </div>
-                    {isLoggedIn && unreadCount > 0 && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          void markAllNotificationsRead();
-                        }}
-                        className="text-[11px] font-medium text-[#E85A00] hover:underline shrink-0"
-                      >
-                        Mark all read
-                      </button>
-                    )}
-                  </div>
-                  <div className="max-h-80 overflow-y-auto">
-                    {cityNotices.length > 0 && (
-                      <div className="border-b border-gray-100">
-                        <p className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                          {city ? `${city}` : "Location"}
-                        </p>
-                        {cityNotices.map((n) => (
-                          <DropdownMenuItem
-                            key={n.id}
-                            className="flex cursor-pointer flex-col items-start gap-0.5 rounded-none border-b border-gray-50 px-3 py-2.5 hover:bg-gray-50 bg-sky-50/30"
-                            onSelect={() => openContextualNotice(n)}
-                          >
-                            <p className="text-sm font-medium text-black">{n.title}</p>
-                            <p className="text-xs text-gray-600 leading-snug">{n.message}</p>
-                          </DropdownMenuItem>
-                        ))}
-                      </div>
-                    )}
-                    {pageNotices.length > 0 && (
-                      <div className="border-b border-gray-100">
-                        <p className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                          This page
-                        </p>
-                        {pageNotices.map((n) => (
-                          <DropdownMenuItem
-                            key={n.id}
-                            className="flex cursor-pointer flex-col items-start gap-0.5 rounded-none border-b border-gray-50 px-3 py-2.5 hover:bg-gray-50"
-                            onSelect={() => openContextualNotice(n)}
-                          >
-                            <p className="text-sm font-medium text-black">{n.title}</p>
-                            <p className="text-xs text-gray-500 leading-snug">{n.message}</p>
-                          </DropdownMenuItem>
-                        ))}
-                      </div>
-                    )}
-                    {isLoggedIn && (
+                <DropdownMenu open={notifOpen} onOpenChange={(open) => {
+                    setNotifOpen(open);
+                    if (open && isLoggedIn) void loadNotifications();
+                  }}>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="relative p-2 text-white/80 hover:text-white"
+                      aria-label="Notifications and updates"
+                    >
+                      <Bell className="w-5 h-5" />
+                      {isLoggedIn && unreadCount > 0 && (
+                        <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-sb-orange px-1 text-[10px] font-medium text-white">
+                          {unreadCount > 9 ? "9+" : unreadCount}
+                        </span>
+                      )}
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-80 border-gray-200 bg-white p-0 text-black shadow-lg z-[70]">
+                    <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100">
                       <div>
-                        <p className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                          Your orders & alerts
-                        </p>
-                        {loadingNotifs && !notifications.length ? (
-                          <p className="px-3 py-4 text-center text-xs text-gray-400">Loading…</p>
-                        ) : notifications.length === 0 ? (
-                          <p className="px-3 py-4 text-center text-xs text-gray-400">No order alerts yet</p>
-                        ) : (
-                          notifications.map((n) => (
-                            <DropdownMenuItem
-                              key={n._id}
-                              className={`flex cursor-pointer flex-col items-start gap-0.5 rounded-none border-b border-gray-50 px-3 py-2.5 hover:bg-gray-50 ${!n.isRead ? "bg-orange-50/40" : ""}`}
-                              onSelect={() => openNotification(n)}
-                            >
-                              <div className="flex w-full items-start justify-between gap-2">
-                                <p className={`text-sm ${n.isRead ? "font-normal text-gray-800" : "font-medium text-black"}`}>
-                                  {n.title}
-                                </p>
-                                <span className="shrink-0 text-[10px] text-gray-400">{timeAgo(n.createdAt)}</span>
-                              </div>
-                              <p className="text-xs text-gray-500 line-clamp-2">{n.message}</p>
-                            </DropdownMenuItem>
-                          ))
-                        )}
+                        <DropdownMenuLabel className="p-0 text-xs font-semibold text-black">
+                          {panelTitle}
+                        </DropdownMenuLabel>
+                        <p className="text-[10px] text-gray-400 mt-0.5">Updates for this page & city</p>
                       </div>
+                      {isLoggedIn && unreadCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            void markAllNotificationsRead();
+                          }}
+                          className="text-[11px] font-medium text-[#E85A00] hover:underline shrink-0"
+                        >
+                          Mark all read
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-80 overflow-y-auto">
+                      {cityNotices.length > 0 && (
+                        <div className="border-b border-gray-100">
+                          <p className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                            {city ? `${city}` : "Location"}
+                          </p>
+                          {cityNotices.map((n) => (
+                            <DropdownMenuItem
+                              key={n.id}
+                              className="flex cursor-pointer flex-col items-start gap-0.5 rounded-none border-b border-gray-50 px-3 py-2.5 hover:bg-gray-50 bg-sky-50/30"
+                              onSelect={() => openContextualNotice(n)}
+                            >
+                              <p className="text-sm font-medium text-black">{n.title}</p>
+                              <p className="text-xs text-gray-600 leading-snug">{n.message}</p>
+                            </DropdownMenuItem>
+                          ))}
+                        </div>
+                      )}
+                      {pageNotices.length > 0 && (
+                        <div className="border-b border-gray-100">
+                          <p className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                            This page
+                          </p>
+                          {pageNotices.map((n) => (
+                            <DropdownMenuItem
+                              key={n.id}
+                              className="flex cursor-pointer flex-col items-start gap-0.5 rounded-none border-b border-gray-50 px-3 py-2.5 hover:bg-gray-50"
+                              onSelect={() => openContextualNotice(n)}
+                            >
+                              <p className="text-sm font-medium text-black">{n.title}</p>
+                              <p className="text-xs text-gray-500 leading-snug">{n.message}</p>
+                            </DropdownMenuItem>
+                          ))}
+                        </div>
+                      )}
+                      {isLoggedIn && (
+                        <div>
+                          <p className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                            Your orders & alerts
+                          </p>
+                          {loadingNotifs && !notifications.length ? (
+                            <p className="px-3 py-4 text-center text-xs text-gray-400">Loading…</p>
+                          ) : notifications.length === 0 ? (
+                            <p className="px-3 py-4 text-center text-xs text-gray-400">No order alerts yet</p>
+                          ) : (
+                            notifications.map((n) => (
+                              <DropdownMenuItem
+                                key={n._id}
+                                className={`flex cursor-pointer flex-col items-start gap-0.5 rounded-none border-b border-gray-50 px-3 py-2.5 hover:bg-gray-50 ${!n.isRead ? "bg-orange-50/40" : ""}`}
+                                onSelect={() => openNotification(n)}
+                              >
+                                <div className="flex w-full items-start justify-between gap-2">
+                                  <p className={`text-sm ${n.isRead ? "font-normal text-gray-800" : "font-medium text-black"}`}>
+                                    {n.title}
+                                  </p>
+                                  <span className="shrink-0 text-[10px] text-gray-400">{timeAgo(n.createdAt)}</span>
+                                </div>
+                                <p className="text-xs text-gray-500 line-clamp-2">{n.message}</p>
+                              </DropdownMenuItem>
+                            ))
+                          )}
+                        </div>
+                      )}
+                      {!isLoggedIn && (
+                        <p className="px-3 py-3 text-[11px] text-gray-500 border-t border-gray-100">
+                          <Link to="/login" className="text-[#E85A00] font-semibold hover:underline" onClick={() => setNotifOpen(false)}>
+                            Sign in
+                          </Link>{" "}
+                          for order confirmations and dispatch updates.
+                        </p>
+                      )}
+                    </div>
+                    {isLoggedIn && notifications.length > 0 && (
+                      <>
+                        <DropdownMenuSeparator className="bg-gray-100" />
+                        <DropdownMenuItem
+                          className="cursor-pointer justify-center py-2 text-xs font-medium text-[#E85A00] hover:bg-gray-50"
+                          onSelect={() => {
+                            setNotifOpen(false);
+                            navigate("/account/notifications");
+                          }}
+                        >
+                          View all alerts
+                        </DropdownMenuItem>
+                      </>
                     )}
-                    {!isLoggedIn && (
-                      <p className="px-3 py-3 text-[11px] text-gray-500 border-t border-gray-100">
-                        <Link to="/login" className="text-[#E85A00] font-semibold hover:underline" onClick={() => setNotifOpen(false)}>
-                          Sign in
-                        </Link>{" "}
-                        for order confirmations and dispatch updates.
-                      </p>
-                    )}
-                  </div>
-                  {isLoggedIn && notifications.length > 0 && (
-                    <>
-                      <DropdownMenuSeparator className="bg-gray-100" />
-                      <DropdownMenuItem
-                        className="cursor-pointer justify-center py-2 text-xs font-medium text-[#E85A00] hover:bg-gray-50"
-                        onSelect={() => {
-                          setNotifOpen(false);
-                          navigate("/account/notifications");
-                        }}
-                      >
-                        View all alerts
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-          </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+
+            {/* Mobile Responsive Header Layout (max-width: 767px) */}
+            <div className="flex md:hidden items-center justify-between w-full sf-header-mobile-wrapper">
+              {/* Left Section: StructBay Logo */}
+              <div className="flex items-center">
+                <Link to="/" className="shrink-0 flex items-center">
+                  <img src={logoImg} alt="StructBay" className="sf-header-mobile-logo" />
+                </Link>
+              </div>
+
+              {/* Center Section: Bulk Order Button */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => openBulkEnquiry()}
+                  className="sf-btn-outline-mobile"
+                >
+                  Bulk Order
+                </button>
+              </div>
+
+              {/* Right Section: Icons (Cart, Search, Hamburger) */}
+              <div className="flex items-center gap-1.5">
+                {/* Cart Icon with badge */}
+                <Link
+                  to="/cart"
+                  className="relative p-1.5 text-white hover:text-sb-orange transition-colors shrink-0 flex items-center justify-center"
+                  aria-label="Cart"
+                >
+                  <ShoppingCart className="w-[22px] h-[22px]" />
+                  <span className="sf-header-mobile-cart-badge">
+                    {cartCount}
+                  </span>
+                </Link>
+
+                {/* Search Icon */}
+                <button
+                  type="button"
+                  onClick={() => setSearchOpen((v) => !v)}
+                  className="p-1.5 text-white hover:text-sb-orange transition-colors shrink-0 flex items-center justify-center"
+                  aria-label="Search"
+                >
+                  <span className="text-[20px] leading-none select-none">🔍</span>
+                </button>
+
+                {/* Hamburger Menu Icon */}
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen(true)}
+                  className="p-1.5 text-white hover:text-sb-orange transition-colors shrink-0 flex items-center justify-center"
+                  aria-label="Open menu"
+                >
+                  <Menu className="w-6 h-6 text-white" />
+                </button>
+              </div>
+            </div>
         </div>
 
         {(searchOpen || searchFocused) && (
