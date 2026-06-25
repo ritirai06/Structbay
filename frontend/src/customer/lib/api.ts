@@ -88,11 +88,11 @@ const CMS_HOME_TTL_MS = 2 * 60 * 1000;
 let cmsHomeCache: { at: number; data: Record<string, unknown> } | null = null;
 let cmsHomeInflight: Promise<Record<string, unknown>> | null = null;
 
-async function fetchCmsHomepage(): Promise<Record<string, unknown>> {
-  if (cmsHomeCache && Date.now() - cmsHomeCache.at < CMS_HOME_TTL_MS) {
+export async function fetchCmsHomepage(forceRefresh = false): Promise<Record<string, unknown>> {
+  if (!forceRefresh && cmsHomeCache && Date.now() - cmsHomeCache.at < CMS_HOME_TTL_MS) {
     return cmsHomeCache.data;
   }
-  if (cmsHomeInflight) return cmsHomeInflight;
+  if (!forceRefresh && cmsHomeInflight) return cmsHomeInflight;
 
   cmsHomeInflight = (async () => {
     const res = await fetch("/api/v1/cms/homepage");
@@ -115,7 +115,7 @@ export const api = {
   getCities: () => req<any>('GET', '/cities'),
 
   /** Public homepage / storefront CMS (top bar, promo modal, hero copy). */
-  getCmsHomepage: () => fetchCmsHomepage(),
+  getCmsHomepage: (forceRefresh = false) => fetchCmsHomepage(forceRefresh),
 
   /** Public PIN check — no auth. Optional `cityId` = header-selected warehouse city (better Bengaluru coverage). */
   validatePincode: async (code: string, cityId?: string | null) => {

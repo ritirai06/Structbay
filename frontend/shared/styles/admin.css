@@ -387,3 +387,28 @@
     width: 100%;
   }
 }
+
+/* Modal Scrollbar Fix */
+.modal-container {
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+.modal-body {
+  max-height: calc(100vh - 180px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+  background-color: rgba(17, 17, 17, 0.2);
+  border-radius: 999px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(17, 17, 17, 0.35);
+}

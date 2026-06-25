@@ -15,6 +15,7 @@ const { deliveryCityMatchesSelected } = require('../utils/cityNameMatch');
 const { resolveProductDeliveryType } = require('../utils/productDeliveryType');
 const { productRequiresVariation } = require('../utils/productStructure');
 const { formatVariationLabel } = require('../utils/variationAttributes');
+const { getMinimumOrderValue, validateMinimumOrder } = require('../services/minimumOrder.service');
 
 const genOrderNumber = generateMasterOrderNumber;
 
@@ -117,9 +118,19 @@ exports.validate = asyncHandler(async (req, res) => {
 
   const grandTotal = subtotal + gstTotal;
 
+  // Validate minimum order value
+  const minOrderValidation = await validateMinimumOrder(subtotal);
+  if (!minOrderValidation.meetsMinimum) {
+    return ApiResponse.error(res, 422, 
+      `Minimum order value is ₹${minOrderValidation.minimumValue.toLocaleString('en-IN')}. Add ₹${minOrderValidation.difference.toLocaleString('en-IN')} more to continue.`, {
+      minimumOrder: minOrderValidation,
+    });
+  }
+
   return ApiResponse.success(res, 200, 'Cart validated.', {
     lines, subtotal: Math.round(subtotal), gstTotal: Math.round(gstTotal),
     grandTotal: Math.round(grandTotal), city: city.name, cityId,
+    minimumOrder: minOrderValidation,
   });
 });
 
@@ -150,9 +161,30 @@ exports.placeOrder = asyncHandler(async (req, res) => {
   const activeItems = cart?.items.filter(i => !i.savedForLater) || [];
   if (!activeItems.length) throw new AppError('Cart is empty.', 400);
 
-  // Build order items & totals
+  // CRITICAL: Backend enforcement of minimum order value
+  // This validation must happen server-side to prevent orders below minimum
+  let subtotal = 0;
+  // Calculate subtotal first for minimum order validation
+  for (const item of activeItems) {
+    const pq = { product: item.product._id, city: cityId, isDeleted: false };
+    if (item.variation) pq.variation = item.variation._id;
+    const pricing = await CityPricing.findOne(pq).lean();
+    if (!pricing) throw new AppError(`Pricing missing for ${item.product.name}.`, 422);
+    const unitPrice = resolveUnitPriceFromCityPricing(pricing, item.quantity);
+    subtotal += unitPrice * item.quantity;
+  }
+
+  // Validate minimum order value - this is a critical security check
+  const minOrderValidation = await validateMinimumOrder(subtotal);
+  if (!minOrderValidation.meetsMinimum) {
+    throw new AppError(
+      `Minimum order value is ₹${minOrderValidation.minimumValue.toLocaleString('en-IN')}. Your cart total is ₹${Math.round(subtotal).toLocaleString('en-IN')}. Add ₹${minOrderValidation.difference.toLocaleString('en-IN')} more to place an order.`
+    );
+  }
+
+  // Build order items & totals (subtotal already calculated above for validation)
   const orderItems = [];
-  let subtotal = 0, gstTotal = 0;
+  let gstTotal = 0;
 
   for (const item of activeItems) {
     if (await productRequiresVariation(item.product._id) && !item.variation) {

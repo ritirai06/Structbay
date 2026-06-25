@@ -9,6 +9,7 @@ const Inventory    = require('../models/Inventory');
 const User         = require('../models/User');
 const { ROLES, VENDOR_STATUS } = require('../config/constants');
 const { productRequiresVariation } = require('../utils/productStructure');
+const { getMinimumOrderValue, validateMinimumOrder } = require('../services/minimumOrder.service');
 
 const populateCart = (query) =>
   query
@@ -33,6 +34,7 @@ exports.getCart = asyncHandler(async (req, res) => {
 
   // Enrich items with pricing
   const cityId = cart.city;
+  let subtotal = 0;
   const enriched = await Promise.all(
     cart.items.map(async (item) => {
       const pricing = cityId
@@ -45,15 +47,37 @@ exports.getCart = asyncHandler(async (req, res) => {
           variation: item.variation?._id || null,
         }).lean()
         : null;
+      
+      // Calculate line total for active items
+      let lineTotal = 0;
+      if (pricing && !item.savedForLater) {
+        const unitPrice = pricing.unitPrice || pricing.mrp || 0;
+        lineTotal = unitPrice * item.quantity;
+        subtotal += lineTotal;
+      }
+      
       return {
         ...item.toJSON(),
         pricing,
         available: inv ? Math.max(0, inv.quantity - inv.reserved) : null,
+        lineTotal: Math.round(lineTotal),
       };
     })
   );
 
-  return ApiResponse.success(res, 200, 'Cart retrieved.', { ...cart.toJSON(), items: enriched });
+  // Get minimum order validation info
+  const minOrderValidation = await validateMinimumOrder(subtotal);
+
+  return ApiResponse.success(res, 200, 'Cart retrieved.', {
+    ...cart.toJSON(),
+    items: enriched,
+    subtotal: Math.round(subtotal),
+    minimumOrder: {
+      ...minOrderValidation,
+      formattedMinimum: `₹${minOrderValidation.minimumValue.toLocaleString('en-IN')}`,
+      formattedDifference: `₹${minOrderValidation.difference.toLocaleString('en-IN')}`,
+    },
+  });
 });
 
 // POST /customer/cart/items  { productId, variationId?, quantity, cityId?, vendorUserId? }

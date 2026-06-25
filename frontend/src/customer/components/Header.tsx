@@ -473,8 +473,8 @@ export function Header() {
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <Link to="/blogs">Blog</Link>
-                <a href="/#about">About Us</a>
-                <a href="/#contact">Contact Us</a>
+                <Link to="/about">About Us</Link>
+                <Link to="/contact">Contact Us</Link>
               </nav>
 
               <div className="sf-header-actions">

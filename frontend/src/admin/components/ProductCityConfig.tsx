@@ -184,12 +184,12 @@ export function ProductCityConfig({ configs, onChange, defaultTax = 18 }: Props)
                 )}
 
                 <div>
-                  <h4 className="text-xs font-semibold text-sb-ink/55 uppercase tracking-wider mb-3">
-                    City-wise Pricing
+                  <h4 className="text-sm font-semibold text-[#000000] mb-3 tracking-tight">
+                    Pricing
                   </h4>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     <div>
-                      <label className="text-xs text-sb-ink/55 mb-1 block">Selling Price (₹)</label>
+                      <label className="text-xs font-semibold text-[#000000] mb-1 block">Selling Price (₹)</label>
                       <input
                         type="number"
                         min={0}
@@ -201,7 +201,7 @@ export function ProductCityConfig({ configs, onChange, defaultTax = 18 }: Props)
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-sb-ink/55 mb-1 block">MRP (₹)</label>
+                      <label className="text-xs font-semibold text-[#000000] mb-1 block">MRP (₹)</label>
                       <input
                         type="number"
                         min={0}
@@ -211,7 +211,7 @@ export function ProductCityConfig({ configs, onChange, defaultTax = 18 }: Props)
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-sb-ink/55 mb-1 block">Purchase Cost (₹)</label>
+                      <label className="text-xs font-semibold text-[#000000] mb-1 block">Purchase Cost (₹)</label>
                       <input
                         type="number"
                         min={0}
@@ -223,7 +223,7 @@ export function ProductCityConfig({ configs, onChange, defaultTax = 18 }: Props)
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-sb-ink/55 mb-1 block">Delivery Charge (₹)</label>
+                      <label className="text-xs font-semibold text-[#000000] mb-1 block">Delivery Charge (₹)</label>
                       <input
                         type="number"
                         min={0}
@@ -235,7 +235,7 @@ export function ProductCityConfig({ configs, onChange, defaultTax = 18 }: Props)
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-sb-ink/55 mb-1 block">Tax %</label>
+                      <label className="text-xs font-semibold text-[#000000] mb-1 block">Tax %</label>
                       <input
                         type="number"
                         min={0}
@@ -267,8 +267,8 @@ export function ProductCityConfig({ configs, onChange, defaultTax = 18 }: Props)
 
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-xs font-semibold text-sb-ink/55 uppercase tracking-wider">
-                      Wholesale Pricing Slabs
+                    <h4 className="text-sm font-semibold text-[#000000] tracking-tight">
+                      Wholesale Slabs
                     </h4>
                     <button
                       type="button"
@@ -348,12 +348,12 @@ export function ProductCityConfig({ configs, onChange, defaultTax = 18 }: Props)
                 </div>
 
                 <div>
-                  <h4 className="text-xs font-semibold text-sb-ink/55 uppercase tracking-wider mb-3">
+                  <h4 className="text-sm font-semibold text-[#000000] mb-3 tracking-tight">
                     Inventory
                   </h4>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div>
-                      <label className="text-xs text-sb-ink/55 mb-1 block">Available Stock</label>
+                      <label className="text-xs font-semibold text-[#000000] mb-1 block">Available Stock</label>
                       <input
                         type="number"
                         min={0}
@@ -365,7 +365,7 @@ export function ProductCityConfig({ configs, onChange, defaultTax = 18 }: Props)
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-sb-ink/55 mb-1 block">Reserved Stock</label>
+                      <label className="text-xs font-semibold text-[#000000] mb-1 block">Reserved Stock</label>
                       <input
                         type="number"
                         min={0}
@@ -377,7 +377,7 @@ export function ProductCityConfig({ configs, onChange, defaultTax = 18 }: Props)
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-sb-ink/55 mb-1 block">Reorder Level</label>
+                      <label className="text-xs font-semibold text-[#000000] mb-1 block">Reorder Level</label>
                       <input
                         type="number"
                         min={0}
@@ -389,7 +389,7 @@ export function ProductCityConfig({ configs, onChange, defaultTax = 18 }: Props)
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-sb-ink/55 mb-1 block">Safety Stock</label>
+                      <label className="text-xs font-semibold text-[#000000] mb-1 block">Safety Stock</label>
                       <input
                         type="number"
                         min={0}

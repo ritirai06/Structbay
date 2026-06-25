@@ -10,6 +10,7 @@ import { CityManagement } from "./pages/CityManagement";
 import { PricingManagement } from "./pages/PricingManagement";
 import { InventoryManagement } from "./pages/InventoryManagement";
 import { VendorManagement } from "./pages/VendorManagement";
+import { VendorDetails } from "./pages/VendorDetails";
 import { OrderManagement } from "./pages/OrderManagement";
 import { DispatchManagement } from "./pages/DispatchManagement";
 import { InvoiceManagement } from "./pages/InvoiceManagement";
@@ -42,6 +43,7 @@ export const router = createBrowserRouter([
       { path: "pricing", Component: PricingManagement },
       { path: "inventory", Component: InventoryManagement },
       { path: "vendors", Component: VendorManagement },
+      { path: "vendors/:id", Component: VendorDetails },
       { path: "orders", Component: OrderManagement },
       { path: "dispatch", Component: DispatchManagement },
       { path: "invoices", Component: InvoiceManagement },

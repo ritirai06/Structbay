@@ -1,4 +1,6 @@
 import { Suspense, useEffect, useState } from "react";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import { createBrowserRouter, RouterProvider, Outlet, useLocation, Navigate, useParams, useNavigate } from "react-router";
 import { Toaster } from "sonner";
 import { AppProvider } from "./customer/context/AppContext";
@@ -25,6 +27,8 @@ import { Finance } from "./customer/pages/Finance";
 import { BlogListing, BlogDetails } from "./customer/pages/Blog";
 import { SearchResults } from "./customer/pages/SearchResults";
 import { BrandLanding } from "./customer/pages/BrandLanding";
+import { About } from "./customer/pages/About";
+import { Contact } from "./customer/pages/Contact";
 import {
   PrivacyPolicyPage,
   TermsPage,
@@ -220,6 +224,8 @@ const router = createBrowserRouter([
           { path: "returns", Component: ReturnsPolicyPage },
           { path: "shipping", Component: ShippingPolicyPage },
           { path: "policy/:slug", Component: DynamicPolicyPage },
+          { path: "about", Component: About },
+          { path: "contact", Component: Contact },
           { path: "lp/:slug", Component: LandingPage },
           { path: "tools/cement-calculator", Component: ToolsQuantityEstimator },
           { path: "tools/cement-estimator", element: <Navigate to="/tools/cement-calculator" replace /> },
@@ -314,6 +320,7 @@ export default function App() {
   return (
     <>
       <Toaster position="top-right" richColors closeButton duration={4000} />
+      <ToastContainer position="top-right" autoClose={4000} hideProgressBar={false} newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover />
       <Suspense fallback={<RouteFallback />}>
         <RouterProvider router={router} />
       </Suspense>

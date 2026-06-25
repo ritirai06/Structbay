@@ -148,6 +148,8 @@ function ReturnExchangePolicyContent({ policy }: { policy: any }) {
 }
 
 function relatedCardPricing(p: any) {
+  // Debug: Log input to pricing helper
+  console.log("Pricing Input", p);
   const vid = p.variations?.[0]?._id ? String(p.variations[0]._id) : null;
   const snap = pricingSnapshotFromProduct(p, vid);
   const unitEx = snap ? resolveUnitPriceFromSnapshot(snap, 1) : listingUnitPrice(p, vid);
@@ -155,6 +157,8 @@ function relatedCardPricing(p: any) {
   const mrpEx = snap?.regularPrice ?? unitEx;
   const mrp = displayUnitFromExGst(mrpEx, p);
   const discount = mrp > unit ? Math.round((1 - unit / mrp) * 100) : 0;
+  // Debug: Log output from pricing helper
+  console.log("Pricing Output", { unit, mrp, discount });
   return { unit, mrp, discount };
 }
 
@@ -171,6 +175,14 @@ export function ProductDetails() {
   const [openSection, setOpenSection] = useState<string | null>("highlights");
   const [selectedVid, setSelectedVid] = useState<string | null>(null);
   const [attrSelections, setAttrSelections] = useState<Record<string, string>>({});
+  const [crossSells, setCrossSells] = useState<any[]>([]);
+
+  // Debug: Log the Related Products API Response
+  useEffect(() => {
+    if (crossSells && crossSells.length > 0) {
+      console.log("Related Products API Response", crossSells);
+    }
+  }, [crossSells]);
 
   useEffect(() => {
     if (!productSlug) return;
@@ -198,6 +210,36 @@ export function ProductDetails() {
     }
     setActiveImage(0);
     setOpenSection("highlights");
+    // Fetch cross-sell products for this product
+    setCrossSells([]);
+    if (product._id) {
+      // Step 1: Fetch related product IDs from relationship API
+      fetch(`/api/v1/product-relationships/cross-sell/${product._id}`)
+        .then(r => r.json())
+        .then(async json => {
+          if (json.success && Array.isArray(json.data)) {
+            // Step 2: For each related product, fetch full product details using the main product API
+            const relatedIds = json.data
+              .filter((p: any) => p.status === 'ACTIVE')
+              .map((p: any) => p.slug || p._id)
+              .filter(Boolean);
+            const cityIdParam = cityId || undefined;
+            const cityNameParam = city || undefined;
+            const relatedDetails = await Promise.all(
+              relatedIds.map(async (slugOrId: string) => {
+                try {
+                  const res = await api.getProductDetails(slugOrId, cityIdParam, cityNameParam);
+                  return res.data || null;
+                } catch {
+                  return null;
+                }
+              })
+            );
+            setCrossSells(relatedDetails.filter(Boolean));
+          }
+        })
+        .catch(() => {/* silently ignore */});
+    }
   }, [productSlug, product]);
 
   const isVariant = isVariantProduct(product);
@@ -346,6 +388,7 @@ export function ProductDetails() {
       image: images[0] || firstImageUrl(product.images) || "",
       pricingSnapshot: pricingSnap,
       gstPercentage: gstPct,
+      productId: product._id || product.id || undefined,
     });
   };
 
@@ -450,6 +493,21 @@ export function ProductDetails() {
               axes.map((axis) => {
                 const options = uniqueValuesForAxis(variations, axis.key, attrSelections);
                 if (!options.length) return null;
+                const isColorAxis = axis.key.toLowerCase() === "color";
+
+                // Build color code map for color axis: colorName → colorCode
+                const colorCodeMap: Record<string, string> = {};
+                if (isColorAxis) {
+                  for (const v of variations) {
+                    const rows = flattenVariationAttributes(v?.attributes);
+                    const colorRow = rows.find((r) => r.key.toLowerCase() === "color");
+                    if (!colorRow) continue;
+                    const custom: any[] = v?.attributes?.custom || [];
+                    const codeEntry = custom.find((c: any) => c?.key === `${axis.key}_code` || c?.key === "color_code");
+                    if (codeEntry?.value) colorCodeMap[colorRow.value] = codeEntry.value;
+                  }
+                }
+
                 return (
                   <div key={axis.key} className="sf-pdp-variant-group">
                     <p className="sf-pdp-variant-label">{axis.label}</p>
@@ -464,6 +522,37 @@ export function ProductDetails() {
                           ? resolveUnitPriceFromSnapshot(snapOpt, 1)
                           : listingUnitPrice(product, vidOpt || null);
                         const infoOpt = availabilityForProduct(product, vidOpt || null, unitOpt > 0);
+                        const colorCode = isColorAxis ? colorCodeMap[opt] : undefined;
+
+                        if (isColorAxis) {
+                          return (
+                            <button
+                              key={opt}
+                              type="button"
+                              title={opt}
+                              onClick={() => setAxis(axis.key, opt)}
+                              className={`relative flex flex-col items-center gap-1 p-1 rounded-lg border-2 transition-colors ${
+                                active
+                                  ? "border-sb-orange"
+                                  : "border-transparent hover:border-gray-300"
+                              } ${infoOpt.stockStatus === "OUT_OF_STOCK" ? "opacity-45" : ""}`}
+                            >
+                              <span
+                                className="w-8 h-8 rounded-full border border-black/10"
+                                style={{ background: colorCode || opt }}
+                              />
+                              <span className="text-[10px] text-gray-600 leading-none max-w-[48px] truncate">
+                                {opt}
+                              </span>
+                              {infoOpt.stockStatus === "OUT_OF_STOCK" && (
+                                <span className="absolute inset-0 flex items-center justify-center">
+                                  <span className="w-full h-px bg-gray-400 rotate-45 absolute" />
+                                </span>
+                              )}
+                            </button>
+                          );
+                        }
+
                         return (
                           <button
                             key={opt}
@@ -626,7 +715,48 @@ export function ProductDetails() {
           </div>
         </div>
 
-        {/* You may also like */}
+        {/* Cross-sell products (from admin configuration) */}
+        {crossSells.length > 0 && (
+          <section className="sf-pdp-related mt-14">
+            <h2 className="sf-pdp-related__title">Related Products</h2>
+            <div className="sf-pdp-related__grid">
+              {crossSells.slice(0, 8).map((p: any) => {
+                // Debug: Log the product sent to pricing helper
+                console.log("Product sent to pricing helper:", p);
+                const img = firstImageUrl(p.images);
+                const { unit, mrp: relMrp, discount: relDisc } = relatedCardPricing(p);
+                const pslug = p.slug || p._id;
+                return (
+                  <Link key={p._id || pslug} to={productHref(pslug)} className="sf-pdp-related-card group">
+                    <div className="sf-pdp-related-card__image-wrap">
+                      {relDisc > 0 && (
+                        <span className="sf-pdp-related-card__discount">{relDisc}% OFF</span>
+                      )}
+                      {img ? (
+                        <img src={img} alt={p.name} className="sf-pdp-related-card__image" loading="lazy" />
+                      ) : (
+                        <div className="sf-pdp-related-card__image sf-pdp-related-card__image--empty" />
+                      )}
+                    </div>
+                    <p className="sf-pdp-related-card__title">{p.name}</p>
+                    <div className="sf-pdp-related-card__price-row">
+                      {relDisc > 0 && (
+                        <span className="sf-pdp-related-card__was">
+                          ₹{relMrp.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                        </span>
+                      )}
+                      <span className="sf-pdp-related-card__price">
+                        ₹{unit.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* Category-based "You may also like" (existing) */}
         {related.length > 0 && (
           <section className="sf-pdp-related mt-14">
             <h2 className="sf-pdp-related__title">You may also like</h2>

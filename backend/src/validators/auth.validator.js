@@ -197,10 +197,118 @@ const refreshTokenValidator = [
   body('refreshToken').notEmpty().withMessage('Refresh token is required'),
 ];
 
+// ─── Admin: update vendor ─────────────────────────────────────────────────────
+const adminUpdateVendorValidator = [
+  body('name')
+    .optional()
+    .trim()
+    .notEmpty().withMessage('Contact name cannot be empty')
+    .isLength({ min: 2, max: 100 }).withMessage('Name must be 2–100 characters'),
+
+  body('email')
+    .optional()
+    .trim()
+    .notEmpty().withMessage('Email cannot be empty')
+    .isEmail().withMessage('Please enter a valid email')
+    .normalizeEmail(),
+
+  body('phone')
+    .optional()
+    .matches(/^[6-9]\d{9}$/).withMessage('Enter a valid 10-digit Indian phone number'),
+
+  body('companyName')
+    .optional()
+    .trim()
+    .notEmpty().withMessage('Company name cannot be empty')
+    .isLength({ min: 2, max: 200 }).withMessage('Company name must be 2–200 characters'),
+
+  body('contactPerson')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 100 }).withMessage('Contact person name must be 2–100 characters'),
+
+  body('gstNumber')
+    .optional({ nullable: true })
+    .trim()
+    .custom((v) => {
+      if (!v || String(v).trim() === '') return true;
+      if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i.test(String(v).trim().toUpperCase())) {
+        throw new Error('Please enter a valid GST number');
+      }
+      return true;
+    }),
+
+  body('businessRegNumber')
+    .optional({ nullable: true })
+    .trim(),
+
+  body('companyAddress')
+    .optional({ nullable: true })
+    .trim(),
+
+  body('warehouseAddress')
+    .optional({ nullable: true })
+    .trim(),
+
+  body('contactPersonName')
+    .optional({ nullable: true })
+    .trim()
+    .isLength({ min: 2, max: 100 }).withMessage('Contact person name must be 2–100 characters'),
+
+  body('contactPersonPhone')
+    .optional({ nullable: true })
+    .trim()
+    .custom((v) => {
+      if (!v || String(v).trim() === '') return true;
+      if (!/^[6-9]\d{9}$/.test(String(v).trim())) {
+        throw new Error('Enter a valid 10-digit Indian phone number');
+      }
+      return true;
+    }),
+
+  body('bankDetails.accountHolderName')
+    .optional({ nullable: true })
+    .trim(),
+
+  body('bankDetails.bankName')
+    .optional({ nullable: true })
+    .trim(),
+
+  body('bankDetails.accountNumber')
+    .optional({ nullable: true })
+    .trim(),
+
+  body('bankDetails.ifscCode')
+    .optional({ nullable: true })
+    .trim()
+    .custom((v) => {
+      if (!v || String(v).trim() === '') return true;
+      if (!/^[A-Z]{4}0[A-Z0-9]{6}$/i.test(String(v).trim().toUpperCase())) {
+        throw new Error('Please enter a valid IFSC code (e.g. SBIN0001234)');
+      }
+      return true;
+    }),
+
+  body('bankDetails.branchName')
+    .optional({ nullable: true })
+    .trim(),
+
+  body('vendorStatus')
+    .optional()
+    .isIn(['PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'SUSPENDED'])
+    .withMessage('Invalid vendor approval status'),
+
+  body('status')
+    .optional()
+    .isIn(['PENDING', 'ACTIVE', 'SUSPENDED', 'REJECTED', 'DELETED'])
+    .withMessage('Invalid user status'),
+];
+
 module.exports = {
   registerCustomerValidator,
   registerVendorValidator,
   adminCreateVendorValidator,
+  adminUpdateVendorValidator,
   loginValidator,
   forgotPasswordValidator,
   resetPasswordValidator,

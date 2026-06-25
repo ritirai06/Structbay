@@ -1,11 +1,59 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/card";
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@shared/components/ui/card";
 import { Button } from "@shared/components/ui/button";
 import { Input } from "@shared/components/ui/input";
 import { Label } from "@shared/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@shared/components/ui/tabs";
 import { Switch } from "@shared/components/ui/switch";
+import { getApiV1Base } from "../../lib/apiBase";
+import { getAdminToken, adminFetch } from "../../lib/adminApi";
 
 export function Settings() {
+  const [minimumOrderValue, setMinimumOrderValue] = useState<string>("2000");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+  // Fetch commerce settings on mount
+  useEffect(() => {
+    const fetchCommerceSettings = async () => {
+      try {
+        const data = await adminFetch<{ minimumOrderValue: number }>('/admin/cms/commerce-settings');
+        if (data.success && data.data) {
+          setMinimumOrderValue(data.data.minimumOrderValue.toString());
+        }
+      } catch (error) {
+        console.error('Failed to fetch commerce settings:', error);
+      }
+    };
+    fetchCommerceSettings();
+  }, []);
+
+  const handleSaveCommerceSettings = async () => {
+    setLoading(true);
+    setMessage(null);
+    try {
+      const value = parseInt(minimumOrderValue, 10);
+      if (isNaN(value) || value < 0) {
+        setMessage({ type: 'error', text: 'Please enter a valid positive number.' });
+        setLoading(false);
+        return;
+      }
+      const data = await adminFetch('/admin/cms/commerce-settings', {
+        method: 'PUT',
+        body: JSON.stringify({ minimumOrderValue: value }),
+      });
+      if (data.success) {
+        setMessage({ type: 'success', text: 'Commerce settings saved successfully.' });
+      } else {
+        setMessage({ type: 'error', text: 'Failed to save settings.' });
+      }
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.message || 'Failed to save settings.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="p-6">
       <div className="mb-6">
@@ -16,6 +64,7 @@ export function Settings() {
       <Tabs defaultValue="general" className="space-y-6">
         <TabsList>
           <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="commerce">Commerce</TabsTrigger>
           <TabsTrigger value="email">Email</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="payment">Payment</TabsTrigger>
@@ -41,6 +90,47 @@ export function Settings() {
                 <Input id="supportPhone" defaultValue="+91 1800 123 4567" />
               </div>
               <Button>Save Changes</Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="commerce" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Commerce Settings</CardTitle>
+              <CardDescription>Configure order and checkout rules</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {message && (
+                <div className={`p-3 rounded-md text-sm ${
+                  message.type === 'success' 
+                    ? 'bg-green-50 text-green-700 border border-green-200' 
+                    : 'bg-red-50 text-red-700 border border-red-200'
+                }`}>
+                  {message.text}
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="minimumOrderValue">Minimum Order Value (₹)</Label>
+                <Input 
+                  id="minimumOrderValue" 
+                  type="number"
+                  min="0"
+                  step="100"
+                  value={minimumOrderValue}
+                  onChange={(e) => setMinimumOrderValue(e.target.value)}
+                  placeholder="2000"
+                />
+                <p className="text-sm text-sb-ink/55">
+                  Customers cannot checkout until their cart total reaches this amount.
+                </p>
+              </div>
+              <Button 
+                onClick={handleSaveCommerceSettings} 
+                disabled={loading}
+              >
+                {loading ? 'Saving...' : 'Save Commerce Settings'}
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>

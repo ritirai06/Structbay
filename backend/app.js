@@ -62,6 +62,7 @@ const bulkEnquiryRoutes   = require('./src/routes/bulkEnquiry.routes');
 const concreteRFQRoutes   = require('./src/routes/concreteRFQ.routes');
 const categoryFilterRoutes= require('./src/routes/categoryFilter.routes');
 const financeRoutes       = require('./src/routes/finance.routes');
+const productRelationshipRoutes = require('./src/routes/productRelationship.routes');
 
 const app = express();
 
@@ -190,6 +191,7 @@ app.use(`${V1}/bulk-enquiries`,     bulkEnquiryRoutes);
 app.use(`${V1}/concrete-rfqs`,      concreteRFQRoutes);
 app.use(`${V1}/category-filters`,   categoryFilterRoutes);
 app.use(`${V1}/finance`,            financeRoutes);
+app.use(`${V1}/product-relationships`, productRelationshipRoutes);
 
 // ─── Swagger UI (admin-only in production) ──────────────────────────────────────────────
 if (process.env.NODE_ENV !== 'production') {

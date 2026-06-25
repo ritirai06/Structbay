@@ -77,6 +77,8 @@ const productSchema = new mongoose.Schema(
 
     isDeleted: { type: Boolean, default: false, select: false },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    upsellProducts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
+    crossSellProducts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
   },
   {
     timestamps: true,

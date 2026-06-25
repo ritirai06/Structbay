@@ -2685,6 +2685,150 @@ function LandingPagesTab() {
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
+function PageBannersTab() {
+  const [form, setForm] = useState({
+    aboutUsUrl: "",
+    aboutUsPublicId: "",
+    contactUsUrl: "",
+    contactUsPublicId: "",
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [uploading, setUploading] = useState<null | "about" | "contact">(null);
+
+  useEffect(() => {
+    apiFetch("/cms/homepage").then((d: any) => {
+      const pb = d.data.pageBanners || {};
+      setForm({
+        aboutUsUrl: pb.aboutUsUrl || "",
+        aboutUsPublicId: pb.aboutUsPublicId || "",
+        contactUsUrl: pb.contactUsUrl || "",
+        contactUsPublicId: pb.contactUsPublicId || "",
+      });
+    }).finally(() => setLoading(false));
+  }, []);
+
+  const save = async () => {
+    setSaving(true); setMsg("");
+    try {
+      await apiFetch("/cms/homepage", {
+        method: "PUT",
+        body: JSON.stringify({ pageBanners: form }),
+      });
+      setMsg("Page banners updated.");
+    } catch (e: any) {
+      setMsg(`Error: ${e.message}`);
+    }
+    setSaving(false);
+  };
+
+  const doUpload = async (kind: "about" | "contact", file: File) => {
+    setUploading(kind);
+    try {
+      const res = await adminUploadImage("/upload/banner", file);
+      setForm(f => ({
+        ...f,
+        [`${kind}UsUrl`]: res.url,
+        [`${kind}UsPublicId`]: res.public_id || "",
+      }));
+    } catch (e: any) {
+      alert("Upload failed: " + e.message);
+    }
+    setUploading(null);
+  };
+
+  if (loading) return <Spinner />;
+
+  return (
+    <div className="max-w-2xl space-y-8">
+      <SectionHeader title="Page Banners" subtitle="Manage header background images for About Us and Contact Us pages" />
+      
+      <div className="space-y-6">
+        <div>
+          <label className="text-sm font-semibold mb-2 block">About Us Banner</label>
+          <div className="p-4 border rounded-xl bg-gray-50 flex items-start gap-4">
+            {form.aboutUsUrl ? (
+              <div className="w-48 h-24 border rounded overflow-hidden relative bg-black shrink-0">
+                <img src={form.aboutUsUrl} alt="About Us" className="w-full h-full object-cover opacity-60" />
+                <button
+                  onClick={() => setForm(f => ({ ...f, aboutUsUrl: "", aboutUsPublicId: "" }))}
+                  className="absolute top-1 right-1 bg-white p-1 rounded-full text-red-500 shadow hover:bg-red-50"
+                  title="Remove image"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+            ) : (
+              <div className="w-48 h-24 border border-dashed rounded flex flex-col items-center justify-center text-gray-400 bg-white shrink-0">
+                <Image className="w-6 h-6 mb-1" />
+                <span className="text-xs">No Image</span>
+              </div>
+            )}
+            <div className="flex-1">
+              <label className="inline-block px-4 py-2 bg-white border border-gray-300 rounded text-sm cursor-pointer hover:bg-gray-50">
+                {uploading === "about" ? "Uploading..." : "Upload New Image"}
+                <input
+                  type="file"
+                  className="hidden"
+                  accept="image/*"
+                  onChange={e => e.target.files?.[0] && doUpload("about", e.target.files[0])}
+                  disabled={uploading !== null}
+                />
+              </label>
+              <p className="text-xs text-gray-500 mt-2">Used on the /about page hero section.</p>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label className="text-sm font-semibold mb-2 block">Contact Us Banner</label>
+          <div className="p-4 border rounded-xl bg-gray-50 flex items-start gap-4">
+            {form.contactUsUrl ? (
+              <div className="w-48 h-24 border rounded overflow-hidden relative bg-black shrink-0">
+                <img src={form.contactUsUrl} alt="Contact Us" className="w-full h-full object-cover opacity-60" />
+                <button
+                  onClick={() => setForm(f => ({ ...f, contactUsUrl: "", contactUsPublicId: "" }))}
+                  className="absolute top-1 right-1 bg-white p-1 rounded-full text-red-500 shadow hover:bg-red-50"
+                  title="Remove image"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+            ) : (
+              <div className="w-48 h-24 border border-dashed rounded flex flex-col items-center justify-center text-gray-400 bg-white shrink-0">
+                <Image className="w-6 h-6 mb-1" />
+                <span className="text-xs">No Image</span>
+              </div>
+            )}
+            <div className="flex-1">
+              <label className="inline-block px-4 py-2 bg-white border border-gray-300 rounded text-sm cursor-pointer hover:bg-gray-50">
+                {uploading === "contact" ? "Uploading..." : "Upload New Image"}
+                <input
+                  type="file"
+                  className="hidden"
+                  accept="image/*"
+                  onChange={e => e.target.files?.[0] && doUpload("contact", e.target.files[0])}
+                  disabled={uploading !== null}
+                />
+              </label>
+              <p className="text-xs text-gray-500 mt-2">Used on the /contact page hero section.</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 pt-4 border-t">
+          <Button onClick={save} disabled={saving} className="bg-sb-orange hover:bg-sb-orange-hover text-black">
+            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+            Save Banners
+          </Button>
+          {msg && <span className="text-sm text-sb-orange font-medium">{msg}</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function CMSManagement() {
   const location = useLocation();
   const defaultTab = location.pathname.includes("landing-pages") ? "landing" : "homepage";
@@ -2703,6 +2847,7 @@ export function CMSManagement() {
           <TabsList className="flex w-max gap-1 bg-white border border-gray-200 p-1 shadow-sm">
             <TabsTrigger value="homepage"><Globe className="h-3.5 w-3.5 mr-1.5" />Homepage</TabsTrigger>
             <TabsTrigger value="banners"><Image className="h-3.5 w-3.5 mr-1.5" />Banners</TabsTrigger>
+            <TabsTrigger value="pagebanners"><Image className="h-3.5 w-3.5 mr-1.5" />Page Banners</TabsTrigger>
             <TabsTrigger value="blogs"><FileText className="h-3.5 w-3.5 mr-1.5" />Blogs</TabsTrigger>
             <TabsTrigger value="landing"><FileText className="h-3.5 w-3.5 mr-1.5" />Landing pages</TabsTrigger>
             <TabsTrigger value="announcements"><Megaphone className="h-3.5 w-3.5 mr-1.5" />Announcements</TabsTrigger>
@@ -2717,6 +2862,7 @@ export function CMSManagement() {
 
         <TabsContent value="homepage"><HomepageTab /></TabsContent>
         <TabsContent value="banners"><BannersTab /></TabsContent>
+        <TabsContent value="pagebanners"><PageBannersTab /></TabsContent>
         <TabsContent value="blogs"><BlogsTab /></TabsContent>
         <TabsContent value="landing"><LandingPagesTab /></TabsContent>
         <TabsContent value="announcements"><AnnouncementsTab /></TabsContent>

@@ -27,6 +27,11 @@ const vendorSchema = new mongoose.Schema({
     pincode: String,
     landmark: String
   },
+  companyAddress: { type: String, default: null },
+  warehouseAddress: { type: String, default: null },
+  contactPersonName: { type: String, default: null },
+  contactPersonPhone: { type: String, default: null },
+  cancelledChequeFile: { type: String, default: null },
   
   // Bank Details
   bankDetails: {
@@ -34,7 +39,9 @@ const vendorSchema = new mongoose.Schema({
     accountNumber: String,
     ifscCode: String,
     bankName: String,
-    branch: String
+    branch: String,
+    branchName: { type: String, default: null },
+    cancelledChequeFile: { type: String, default: null }
   },
   
   // Profile

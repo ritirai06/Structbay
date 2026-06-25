@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { listingUnitPrice } from "../lib/wholesalePricing";
 import { Link } from "react-router";
 import { Search, History, TrendingUp, X, Loader2, Award, LayoutGrid, ArrowRight } from "lucide-react";
 import { useApp } from "../context/AppContext";
@@ -18,7 +19,8 @@ const TYPEAHEAD_DEBOUNCE_MS = 280;
 function productRowPrice(product: any): number {
   const sale = product.pricing?.salePrice;
   const reg = product.pricing?.regularPrice;
-  return Number(sale ?? reg ?? product.price ?? 0) || 0;
+  // Use centralized pricing logic for consistency
+  return listingUnitPrice(product, null);
 }
 
 export function SearchDropdown({ query, onSelect, onClose }: SearchDropdownProps) {
