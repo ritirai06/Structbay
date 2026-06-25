@@ -12,6 +12,7 @@ const Advertisement = require('../models/Advertisement');
 const SEO = require('../models/SEO');
 const { deleteFile } = require('../config/cloudinary');
 const { logAction } = require('../services/auditLog.service');
+const { clearMinimumOrderValueCache } = require('../services/minimumOrder.service');
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 const paginate = (query) => {
@@ -35,7 +36,7 @@ const updateHomepage = asyncHandler(async (req, res) => {
     'brandLogoUrl', 'heroBackgroundImageUrl',
     'introSection', 'featureCards',
     'contact', 'footer', 'featuredCategories',
-    'announcements', 'storefrontPromo',
+    'announcements', 'storefrontPromo', 'pageBanners',
   ];
   allowed.forEach(f => { if (req.body[f] !== undefined) cms[f] = req.body[f]; });
   cms.lastUpdatedBy = req.user._id;
@@ -619,6 +620,63 @@ const submitContactMessage = asyncHandler(async (req, res) => {
   return ApiResponse.success(res, 200, 'Thank you! Your message has been sent. We will get back to you soon.');
 });
 
+// ═══════════════════════════════════════════════════════════
+// COMMERCE SETTINGS
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * GET /admin/cms/commerce-settings
+ * Get commerce settings including minimum order value
+ */
+const getCommerceSettings = asyncHandler(async (req, res) => {
+  const cms = await CMS.getOrCreate();
+  return ApiResponse.success(res, 200, 'Commerce settings retrieved.', {
+    minimumOrderValue: cms.commerceSettings?.minimumOrderValue || 2000,
+    formattedMinimumOrderValue: `₹${(cms.commerceSettings?.minimumOrderValue || 2000).toLocaleString('en-IN')}`,
+  });
+});
+
+/**
+ * PUT /admin/cms/commerce-settings
+ * Update commerce settings including minimum order value
+ */
+const updateCommerceSettings = asyncHandler(async (req, res) => {
+  const { minimumOrderValue } = req.body;
+
+  if (minimumOrderValue !== undefined) {
+    const value = Number(minimumOrderValue);
+    if (isNaN(value) || value < 0) {
+      throw new AppError('Minimum order value must be a non-negative number.', 400);
+    }
+  }
+
+  const cms = await CMS.getOrCreate();
+  
+  if (!cms.commerceSettings) {
+    cms.commerceSettings = {};
+  }
+  
+  if (minimumOrderValue !== undefined) {
+    cms.commerceSettings.minimumOrderValue = Number(minimumOrderValue);
+  }
+  
+  cms.lastUpdatedBy = req.user._id;
+  await cms.save();
+
+  // Clear the minimum order value cache so changes take effect immediately
+  clearMinimumOrderValueCache();
+
+  await logAction({
+    adminId: req.user._id, action: 'UPDATE', module: 'Commerce Settings',
+    description: `Updated minimum order value to ₹${cms.commerceSettings.minimumOrderValue.toLocaleString('en-IN')}`, ipAddress: req.ip,
+  });
+
+  return ApiResponse.success(res, 200, 'Commerce settings updated.', {
+    minimumOrderValue: cms.commerceSettings.minimumOrderValue,
+    formattedMinimumOrderValue: `₹${cms.commerceSettings.minimumOrderValue.toLocaleString('en-IN')}`,
+  });
+});
+
 module.exports = {
   getHomepage, updateHomepage,
   getBanners, createBanner, updateBanner, deleteBanner, toggleBanner,
@@ -629,4 +687,5 @@ module.exports = {
   getAds, createAd, updateAd, deleteAd, trackImpression, trackClick,
   getSEO, upsertSEO,
   getContact, updateContact, submitContactMessage,
+  getCommerceSettings, updateCommerceSettings,
 };

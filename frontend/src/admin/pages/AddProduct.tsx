@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import { useNavigate, useParams, Link, useLocation } from "react-router";
 import { ArrowLeft, Plus, Trash2, Loader2, Save, Shield, Zap, TrendingUp, Star, Info, Upload, RefreshCw } from "lucide-react";
 import { adminPath } from "../../lib/portalRoutes";
@@ -7,6 +9,7 @@ import { AdminDeleteConfirmModal } from "../components/AdminDeleteConfirmModal";
 import { useAdminDeleteFlow } from "../hooks/useAdminDeleteFlow";
 import { ProductCityConfig } from "../components/ProductCityConfig";
 import { ProductVariantManager } from "../components/ProductVariantManager";
+import { ProductRelationshipManager } from "../components/ProductRelationshipManager";
 import {
   type ActiveCity,
   type CityConfig,
@@ -90,7 +93,7 @@ function serializeReturnExchangePolicy(policy: typeof emptyReturnExchangePolicy)
 function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
   return (
     <div>
-      <label className="text-xs text-sb-ink/55 mb-1.5 block font-medium">
+      <label className="text-xs text-[#000000] mb-1.5 block font-semibold">
         {label}{required && <span className="text-sb-ink/55 ml-0.5">*</span>}
       </label>
       {children}
@@ -105,7 +108,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <div className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl overflow-hidden">
       <div className="px-5 py-3.5 border-b border-sb-ink/10">
-        <h3 className="font-semibold text-sb-ink text-sm">{title}</h3>
+        <h3 className="font-semibold text-[#000000] text-base tracking-tight">{title}</h3>
       </div>
       <div className="p-5 space-y-4">{children}</div>
     </div>
@@ -229,7 +232,7 @@ export function AddProduct() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEdit);
   const [newFaq, setNewFaq] = useState({ question: "", answer: "" });
-  const [tab, setTab] = useState<"info" | "cities" | "media" | "variations" | "seo" | "faqs" | "policy">("info");
+  const [tab, setTab] = useState<"info" | "cities" | "media" | "variations" | "seo" | "faqs" | "policy" | "relationships">("info");
   const [activeCities, setActiveCities] = useState<ActiveCity[]>([]);
   const [cityConfigs, setCityConfigs] = useState<CityConfig[]>([]);
   const [dirty, setDirty] = useState(false);
@@ -243,10 +246,13 @@ export function AddProduct() {
   /** `categoryId` = brand's linked category (Brands admin); null = legacy / any category */
   const [catalogBrands, setCatalogBrands] = useState<{ _id: string; name: string; categoryId: string | null }[]>([]);
   const imageDelete = useAdminDeleteFlow();
+  // Upsell & Cross-Sell relationships
+  const [upsellProducts, setUpsellProducts] = useState<any[]>([]);
+  const [crossSellProducts, setCrossSellProducts] = useState<any[]>([]);
 
   useEffect(() => {
     const tabFromState = (location.state as { tab?: string } | null)?.tab;
-    const allowed = ["info", "cities", "media", "variations", "seo", "faqs", "policy"] as const;
+    const allowed = ["info", "cities", "media", "variations", "seo", "faqs", "policy", "relationships"] as const;
     if (tabFromState && (allowed as readonly string[]).includes(tabFromState)) {
       setTab(tabFromState as typeof tab);
     }
@@ -358,11 +364,39 @@ export function AddProduct() {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [dirty]);
 
+  // Product recommendations now loaded from main product API
+
   useEffect(() => {
     if (!isEdit) return;
     apiFetch(`/products/${id}`)
       .then(d => {
         const p = d.data;
+        // Debug log for GET Product response
+        console.log("DEBUG: GET Product", p);
+        // Debug log for frontend state initialization
+        console.log("DEBUG: Frontend State Initialization", {
+          form: {
+            name: p.name, sku: p.sku, category: p.category?._id || p.category,
+            brand: p.brand?._id || p.brand, shortDescription: p.shortDescription || "",
+            description: p.description || "", gstPercentage: p.gstPercentage,
+            priceIncludesGst: !!p.priceIncludesGst,
+            deliveryType: p.deliveryType === "structbay_delivery" || p.isStructbayDelivery || p.isExpress
+              ? "structbay_delivery"
+              : "vendor_delivery",
+            productStructure:
+              p.productStructure === "variant" || (p.variations?.length > 0)
+                ? "variant"
+                : "simple",
+            status: p.status, isFeatured: p.isFeatured, isTopSelling: p.isTopSelling,
+            isAssured: p.isAssured, isExpress: p.isExpress, displayOrder: p.displayOrder,
+            seo: p.seo || { metaTitle: "", metaDescription: "", metaKeywords: [] },
+            faqs: p.faqs || [], videos: p.videos || [], documents: p.documents || [],
+            returnExchangePolicy: normalizeReturnExchangePolicy(p.returnExchangePolicy),
+          },
+          variations: p.variations || [],
+          upsellProducts: p.upsellProducts || [],
+          crossSellProducts: p.crossSellProducts || [],
+        });
         setForm({
           name: p.name, sku: p.sku, category: p.category?._id || p.category,
           brand: p.brand?._id || p.brand, shortDescription: p.shortDescription || "",
@@ -382,6 +416,8 @@ export function AddProduct() {
           returnExchangePolicy: normalizeReturnExchangePolicy(p.returnExchangePolicy),
         });
         setVariations(p.variations || []);
+        setUpsellProducts(p.upsellProducts || []);
+        setCrossSellProducts(p.crossSellProducts || []);
         if (p._id) {
           apiFetch(`/products/${id}/variations`)
             .then((vr) => setVariations(vr.data || []))
@@ -420,15 +456,15 @@ export function AddProduct() {
 
   const save = async (overrideStatus?: string) => {
     if (!form.name || !form.sku || !form.category || !form.brand) {
-      return alert("Name, SKU, category, and brand are required.");
+      return toast.warning("Name, SKU, category, and brand are required.");
     }
     if (!form.deliveryType) {
-      return alert("Delivery type is required.");
+      return toast.warning("Delivery type is required.");
     }
     const isVariantProduct = form.productStructure === "variant";
     if (!isVariantProduct) {
       const validationError = validateCityConfigs(cityConfigs);
-      if (validationError) return alert(validationError);
+      if (validationError) return toast.warning(validationError);
     } else if (isEdit && variations.length === 0) {
       const proceed = window.confirm(
         "This is a Variant Product but no variants exist yet. Save anyway and add variants in the Variations tab?"
@@ -441,7 +477,7 @@ export function AddProduct() {
       if (!isVariantProduct) {
         const { cityPricing } = cityConfigsToPayload(cityConfigs);
         if (!cityPricing.length) {
-          return alert(
+          return toast.warning(
             "To publish on the storefront, set a selling price for at least one city (e.g. Bengaluru) in the Cities tab."
           );
         }
@@ -454,13 +490,20 @@ export function AddProduct() {
           );
         });
         if (missingCity) {
-          return alert(
+          return toast.warning(
             "To publish a variant product, each variant needs city pricing. Open Variations → expand each variant → set Bengaluru price & stock → Save."
           );
         }
       }
     }
 
+    // Debug logs before save
+    console.log("DEBUG: Before Save", {
+      variants: variations,
+      cityConfigs,
+      upsellProducts,
+      crossSellProducts,
+    });
     setSaving(true);
     try {
       const product = {
@@ -480,11 +523,13 @@ export function AddProduct() {
       }
 
       if (isEdit) {
+        console.log("DEBUG: API Payload", body);
         await apiFetch(`/products/${id}`, { method: "PATCH", body: JSON.stringify(body) });
         setDirty(false);
         initialSnapshot.current = snapshotState();
         navigate(adminPath("products"));
       } else {
+        console.log("DEBUG: API Payload", body);
         const res = await apiFetch("/products", { method: "POST", body: JSON.stringify(body) });
         const created = res.data as { _id?: string } | undefined;
         const createdId = created?._id;
@@ -508,7 +553,7 @@ export function AddProduct() {
               replace: true,
               state: { tab: "media" },
             });
-            alert(
+            toast.error(
               uploadErr instanceof Error
                 ? `Product saved but image upload failed: ${uploadErr.message}`
                 : "Product saved but image upload failed."
@@ -523,7 +568,7 @@ export function AddProduct() {
           state: { tab: "media" },
         });
       }
-    } catch (e: any) { alert(e.message); }
+    } catch (e: any) { toast.error(e.message); }
     setSaving(false);
   };
 
@@ -554,7 +599,7 @@ export function AddProduct() {
     e.target.value = "";
     if (!files.length) return;
     if (!getAdminToken()) {
-      alert("Please log in as admin to upload images.");
+      toast.warning("Please log in as admin to upload images.");
       navigate("/admin/login", { state: { from: window.location.pathname } });
       return;
     }
@@ -586,7 +631,7 @@ export function AddProduct() {
       if (/log in|token|expired/i.test(msg)) {
         navigate("/admin/login", { state: { from: window.location.pathname } });
       } else {
-        alert(msg);
+        toast.error(msg);
       }
     } finally {
       setUploadingImages(false);
@@ -615,6 +660,7 @@ export function AddProduct() {
       { key: "cities", label: "Pricing & Inventory", simpleOnly: true },
       { key: "media", label: "Media" },
       { key: "variations", label: "Variants", variantOnly: true },
+      { key: "relationships", label: "Recommendations", editOnly: true },
       { key: "seo", label: "SEO" },
       { key: "faqs", label: "FAQs" },
       { key: "policy", label: "Return & Exchange" },
@@ -623,9 +669,10 @@ export function AddProduct() {
     return all.filter((t) => {
       if ("simpleOnly" in t && t.simpleOnly && isVariant) return false;
       if ("variantOnly" in t && t.variantOnly && !isVariant) return false;
+      if ("editOnly" in t && t.editOnly && !isEdit) return false;
       return true;
     });
-  }, [form.productStructure]);
+  }, [form.productStructure, isEdit]);
 
   useEffect(() => {
     if (form.productStructure === "variant" && tab === "cities") setTab("info");
@@ -1003,6 +1050,21 @@ export function AddProduct() {
                   <Plus className="w-4 h-4" /> Add FAQ
                 </button>
               </div>
+            </Section>
+          )}
+
+          {/* Relationships / Recommendations */}
+          {tab === "relationships" && isEdit && (
+            <Section title="Product Recommendations">
+              <p className="text-xs text-sb-ink/50 mb-4">
+                Configure which products appear as recommendations. <strong>Upsell products</strong> are shown in the cart page ("You may also like"), 
+                while <strong>Cross-sell products</strong> appear on the product detail page ("Related products").
+              </p>
+              <ProductRelationshipManager
+                productId={id!}
+                initialUpsells={upsellProducts}
+                initialCrossSells={crossSellProducts}
+              />
             </Section>
           )}
 

@@ -15,6 +15,7 @@ const variationSchema = new mongoose.Schema(
       custom: [{ key: String, value: String }],
     },
     sku: { type: String, trim: true, sparse: true, default: null },
+    barcode: { type: String, trim: true, default: null },
     mrp: { type: Number, default: null, min: 0 },
     /** Optional reference weight (kg); city stock stays on Inventory. */
     weightKg: { type: Number, default: null, min: 0 },
@@ -38,7 +39,7 @@ const variationSchema = new mongoose.Schema(
 variationSchema.pre(/^find/, function (next) { this.where({ isDeleted: false }); next(); });
 
 function buildSearchText(doc) {
-  const parts = [doc.sku, doc.vendorSku].filter(Boolean).map(String);
+  const parts = [doc.sku, doc.vendorSku, doc.barcode].filter(Boolean).map(String);
   const a = doc.attributes || {};
   ['weight', 'grade', 'size', 'thickness', 'length', 'color', 'finish', 'diameter'].forEach((k) => {
     if (a[k]) parts.push(String(a[k]));

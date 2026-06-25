@@ -19,6 +19,7 @@ const productFull = require('../services/productFull.service');
 const { resolveVariantSku } = require('../services/variationSku.service');
 const { normalizeVariationAttributes, packageAttributesForSave } = require('../utils/variationAttributes');
 const { attributeValuesEquivalent } = require('../utils/attributeValueNormalize');
+const { isValidCssColor } = require('../utils/colorValidation');
 const { VALID_DELIVERY_TYPES } = require('../utils/productDeliveryType');
 const { VALID_PRODUCT_STRUCTURES } = require('../utils/productStructure');
 
@@ -75,14 +76,19 @@ const getAll = asyncHandler(async (req, res) => {
 const getById = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id)
     .populate('category', 'name slug')
-    .populate('brand', 'name slug logo');
+    .populate('brand', 'name slug logo')
+    .populate('upsellProducts', 'name sku')
+    .populate('crossSellProducts', 'name sku');
   if (!product) throw new AppError('Product not found.', 404);
   const [variations, config] = await Promise.all([
     ProductVariation.find({ product: product._id }),
     productFull.getProductConfiguration(product._id),
   ]);
+  // Enrich product with computed pricing fields (same as product listing)
+  const enrichedArr = await productFull.enrichProductsSummary([product]);
+  const enriched = enrichedArr[0];
   return ApiResponse.success(res, 200, 'Product retrieved.', {
-    ...product.toJSON(),
+    ...enriched,
     variations,
     cityPricing: config.cityPricing,
     inventory: config.inventory,
@@ -178,6 +184,7 @@ const update = asyncHandler(async (req, res) => {
     'isStructbayAssured', 'isStructbayDelivery', 'deliveryType', 'assuredVerifiedAt', 'assuredVerifiedBy',
     'structbayDeliverySupported', 'structbayDeliveryZones', 'structbayDeliveryLeadTimeDays',
     'displayOrder', 'seo', 'faqs', 'videos', 'documents', 'returnExchangePolicy', 'productStructure',
+    'upsellProducts', 'crossSellProducts',
   ];
   allowed.forEach(f => { if (productFields[f] !== undefined) product[f] = productFields[f]; });
 
@@ -327,6 +334,7 @@ const createVariation = asyncHandler(async (req, res) => {
       weightKg: req.body.weightKg,
       vendorSku: req.body.vendorSku,
       vendorPrice: req.body.vendorPrice,
+      barcode: req.body.barcode,
     }], { session });
 
     const { cityPricing, inventory } = productFull.extractNestedPayload(req.body, product.gstPercentage);
@@ -386,7 +394,7 @@ const updateVariation = asyncHandler(async (req, res) => {
 
   const allowed = [
     'images', 'status', 'sortOrder',
-    'mrp', 'weightKg', 'leadTimeDays', 'moq', 'vendorSku', 'vendorPrice',
+    'mrp', 'weightKg', 'leadTimeDays', 'moq', 'vendorSku', 'vendorPrice', 'barcode',
   ];
   allowed.forEach((f) => { if (req.body[f] !== undefined) variation[f] = req.body[f]; });
 
@@ -452,6 +460,105 @@ const saveVariationConfiguration = asyncHandler(async (req, res) => {
 
   const config = await productFull.getVariationConfiguration(product._id, variation._id);
   return ApiResponse.success(res, 200, 'Variation configuration saved.', config);
+});
+
+const generateVariationMatrix = asyncHandler(async (req, res) => {
+  const product = await Product.findById(req.params.id);
+  if (!product) throw new AppError('Product not found.', 404);
+  if (product.productStructure !== 'variant') {
+    throw new AppError('Change product structure to Variant Product before generating variants.', 400);
+  }
+
+  const { axes } = req.body; // [{key:string, values:[{value:string, colorCode?:string}]}]
+  if (!Array.isArray(axes) || !axes.length) throw new AppError('axes array is required.', 400);
+  for (const axis of axes) {
+    if (!axis.key || !Array.isArray(axis.values) || !axis.values.length) {
+      throw new AppError(`Each axis must have a key and at least one value.`, 400);
+    }
+    if (String(axis.key).trim().toLowerCase() === 'color') {
+      for (const rawValue of axis.values) {
+        const value = typeof rawValue === 'object' ? rawValue : { value: rawValue };
+        const colorCode = String(value.colorCode || '').trim();
+        const colorName = String(value.value || '').trim();
+        if (colorCode && !isValidCssColor(colorCode)) {
+          throw new AppError(`Invalid color code "${colorCode}" for ${colorName || 'Color'}.`, 400);
+        }
+        if (!colorCode && colorName && !isValidCssColor(colorName)) {
+          throw new AppError(`Add a valid color code for "${colorName}".`, 400);
+        }
+      }
+    }
+  }
+
+  // Cartesian product
+  function cartesian(arrays) {
+    return arrays.reduce(
+      (acc, cur) => acc.flatMap((a) => cur.map((b) => [...a, b])),
+      [[]]
+    );
+  }
+
+  const axisArrays = axes.map((a) =>
+    a.values.map((v) => ({ axisKey: a.key, value: typeof v === 'object' ? v.value : String(v), colorCode: typeof v === 'object' ? v.colorCode || null : null }))
+  );
+  const combinations = cartesian(axisArrays);
+
+  if (combinations.length > 500) throw new AppError(`Matrix would generate ${combinations.length} variants (max 500). Reduce attribute values.`, 400);
+
+  const created = [];
+  const skipped = [];
+
+  for (const combo of combinations) {
+    const pairsForSave = combo.map((cell) => ({ name: cell.axisKey, value: cell.value }));
+    if (combo.some((c) => c.colorCode)) {
+      const colorCell = combo.find((c) => c.colorCode);
+      if (colorCell) pairsForSave.push({ name: `${colorCell.axisKey}_code`, value: colorCell.colorCode });
+    }
+
+    const flatAttributes = normalizeVariationAttributes({ attributePairs: pairsForSave });
+    if (!Object.keys(flatAttributes).length) continue;
+
+    const attributes = packageAttributesForSave(flatAttributes);
+
+    // Skip if combination already exists
+    const existing = await ProductVariation.findOne({ product: product._id, isDeleted: { $ne: true } }).lean().then(async () => {
+      const all = await ProductVariation.find({ product: product._id, isDeleted: { $ne: true } }).select('attributes').lean();
+      const { attributeValuesEquivalent } = require('../utils/attributeValueNormalize');
+      return all.find((v) => {
+        const existFlat = normalizeVariationAttributes({ attributes: v.attributes });
+        const newFlat = { ...flatAttributes };
+        const keys = new Set([...Object.keys(existFlat), ...Object.keys(newFlat)]);
+        // Only check axis keys
+        const axisKeys = combo.map((c) => c.axisKey.toLowerCase());
+        return axisKeys.every((ak) => {
+          const ev = existFlat[ak] || existFlat[Object.keys(existFlat).find((k) => k.toLowerCase() === ak) || ''];
+          const nv = newFlat[ak] || newFlat[Object.keys(newFlat).find((k) => k.toLowerCase() === ak) || ''];
+          return ev && nv && attributeValuesEquivalent(ev, nv, ak);
+        }) && keys.size > 0;
+      });
+    });
+
+    if (existing) {
+      skipped.push(combo.map((c) => `${c.axisKey}:${c.value}`).join(' + '));
+      continue;
+    }
+
+    const sku = await resolveVariantSku({ product, requestedSku: null, attributes });
+    const variation = await ProductVariation.create({
+      product: product._id,
+      attributes,
+      sku,
+      status: 'ACTIVE',
+      sortOrder: created.length,
+    });
+    created.push(variation);
+  }
+
+  return ApiResponse.created(res, `Generated ${created.length} variants (${skipped.length} already existed).`, {
+    created,
+    skipped,
+    total: combinations.length,
+  });
 });
 
 const deleteVariation = asyncHandler(async (req, res) => {
@@ -1052,5 +1159,5 @@ module.exports = {
   getAll, getById, getBySlug, create, update, addImages, removeImage, remove, bulkImport, bulkImportVariants,
   getBulkImportTemplate,
   getVariations, createVariation, updateVariation, deleteVariation,
-  getVariationConfiguration, saveVariationConfiguration,
+  getVariationConfiguration, saveVariationConfiguration, generateVariationMatrix,
 };

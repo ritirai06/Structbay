@@ -187,6 +187,14 @@ const cmsSchema = new mongoose.Schema(
       workingHours: { type: String, default: null },
     },
 
+    // ─── Page Banners ───────────────────────────────────
+    pageBanners: {
+      aboutUsUrl: { type: String, default: null },
+      aboutUsPublicId: { type: String, default: null },
+      contactUsUrl: { type: String, default: null },
+      contactUsPublicId: { type: String, default: null },
+    },
+
     // ─── Footer CMS ────────────────────────────────────
     footer: {
       companyDescription: {
@@ -269,6 +277,16 @@ const cmsSchema = new mongoose.Schema(
         isActive: { type: Boolean, default: true },
       },
     ],
+
+    // ─── Commerce Settings ─────────────────────────────────
+    commerceSettings: {
+      /** Minimum order value in INR (₹). Default: 2000 */
+      minimumOrderValue: {
+        type: Number,
+        default: 2000,
+        min: 0,
+      },
+    },
 
     // Track who last updated
     lastUpdatedBy: {

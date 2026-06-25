@@ -13,6 +13,8 @@ export interface CartItem {
   id: string;
   /** Product slug (without variation composite). */
   productSlug?: string;
+  /** MongoDB _id of the product — used for upsell/cross-sell lookups. */
+  productId?: string;
   variationId?: string;
   variationLabel?: string;
   name: string;

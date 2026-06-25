@@ -228,21 +228,286 @@ const getAllVendors = asyncHandler(async (req, res) => {
 
 // ─── POST /api/v1/admin/vendors ───────────────────────────────────────────────
 const createVendor = asyncHandler(async (req, res) => {
+  const {
+    name, email, phone, password, companyName, contactPerson, gstNumber, businessRegNumber,
+    companyAddress, warehouseAddress, contactPersonName, contactPersonPhone, bankDetails
+  } = req.body;
+
+  // 1. Email check
+  const emailNorm = String(email || '').trim().toLowerCase();
+  const existingEmail = await User.findOne({ email: emailNorm, status: { $ne: 'DELETED' } });
+  if (existingEmail) throw new AppError('An account with this email already exists.', 409);
+
+  // 2. GST check
+  if (gstNumber && String(gstNumber).trim()) {
+    const gstNorm = String(gstNumber).trim().toUpperCase();
+    const existingGst = await User.findOne({
+      role: 'VENDOR',
+      gstNumber: gstNorm,
+      status: { $ne: 'DELETED' }
+    });
+    if (existingGst) throw new AppError('A vendor with this GST number already exists.', 409);
+  }
+
+  // 3. Create using authService
   const user = await authService.createVendorByAdmin(req.body, req.user);
+
+  // 4. Update the newly created user with the extended fields
+  user.companyAddress = companyAddress || null;
+  user.warehouseAddress = warehouseAddress || null;
+  user.contactPersonName = contactPersonName || contactPerson || name || null;
+  user.contactPersonPhone = contactPersonPhone || phone || null;
+  user.cancelledChequeFile = null;
+
+  if (bankDetails) {
+    user.bankDetails = {
+      accountHolderName: bankDetails.accountHolderName || null,
+      bankName: bankDetails.bankName || null,
+      accountNumber: bankDetails.accountNumber || null,
+      ifscCode: bankDetails.ifscCode ? bankDetails.ifscCode.toUpperCase() : null,
+      branch: bankDetails.branchName || null,
+      branchName: bankDetails.branchName || null,
+      cancelledChequeFile: null
+    };
+  } else {
+    user.bankDetails = {
+      accountHolderName: null,
+      bankName: null,
+      accountNumber: null,
+      ifscCode: null,
+      branch: null,
+      branchName: null,
+      cancelledChequeFile: null
+    };
+  }
+
+  await user.save({ validateBeforeSave: false });
+
+  // 5. Create or sync legacy Vendor document (for compatibility with existing flows)
+  try {
+    const Vendor = require('../models/Vendor');
+    let legacyVendor = await Vendor.findOne({ email: emailNorm });
+    if (!legacyVendor) {
+      legacyVendor = new Vendor({
+        email: emailNorm,
+        password: user.password,
+        companyName: companyName,
+        contactPerson: contactPerson || name,
+        phone: phone,
+        gstNumber: gstNumber ? String(gstNumber).trim().toUpperCase() : '—',
+        panNumber: req.body.panNumber || '—',
+        referenceNumber: user.referenceNumber,
+        status: 'active',
+        verificationStatus: 'verified'
+      });
+    }
+
+    legacyVendor.companyAddress = companyAddress || null;
+    legacyVendor.warehouseAddress = warehouseAddress || null;
+    legacyVendor.contactPersonName = contactPersonName || contactPerson || name || null;
+    legacyVendor.contactPersonPhone = contactPersonPhone || phone || null;
+    legacyVendor.cancelledChequeFile = null;
+
+    if (bankDetails) {
+      legacyVendor.bankDetails = {
+        accountHolderName: bankDetails.accountHolderName || null,
+        bankName: bankDetails.bankName || null,
+        accountNumber: bankDetails.accountNumber || null,
+        ifscCode: bankDetails.ifscCode ? bankDetails.ifscCode.toUpperCase() : null,
+        branch: bankDetails.branchName || null,
+        branchName: bankDetails.branchName || null,
+        cancelledChequeFile: null
+      };
+    } else {
+      legacyVendor.bankDetails = {
+        accountHolderName: null,
+        bankName: null,
+        accountNumber: null,
+        ifscCode: null,
+        branch: null,
+        branchName: null,
+        cancelledChequeFile: null
+      };
+    }
+
+    await legacyVendor.save();
+  } catch (err) {
+    console.error('Failed to create legacy vendor record:', err);
+  }
+
   return ApiResponse.created(
     res,
     'Vendor account created. They can sign in with the password you set.',
-    {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      vendorStatus: user.vendorStatus,
-      status: user.status,
-      companyName: user.companyName,
-    }
+    user
   );
 });
+
+// ─── GET /api/v1/admin/vendors/:id ─────────────────────────────────────────────
+const getVendorById = asyncHandler(async (req, res) => {
+  const vendor = await User.findOne({ _id: req.params.id, role: 'VENDOR' });
+  if (!vendor) throw new AppError('Vendor not found.', 404);
+  return ApiResponse.success(res, 200, 'Vendor retrieved.', vendor);
+});
+
+// ─── PUT /api/v1/admin/vendors/:id ─────────────────────────────────────────────
+const updateVendor = asyncHandler(async (req, res) => {
+  const vendor = await User.findOne({ _id: req.params.id, role: 'VENDOR' });
+  if (!vendor) throw new AppError('Vendor not found.', 404);
+
+  const {
+    name, email, phone, companyName, contactPerson, gstNumber, businessRegNumber,
+    companyAddress, warehouseAddress, contactPersonName, contactPersonPhone, bankDetails,
+    vendorStatus, status
+  } = req.body;
+
+  // 1. Email check
+  if (email && email.toLowerCase() !== vendor.email.toLowerCase()) {
+    const emailNorm = email.toLowerCase();
+    const existingEmail = await User.findOne({
+      email: emailNorm,
+      _id: { $ne: vendor._id },
+      status: { $ne: 'DELETED' }
+    });
+    if (existingEmail) throw new AppError('An account with this email already exists.', 409);
+    vendor.email = emailNorm;
+  }
+
+  // 2. GST check
+  if (gstNumber && (!vendor.gstNumber || gstNumber.toUpperCase() !== vendor.gstNumber.toUpperCase())) {
+    const gstNorm = gstNumber.trim().toUpperCase();
+    const existingGst = await User.findOne({
+      role: 'VENDOR',
+      gstNumber: gstNorm,
+      _id: { $ne: vendor._id },
+      status: { $ne: 'DELETED' }
+    });
+    if (existingGst) throw new AppError('A vendor with this GST number already exists.', 409);
+    vendor.gstNumber = gstNorm;
+  } else if (gstNumber === '') {
+    vendor.gstNumber = null;
+  }
+
+  // 3. Update basic fields
+  if (name !== undefined) vendor.name = name;
+  if (phone !== undefined) vendor.phone = phone;
+  if (companyName !== undefined) vendor.companyName = companyName;
+  if (contactPerson !== undefined) vendor.contactPerson = contactPerson;
+  if (businessRegNumber !== undefined) vendor.businessRegNumber = businessRegNumber || null;
+
+  // 4. Update new extended fields
+  if (companyAddress !== undefined) vendor.companyAddress = companyAddress || null;
+  if (warehouseAddress !== undefined) vendor.warehouseAddress = warehouseAddress || null;
+  if (contactPersonName !== undefined) vendor.contactPersonName = contactPersonName || null;
+  if (contactPersonPhone !== undefined) vendor.contactPersonPhone = contactPersonPhone || null;
+
+  // 5. Update bankDetails
+  if (bankDetails) {
+    if (!vendor.bankDetails) vendor.bankDetails = {};
+    if (bankDetails.accountHolderName !== undefined) vendor.bankDetails.accountHolderName = bankDetails.accountHolderName || null;
+    if (bankDetails.bankName !== undefined) vendor.bankDetails.bankName = bankDetails.bankName || null;
+    if (bankDetails.accountNumber !== undefined) vendor.bankDetails.accountNumber = bankDetails.accountNumber || null;
+    if (bankDetails.ifscCode !== undefined) vendor.bankDetails.ifscCode = bankDetails.ifscCode ? bankDetails.ifscCode.toUpperCase() : null;
+    if (bankDetails.branchName !== undefined) {
+      vendor.bankDetails.branchName = bankDetails.branchName || null;
+      vendor.bankDetails.branch = bankDetails.branchName || null;
+    }
+  }
+
+  // 6. Update status if changed
+  if (vendorStatus !== undefined) vendor.vendorStatus = vendorStatus;
+  if (status !== undefined) {
+    vendor.status = status;
+    if (status === 'SUSPENDED' || status === 'DELETED') {
+      const RefreshToken = require('../models/tokens/RefreshToken');
+      const Session = require('../models/Session');
+      await RefreshToken.revokeAllForUser(vendor._id);
+      await Session.updateMany({ user: vendor._id, isActive: true }, { isActive: false, logoutAt: new Date() });
+    }
+  }
+
+  await vendor.save({ validateBeforeSave: false });
+
+  // 7. Sync to legacy Vendor collection
+  try {
+    const Vendor = require('../models/Vendor');
+    let legacyVendor = await Vendor.findOne({ email: vendor.email });
+    if (!legacyVendor && email) {
+      legacyVendor = await Vendor.findOne({ email: email });
+    }
+
+    if (legacyVendor) {
+      if (email) legacyVendor.email = email.toLowerCase();
+      if (name) legacyVendor.contactPerson = name;
+      if (phone) legacyVendor.phone = phone;
+      if (companyName) legacyVendor.companyName = companyName;
+      if (gstNumber) legacyVendor.gstNumber = gstNumber.toUpperCase();
+      if (companyAddress !== undefined) legacyVendor.companyAddress = companyAddress || null;
+      if (warehouseAddress !== undefined) legacyVendor.warehouseAddress = warehouseAddress || null;
+      if (contactPersonName !== undefined) legacyVendor.contactPersonName = contactPersonName || null;
+      if (contactPersonPhone !== undefined) legacyVendor.contactPersonPhone = contactPersonPhone || null;
+      
+      if (bankDetails) {
+        if (!legacyVendor.bankDetails) legacyVendor.bankDetails = {};
+        if (bankDetails.accountHolderName !== undefined) legacyVendor.bankDetails.accountHolderName = bankDetails.accountHolderName || null;
+        if (bankDetails.bankName !== undefined) legacyVendor.bankDetails.bankName = bankDetails.bankName || null;
+        if (bankDetails.accountNumber !== undefined) legacyVendor.bankDetails.accountNumber = bankDetails.accountNumber || null;
+        if (bankDetails.ifscCode !== undefined) legacyVendor.bankDetails.ifscCode = bankDetails.ifscCode ? bankDetails.ifscCode.toUpperCase() : null;
+        if (bankDetails.branchName !== undefined) {
+          legacyVendor.bankDetails.branchName = bankDetails.branchName || null;
+          legacyVendor.bankDetails.branch = bankDetails.branchName || null;
+        }
+      }
+
+      if (vendorStatus) {
+        if (vendorStatus === 'APPROVED') legacyVendor.verificationStatus = 'verified';
+        else if (vendorStatus === 'REJECTED') legacyVendor.verificationStatus = 'rejected';
+      }
+      if (status) {
+        if (status === 'ACTIVE') legacyVendor.status = 'active';
+        else if (status === 'SUSPENDED') legacyVendor.status = 'suspended';
+      }
+
+      await legacyVendor.save();
+    }
+  } catch (err) {
+    console.error('Failed to sync update to legacy vendor:', err);
+  }
+
+  return ApiResponse.success(res, 200, 'Vendor updated successfully.', vendor);
+});
+
+// ─── POST /api/v1/admin/vendors/:id/documents ─────────────────────────────────────
+const uploadCancelledCheque = asyncHandler(async (req, res) => {
+  const vendor = await User.findOne({ _id: req.params.id, role: 'VENDOR' });
+  if (!vendor) throw new AppError('Vendor not found.', 404);
+  if (!req.file) throw new AppError('No file uploaded.', 400);
+
+  const fileUrl = req.file.path;
+  vendor.cancelledChequeFile = fileUrl;
+  if (!vendor.bankDetails) vendor.bankDetails = {};
+  vendor.bankDetails.cancelledChequeFile = fileUrl;
+
+  await vendor.save({ validateBeforeSave: false });
+
+  // Sync to legacy Vendor collection
+  try {
+    const Vendor = require('../models/Vendor');
+    const legacyVendor = await Vendor.findOne({ email: vendor.email });
+    if (legacyVendor) {
+      legacyVendor.cancelledChequeFile = fileUrl;
+      if (!legacyVendor.bankDetails) legacyVendor.bankDetails = {};
+      legacyVendor.bankDetails.cancelledChequeFile = fileUrl;
+      await legacyVendor.save();
+    }
+  } catch (err) {
+    console.error('Failed to sync cancelled cheque to legacy vendor:', err);
+  }
+
+  return ApiResponse.success(res, 200, 'Cancelled cheque uploaded successfully.', {
+    cancelledChequeFile: fileUrl
+  });
+});
+
 
 const BULK_DELETE_MAX = 200;
 
@@ -321,6 +586,9 @@ module.exports = {
   rejectVendor,
   getAllVendors,
   createVendor,
+  getVendorById,
+  updateVendor,
+  uploadCancelledCheque,
   deleteVendor,
   bulkDeleteVendors,
 };

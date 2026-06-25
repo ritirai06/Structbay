@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router";
 import { AppProvider } from "./context/AppContext";
 import { Header } from "./components/Header";
@@ -30,6 +30,7 @@ import {
   ShippingPolicyPage,
   DynamicPolicyPage,
 } from "./pages/PolicyPage";
+import { About } from "./pages/About";
 
 /* Pages that use full-screen layouts (no shared header/footer) */
 const FULLSCREEN_ROUTES = ["/splash", "/city", "/login", "/register", "/dashboard"];
@@ -94,6 +95,7 @@ function AppRoutes() {
         <Route path="/returns" element={<ReturnsPolicyPage />} />
         <Route path="/shipping" element={<ShippingPolicyPage />} />
         <Route path="/policy/:slug" element={<DynamicPolicyPage />} />
+        <Route path="/about" element={<About />} />
         {/* Catch-all */}
         <Route path="*" element={<Homepage />} />
       </Routes>

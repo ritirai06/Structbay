@@ -2,9 +2,9 @@ const router = require('express').Router();
 const { protect } = require('../middleware/auth.middleware');
 const { requireRole } = require('../middleware/role.middleware');
 const { validate } = require('../middleware/validate.middleware');
-const { uploadDocumentFields, handleUploadError } = require('../middleware/upload.middleware');
+const { uploadDocumentFields, handleUploadError, uploadDocument } = require('../middleware/upload.middleware');
 const { UPLOAD_FOLDERS } = require('../config/constants');
-const { updateUserStatusValidator, adminCreateVendorValidator } = require('../validators/auth.validator');
+const { updateUserStatusValidator, adminCreateVendorValidator, adminUpdateVendorValidator } = require('../validators/auth.validator');
 const { rejectVendorValidator } = require('../validators/user.validator');
 const adminUserController = require('../controllers/adminUser.controller');
 const adminSessionController = require('../controllers/adminSession.controller');
@@ -120,10 +120,13 @@ router.delete('/users/:id',     ...adminOnly, adminUserController.deleteUser);
 // ─── Vendor Management ────────────────────────────────────────────────────────
 router.get('/vendors',                  ...adminOnly, adminUserController.getAllVendors);
 router.post('/vendors',                 ...adminOnly, adminCreateVendorValidator, validate, adminUserController.createVendor);
+router.post('/vendors/bulk-delete',     ...adminOnly, adminUserController.bulkDeleteVendors);
+router.get('/vendors/:id',              ...adminOnly, adminUserController.getVendorById);
+router.put('/vendors/:id',              ...adminOnly, adminUpdateVendorValidator, validate, adminUserController.updateVendor);
+router.post('/vendors/:id/documents',   ...adminOnly, uploadDocument(UPLOAD_FOLDERS.VENDOR_DOCS).single('document'), handleUploadError, adminUserController.uploadCancelledCheque);
 router.put('/vendors/:id/approve',      ...adminOnly, adminUserController.approveVendor);
 router.put('/vendors/:id/reject',       ...adminOnly, rejectVendorValidator, validate, adminUserController.rejectVendor);
 router.delete('/vendors/:id',           ...adminOnly, adminUserController.deleteVendor);
-router.post('/vendors/bulk-delete',   ...adminOnly, adminUserController.bulkDeleteVendors);
 
 // ─── Order Activity Logs ─────────────────────────────────────────────────────
 const OrderActivityLog = require('../models/OrderActivityLog');
@@ -174,5 +177,10 @@ router.put('/inbox/notifications/:id/read', ...adminOnly, asyncHandler(staffNoti
 router.get('/sessions',          ...adminOnly, adminSessionController.getAllSessions);
 router.get('/sessions/user/:id', ...adminOnly, adminSessionController.getUserSessions);
 router.delete('/sessions/:id',   ...adminOnly, adminSessionController.revokeSession);
+
+// ─── Commerce Settings ──────────────────────────────────────────────────────────
+const cmsController = require('../controllers/cms.controller');
+router.get('/cms/commerce-settings',    ...adminOnly, cmsController.getCommerceSettings);
+router.put('/cms/commerce-settings',    ...adminOnly, cmsController.updateCommerceSettings);
 
 module.exports = router;
