@@ -11,6 +11,8 @@ import { fetchNavCategories } from "../lib/navCategories";
 import { useApp } from "../context/AppContext";
 import { ListingProductCard } from "../components/ListingProductCard";
 import { SandAggregatesQuoteModal } from "../components/SandAggregatesQuoteModal";
+import { ConcreteRFQModal } from "../components/ConcreteRFQModal";
+import { isRfqOnlyCategory } from "../lib/rfqCategories";
 import { findVariationForFilterSelections } from "../lib/variationSelectors";
 import {
   listingUnitPrice,
@@ -247,6 +249,19 @@ function isSandAggregatesCategory(value: string | undefined): boolean {
   );
 }
 
+function isConcreteRFQCategory(value: string | undefined): boolean {
+  const text = decodeURIComponent(String(value || ""))
+    .toLowerCase()
+    .replace(/\+/g, " ")
+    .replace(/-/g, " ");
+  return (
+    text.includes("ready mix concrete") ||
+    text.includes("ready mix") ||
+    text.includes("readymix") ||
+    (text.includes("concrete") && !text.includes("block") && !text.includes("cement"))
+  );
+}
+
 export function CategoryListing() {
   const { category } = useParams<{ category?: string }>();
   const { addToCart, updateQty, cart, city, cityId } = useApp();
@@ -280,6 +295,7 @@ export function CategoryListing() {
   const [showExpress, setShowExpress]       = useState(false);
   const [inStockOnly, setInStockOnly]       = useState(false);
   const [sandQuoteOpen, setSandQuoteOpen]   = useState(false);
+  const [concreteRFQOpen, setConcreteRFQOpen] = useState(false);
   const [selectedWeights, setSelectedWeights] = useState<string[]>([]);
   const [filterOpen, setFilterOpen]         = useState(false);
   const [page, setPage]                     = useState(1);
@@ -330,17 +346,15 @@ export function CategoryListing() {
   }, [isShopAll, allCategories, category, catData?.name]);
 
   const isSandAggregates = useMemo(
-    () => !isShopAll && (
-      isSandAggregatesCategory(category) ||
-      isSandAggregatesCategory(categoryTitle) ||
-      isSandAggregatesCategory(location.pathname)
-    ),
-    [category, categoryTitle, isShopAll, location.pathname]
+    () => !isShopAll && isRfqOnlyCategory(String(category || "")) &&
+      !isConcreteRFQCategory(String(category || "")),
+    [category, isShopAll]
   );
 
-  useEffect(() => {
-    if (isSandAggregates) setSandQuoteOpen(true);
-  }, [category, isSandAggregates, location.key]);
+  const isConcrete = useMemo(
+    () => !isShopAll && isConcreteRFQCategory(String(category || "")),
+    [category, isShopAll]
+  );
 
   useEffect(() => {
     const openQuote = () => setSandQuoteOpen(true);
@@ -661,11 +675,20 @@ export function CategoryListing() {
 
   if (isSandAggregates) {
     return (
-      <div className="bg-white min-h-screen">
-        <SandAggregatesQuoteModal open={true} onClose={() => navigate("/")} />
-      </div>
+      <>
+        <SandAggregatesQuoteModal open={true} onClose={() => navigate("/", { state: { noScroll: true } })} />
+      </>
     );
   }
+
+  if (isConcrete) {
+    return (
+      <>
+        <ConcreteRFQModal open={true} onClose={() => navigate("/", { state: { noScroll: true } })} />
+      </>
+    );
+  }
+
 
   if (!catData && !loading && !isShopAll) return null;
 
@@ -909,13 +932,13 @@ export function CategoryListing() {
 
       {/* ── Category quick-nav ─────────────────────────────────────────────── */}
       <div className="sf-category-tabs border-b border-gray-100 overflow-x-auto scrollbar-none">
-        <div className="max-w-7xl mx-auto px-4 flex gap-1 py-2">
+        <div className="max-w-7xl mx-auto px-4 flex items-center gap-1.5 py-2.5">
           <Link
             to="/shop"
-            className={`shrink-0 text-xs px-3.5 py-1.5 rounded-full whitespace-nowrap font-medium transition-all ${
+            className={`shrink-0 text-xs px-3.5 py-1.5 rounded-full whitespace-nowrap flex items-center justify-center font-medium transition-all border ${
               isShopAll
-                ? "bg-[#E85A00] text-white"
-                : "text-sb-ink-muted/60 hover:text-sb-ink hover:bg-white-2 border border-sb-ink/10"
+                ? "bg-[#E85A00] text-white border-[#E85A00]"
+                : "text-sb-ink-muted/70 hover:text-sb-ink bg-white border-sb-ink/15 hover:border-sb-ink/30"
             }`}
           >
             All
@@ -924,10 +947,10 @@ export function CategoryListing() {
             <Link
               key={cat.slug || cat._id}
               to={`/category/${cat.slug}`}
-              className={`shrink-0 text-xs px-3.5 py-1.5 rounded-full whitespace-nowrap font-medium transition-all ${
+              className={`shrink-0 text-xs px-3.5 py-1.5 rounded-full whitespace-nowrap flex items-center justify-center font-medium transition-all border ${
                 categorySlugMatches(category, cat)
-                  ? "bg-[#E85A00] text-white"
-                  : "text-sb-ink-muted/60 hover:text-sb-ink hover:bg-white-2 border border-sb-ink/10"
+                  ? "bg-[#E85A00] text-white border-[#E85A00]"
+                  : "text-sb-ink-muted/70 hover:text-sb-ink bg-white border-sb-ink/15 hover:border-sb-ink/30"
               }`}
             >
               {cat.name}
@@ -959,39 +982,37 @@ export function CategoryListing() {
 
           <div className="flex-1 min-w-0">
             {/* Sort + count bar */}
-            <div className={`flex items-center justify-between mb-4 bg-white border border-gray-100 rounded-lg px-4 py-2.5 ${isRefreshing ? "opacity-80" : ""}`}>
-              <span className="text-sm text-gray-500 flex items-center gap-2">
+            <div className={`flex items-center justify-between gap-2 mb-4 bg-white border border-gray-100 rounded-lg px-4 py-2.5 ${isRefreshing ? "opacity-80" : ""}`}>
+              <span className="text-sm text-gray-500 flex items-center gap-1.5 shrink-0 whitespace-nowrap">
                 {isRefreshing && <Loader2 className="w-3.5 h-3.5 animate-spin text-[#E85A00]" aria-hidden />}
-                <span>
-                  {displayTotal == null ? (
-                    <span className="text-gray-500">Loading products…</span>
-                  ) : (
-                    <>
-                      <span className="font-semibold text-gray-900">{displayTotal}</span> products
-                      {activeFilters > 0 && <span className="ml-1.5 text-[#E85A00] text-xs">· {activeFilters} filter{activeFilters > 1 ? "s" : ""} applied</span>}
-                    </>
-                  )}
-                </span>
+                {displayTotal == null ? (
+                  <span className="text-gray-500">Loading…</span>
+                ) : (
+                  <>
+                    <span className="font-semibold text-gray-900">{displayTotal}</span> products
+                    {activeFilters > 0 && <span className="text-[#E85A00] text-xs">· {activeFilters} filter{activeFilters > 1 ? "s" : ""}</span>}
+                  </>
+                )}
               </span>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <button
                   onClick={() => setFilterOpen(!filterOpen)}
-                  className="lg:hidden flex items-center gap-1.5 text-xs border border-sb-ink/15 rounded-lg px-3 py-1.5 text-sb-ink-muted hover:border-[#E85A00] transition-colors"
+                  className="lg:hidden flex items-center gap-1.5 text-xs border border-sb-ink/15 rounded-lg px-3 py-1.5 text-sb-ink-muted hover:border-[#E85A00] transition-colors whitespace-nowrap"
                 >
                   <SlidersHorizontal className="w-3.5 h-3.5" />
                   Filters {activeFilters > 0 && `(${activeFilters})`}
                 </button>
-                <div className="relative">
+                <div className="relative shrink-0">
                   <select
                     value={sortBy}
                     onChange={e => { setSortBy(e.target.value); setPage(1); }}
-                    className="bg-white-2 border border-white/12 rounded-lg pl-2.5 pr-7 py-1.5 text-xs text-sb-ink focus:outline-none focus:border-[#E85A00] appearance-none cursor-pointer transition-colors"
+                    className="max-w-[9rem] bg-white border border-gray-200 rounded-lg pl-2.5 pr-6 py-1.5 text-xs text-sb-ink focus:outline-none focus:border-[#E85A00] appearance-none cursor-pointer transition-colors"
                   >
                     {SORT_OPTIONS.map(opt => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
                   </select>
-                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-sb-ink-muted/50 pointer-events-none" />
+                  <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-sb-ink-muted/50 pointer-events-none" />
                 </div>
               </div>
             </div>
@@ -1143,12 +1164,13 @@ export function CategoryListing() {
                 <p className="text-sm text-white/85">Get competitive quotes from multiple vendors. No minimum order limit.</p>
               </div>
               <div className="flex gap-3 shrink-0">
-                <Link
-                  to="/rfq"
-                  className="flex items-center gap-2 bg-[#E85A00] hover:bg-[#CC4E00] text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-colors shadow-[0_4px_12px_rgba(232, 90, 0,0.25)]"
+                <button
+                  type="button"
+                  onClick={() => setConcreteRFQOpen(true)}
+                  className="flex items-center gap-2 bg-[#E85A00] hover:bg-[#CC4E00] text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-colors shadow-[0_4px_12px_rgba(232,90,0,0.25)]"
                 >
                   <FileText className="w-4 h-4" /> Get RFQ
-                </Link>
+                </button>
                 <Link
                   to="/bulk"
                   className="flex items-center gap-2 border border-white/25 hover:border-[#E85A00] text-white hover:text-[#E85A00] px-5 py-2.5 rounded-xl font-semibold text-sm transition-all"

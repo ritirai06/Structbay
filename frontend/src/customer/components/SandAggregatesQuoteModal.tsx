@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AlertCircle, CheckCircle2, Plus, Trash2, X } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { api } from "../lib/api";
+import { useScrollLock } from "../hooks/useScrollLock";
 
 type QuoteLine = {
   size: string;
@@ -40,14 +41,7 @@ export function SandAggregatesQuoteModal({ open, onClose }: Props) {
   });
   const [lines, setLines] = useState<QuoteLine[]>([{ size: "", quantity: "" }]);
 
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
+  useScrollLock(open);
 
   useEffect(() => {
     if (!open) return;

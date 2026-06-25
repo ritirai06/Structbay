@@ -4,7 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Shield, Zap, ChevronRight, Star, ArrowRight,
   Truck, HeadphonesIcon, Building2, ShoppingCart,
-  TrendingUp, FileText,
+  TrendingUp, FileText, Calculator,
   ChevronLeft, MapPin, LayoutGrid, X,
   Package, PaintBucket, Grid3x3, PlugZap, Droplets,
   PanelsTopLeft, Wrench, Hammer, FlaskConical, Fan,
@@ -24,6 +24,7 @@ import {
 import { TopSellingProductsCarousel } from "../components/TopSellingProductsCarousel";
 import { ListingProductCard } from "../components/ListingProductCard";
 import { FeaturedBrandsMarquee } from "../components/FeaturedBrandsMarquee";
+import { ConcreteRFQModal } from "../components/ConcreteRFQModal";
 import { productHref } from "../lib/productRoutes";
 import { isVariantProduct, validateCartLine } from "../lib/productStructure";
 import { useCmsPageSeo } from "../hooks/useCmsPageSeo";
@@ -95,9 +96,9 @@ const DEFAULT_SUB =
 const INTRO_TITLE = "Smart Construction Starts With Smarter Sourcing";
 const INTRO_TAGLINE = "Built for Contractors, Backed by Brands.";
 const INTRO_BODY_DEFAULT =
-  "StructBay combines the reliability of branded materials, the power of affordable pricing, and the ease of single-window sourcing — everything you need to finish projects faster and better.";
+  "StructBay combines the reliability of branded materials, the power of affordable pricing, and the ease of single-window sourcing â€” everything you need to finish projects faster and better.";
 
-/** Desktop reference: line break before “the ease of…” */
+/** Desktop reference: line break before â€œthe ease ofâ€¦â€ */
 function IntroBodyText({ text }: { text: string }) {
   const marker = "the ease of single-window";
   const idx = text.indexOf(marker);
@@ -115,7 +116,7 @@ function IntroBodyText({ text }: { text: string }) {
 }
 
 const CATEGORIES_SUB =
-  "From trusted materials to seamless procurement — StructBay simplifies your construction journey. Explore our wide range of products.";
+  "From trusted materials to seamless procurement â€” StructBay simplifies your construction journey. Explore our wide range of products.";
 
 /** Homepage shows up to 14 categories. */
 const HOMEPAGE_CATEGORY_LIMIT = 14;
@@ -272,6 +273,65 @@ function resolveFeatureCards(cms: Record<string, unknown>): ResolvedFeatureCard[
     });
 }
 
+/** Mobile-aware feature card slider with pagination dots. Desktop renders the plain grid. */
+function FeatureCardSlider({ featureCards }: { featureCards: ResolvedFeatureCard[] }) {
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [activeIdx, setActiveIdx] = useState(0);
+
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (!grid) return;
+
+    const handleScroll = () => {
+      const scrollLeft = grid.scrollLeft;
+      const cardWidth = grid.offsetWidth;
+      if (cardWidth <= 0) return;
+      const idx = Math.round(scrollLeft / cardWidth);
+      setActiveIdx(Math.min(Math.max(idx, 0), featureCards.length - 1));
+    };
+
+    grid.addEventListener("scroll", handleScroll, { passive: true });
+    return () => grid.removeEventListener("scroll", handleScroll);
+  }, [featureCards.length]);
+
+  const scrollTo = (idx: number) => {
+    const grid = gridRef.current;
+    if (!grid) return;
+    grid.scrollTo({ left: idx * grid.offsetWidth, behavior: "smooth" });
+  };
+
+  return (
+    <div className="sf-features-slider-wrap">
+      <div ref={gridRef} className="sf-features-grid">
+        {featureCards.map(({ title, desc, icon: Icon, image, href, buttonText }) => (
+          <div key={title} className="sf-feature-card" style={{ backgroundImage: `url(${image})` }}>
+            <div className="sf-feature-card__overlay">
+              <Icon className="sf-feature-card__icon" strokeWidth={1.15} aria-hidden />
+              <div className="sf-feature-card__body">
+                <h3>{title}</h3>
+                <p>{desc}</p>
+              </div>
+              <Link to={href} className="sf-btn-orange sf-feature-card__btn">{buttonText}</Link>
+            </div>
+          </div>
+        ))}
+      </div>
+      {/* Pagination dots — visible only on mobile via CSS */}
+      <div className="sf-features-dots" aria-hidden>
+        {featureCards.map((_, i) => (
+          <button
+            key={i}
+            type="button"
+            className={`sf-features-dot${i === activeIdx ? " sf-features-dot--active" : ""}`}
+            onClick={() => scrollTo(i)}
+            aria-label={`Go to card ${i + 1}`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function HomeContactForm({ fallbackEmail }: { fallbackEmail: string }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -348,7 +408,7 @@ function HomeContactForm({ fallbackEmail }: { fallbackEmail: string }) {
         <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Your Message" required />
       </div>
       <button type="submit" className="sf-send-outline" disabled={loading}>
-        {loading ? "Sending…" : "Send Message"}
+        {loading ? "Sendingâ€¦" : "Send Message"}
       </button>
     </form>
   );
@@ -442,7 +502,7 @@ function buildHeroSlides(rawBanners: any[], cms: Record<string, unknown>): HeroS
     const bannerSub = [b.subtitle, b.description]
       .map((x: any) => String(x || "").trim())
       .filter(Boolean)
-      .join(" — ");
+      .join(" â€” ");
     const sub = useCmsFallbacks
       ? (bannerSub || cmsSub || DEFAULT_SUB)
       : bannerSub;
@@ -507,7 +567,7 @@ function buildHeroSlides(rawBanners: any[], cms: Record<string, unknown>): HeroS
   return DEFAULT_HERO_SLIDES.map((s, i) => ({ ...s, id: `default-${i}` }));
 }
 
-/** Optional CMS overlay — only when `overlayOpacity` is set above 0. */
+/** Optional CMS overlay â€” only when `overlayOpacity` is set above 0. */
 function heroReadableOverlay(
   opacityPct: number | null | undefined,
   align: HeroTextAlign = "right"
@@ -753,7 +813,7 @@ function categoryAccentIcon(cat: { name?: string; slug?: string }): LucideIcon {
   return LayoutGrid;
 }
 
-// ── Product Card ─────────────────────────────────────────────────────────────
+// â”€â”€ Product Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ProductCard({ product, compact = false }: { product: any; compact?: boolean }) {
   const { addToCart, city } = useApp();
   const isVariant = isVariantProduct(product);
@@ -798,14 +858,14 @@ function ProductCard({ product, compact = false }: { product: any; compact?: boo
         <div className="flex items-baseline gap-1.5 mt-1.5">
           {price > 0 ? (
             <>
-              <span className={`font-bold text-sb-orange${compact ? " text-base" : " text-lg"}`}>₹{price.toLocaleString()}</span>
-              {discount > 0 && <span className={`text-sb-text-secondary line-through${compact ? " text-[10px]" : " text-xs"}`}>₹{mrp.toLocaleString()}</span>}
+              <span className={`font-bold text-sb-orange${compact ? " text-base" : " text-lg"}`}>â‚¹{price.toLocaleString()}</span>
+              {discount > 0 && <span className={`text-sb-text-secondary line-through${compact ? " text-[10px]" : " text-xs"}`}>â‚¹{mrp.toLocaleString()}</span>}
             </>
           ) : (
             <span className={`text-sb-text-secondary${compact ? " text-[10px]" : " text-xs"}`}>Price on request</span>
           )}
         </div>
-        {price > 0 && <p className={`text-sb-text-secondary mt-0.5${compact ? " text-[9px]" : " text-[10px]"}`}>excl. GST · GST at checkout</p>}
+        {price > 0 && <p className={`text-sb-text-secondary mt-0.5${compact ? " text-[9px]" : " text-[10px]"}`}>excl. GST Â· GST at checkout</p>}
         {price > 0 && (
           isVariant ? (
             <Link
@@ -849,11 +909,12 @@ function ProductCard({ product, compact = false }: { product: any; compact?: boo
   );
 }
 
-// ── Main ─────────────────────────────────────────────────────────────────────
+// â”€â”€ Main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export function Homepage() {
   useCmsPageSeo("home");
   const { city, cityId, cart, addToCart, updateQty } = useApp();
   const { openBulkEnquiry } = useBulkEnquiryModal();
+  const [concreteRFQOpen, setConcreteRFQOpen] = useState(false);
   const [varChoice, setVarChoice] = useState<Record<string, string>>({});
 
   const [banners, setBanners]           = useState<any[]>([]);
@@ -877,15 +938,27 @@ export function Homepage() {
 
   useEffect(() => {
     if (announcements.length === 0 || !announcementsReady) return;
+    const scrollY = window.scrollY;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") dismissAnnouncements();
     };
     window.addEventListener("keydown", onKey);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    document.body.style.width = "100%";
+    if (scrollbarWidth > 0) document.body.style.paddingRight = `${scrollbarWidth}px`;
     return () => {
       window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prevOverflow;
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.left = "";
+      document.body.style.right = "";
+      document.body.style.width = "";
+      document.body.style.paddingRight = "";
+      window.scrollTo({ top: scrollY, behavior: "instant" });
     };
   }, [announcements.length, announcementsReady, dismissAnnouncements]);
 
@@ -946,7 +1019,7 @@ export function Homepage() {
     };
   }, []);
 
-  // Catalog sections: CMS featured → city-scoped → all ACTIVE (see homepageCatalog.ts).
+  // Catalog sections: CMS featured â†’ city-scoped â†’ all ACTIVE (see homepageCatalog.ts).
   useEffect(() => {
     let cancelled = false;
     setCatalogLoading(true);
@@ -1003,6 +1076,7 @@ export function Homepage() {
 
   return (
     <div className="min-h-screen">
+      <ConcreteRFQModal open={concreteRFQOpen} onClose={() => setConcreteRFQOpen(false)} />
       {announcementsReady && announcements.length > 0 && (
         <div
           className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6"
@@ -1066,39 +1140,27 @@ export function Homepage() {
         </div>
       )}
 
-      {/* ── Hero Carousel ──────────────────────────────────────────────────── */}
+      {/* â”€â”€ Hero Carousel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <StructBayHero rawBanners={banners} cms={cmsHome} city={city} cityId={cityId} />
 
-      {/* ── Intro + feature cards (reference layout) ─────────────────────── */}
+      {/* â”€â”€ Intro + feature cards (reference layout) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <section className="sf-dot-grid sf-intro" id="about">
         <div className="sf-intro__inner">
           <h2>{introContent.title}</h2>
           <p className="sf-intro-tagline">{introContent.tagline}</p>
           <IntroBodyText text={introContent.body} />
         </div>
-        <div className="sf-features-grid">
-          {featureCards.map(({ title, desc, icon: Icon, image, href, buttonText }) => (
-            <div key={title} className="sf-feature-card" style={{ backgroundImage: `url(${image})` }}>
-              <div className="sf-feature-card__overlay">
-                <Icon className="sf-feature-card__icon" strokeWidth={1.15} aria-hidden />
-                <div className="sf-feature-card__body">
-                  <h3>{title}</h3>
-                  <p>{desc}</p>
-                </div>
-                <Link to={href} className="sf-btn-orange sf-feature-card__btn">{buttonText}</Link>
-              </div>
-            </div>
-          ))}
-        </div>
+        {/* sf-features-slider-wrap clips overflow on mobile so only 1 card is visible */}
+        <FeatureCardSlider featureCards={featureCards} />
       </section>
 
-      {/* ── Our Categories (reference layout — API data) ─────────────────── */}
+      {/* â”€â”€ Our Categories (reference layout â€” API data) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {(catalogLoading || categoriesForHome.length > 0) && (
         <section className="sf-categories-section" id="categories">
           <h2 className="sf-categories-title">Our Categories</h2>
           <p className="sf-categories-sub">{CATEGORIES_SUB}</p>
           {catalogLoading && categoriesForHome.length === 0 ? (
-            <p className="text-center text-sm text-sb-ink-muted/70 py-8">Loading categories…</p>
+            <p className="text-center text-sm text-sb-ink-muted/70 py-8">Loading categoriesâ€¦</p>
           ) : (
           <div className="sf-cat-grid">
             {categoriesForHome.map((cat) => {
@@ -1124,9 +1186,9 @@ export function Homepage() {
       )}
 
 
- {/* ── Featured brands (logo carousel) ─────────────────────────────────── */}
+ {/* â”€â”€ Featured brands (logo carousel) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {(catalogLoading || brands.length > 0) && (
-        <section className="sf-brands-section py-16 sm:py-20 border-y border-[#E85A00]/15" aria-label="Featured brands">
+        <section className="sf-brands-section py-20 border-y border-white/5" aria-label="Featured brands">
           <div className="max-w-7xl mx-auto px-5 lg:px-6 w-full">
             <div className="text-center mb-10 sm:mb-12">
               <h2 className="text-sb-ink">Featured Brands</h2>
@@ -1135,7 +1197,7 @@ export function Homepage() {
               </p>
             </div>
             {catalogLoading && brands.length === 0 ? (
-              <p className="text-center text-sm text-sb-ink/80 py-8">Loading brands…</p>
+              <p className="text-center text-sm text-sb-ink/80 py-8">Loading brandsâ€¦</p>
             ) : (
               <FeaturedBrandsMarquee brands={brands} />
             )}
@@ -1143,7 +1205,7 @@ export function Homepage() {
         </section>
       )}
       
-      {/* ── Why StructBay? ─────────────────────────────────────────────────── */}
+      {/* â”€â”€ Why StructBay? â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <section className="sf-dot-grid border-y border-black/8 py-14 px-5 lg:px-6">
         <div className="max-w-5xl mx-auto text-center mb-10">
           <h2 className="text-sb-ink text-3xl font-black mb-3">Why Choose StructBay?</h2>
@@ -1173,7 +1235,7 @@ export function Homepage() {
         </div>
       </section>
 
-      {/* ── Top Selling Products ───────────────────────────────────────────── */}
+      {/* â”€â”€ Top Selling Products â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {(catalogLoading || topProducts.length > 0) && (
         <section className="sf-dot-grid py-16 px-5 lg:px-6" aria-label="Top selling products">
           <div className="max-w-7xl mx-auto w-full">
@@ -1184,7 +1246,7 @@ export function Homepage() {
               </p>
             </div>
             {catalogLoading && topProducts.length === 0 ? (
-              <p className="text-center text-sm text-sb-ink-muted/70 py-8">Loading products…</p>
+              <p className="text-center text-sm text-sb-ink-muted/70 py-8">Loading productsâ€¦</p>
             ) : (
               <TopSellingProductsCarousel
                 products={topProducts}
@@ -1237,9 +1299,9 @@ export function Homepage() {
 
      
 
-      {/* ── CTA Banners Row ────────────────────────────────────────────────── */}
+      {/* â”€â”€ CTA Banners Row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <section
-        className={`max-w-7xl mx-auto px-5 lg:px-6 py-12 grid gap-5 ${showHomeFinance ? "md:grid-cols-3" : "md:grid-cols-2"}`}
+        className="max-w-7xl mx-auto px-5 lg:px-6 py-12 grid gap-5 md:grid-cols-3"
       >
         <div className="bg-white border border-black/10 rounded-2xl p-6 flex flex-col justify-between hover:border-[#E85A00]/40 transition-colors shadow-sm">
           <div>
@@ -1261,30 +1323,32 @@ export function Homepage() {
             <h3 className="text-sb-ink mb-2">Concrete RFQ</h3>
             <p className="text-sb-ink-muted/60 text-sm">Get instant quotes for Ready Mix Concrete. Specify grade, quantity, and delivery address.</p>
           </div>
-          <Link to="/rfq" className="mt-5 inline-flex items-center gap-2 bg-transparent border border-[#E85A00]/50 hover:bg-[#E85A00] text-[#E85A00] hover:text-sb-on-orange px-4 py-2.5 rounded-xl text-sm font-bold transition-all">
+          <button
+            type="button"
+            onClick={() => setConcreteRFQOpen(true)}
+            className="mt-5 inline-flex items-center gap-2 bg-transparent border border-[#E85A00]/50 hover:bg-[#E85A00] text-[#E85A00] hover:text-sb-on-orange px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
+          >
             Get Concrete Quote <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="bg-white border border-black/10 rounded-2xl p-6 flex flex-col justify-between hover:border-[#E85A00]/40 transition-colors shadow-sm">
+          <div>
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4 bg-[#E85A00]/15 border border-[#E85A00]/20">
+              <Calculator className="w-5 h-5 text-[#E85A00]" />
+            </div>
+            <h3 className="text-sb-ink mb-2">Cement Calculator</h3>
+            <p className="text-sb-ink-muted/60 text-sm">Estimate the cement quantity required for your construction project instantly. Get accurate material estimates before placing your order.</p>
+          </div>
+          <Link
+            to="/tools/cement-calculator"
+            className="mt-5 inline-flex items-center gap-2 bg-[#E85A00] hover:bg-[#CC4E00] text-sb-on-orange px-4 py-2.5 rounded-xl text-sm font-bold transition-colors"
+          >
+            Open Calculator <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
-        {showHomeFinance && (
-          <div className="bg-white border border-black/10 rounded-2xl p-6 flex flex-col justify-between hover:border-[#E85A00]/40 transition-colors shadow-sm">
-            <div>
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4 bg-[#E85A00]/15 border border-[#E85A00]/20">
-                <TrendingUp className="w-5 h-5 text-[#E85A00]" />
-              </div>
-              <h3 className="text-sb-ink mb-2">StructBay Finance</h3>
-              <p className="text-sb-ink-muted/60 text-sm">Get construction finance up to ₹5 Cr. Fast approval, competitive rates for builders.</p>
-            </div>
-            <Link
-              to="/finance"
-              className="mt-5 inline-flex items-center gap-2 bg-[#E85A00] hover:bg-[#CC4E00] text-sb-on-orange px-4 py-2.5 rounded-xl text-sm font-bold transition-colors"
-            >
-              Apply for Finance <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-        )}
       </section>
 
-      {/* ── Blog ───────────────────────────────────────────────────────────── */}
+      {/* â”€â”€ Blog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {blogs.length > 0 && (
         <section className="sf-dot-grid max-w-7xl mx-auto px-5 lg:px-6 py-12">
           <div className="flex items-center justify-between mb-7">
@@ -1322,7 +1386,7 @@ export function Homepage() {
         </section>
       )}
 
-      {/* ── Testimonials ───────────────────────────────────────────────────── */}
+      {/* â”€â”€ Testimonials â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {testimonials.length > 0 && (
         <section className="sf-dot-grid border-y border-black/8 py-14 px-5 lg:px-6">
           <div className="max-w-7xl mx-auto">
@@ -1341,7 +1405,7 @@ export function Homepage() {
                   <p className="text-sb-ink-muted/80 text-sm mb-4 leading-relaxed">"{t.review || t.message}"</p>
                   <div className="pt-3 border-t border-sb-ink/10">
                     <p className="text-sb-ink font-semibold text-sm">{t.customerName || t.name}</p>
-                    <p className="text-sb-ink-muted/50 text-xs mt-0.5">{t.designation || t.role} {t.company ? `· ${t.company}` : ""}</p>
+                    <p className="text-sb-ink-muted/50 text-xs mt-0.5">{t.designation || t.role} {t.company ? `Â· ${t.company}` : ""}</p>
                   </div>
                 </div>
               ))}
@@ -1350,7 +1414,7 @@ export function Homepage() {
         </section>
       )}
 
-      {/* ── Contact Us (footer CMS) ────────────────────────────────────────── */}
+      {/* â”€â”€ Contact Us (footer CMS) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <section className="sf-dot-grid py-20 px-5 lg:px-6" id="contact">
         <div className="sf-section-heading">
           <h2>Contact Us</h2>
@@ -1404,3 +1468,4 @@ export function Homepage() {
     </div>
   );
 }
+

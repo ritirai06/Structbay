@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router";
 import { AppProvider } from "./context/AppContext";
+import { isRfqOnlyCategory } from "./lib/rfqCategories";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
 import { SplashScreen } from "./pages/SplashScreen";
@@ -36,10 +37,15 @@ import { About } from "./pages/About";
 const FULLSCREEN_ROUTES = ["/splash", "/city", "/login", "/register", "/dashboard"];
 
 function ScrollToTop() {
-  const { pathname } = useLocation();
+  const { pathname, state } = useLocation();
   useEffect(() => {
+    // Skip when navigating back from a modal (noScroll flag set on navigate)
+    if ((state as { noScroll?: boolean } | null)?.noScroll) return;
+    // Skip when opening an RFQ modal category — popup shows over current page
+    const slug = pathname.startsWith("/category/") ? pathname.slice("/category/".length) : "";
+    if (slug && isRfqOnlyCategory(slug)) return;
     window.scrollTo(0, 0);
-  }, [pathname]);
+  }, [pathname, state]);
   return null;
 }
 

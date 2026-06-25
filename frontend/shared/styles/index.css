@@ -4,12 +4,13 @@
 /* StructBay Enterprise Design System */
 
 :root {
+  --sb-page-bg: #FDF6ED;
   --primary: #E85A00;
   --primary-hover: #CC4E00;
   --chrome-black: #000000;
-  --background: #FFFFFF;
-  --surface: #FFFFFF;
-  --card: #FFFFFF;
+  --background: #FDF6ED;
+  --surface: #FDF6ED;
+  --card: #FDF6ED;
   --dark: var(--chrome-black);
   --dark-secondary: var(--chrome-black);
   --border: #E5E5E5;
@@ -189,7 +190,7 @@ html {
 }
 
 body {
-  background-color: var(--background);
+  background-color: var(--sb-page-bg);
   color: var(--text-primary);
   font-family: Inter, Poppins, sans-serif;
   font-weight: 400;
@@ -278,7 +279,7 @@ table { width: 100%; border-collapse: collapse; }
 }
 
 .sb-table-wrap thead tr {
-  background-color: #f8f8f8;
+  background-color: #f2ede4;
   color: var(--text-secondary);
   border-bottom: 1px solid var(--border);
 }
@@ -302,7 +303,7 @@ table { width: 100%; border-collapse: collapse; }
   background-color: var(--card);
 }
 
-.sb-table-wrap tbody tr:hover td { background-color: #fafafa; }
+.sb-table-wrap tbody tr:hover td { background-color: #f5ede0; }
 
 tbody tr[data-selected="true"] td,
 tbody tr[aria-selected="true"] td {

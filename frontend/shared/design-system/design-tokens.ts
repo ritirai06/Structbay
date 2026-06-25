@@ -5,9 +5,9 @@
 export const palette = {
   primary: "#E85A00",
   primaryHover: "#CC4E00",
-  background: "#FFFFFF",
-  surface: "#FFFFFF",
-  card: "#FFFFFF",
+  background: "#FDF6ED",
+  surface: "#FDF6ED",
+  card: "#FDF6ED",
   dark: "#000000",
   darkSecondary: "#000000",
   border: "#E5E5E5",

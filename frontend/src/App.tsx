@@ -7,6 +7,7 @@ import { AppProvider } from "./customer/context/AppContext";
 import { BulkEnquiryModalProvider } from "./customer/context/BulkEnquiryModalContext";
 import { Header as CustomerHeader } from "./customer/components/Header";
 import { SandAggregatesQuoteModal } from "./customer/components/SandAggregatesQuoteModal";
+import { ConcreteRFQModal } from "./customer/components/ConcreteRFQModal";
 import { Footer as CustomerFooter } from "./customer/components/Footer";
 import { SplashScreen } from "./customer/pages/SplashScreen";
 import { CitySelection } from "./customer/pages/CitySelection";
@@ -66,6 +67,7 @@ function LegacyBlogSlugRedirect() {
 function MarketplaceLayout() {
   const location = useLocation();
   const [sandQuoteOpen, setSandQuoteOpen] = useState(false);
+  const [concreteRFQOpen, setConcreteRFQOpen] = useState(false);
   const navigate = useNavigate();
 
   const isFullscreen = FULLSCREEN_ROUTES.some(
@@ -73,6 +75,19 @@ function MarketplaceLayout() {
   );
 
   useEffect(() => {
+    const isConcreteHref = (path: string) => {
+      const decoded = decodeURIComponent(path).toLowerCase().replace(/-/g, " ").replace(/\+/g, " ");
+      return (
+        decoded.includes("/category/ready mix concrete") ||
+        decoded.includes("/category/ready mix") ||
+        decoded.includes("/category/readymix") ||
+        (decoded.includes("/category/") &&
+          decoded.includes("concrete") &&
+          !decoded.includes("block") &&
+          !decoded.includes("cement"))
+      );
+    };
+
     const handleGlobalClick = (e: MouseEvent) => {
       let target = e.target as HTMLElement | null;
       while (target && target !== document.body) {
@@ -88,6 +103,12 @@ function MarketplaceLayout() {
               e.preventDefault();
               e.stopPropagation();
               setSandQuoteOpen(true);
+              break;
+            }
+            if (isConcreteHref(href)) {
+              e.preventDefault();
+              e.stopPropagation();
+              setConcreteRFQOpen(true);
               break;
             }
           }
@@ -130,6 +151,7 @@ function MarketplaceLayout() {
         <CustomerFooter />
 
         <SandAggregatesQuoteModal open={sandQuoteOpen} onClose={() => setSandQuoteOpen(false)} />
+        <ConcreteRFQModal open={concreteRFQOpen} onClose={() => setConcreteRFQOpen(false)} />
 
         <a
           href="https://wa.me/917090570505"

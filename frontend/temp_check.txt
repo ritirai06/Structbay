@@ -1,0 +1,45 @@
+﻿.sf-header-logo {
+  display: block;
+  height: 3.5rem;
+  width: auto;
+  object-fit: contain;
+}
+
+@media (min-width: 640px) {
+  .sf-header-logo {
+    height: 4.25rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .sf-header-main {
+    min-height: 5.5rem;
+    padding: 0.75rem 1.5rem;
+  }
+
+  .sf-header-logo {
+    height: 4.75rem;
+  }
+}
+
+.sf-nav {
+  display: none;
+  align-items: center;
+  gap: 1.75rem;
+  flex: 1;
+  justify-content: center;
+}
+
+@media (min-width: 1024px) {
+  .sf-nav { display: flex; }
+}
+
+.sf-nav > a,
+.sf-nav button.sf-nav-shop {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #ffffff;
+  transition: color 0.15s ease;
+  background: none;

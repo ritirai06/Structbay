@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo, type FormEvent } from "react";
+﻿import { useState, useEffect, useRef, useCallback, useMemo, type FormEvent } from "react";
 import { NavLink, Link, useNavigate, useLocation } from "react-router";
 import {
   Search, User, MapPin, ChevronDown, Menu, X,
@@ -53,7 +53,7 @@ function notificationPath(n: CustomerNotification): string {
   return "/account/notifications";
 }
 
-/** After user picks a city in the onboarding modal — persisted via `locationOnboarding.ts`. */
+/** After user picks a city in the onboarding modal â€” persisted via `locationOnboarding.ts`. */
 
 const MARQUEE_SEGMENTS_DEFAULT = [
   "Super fast same day delivery",
@@ -383,7 +383,7 @@ export function Header() {
   const handleSearch = (e: FormEvent) => {
     e.preventDefault();
     const q = searchQuery.trim();
-    // Backend global search requires ≥2 chars; match that so results and typeahead stay aligned.
+    // Backend global search requires â‰¥2 chars; match that so results and typeahead stay aligned.
     if (q.length < 2) return;
     addRecentSearch(q);
     setSearchFocused(false);
@@ -398,7 +398,7 @@ export function Header() {
         onClose={() => setPromoModalOpen(false)}
       />
 
-      {/* ── Reference storefront header ─────────────────────────────────── */}
+      {/* â”€â”€ Reference storefront header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <header ref={headerRef} className="sf-header">
         <div ref={marqueeRef} className="sf-marquee-wrapper">
           {promoEnabled && topBarText ? (
@@ -484,10 +484,7 @@ export function Header() {
                 </button>
 
                 {/* Desktop Actions (Hidden on smaller screens) */}
-                <Link to="/tools/cement-calculator" className="sf-btn-outline hidden lg:inline-flex">
-                  Cement Calc
-                </Link>
-                <button
+                                <button
                   type="button"
                   onClick={() => openBulkEnquiry()}
                   className="sf-btn-outline hidden md:inline-flex"
@@ -553,7 +550,7 @@ export function Header() {
                     </div>
                   )}
                 </div>
-                <DropdownMenu open={notifOpen} onOpenChange={(open) => {
+                {/* <DropdownMenu open={notifOpen} onOpenChange={(open) => {
                     setNotifOpen(open);
                     if (open && isLoggedIn) void loadNotifications();
                   }}>
@@ -634,7 +631,7 @@ export function Header() {
                             Your orders & alerts
                           </p>
                           {loadingNotifs && !notifications.length ? (
-                            <p className="px-3 py-4 text-center text-xs text-gray-400">Loading…</p>
+                            <p className="px-3 py-4 text-center text-xs text-gray-400">Loadingâ€¦</p>
                           ) : notifications.length === 0 ? (
                             <p className="px-3 py-4 text-center text-xs text-gray-400">No order alerts yet</p>
                           ) : (
@@ -680,7 +677,7 @@ export function Header() {
                       </>
                     )}
                   </DropdownMenuContent>
-                </DropdownMenu>
+                </DropdownMenu> */}
               </div>
             </div>
 
@@ -725,8 +722,9 @@ export function Header() {
                   className="p-1.5 text-white hover:text-sb-orange transition-colors shrink-0 flex items-center justify-center"
                   aria-label="Search"
                 >
-                  <span className="text-[20px] leading-none select-none">🔍</span>
+                  <Search className="w-[22px] h-[22px]" />
                 </button>
+
 
                 {/* Hamburger Menu Icon */}
                 <button
@@ -766,7 +764,7 @@ export function Header() {
 
       <FloatingCityPill onChangeCity={() => setCityModalOpen(true)} />
 
-      {/* City modal — first visit prompts city; user may browse without selecting. */}
+      {/* City modal â€” first visit prompts city; user may browse without selecting. */}
       {cityModalOpen && (
         <CitySelection
           isModal
@@ -917,3 +915,6 @@ export function Header() {
     </>
   );
 }
+
+
+

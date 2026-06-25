@@ -22,6 +22,7 @@ import {
   BULK_ENQUIRY_TEXT_EXAMPLE,
   downloadBulkEnquiryTemplate,
 } from "../lib/bulkEnquiryTemplate";
+import { useScrollLock } from "../hooks/useScrollLock";
 
 const ACCEPTED_FILE_TYPES = ".pdf,.doc,.docx,.xlsx,.xls,.csv,.jpg,.jpeg,.png,.webp";
 const ACCEPTED_MIME_PREFIXES = ["image/", "application/pdf", "application/msword", "application/vnd.", "text/csv"];
@@ -62,14 +63,7 @@ export function BulkEnquiryModal({ open, onClose }: Props) {
     remarks: "",
   });
 
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
+  useScrollLock(open);
 
   useEffect(() => {
     if (!open) return;

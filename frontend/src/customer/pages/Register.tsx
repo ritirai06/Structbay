@@ -223,11 +223,10 @@ export function Register() {
             </div>
           </div>
           <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-[#1A1A1A]/55">Company *</Label>
+            <Label className="text-xs font-semibold uppercase tracking-wider text-[#1A1A1A]/55">Company</Label>
             <div className="relative">
               <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#1A1A1A]/40" />
               <Input
-                required
                 value={form.company}
                 onChange={e => update("company", e.target.value)}
                 placeholder="Firm / company name"
