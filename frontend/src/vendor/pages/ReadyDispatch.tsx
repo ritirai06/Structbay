@@ -114,7 +114,7 @@ export function ReadyDispatch() {
                   className={inputCls} style={inputStyle}
                   disabled={order.deliveryType === 'structbay_delivery'}>
                   <option value="vendor_delivery">Vendor Self Delivery</option>
-                  <option value="structbay_pickup">StructBay Pickup</option>
+                  <option value="structbay_pickup">Structbay Pickup</option>
                 </select>
               </Field>
 
@@ -179,7 +179,7 @@ export function ReadyDispatch() {
 
               <Field label="Remarks">
                 <textarea value={remarks} onChange={e => setRemarks(e.target.value)} rows={3}
-                  placeholder="Special handling instructions, notes for StructBay..."
+                  placeholder="Special handling instructions, notes for Structbay..."
                   className={inputCls} style={inputStyle} />
               </Field>
 
@@ -187,8 +187,8 @@ export function ReadyDispatch() {
                 <Truck className="w-4 h-4 mt-0.5 shrink-0" style={{ color: SB.orange }} />
                 <p className="text-xs" style={{ color: SB.muted }}>
                   {dispatchType === 'structbay_pickup'
-                    ? 'StructBay logistics team will schedule pickup from your warehouse within 24–48 hours after you submit.'
-                    : 'After submitting, the order status will be updated to "Ready for Dispatch" and StructBay admin will be notified.'}
+                    ? 'Structbay logistics team will schedule pickup from your warehouse within 24–48 hours after you submit.'
+                    : 'After submitting, the order status will be updated to "Ready for Dispatch" and Structbay admin will be notified.'}
                 </p>
               </div>
 
@@ -215,7 +215,7 @@ export function ReadyDispatch() {
                 ['Quantity', `${order.assignedProducts?.[0]?.quantity ?? '—'} ${order.assignedProducts?.[0]?.unit ?? ''}`],
                 ['Customer', order.customer?.name ?? '—'],
                 ['Delivery City', order.deliveryAddress?.city ?? '—'],
-                ['Delivery Type', order.deliveryType === 'structbay_delivery' ? 'StructBay Delivery' : 'Vendor Delivery'],
+                ['Delivery Type', order.deliveryType === 'structbay_delivery' ? 'Structbay Delivery' : 'Vendor Delivery'],
                 ['Invoice Status', order.invoiceStatus],
               ].map(([l, v]) => (
                 <div key={l} className="flex justify-between items-center text-xs">

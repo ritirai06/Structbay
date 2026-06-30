@@ -161,7 +161,7 @@ export function OrderDetails() {
             )}
           </div>
           <p className="text-sm" style={{ color: SB.muted }}>
-            {order.deliveryType === 'structbay_delivery' ? 'StructBay Delivery' : 'Vendor Delivery'} ·{' '}
+            {order.deliveryType === 'structbay_delivery' ? 'Structbay Delivery' : 'Vendor Delivery'} ·{' '}
             Assigned {order.assignedAt ? new Date(order.assignedAt).toLocaleDateString('en-IN') : '—'}
           </p>
         </div>
@@ -310,7 +310,7 @@ export function OrderDetails() {
 
       {order.deliveryType === "structbay_delivery" && (
         <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
-          <h2 className="vendor-section-title mb-4" style={{ color: SB.muted }}>StructBay pickup & logistics</h2>
+          <h2 className="vendor-section-title mb-4" style={{ color: SB.muted }}>Structbay pickup & logistics</h2>
           {order.structbayLogistics?.pickupScheduledText || order.structbayLogistics?.companyName || order.structbayLogistics?.driverContactDetails ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <InfoRow label="Pickup scheduled" value={order.structbayLogistics?.pickupScheduledText} />
@@ -318,7 +318,7 @@ export function OrderDetails() {
               <InfoRow label="Driver / coordinator" value={order.structbayLogistics?.driverContactDetails} />
             </div>
           ) : (
-            <p className="text-sm" style={{ color: SB.muted }}>StructBay will add pickup time, logistics partner, and driver contact here after the shipment is booked.</p>
+            <p className="text-sm" style={{ color: SB.muted }}>Structbay will add pickup time, logistics partner, and driver contact here after the shipment is booked.</p>
           )}
         </div>
       )}
@@ -387,7 +387,7 @@ export function OrderDetails() {
         <div className="wf-subsection">
           <p className="wf-subsection__title">Documents</p>
           <p className="text-xs mb-3" style={{ color: SB.muted }}>
-            StructBay invoice and e-way bill when sent. Shipping label appears only if StructBay explicitly shares it with you.
+            Structbay invoice and e-way bill when sent. Shipping label appears only if Structbay explicitly shares it with you.
           </p>
           <VendorOrderDocuments documents={order.documents} />
         </div>

@@ -126,7 +126,7 @@ exports.invoiceStatus = asyncHandler(async (req, res) => {
   const dateFilter = buildDateFilter(dateFrom, dateTo);
 
   const data = await OrderDocument.aggregate([
-    { $match: { ...dateFilter, documentType: { $in: ['STRUCTBAY_INVOICE', 'VENDOR_INVOICE', 'TAX_INVOICE', 'EWAY_BILL'] } } },
+    { $match: { ...dateFilter, documentType: { $in: ['Structbay_INVOICE', 'VENDOR_INVOICE', 'TAX_INVOICE', 'EWAY_BILL'] } } },
     { $group: {
       _id:    { type: '$documentType', status: '$status' },
       count:  { $sum: 1 },

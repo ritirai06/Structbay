@@ -114,7 +114,7 @@ export function Dashboard() {
       <div className="mb-7 flex items-center justify-between">
         <div>
           <h1 className="admin-page-title text-sb-ink">Admin Dashboard</h1>
-          <p className="text-sb-ink/55 text-sm mt-1">StructBay Control Center — Master System</p>
+          <p className="text-sb-ink/55 text-sm mt-1">Structbay Control Center — Master System</p>
           {loadError && <p className="mt-2 text-xs text-sb-ink/70">{loadError}</p>}
         </div>
         <button onClick={load} className="flex items-center gap-2 px-3 py-2 border border-sb-ink/10 rounded-lg text-sm text-sb-ink/65 hover:border-sb-ink/20 hover:text-sb-ink transition-colors">
@@ -248,10 +248,10 @@ export function Dashboard() {
             <p className="text-xs font-medium text-sb-ink/50 uppercase tracking-wider mb-3">System Badges</p>
             <div className="flex gap-2 flex-wrap">
               <span className="flex items-center gap-1.5 rounded-full border border-sb-orange/25 bg-sb-orange/12 px-3 py-1.5 text-xs font-medium text-sb-orange">
-                <Shield className="h-3 w-3" /> StructBay Assured
+                <Shield className="h-3 w-3" /> Structbay Assured
               </span>
               <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-sb-orange/15 text-sb-orange border border-sb-orange/20">
-                <Zap className="w-3 h-3" /> StructBay Express
+                <Zap className="w-3 h-3" /> Structbay Express
               </span>
             </div>
           </div>

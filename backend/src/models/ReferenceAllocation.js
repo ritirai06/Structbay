@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 /**
- * One row per allocated StructBay reference — audit trail and global search index.
+ * One row per allocated Structbay reference — audit trail and global search index.
  */
 const referenceAllocationSchema = new mongoose.Schema(
   {

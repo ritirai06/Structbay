@@ -707,7 +707,7 @@ export function OrderDetailPage() {
                             </WorkflowCard>
 
                             {vo.deliveryType === "structbay_delivery" && (
-                              <WorkflowCard title="StructBay logistics">
+                              <WorkflowCard title="Structbay logistics">
                                 {(vo.structbayLogistics?.pickupContactName || vo.structbayLogistics?.pickupContactPhone) && (
                                   <p className="text-xs text-sb-ink/65 bg-sb-cream border border-sb-ink/8 rounded-lg px-3 py-2">
                                     Pickup · <strong>{vo.structbayLogistics.pickupContactName || "—"}</strong>
@@ -776,7 +776,7 @@ export function OrderDetailPage() {
                           </div>
 
                           {vo.workflowVersion === 2 && vo.status === "VENDOR_INVOICE_SUBMITTED" && (
-                            <WorkflowCard title="StructBay invoice & e-way">
+                            <WorkflowCard title="Structbay invoice & e-way">
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <WorkflowFileUpload label="Invoice (PDF)" accept=".pdf,application/pdf" name={`sb-inv-${vo._id}`} />
                                 <WorkflowFileUpload label="E-way bill (PDF)" accept=".pdf,application/pdf" name={`sb-ew-${vo._id}`} />

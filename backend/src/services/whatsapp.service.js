@@ -64,7 +64,7 @@ const sendByEvent = async ({ event, to, vars = {}, recipientRef, recipientType =
 
     let body = template?.body
       ? interpolate(template.body, vars)
-      : `StructBay: ${event.replace(/_/g, ' ')} — ${JSON.stringify(vars)}`;
+      : `Structbay: ${event.replace(/_/g, ' ')} — ${JSON.stringify(vars)}`;
 
     let providerRef = null;
     let status      = 'PENDING';

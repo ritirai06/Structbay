@@ -61,7 +61,7 @@ exports.exportCatalog = asyncHandler(async (req, res) => {
     newData: { scope, format: exportOpts.format, rowCount, truncated },
   });
 
-  if (truncated) res.setHeader('X-StructBay-Catalog-Truncated', 'true');
+  if (truncated) res.setHeader('X-Structbay-Catalog-Truncated', 'true');
   res.setHeader('Content-Type', mime);
   res.setHeader('Content-Disposition', `attachment; filename="${filename.replace(/"/g, '')}"`);
   return res.status(200).send(body);

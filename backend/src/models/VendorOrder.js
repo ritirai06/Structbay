@@ -115,7 +115,7 @@ const vendorOrderSchema = new mongoose.Schema(
       remarks: String,
     },
 
-    /** After StructBay sends docs; vendor fills LR / transporter etc. */
+    /** After Structbay sends docs; vendor fills LR / transporter etc. */
     shipmentDispatch: {
       transporterName: String,
       vehicleNumber: String,
@@ -135,7 +135,7 @@ const vendorOrderSchema = new mongoose.Schema(
       confirmedAt: Date,
     },
 
-    /** StructBay invoice + e-way to vendor */
+    /** Structbay invoice + e-way to vendor */
     structbayOutboundDocs: {
       invoicePdfUrl: String,
       invoicePdfCloudinaryId: String,
@@ -147,7 +147,7 @@ const vendorOrderSchema = new mongoose.Schema(
       sentBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     },
 
-    /** 2 = StructBay admin/vendor workflow; undefined/1 = legacy behaviour */
+    /** 2 = Structbay admin/vendor workflow; undefined/1 = legacy behaviour */
     workflowVersion: { type: Number, default: 2 },
 
     rejectReason: String,

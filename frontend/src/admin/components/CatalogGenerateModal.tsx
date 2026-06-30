@@ -370,11 +370,11 @@ export function CatalogGenerateModal({
               <div className="flex flex-wrap gap-3 text-xs">
                 <label className="flex items-center gap-1.5">
                   <input type="checkbox" checked={filterAssured} onChange={(e) => setFilterAssured(e.target.checked)} />
-                  StructBay Assured
+                  Structbay Assured
                 </label>
                 <label className="flex items-center gap-1.5">
                   <input type="checkbox" checked={filterDelivery} onChange={(e) => setFilterDelivery(e.target.checked)} />
-                  StructBay Delivery
+                  Structbay Delivery
                 </label>
                 <label className="flex items-center gap-1.5">
                   <input type="checkbox" checked={filterFeatured} onChange={(e) => setFilterFeatured(e.target.checked)} />

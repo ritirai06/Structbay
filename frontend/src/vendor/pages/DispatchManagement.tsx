@@ -394,7 +394,7 @@ export function DispatchManagement() {
                     <Field label="Delivery Type" required>
                       <select value={dispatchType} onChange={e => setDispatchType(e.target.value as any)} className={inputCls} style={inputStyle}>
                         <option value="vendor_delivery">Vendor Self Delivery</option>
-                        <option value="structbay_pickup">StructBay Pickup</option>
+                        <option value="structbay_pickup">Structbay Pickup</option>
                       </select>
                     </Field>
 
@@ -420,7 +420,7 @@ export function DispatchManagement() {
                     ) : (
                       <>
                         <Field label="Pickup Address" required>
-                          <textarea value={pickupAddress} onChange={e => setPickupAddress(e.target.value)} required rows={2} placeholder="Warehouse address for StructBay pickup" className={inputCls} style={inputStyle} />
+                          <textarea value={pickupAddress} onChange={e => setPickupAddress(e.target.value)} required rows={2} placeholder="Warehouse address for Structbay pickup" className={inputCls} style={inputStyle} />
                         </Field>
                         <div className="grid grid-cols-2 gap-4">
                           <Field label="Contact Person" required>

@@ -150,7 +150,7 @@ export function HeroDeliverTo({ cityId, className = "" }: Props) {
                       </p>
                       <ul className="text-xs space-y-1.5 text-emerald-900/90 pl-1">
                         <li className="flex gap-2">
-                          <span className="text-emerald-600 font-bold">✓</span> StructBay Delivery
+                          <span className="text-emerald-600 font-bold">✓</span> Structbay Delivery
                         </li>
                         <li className="flex gap-2">
                           <span className="text-emerald-600 font-bold">✓</span> Express delivery where products support 24–48h windows

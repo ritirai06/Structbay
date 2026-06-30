@@ -1,11 +1,11 @@
 /**
- * Customer order acknowledgement PDF — StructBay black / orange / white theme with main logo.
+ * Customer order acknowledgement PDF — Structbay black / orange / white theme with main logo.
  */
 const fs = require('fs');
 const path = require('path');
 const PDFDocument = require('pdfkit');
 
-function getStructBayLogoPath() {
+function getStructbayLogoPath() {
   const fromEnv = process.env.INVOICE_LOGO_PATH && String(process.env.INVOICE_LOGO_PATH).trim();
   const candidates = [
     fromEnv && path.resolve(fromEnv),
@@ -45,7 +45,7 @@ function formatVariationLine(variation) {
 function buildOrderAcknowledgementPdf(order) {
   const o = order.toObject ? order.toObject() : order;
   const addr = o.shippingAddress || {};
-  const logoPath = getStructBayLogoPath();
+  const logoPath = getStructbayLogoPath();
 
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -65,10 +65,10 @@ function buildOrderAcknowledgementPdf(order) {
       try {
         doc.image(logoPath, 48, 20, { height: 48 });
       } catch {
-        doc.fillColor(orange).fontSize(20).font('Helvetica-Bold').text('StructBay', 48, 32);
+        doc.fillColor(orange).fontSize(20).font('Helvetica-Bold').text('Structbay', 48, 32);
       }
     } else {
-      doc.fillColor(orange).fontSize(20).font('Helvetica-Bold').text('StructBay', 48, 32);
+      doc.fillColor(orange).fontSize(20).font('Helvetica-Bold').text('Structbay', 48, 32);
     }
     doc.fillColor('#ffffff').fontSize(10).font('Helvetica-Bold')
       .text('Order acknowledgement', pageW - 220, 28, { width: 172, align: 'right' });
@@ -161,7 +161,7 @@ function buildOrderAcknowledgementPdf(order) {
     y += 36;
     doc.font('Helvetica').fontSize(8).fillColor(gray)
       .text(
-        'StructBay · B2B marketplace · Generated electronically. Additional delivery charges may apply where notified.',
+        'Structbay · B2B marketplace · Generated electronically. Additional delivery charges may apply where notified.',
         48,
         y,
         { width: pageW - 96, align: 'center' }
@@ -171,4 +171,4 @@ function buildOrderAcknowledgementPdf(order) {
   });
 }
 
-module.exports = { buildOrderAcknowledgementPdf, getStructBayLogoPath };
+module.exports = { buildOrderAcknowledgementPdf, getStructbayLogoPath };

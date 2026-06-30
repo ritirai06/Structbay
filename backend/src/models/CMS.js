@@ -47,7 +47,7 @@ const cmsSchema = new mongoose.Schema(
       body: {
         type: String,
         default:
-          'StructBay combines the reliability of branded materials, the power of affordable pricing, and the ease of single-window sourcing — everything you need to finish projects faster and better.',
+          'Structbay combines the reliability of branded materials, the power of affordable pricing, and the ease of single-window sourcing — everything you need to finish projects faster and better.',
         trim: true,
       },
     },
@@ -125,7 +125,7 @@ const cmsSchema = new mongoose.Schema(
       modalBackgroundImagePublicId: { type: String, default: null, trim: true },
       modalBadgeLeft: { type: String, default: 'Auto applied on checkout', trim: true },
       modalBadgeRight: { type: String, default: 'Minimum order value ₹500', trim: true },
-      modalFooterNote: { type: String, default: 'Offer valid as per StructBay policy. T&C apply.', trim: true },
+      modalFooterNote: { type: String, default: 'Offer valid as per Structbay policy. T&C apply.', trim: true },
       /** After user closes modal, do not show again for this many days. */
       modalSuppressDays: { type: Number, default: 1, min: 0, max: 365 },
     },
@@ -152,7 +152,7 @@ const cmsSchema = new mongoose.Schema(
         content: { type: String },
         imageUrl: { type: String, default: null },
         imagePublicId: { type: String, default: null },
-        author: { type: String, trim: true, default: 'StructBay Team' },
+        author: { type: String, trim: true, default: 'Structbay Team' },
         isPublished: { type: Boolean, default: false },
         publishedAt: { type: Date, default: null },
       },
@@ -162,7 +162,7 @@ const cmsSchema = new mongoose.Schema(
     seo: {
       metaTitle: {
         type: String,
-        default: 'StructBay - Construction Marketplace',
+        default: 'Structbay - Construction Marketplace',
         trim: true,
       },
       metaDescription: {
@@ -199,7 +199,7 @@ const cmsSchema = new mongoose.Schema(
     footer: {
       companyDescription: {
         type: String,
-        default: "StructBay combines the reliability of branded materials, the power of affordable pricing, and the ease of single-window sourcing — everything you need to finish projects faster and better.",
+        default: "Structbay combines the reliability of branded materials, the power of affordable pricing, and the ease of single-window sourcing — everything you need to finish projects faster and better.",
         trim: true,
       },
       address: { type: String, default: 'Vidyaranyapura, Bengaluru', trim: true },
@@ -212,7 +212,7 @@ const cmsSchema = new mongoose.Schema(
       },
       copyrightText: {
         type: String,
-        default: '© 2026 StructBay. All Rights Reserved. Developed By HSDA Digital.',
+        default: '© 2026 Structbay. All Rights Reserved. Developed By HSDA Digital.',
         trim: true,
       },
       quickLinks: [

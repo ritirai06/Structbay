@@ -24,7 +24,7 @@ const startServer = async () => {
   await connectDB();
 
   const server = app.listen(PORT, () => {
-    logger.info(`🚀 StructBay API started`);
+    logger.info(`🚀 Structbay API started`);
     logger.info(`   Mode        : ${NODE_ENV}`);
     logger.info(`   Port        : ${PORT}`);
     logger.info(`   Health      : http://localhost:${PORT}/api/v1/health`);

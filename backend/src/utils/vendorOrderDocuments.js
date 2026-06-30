@@ -1,7 +1,7 @@
 const ShippingLabel = require('../models/ShippingLabel');
 
 /**
- * StructBay-generated files available to the vendor for a sub-order.
+ * Structbay-generated files available to the vendor for a sub-order.
  * Shipping labels are withheld until admin explicitly shares them (Type A only).
  * @param {import('mongoose').Document|object} vendorOrder
  * @returns {Promise<object>}

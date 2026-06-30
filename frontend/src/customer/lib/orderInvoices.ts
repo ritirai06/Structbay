@@ -10,7 +10,7 @@ function triggerBlobDownload(blob: Blob, filename: string) {
 
 function safeName(orderNumber: string | undefined, orderId: string, suffix: string) {
   const base = (orderNumber || orderId).replace(/[^\w.-]+/g, "_");
-  return `StructBay-${base}${suffix}`;
+  return `Structbay-${base}${suffix}`;
 }
 
 /** Download uploaded invoices via API proxy, or generated PDF with logo. */

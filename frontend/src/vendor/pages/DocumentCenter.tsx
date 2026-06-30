@@ -90,7 +90,7 @@ export function DocumentCenter() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="vendor-page-title" style={{ color: SB.color }}>Document Center</h1>
-          <p className="text-sm mt-0.5" style={{ color: SB.muted }}>Upload business documents and download StructBay-shared files.</p>
+          <p className="text-sm mt-0.5" style={{ color: SB.muted }}>Upload business documents and download Structbay-shared files.</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={load} className="p-2 rounded-xl" style={{ background: SB.card, border: `1px solid ${SB.border}`, color: SB.muted }}>
@@ -288,7 +288,7 @@ export function DocumentCenter() {
         <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" style={{ color: SB.orange }} />
         <div className="text-xs" style={{ color: SB.muted }}>
           <p className="font-bold mb-1" style={{ color: SB.orange }}>Document Review Process</p>
-          <p>Uploaded documents are reviewed by StructBay admin. Documents in "pending" status can be deleted and re-uploaded. Verified documents cannot be deleted. For download of StructBay-shared files (E-Way Bills, Shipping Labels), visit the Order Details page.</p>
+          <p>Uploaded documents are reviewed by Structbay admin. Documents in "pending" status can be deleted and re-uploaded. Verified documents cannot be deleted. For download of Structbay-shared files (E-Way Bills, Shipping Labels), visit the Order Details page.</p>
         </div>
       </div>
     </div>

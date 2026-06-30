@@ -20,7 +20,7 @@ function applyPickupContact(order, pickupContactName, pickupContactPhone) {
   const name = String(pickupContactName || '').trim();
   const phone = String(pickupContactPhone || '').trim();
   if (!name || !phone) {
-    return 'Pickup contact name and phone are required for StructBay delivery (Type B).';
+    return 'Pickup contact name and phone are required for Structbay delivery (Type B).';
   }
   order.structbayLogistics = {
     ...(order.structbayLogistics && order.structbayLogistics.toObject
@@ -80,7 +80,7 @@ async function finalizeInvoiceUpload(order, invoice, req, structbayInvoiceNumber
   await VendorActivityLog.create({
     vendor: req.user._id,
     action: 'invoice_upload',
-    description: `Uploaded StructBay invoice ${structbayInvoiceNumber} for order ${order.orderNumber}`,
+    description: `Uploaded Structbay invoice ${structbayInvoiceNumber} for order ${order.orderNumber}`,
     relatedOrder: order._id,
     relatedInvoice: invoice._id,
     ipAddress: req.ip,
@@ -111,7 +111,7 @@ exports.uploadInvoice = async (req, res) => {
     if (order.status !== 'DISPATCH_APPROVED') {
       return ApiResponse.badRequest(
         res,
-        'Final vendor invoice can only be uploaded after StructBay has approved dispatch (status DISPATCH_APPROVED).'
+        'Final vendor invoice can only be uploaded after Structbay has approved dispatch (status DISPATCH_APPROVED).'
       );
     }
     if (!canTransition(order.status, 'VENDOR_INVOICE_SUBMITTED')) {

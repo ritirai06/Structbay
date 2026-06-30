@@ -80,7 +80,7 @@ export function UploadInvoice() {
     const pdfErr = validatePdf(file);
     if (pdfErr) { setError(pdfErr); return; }
     if (order?.deliveryType === 'structbay_delivery' && (!pickupContactName.trim() || !pickupContactPhone.trim())) {
-      setError('Pickup contact name and phone are required for StructBay delivery (Type B).');
+      setError('Pickup contact name and phone are required for Structbay delivery (Type B).');
       return;
     }
     setSubmitting(true); setError('');
@@ -240,10 +240,10 @@ export function UploadInvoice() {
               {typeB && (
                 <div className="rounded-xl p-4 space-y-4" style={{ background: 'rgba(249,115,22,0.06)', border: '1px solid var(--sb-orange-border)' }}>
                   <p className="text-xs font-bold uppercase tracking-wider" style={{ color: SB.orange }}>
-                    Pickup contact (Type B — StructBay delivery)
+                    Pickup contact (Type B — Structbay delivery)
                   </p>
                   <p className="text-xs" style={{ color: SB.muted }}>
-                    StructBay will use this contact when booking Porter/Delhivery pickup from your warehouse.
+                    Structbay will use this contact when booking Porter/Delhivery pickup from your warehouse.
                   </p>
                   <Field label="Contact name" required>
                     <input type="text" value={pickupContactName} onChange={e => setPickupContactName(e.target.value)} required
@@ -295,7 +295,7 @@ export function UploadInvoice() {
               <span className="text-sm capitalize" style={{ color: SB.color }}>{order?.invoiceStatus ?? 'Pending Upload'}</span>
             </div>
             <p className="text-xs mt-2" style={{ color: SB.faint }}>
-              Upload your GST tax invoice PDF. StructBay will review the document directly — no manual amount entry needed.
+              Upload your GST tax invoice PDF. Structbay will review the document directly — no manual amount entry needed.
             </p>
           </div>
         </div>

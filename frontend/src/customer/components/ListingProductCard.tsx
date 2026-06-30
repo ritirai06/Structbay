@@ -224,7 +224,7 @@ export function ListingProductCard({
         {!simple && showAssured && (
           <div className="sf-listing-card__assured">
             <Shield className="w-3.5 h-3.5 text-[#E85A00]" aria-hidden />
-            <span>StructBay Assured</span>
+            <span>Structbay Assured</span>
           </div>
         )}
 

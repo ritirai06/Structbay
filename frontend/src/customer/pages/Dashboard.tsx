@@ -372,7 +372,7 @@ function OrdersSection({ orders, onReload }: { orders: CustomerUiOrder[]; onRelo
               to={`/orders/${order.dbId}#chat`}
               className="flex-1 min-w-[120px] flex items-center justify-center gap-1.5 border border-gray-200 hover:border-[#E85A00]/40 rounded-xl py-2 text-xs text-gray-500 hover:text-black transition-all"
             >
-              <MessageCircle className="w-3.5 h-3.5" /> Message StructBay
+              <MessageCircle className="w-3.5 h-3.5" /> Message Structbay
             </Link>
             <button
               type="button"
@@ -429,7 +429,7 @@ function InvoicesSection({ orders }: { orders: CustomerUiOrder[] }) {
       <div className="sf-dash-card rounded-xl border border-gray-200 overflow-hidden">
         <div className="bg-black px-5 py-4 flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3 min-w-0">
-            <img src={logoImg} alt="StructBay" className="h-10 w-auto object-contain shrink-0" />
+            <img src={logoImg} alt="Structbay" className="h-10 w-auto object-contain shrink-0" />
             <div className="min-w-0">
               <p className="text-white font-semibold text-sm">Your Invoices</p>
               <p className="text-white/60 text-xs">Download order summaries & tax documents as PDF</p>
@@ -475,7 +475,7 @@ function InvoicesSection({ orders }: { orders: CustomerUiOrder[] }) {
         ))
       )}
       <p className="text-xs text-gray-400 text-center pt-1">
-        StructBay and vendor tax invoices appear here when uploaded. Order summaries download as PDF with the StructBay logo.
+        Structbay and vendor tax invoices appear here when uploaded. Order summaries download as PDF with the Structbay logo.
       </p>
     </div>
   );

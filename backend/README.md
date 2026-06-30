@@ -1,6 +1,6 @@
-# StructBay Backend — Phase 1 Foundation
+# Structbay Backend — Phase 1 Foundation
 
-Production-ready Node.js/Express backend for StructBay, a B2B construction marketplace.
+Production-ready Node.js/Express backend for Structbay, a B2B construction marketplace.
 
 ---
 

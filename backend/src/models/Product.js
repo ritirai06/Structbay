@@ -56,12 +56,12 @@ const productSchema = new mongoose.Schema(
     isAssured: { type: Boolean, default: false },      // legacy “assured” flag (kept for backward compatibility)
     isExpress: { type: Boolean, default: false },      // legacy express / fast-track flag
 
-    /** Explicit StructBay Assured badge (admin-verified quality program). */
+    /** Explicit Structbay Assured badge (admin-verified quality program). */
     isStructbayAssured: { type: Boolean, default: false },
     assuredVerifiedAt: { type: Date, default: null },
     assuredVerifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 
-    /** StructBay-managed delivery badge + logistics metadata. */
+    /** Structbay-managed delivery badge + logistics metadata. */
     isStructbayDelivery: { type: Boolean, default: false },
     structbayDeliverySupported: { type: Boolean, default: false },
     structbayDeliveryZones: [{ type: String, trim: true }],

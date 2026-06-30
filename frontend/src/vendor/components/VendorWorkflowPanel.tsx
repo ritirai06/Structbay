@@ -169,7 +169,7 @@ export function VendorWorkflowPanel({
             <StatusBadge status={st} />
           </div>
           <p className="wf-section__desc">
-            {typeB ? 'Type B — StructBay delivers to customer after your invoice.' : 'Type A — You dispatch directly to the customer site.'}
+            {typeB ? 'Type B — Structbay delivers to customer after your invoice.' : 'Type A — You dispatch directly to the customer site.'}
           </p>
         </div>
       </div>
@@ -314,7 +314,7 @@ export function VendorWorkflowPanel({
           <div className="wf-subsection">
             <p className="wf-subsection__title">Final tax invoice</p>
             <p className="text-sm mb-3" style={{ color: 'var(--sb-text-muted)' }}>
-              Upload your GST tax invoice before StructBay can proceed with logistics.
+              Upload your GST tax invoice before Structbay can proceed with logistics.
             </p>
             <Link to={vendorPath('orders', orderId, 'invoice')} className="wf-btn wf-btn--primary no-underline inline-flex">
               <FileText className="w-4 h-4" /> Upload final tax invoice
@@ -378,9 +378,9 @@ export function VendorWorkflowPanel({
 
         {st === 'SB_INVOICE_SENT' && typeB && (
           <div className="wf-subsection">
-            <p className="wf-subsection__title">StructBay handling delivery</p>
+            <p className="wf-subsection__title">Structbay handling delivery</p>
             <p className="text-sm" style={{ color: 'var(--sb-text-muted)' }}>
-              StructBay has sent invoice &amp; e-way bill. Porter/Delhivery pickup and customer delivery will be handled by StructBay — no further action needed from you. Download your documents in the Documents section below.
+              Structbay has sent invoice &amp; e-way bill. Porter/Delhivery pickup and customer delivery will be handled by Structbay — no further action needed from you. Download your documents in the Documents section below.
             </p>
           </div>
         )}
@@ -388,7 +388,7 @@ export function VendorWorkflowPanel({
         {st === 'DISPATCHED' && typeB && (
           <div className="wf-subsection">
             <p className="text-sm" style={{ color: 'var(--sb-text-muted)' }}>
-              Order is out for delivery via StructBay logistics. You will be notified when delivery is complete.
+              Order is out for delivery via Structbay logistics. You will be notified when delivery is complete.
             </p>
           </div>
         )}
@@ -396,7 +396,7 @@ export function VendorWorkflowPanel({
         {st === 'DELIVERED' && typeB && (
           <div className="wf-subsection">
             <p className="text-sm" style={{ color: 'var(--sb-text-muted)' }}>
-              StructBay marked delivery to the customer. Awaiting final confirmation.
+              Structbay marked delivery to the customer. Awaiting final confirmation.
             </p>
           </div>
         )}
@@ -436,7 +436,7 @@ export function VendorWorkflowPanel({
         {st === 'DELIVERED' && !typeB && (
           <div className="wf-subsection">
             <p className="text-sm" style={{ color: 'var(--sb-text-muted)' }}>
-              Awaiting StructBay to confirm delivery after POD review.
+              Awaiting Structbay to confirm delivery after POD review.
             </p>
           </div>
         )}

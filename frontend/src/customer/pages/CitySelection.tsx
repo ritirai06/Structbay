@@ -73,7 +73,7 @@ function CityPickerBody({
       <div className="sf-city-modal__hero">
         <img
           src={truckSrc}
-          alt="StructBay delivery truck"
+          alt="Structbay delivery truck"
           className="sf-city-modal__truck"
           loading="eager"
           decoding="async"

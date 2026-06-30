@@ -166,7 +166,7 @@ export function ConcreteRFQModal({ open, onClose }: Props) {
       }}
     >
       <div
-        className="relative w-full max-w-[760px] max-h-[92vh] overflow-y-auto rounded-2xl bg-white shadow-2xl"
+        className="relative w-full max-w-[760px] max-h-[92vh] overflow-hidden rounded-2xl bg-white shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="concrete-rfq-modal-title"
@@ -182,6 +182,7 @@ export function ConcreteRFQModal({ open, onClose }: Props) {
           <X className="h-4 w-4" />
         </button>
 
+        <div className="overflow-y-auto max-h-[92vh] w-full">
         {/* Success state */}
         {submitted ? (
           <div className="px-6 py-12 text-center sm:px-10">
@@ -440,6 +441,7 @@ export function ConcreteRFQModal({ open, onClose }: Props) {
             </div>
           </form>
         )}
+        </div>
       </div>
     </div>
   );

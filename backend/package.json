@@ -1,7 +1,7 @@
 {
   "name": "structbay-backend",
   "version": "1.0.0",
-  "description": "StructBay MERN Backend - Phase 2 Auth & Role Management",
+  "description": "Structbay MERN Backend - Phase 2 Auth & Role Management",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -33,7 +33,7 @@
     "marketplace",
     "mern"
   ],
-  "author": "StructBay",
+  "author": "Structbay",
   "license": "MIT",
   "dependencies": {
     "axios": "^1.17.0",

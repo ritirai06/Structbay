@@ -38,27 +38,27 @@ export function About() {
           {/* Stats Left Side */}
           <div className="grid grid-cols-2 gap-y-16 gap-x-8 text-center">
             <div>
-              <div className="text-5xl md:text-7xl font-medium text-sb-orange mb-4">2k+</div>
+              <div className="text-4xl md:text-5xl font-medium text-sb-orange mb-4">2000+</div>
               <div className="text-xs font-semibold text-gray-500 uppercase tracking-[0.2em] leading-relaxed">Verified Branded Products</div>
             </div>
             <div>
-              <div className="text-5xl md:text-7xl font-medium text-sb-orange mb-4">5+</div>
+              <div className="text-4xl md:text-5xl font-medium text-sb-orange mb-4">5+</div>
               <div className="text-xs font-semibold text-gray-500 uppercase tracking-[0.2em] leading-relaxed">Cities Indian Covered</div>
             </div>
             <div>
-              <div className="text-5xl md:text-7xl font-medium text-sb-orange mb-4">50k+</div>
+              <div className="text-4xl md:text-5xl font-medium text-sb-orange mb-4">50000+</div>
               <div className="text-xs font-semibold text-gray-500 uppercase tracking-[0.2em] leading-relaxed">Orders Delivered On Time</div>
             </div>
             <div>
-              <div className="text-5xl md:text-7xl font-medium text-sb-orange mb-4">10k+</div>
+              <div className="text-4xl md:text-5xl font-medium text-sb-orange mb-4">10000+</div>
               <div className="text-xs font-semibold text-gray-500 uppercase tracking-[0.2em] leading-relaxed">Trusted Brand Partners</div>
             </div>
           </div>
           
           {/* Description Right Side */}
-          <div className="text-[#888888] leading-[2.2] text-lg text-justify font-normal px-4 md:px-0">
-            <p>
-              At <span className="font-bold text-gray-800">StructBay</span>, we're revolutionizing the construction supply industry by making it easier, safer, and more affordable to source authentic building materials. Whether you're a contractor, architect, or individual builder, our platform gives you direct access to 100% genuine products from India's top brands — all in one place. No more dealing with fake items, inflated prices, or juggling multiple vendors. With StructBay, construction becomes smarter, faster, and more reliable.
+          <div className="text-[#888888] leading-[2.2] text-lg px-4 md:px-0">
+            <p className="text-justify" style={{ textAlign: "justify" }}>
+              At <span className="font-bold text-gray-800">Structbay</span>, we're revolutionizing the construction supply industry by making it easier, safer, and more affordable to source authentic building materials. Whether you're a contractor, architect, or individual builder, our platform gives you direct access to 100% genuine products from India's top brands — all in one place. No more dealing with fake items, inflated prices, or juggling multiple vendors. With Structbay, construction becomes smarter, faster, and more reliable.
             </p>
           </div>
         </div>
@@ -82,8 +82,8 @@ export function About() {
               <h3 className="text-xl font-bold text-gray-900 mb-1">Amit Sharma</h3>
               <p className="text-sm text-gray-800 mb-10 font-medium">Senior Site Engineer, Shree Constructions</p>
               
-              <p className="text-gray-900 leading-loose mb-10 max-w-sm mx-auto">
-                "Struct Bay has completely changed how we source materials. No more running behind different vendors. We now get everything — from cement to tiles — in one place, and it's all genuine. That's a huge relief!"
+              <p className="text-gray-900 leading-loose mb-10 max-w-sm mx-auto text-justify" style={{ textAlign: "justify" }}>
+                "Structbay has completely changed how we source materials. No more running behind different vendors. We now get everything — from cement to tiles — in one place, and it's all genuine. That's a huge relief!"
               </p>
               
               <div className="flex justify-center gap-1.5">
@@ -99,8 +99,8 @@ export function About() {
               <h3 className="text-xl font-bold text-gray-900 mb-1">Nitin Desai</h3>
               <p className="text-sm text-gray-800 mb-10 font-medium">Interior Contractor, Desai Interiors</p>
               
-              <p className="text-gray-900 leading-loose mb-10 max-w-sm mx-auto">
-                "Getting fake products in the market has been a major issue — especially with paints. Struct Bay guarantees authenticity. I've never had to second guess a single delivery!"
+              <p className="text-gray-900 leading-loose mb-10 max-w-sm mx-auto text-justify" style={{ textAlign: "justify" }}>
+                "Getting fake products in the market has been a major issue — especially with paints. Structbay guarantees authenticity. I've never had to second guess a single delivery!"
               </p>
               
               <div className="flex justify-center gap-1.5">

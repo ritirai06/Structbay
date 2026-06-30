@@ -113,7 +113,7 @@ const DEFAULT_INTRO_SECTION = {
   title: "Smart Construction Starts With Smarter Sourcing",
   tagline: "Built for Contractors, Backed by Brands.",
   body:
-    "StructBay combines the reliability of branded materials, the power of affordable pricing, and the ease of single-window sourcing — everything you need to finish projects faster and better.",
+    "Structbay combines the reliability of branded materials, the power of affordable pricing, and the ease of single-window sourcing — everything you need to finish projects faster and better.",
 };
 
 const DEFAULT_FEATURE_CARDS: FeatureCardForm[] = [
@@ -194,7 +194,7 @@ function HomepageTab() {
     modalBackgroundImagePublicId: "",
     modalBadgeLeft: "Auto applied on checkout",
     modalBadgeRight: "Minimum order value ₹500",
-    modalFooterNote: "Offer valid as per StructBay policy. T&C apply.",
+    modalFooterNote: "Offer valid as per Structbay policy. T&C apply.",
     modalSuppressDays: 1,
   };
 
@@ -602,7 +602,7 @@ function HomepageTab() {
           <label className="text-xs text-sb-ink/55 mb-1 block">Marquee lines (one per line, when banner is off or on mobile)</label>
           <Textarea
             rows={4}
-            placeholder={"GST Invoice on Every Order\nStructBay Assured"}
+            placeholder={"GST Invoice on Every Order\nStructbay Assured"}
             value={sp.marqueeLinesText}
             onChange={(e) =>
               setForm((f) => ({ ...f, storefrontPromo: { ...f.storefrontPromo, marqueeLinesText: e.target.value } }))
@@ -1220,7 +1220,7 @@ function BlogsTab() {
   const [blogs, setBlogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<{ open: boolean; data: any }>({ open: false, data: null });
-  const [form, setForm] = useState({ title: "", description: "", content: "", author: "StructBay Team", status: "DRAFT", isFeatured: false, tags: "" });
+  const [form, setForm] = useState({ title: "", description: "", content: "", author: "Structbay Team", status: "DRAFT", isFeatured: false, tags: "" });
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(() => {
@@ -1231,7 +1231,7 @@ function BlogsTab() {
 
   const blogDelete = useAdminResourceDelete("/cms/blogs", load);
 
-  const openCreate = () => { setForm({ title: "", description: "", content: "", author: "StructBay Team", status: "DRAFT", isFeatured: false, tags: "" }); setModal({ open: true, data: null }); };
+  const openCreate = () => { setForm({ title: "", description: "", content: "", author: "Structbay Team", status: "DRAFT", isFeatured: false, tags: "" }); setModal({ open: true, data: null }); };
   const openEdit = (b: any) => { setForm({ title: b.title, description: b.description || "", content: b.content || "", author: b.author, status: b.status, isFeatured: b.isFeatured, tags: (b.tags || []).join(", ") }); setModal({ open: true, data: b }); };
 
   const save = async () => {

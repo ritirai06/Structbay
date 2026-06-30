@@ -33,7 +33,7 @@ export function Sidebar() {
   return (
     <aside className="sb-sidebar flex h-full w-60 shrink-0 flex-col border-r border-sb-border-dark">
       <div className="flex h-[72px] flex-col justify-center border-b border-sb-border-dark px-5">
-        <img src={logoImg} alt="StructBay" className="h-9 w-auto object-contain" />
+        <img src={logoImg} alt="Structbay" className="h-9 w-auto object-contain" />
         <span className="vendor-portal-badge mt-1 inline-block uppercase text-sb-orange">
           Vendor Portal
         </span>

@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @config "../../tailwind.config.ts";
 
-/* StructBay Enterprise Design System */
+/* Structbay Enterprise Design System */
 
 :root {
   --sb-page-bg: #FDF6ED;

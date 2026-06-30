@@ -1178,7 +1178,7 @@ export function AddProduct() {
                 required
               >
                 <option value="vendor_delivery">Type A — Vendor delivery</option>
-                <option value="structbay_delivery">Type B — StructBay delivery</option>
+                <option value="structbay_delivery">Type B — Structbay delivery</option>
               </select>
             </Field>
             <p className="text-xs text-sb-ink/50 mt-2">
@@ -1188,8 +1188,8 @@ export function AddProduct() {
 
           <Section title="Product Badges">
             <div className="space-y-2">
-              <Toggle checked={form.isAssured} onChange={v => set("isAssured", v)} label="StructBay Assured" icon={Shield} />
-              <Toggle checked={form.isExpress} onChange={v => set("isExpress", v)} label="StructBay Express" icon={Zap} />
+              <Toggle checked={form.isAssured} onChange={v => set("isAssured", v)} label="Structbay Assured" icon={Shield} />
+              <Toggle checked={form.isExpress} onChange={v => set("isExpress", v)} label="Structbay Express" icon={Zap} />
               <Toggle checked={form.isFeatured} onChange={v => set("isFeatured", v)} label="Featured Product" icon={Star} />
               <Toggle checked={form.isTopSelling} onChange={v => set("isTopSelling", v)} label="Top Selling" icon={TrendingUp} />
             </div>

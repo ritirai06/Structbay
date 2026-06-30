@@ -8,7 +8,7 @@ const { logOrderActivity } = require('../services/order.service');
 
 // ─── POST /pickup-schedules ───────────────────────────────────────────────────
 /**
- * StructBay Delivery (Type B): captures PRD fields — scheduled pickup time,
+ * Structbay Delivery (Type B): captures PRD fields — scheduled pickup time,
  * logistics partner (Porter / Delhivery / other), driver/contact, and vendor pickup contact.
  */
 exports.create = asyncHandler(async (req, res) => {

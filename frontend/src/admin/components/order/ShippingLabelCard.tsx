@@ -202,7 +202,7 @@ export function ShippingLabelCard({
   return (
     <WorkflowCard title="Shipping label">
       {typeB && (
-        <p className="text-[11px] text-sb-ink/50">Internal only — StructBay delivery.</p>
+        <p className="text-[11px] text-sb-ink/50">Internal only — Structbay delivery.</p>
       )}
 
       {loading ? (

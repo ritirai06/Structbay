@@ -42,8 +42,8 @@ function escapeCsvCell(val) {
 
 function badgeLine(p) {
   const bits = [];
-  if (p.isStructbayAssured || p.isAssured) bits.push('StructBay Assured');
-  if (p.isStructbayDelivery || p.isExpress) bits.push('StructBay Delivery');
+  if (p.isStructbayAssured || p.isAssured) bits.push('Structbay Assured');
+  if (p.isStructbayDelivery || p.isExpress) bits.push('Structbay Delivery');
   if (p.isTopSelling) bits.push('Top Selling');
   if (p.isFeatured) bits.push('Featured');
   return bits.join(' · ');
@@ -133,7 +133,7 @@ async function renderPdfBuffer({ bundles, catalogName, coverMeta, options }) {
       }
     }
   }
-  doc.fillColor('#FE5E00').fontSize(14).text('STRUCTBAY', 48, 36);
+  doc.fillColor('#FE5E00').fontSize(14).text('Structbay', 48, 36);
   doc.fillColor('#ffffff').fontSize(20).text(catalogName || 'Product Catalog', 48, 58, { width: doc.page.width - 220 });
   doc.fontSize(10).fillColor('#e2e8f0').text('Construction Materials Marketplace', 48, 88);
   doc.fillColor('#111').fontSize(10);
@@ -272,7 +272,7 @@ async function renderPdfBuffer({ bundles, catalogName, coverMeta, options }) {
         if (options.includeVendorInfo) {
           ry += 10;
           doc.fontSize(8).fillColor('#475569').text(
-            'Vendor assignment, verified GST profiles, ratings, and lead times are shown to buyers in checkout and RFQs on StructBay.',
+            'Vendor assignment, verified GST profiles, ratings, and lead times are shown to buyers in checkout and RFQs on Structbay.',
             48,
             ry,
             { width: doc.page.width - 96 }
@@ -292,7 +292,7 @@ async function renderPdfBuffer({ bundles, catalogName, coverMeta, options }) {
 async function renderXlsxBuffer({ bundles, catalogName, coverMeta, options }) {
   const includePricing = options.includePricing !== false;
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'StructBay';
+  wb.creator = 'Structbay';
   wb.created = new Date();
   const ws = wb.addWorksheet('Catalog', { views: [{ state: 'frozen', ySplit: 1 }] });
   ws.columns = [
@@ -340,7 +340,7 @@ async function renderXlsxBuffer({ bundles, catalogName, coverMeta, options }) {
   }
 
   const meta = wb.addWorksheet('Cover');
-  meta.addRow(['StructBay Product Catalog']);
+  meta.addRow(['Structbay Product Catalog']);
   meta.addRow([catalogName || '']);
   meta.addRow([`Generated: ${new Date().toISOString()}`]);
   meta.addRow([`By: ${coverMeta.generatedByName || ''}`]);
@@ -413,7 +413,7 @@ function renderHtmlBuffer({ bundles, catalogName, coverMeta, options }) {
   return Buffer.from(
     `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${esc(catalogName)}</title>
 <style>body{font-family:system-ui;margin:0;background:#faf8f5} .c{background:linear-gradient(120deg,#0f172a,#431407);color:#fff;padding:2rem} .o{color:#FE5E00;font-weight:700} table{border-collapse:collapse;width:100%;background:#fff;font-size:12px} th,td{border:1px solid #e5e7eb;padding:6px}</style></head><body>
-<div class="c"><div class="o">STRUCTBAY</div><h1>${esc(catalogName)}</h1><p>Products: ${coverMeta.totalProducts} · ${new Date().toLocaleString('en-IN')}</p></div>
+<div class="c"><div class="o">Structbay</div><h1>${esc(catalogName)}</h1><p>Products: ${coverMeta.totalProducts} · ${new Date().toLocaleString('en-IN')}</p></div>
 <table><thead><tr>${['Product', 'SKU', 'Brand', 'Category', 'Var SKU', 'Attributes', 'MRP', 'Price', 'Wholesale', 'MOQ', 'Lead', 'GST', 'Badges', 'URL'].map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></body></html>`,
     'utf8'
   );

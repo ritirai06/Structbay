@@ -23,7 +23,7 @@ function statusConditions(filters = {}) {
 }
 
 /**
- * Build Mongo filter from admin filters (StructBay badges, status, category, brand).
+ * Build Mongo filter from admin filters (Structbay badges, status, category, brand).
  */
 function productFilterFromPayload({ filters = {}, scopeType, categoryId, brandId, productIds }) {
   const f = { ...filters };

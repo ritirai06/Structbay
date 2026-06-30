@@ -43,7 +43,7 @@ exports.approveDispatch = asyncHandler(async (req, res) => {
       vendorId,
       type: 'wf_dispatch_approved',
       title: 'Dispatch approved',
-      message: `StructBay approved dispatch for ${vo.orderNumber}. You may now submit your final tax invoice.`,
+      message: `Structbay approved dispatch for ${vo.orderNumber}. You may now submit your final tax invoice.`,
       relatedOrder: vo._id,
       actionUrl: `/orders/${vo._id}`,
       actionLabel: 'Upload invoice',
@@ -87,7 +87,7 @@ exports.requestDispatchChanges = asyncHandler(async (req, res) => {
       vendorId,
       type: 'wf_changes_requested',
     title: 'Changes requested',
-    message: `StructBay requested changes before dispatch approval for ${vo.orderNumber}: ${note.trim()}`,
+    message: `Structbay requested changes before dispatch approval for ${vo.orderNumber}: ${note.trim()}`,
     relatedOrder: vo._id,
     actionUrl: `/orders/${vo._id}`,
     actionLabel: 'Update & resubmit',
@@ -113,14 +113,14 @@ exports.sendStructbayDocs = asyncHandler(async (req, res) => {
   if (!vo) throw new AppError('Vendor order not found.', 404);
   if (!isWorkflowVendorOrder(vo)) throw new AppError('Workflow not active for this vendor order.', 400);
   if (vo.status !== 'VENDOR_INVOICE_SUBMITTED') {
-    throw new AppError('StructBay documents can only be sent after the vendor final invoice is submitted.', 400);
+    throw new AppError('Structbay documents can only be sent after the vendor final invoice is submitted.', 400);
   }
   if (!canTransition(vo.status, 'SB_INVOICE_SENT')) throw new AppError('Invalid transition.', 400);
 
   const grouped = req.files || {};
   const inv = (grouped.sbInvoice && grouped.sbInvoice[0]) || null;
   const eway = (grouped.ewayBill && grouped.ewayBill[0]) || null;
-  if (!inv || !eway) throw new AppError('StructBay invoice PDF and e-way bill PDF are required.', 400);
+  if (!inv || !eway) throw new AppError('Structbay invoice PDF and e-way bill PDF are required.', 400);
   if (!invoiceNumber || !ewayBillNumber) throw new AppError('invoice_number and eway_bill_number are required.', 400);
 
   vo.structbayOutboundDocs = {
@@ -134,7 +134,7 @@ exports.sendStructbayDocs = asyncHandler(async (req, res) => {
     sentBy: req.user._id,
   };
   vo.status = 'SB_INVOICE_SENT';
-  pushEmbeddedHistory(vo, 'SB_INVOICE_SENT', req.user._id, 'User', 'StructBay invoice and e-way bill sent to vendor.');
+  pushEmbeddedHistory(vo, 'SB_INVOICE_SENT', req.user._id, 'User', 'Structbay invoice and e-way bill sent to vendor.');
   await vo.save();
   await appendAudit(vo._id, 'SB_INVOICE_SENT', 'SB invoice + e-way sent', req.user._id, 'User');
 
@@ -144,10 +144,10 @@ exports.sendStructbayDocs = asyncHandler(async (req, res) => {
     notifyVendor({
       vendorId,
       type: 'wf_sb_invoice_sent',
-    title: 'StructBay invoice & e-way bill',
+    title: 'Structbay invoice & e-way bill',
     message: typeB
-      ? `StructBay documents for ${vo.orderNumber} are available. StructBay will book pickup and deliver to the customer.`
-      : `StructBay documents for ${vo.orderNumber} are available. You may dispatch the shipment.`,
+      ? `Structbay documents for ${vo.orderNumber} are available. Structbay will book pickup and deliver to the customer.`
+      : `Structbay documents for ${vo.orderNumber} are available. You may dispatch the shipment.`,
     relatedOrder: vo._id,
     actionUrl: `/orders/${vo._id}`,
     actionLabel: 'View order',
@@ -158,7 +158,7 @@ exports.sendStructbayDocs = asyncHandler(async (req, res) => {
   notifyAllAdmins({
     type: 'SB_INVOICE_SENT',
     title: 'SB documents sent',
-    message: `StructBay documents sent to vendor for ${vo.orderNumber}.`,
+    message: `Structbay documents sent to vendor for ${vo.orderNumber}.`,
     relatedVendorOrder: vo._id,
   }).catch(() => {});
 
@@ -171,7 +171,7 @@ exports.sendStructbayDocs = asyncHandler(async (req, res) => {
     ipAddress: req.ip,
   });
 
-  return ApiResponse.success(res, 200, 'StructBay documents sent.', vo);
+  return ApiResponse.success(res, 200, 'Structbay documents sent.', vo);
 });
 
 exports.confirmDelivery = asyncHandler(async (req, res) => {
@@ -181,7 +181,7 @@ exports.confirmDelivery = asyncHandler(async (req, res) => {
   if (vo.status !== 'DELIVERED') {
     throw new AppError(
       vo.deliveryType === 'structbay_delivery'
-        ? 'Delivery can only be confirmed after StructBay has marked the order delivered.'
+        ? 'Delivery can only be confirmed after Structbay has marked the order delivered.'
         : 'Delivery can only be confirmed after the vendor has marked the order delivered with POD.',
       400
     );
@@ -213,7 +213,7 @@ exports.confirmDelivery = asyncHandler(async (req, res) => {
       vendorId,
       type: 'wf_delivery_confirmed',
       title: 'Delivery confirmed',
-      message: `StructBay confirmed delivery for ${vo.orderNumber}.`,
+      message: `Structbay confirmed delivery for ${vo.orderNumber}.`,
       relatedOrder: vo._id,
       actionUrl: `/orders/${vo._id}`,
       actionLabel: 'View order',
@@ -239,25 +239,25 @@ exports.confirmDelivery = asyncHandler(async (req, res) => {
   return ApiResponse.success(res, 200, 'Delivery confirmed.', vo);
 });
 
-/** Type B — StructBay marks out for delivery after booking Porter/Delhivery. */
+/** Type B — Structbay marks out for delivery after booking Porter/Delhivery. */
 exports.markStructbayDispatched = asyncHandler(async (req, res) => {
   const vo = await VendorOrder.findById(req.params.id);
   if (!vo) throw new AppError('Vendor order not found.', 404);
   if (!isWorkflowVendorOrder(vo)) throw new AppError('Workflow not active for this vendor order.', 400);
   if (vo.deliveryType !== 'structbay_delivery') {
-    throw new AppError('This action is only for Type B (StructBay delivery) sub-orders.', 400);
+    throw new AppError('This action is only for Type B (Structbay delivery) sub-orders.', 400);
   }
   if (vo.status !== 'SB_INVOICE_SENT') {
-    throw new AppError('Mark out for delivery only after StructBay invoice & e-way bill are sent.', 400);
+    throw new AppError('Mark out for delivery only after Structbay invoice & e-way bill are sent.', 400);
   }
   if (!canTransition(vo.status, 'DISPATCHED')) throw new AppError('Invalid transition.', 400);
 
   vo.status = 'DISPATCHED';
   vo.dispatchStatus = 'DISPATCHED';
   vo.actualDispatchDate = new Date();
-  pushEmbeddedHistory(vo, 'DISPATCHED', req.user._id, 'User', 'StructBay marked out for delivery (Type B).');
+  pushEmbeddedHistory(vo, 'DISPATCHED', req.user._id, 'User', 'Structbay marked out for delivery (Type B).');
   await vo.save();
-  await appendAudit(vo._id, 'DISPATCHED', 'StructBay out for delivery', req.user._id, 'User');
+  await appendAudit(vo._id, 'DISPATCHED', 'Structbay out for delivery', req.user._id, 'User');
 
   await syncMasterOrderStatusFromVendorOrders(vo.masterOrder, {
     changedBy: req.user._id,
@@ -275,21 +275,21 @@ exports.markStructbayDispatched = asyncHandler(async (req, res) => {
     action: 'UPDATE',
     module: 'VendorOrder',
     targetId: vo._id.toString(),
-    description: `StructBay marked dispatched ${vo.orderNumber}`,
+    description: `Structbay marked dispatched ${vo.orderNumber}`,
     ipAddress: req.ip,
   });
 
   return ApiResponse.success(res, 200, 'Marked out for delivery.', vo);
 });
 
-/** Type B — StructBay marks customer delivery complete (no vendor POD). */
+/** Type B — Structbay marks customer delivery complete (no vendor POD). */
 exports.markStructbayDelivered = asyncHandler(async (req, res) => {
   const { delivery_date: deliveryDate, note } = req.body;
   const vo = await VendorOrder.findById(req.params.id);
   if (!vo) throw new AppError('Vendor order not found.', 404);
   if (!isWorkflowVendorOrder(vo)) throw new AppError('Workflow not active for this vendor order.', 400);
   if (vo.deliveryType !== 'structbay_delivery') {
-    throw new AppError('This action is only for Type B (StructBay delivery) sub-orders.', 400);
+    throw new AppError('This action is only for Type B (Structbay delivery) sub-orders.', 400);
   }
   if (vo.status !== 'DISPATCHED') {
     throw new AppError('Mark delivered only after the order is out for delivery.', 400);
@@ -304,9 +304,9 @@ exports.markStructbayDelivered = asyncHandler(async (req, res) => {
   vo.actualDeliveryDate = when;
   vo.status = 'DELIVERED';
   vo.dispatchStatus = 'DELIVERED';
-  pushEmbeddedHistory(vo, 'DELIVERED', req.user._id, 'User', note?.trim() || 'StructBay marked delivered to customer (Type B).');
+  pushEmbeddedHistory(vo, 'DELIVERED', req.user._id, 'User', note?.trim() || 'Structbay marked delivered to customer (Type B).');
   await vo.save();
-  await appendAudit(vo._id, 'DELIVERED', note?.trim() || 'StructBay delivery complete', req.user._id, 'User');
+  await appendAudit(vo._id, 'DELIVERED', note?.trim() || 'Structbay delivery complete', req.user._id, 'User');
 
   await syncMasterOrderStatusFromVendorOrders(vo.masterOrder, {
     changedBy: req.user._id,
@@ -325,7 +325,7 @@ exports.markStructbayDelivered = asyncHandler(async (req, res) => {
       vendorId,
       type: 'wf_delivery_confirmed',
       title: 'Customer delivery recorded',
-      message: `StructBay marked ${vo.orderNumber} delivered to the customer.`,
+      message: `Structbay marked ${vo.orderNumber} delivered to the customer.`,
       relatedOrder: vo._id,
       actionUrl: `/orders/${vo._id}`,
       actionLabel: 'View order',
@@ -338,7 +338,7 @@ exports.markStructbayDelivered = asyncHandler(async (req, res) => {
     action: 'UPDATE',
     module: 'VendorOrder',
     targetId: vo._id.toString(),
-    description: `StructBay marked delivered ${vo.orderNumber}`,
+    description: `Structbay marked delivered ${vo.orderNumber}`,
     ipAddress: req.ip,
   });
 
