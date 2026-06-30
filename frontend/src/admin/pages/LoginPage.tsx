@@ -126,7 +126,7 @@ export function LoginPage() {
       <div className="w-full max-w-md">
         <div className="rounded-2xl border border-sb-ink/10 bg-white p-8 shadow-sm">
           <div className="mb-8 text-center">
-            <img src={logoImg} alt="StructBay" className="mx-auto h-14 w-auto object-contain mb-4" />
+            <img src={logoImg} alt="Structbay" className="mx-auto h-14 w-auto object-contain mb-4" />
             <span className="inline-block rounded-full border border-sb-ink/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-sb-ink/55 mb-3">
               Admin
             </span>
@@ -211,7 +211,7 @@ export function LoginPage() {
         </div>
 
         <p className="text-center text-xs text-sb-ink/45 mt-6">
-          © 2025 StructBay Technologies Pvt. Ltd.
+          © 2025 Structbay Technologies Pvt. Ltd.
         </p>
       </div>
     </div>

@@ -35,11 +35,11 @@ export function Shop() {
           <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-sb-ink-muted bg-sb-page border border-sb-ink/12 rounded-xl px-4 py-3 max-w-3xl">
             <span className="font-semibold text-sb-ink shrink-0">Product badges:</span>
             <span className="inline-flex items-center gap-1 rounded-full border border-[#E85A00]/35 bg-[#E85A00]/10 text-[#E85A00] px-2 py-0.5 font-bold">
-              StructBay Assured
+              Structbay Assured
             </span>
             <span className="text-sb-ink-muted/80">Shown on shop tiles, categories, search & product pages.</span>
             <span className="inline-flex items-center gap-1 rounded-full bg-[#E85A00] text-sb-on-orange px-2 py-0.5 font-bold">
-              StructBay Express
+              Structbay Express
             </span>
             <span className="text-sb-ink-muted/80">Same-day / priority where enabled.</span>
           </div>

@@ -11,7 +11,7 @@ const ORANGE = '#E85A00';
 const BLACK = '#000000';
 const GRAY = '#666666';
 
-function getStructBayLogoPath() {
+function getStructbayLogoPath() {
   const fromEnv = process.env.INVOICE_LOGO_PATH && String(process.env.INVOICE_LOGO_PATH).trim();
   const candidates = [
     fromEnv && path.resolve(fromEnv),
@@ -41,7 +41,7 @@ function rowToArray(row) {
 
 async function buildBulkEnquiryExcelBuffer() {
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'StructBay';
+  wb.creator = 'Structbay';
   wb.created = new Date();
 
   const ws = wb.addWorksheet('Bulk Requirements', {
@@ -53,7 +53,7 @@ async function buildBulkEnquiryExcelBuffer() {
 
   ws.mergeCells(`A1:${lastCol}1`);
   const title = ws.getCell('A1');
-  title.value = 'StructBay — Bulk order requirement template';
+  title.value = 'Structbay — Bulk order requirement template';
   title.font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
   title.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };
   title.alignment = { vertical: 'middle', horizontal: 'left' };
@@ -115,7 +115,7 @@ async function buildBulkEnquiryExcelBuffer() {
 }
 
 function buildBulkEnquiryPdfBuffer() {
-  const logoPath = getStructBayLogoPath();
+  const logoPath = getStructbayLogoPath();
 
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -203,7 +203,7 @@ function buildBulkEnquiryPdfBuffer() {
 
     y += 12;
     doc.fillColor(GRAY).font('Helvetica').fontSize(9).text(
-      'Tip: You may also type requirements as plain text, e.g. "Ultratech Cement — 500 bags" (one product per line). StructBay responds within 4 business hours.',
+      'Tip: You may also type requirements as plain text, e.g. "Ultratech Cement — 500 bags" (one product per line). Structbay responds within 4 business hours.',
       48,
       y,
       { width: contentW }

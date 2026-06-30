@@ -44,8 +44,8 @@ function formatVariantAttributes(attrs) {
 
 function badgeSummary(p) {
   const bits = [];
-  if (p.isStructbayAssured || p.isAssured) bits.push('StructBay Assured');
-  if (p.isStructbayDelivery || p.isExpress) bits.push('StructBay Delivery');
+  if (p.isStructbayAssured || p.isAssured) bits.push('Structbay Assured');
+  if (p.isStructbayDelivery || p.isExpress) bits.push('Structbay Delivery');
   if (p.isTopSelling) bits.push('Top Selling');
   if (p.isFeatured) bits.push('Featured');
   return bits.join('; ');
@@ -264,7 +264,7 @@ function rowsToHtml(title, rows) {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${safeTitle} — StructBay</title>
+  <title>${safeTitle} — Structbay</title>
   <style>
     body { font-family: system-ui, Segoe UI, Roboto, sans-serif; margin: 0; color: #111; background: #faf8f5; }
     .cover { background: linear-gradient(120deg, #0f172a 0%, #1e293b 40%, #431407 100%); color: #fff; padding: 2rem 1.5rem; }
@@ -282,7 +282,7 @@ function rowsToHtml(title, rows) {
 </head>
 <body>
   <div class="cover">
-    <div class="brand">StructBay</div>
+    <div class="brand">Structbay</div>
     <h1>${safeTitle}</h1>
     <div class="meta">Generated ${escapeHtml(date)} · ${rows.length} line(s)</div>
   </div>

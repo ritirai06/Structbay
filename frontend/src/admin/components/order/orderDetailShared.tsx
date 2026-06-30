@@ -116,8 +116,8 @@ export function DeliveryTypeSelector({
     },
     {
       id: "structbay_delivery" as const,
-      title: "Type B — StructBay delivery",
-      hint: "StructBay books Porter/Delhivery after vendor invoice.",
+      title: "Type B — Structbay delivery",
+      hint: "Structbay books Porter/Delhivery after vendor invoice.",
     },
   ];
 

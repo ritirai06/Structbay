@@ -42,7 +42,7 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           {/* Brand */}
           <div>
-            <img src={logoImg} alt="StructBay" className="h-24 w-auto object-contain mb-4" />
+            <img src={logoImg} alt="Structbay" className="h-24 w-auto object-contain mb-4" />
             <p className="text-sm text-white/75 leading-relaxed">{cms.companyDescription}</p>
           </div>
 

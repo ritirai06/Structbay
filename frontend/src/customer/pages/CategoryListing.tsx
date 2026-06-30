@@ -14,6 +14,7 @@ import { SandAggregatesQuoteModal } from "../components/SandAggregatesQuoteModal
 import { ConcreteRFQModal } from "../components/ConcreteRFQModal";
 import { isRfqOnlyCategory } from "../lib/rfqCategories";
 import { findVariationForFilterSelections } from "../lib/variationSelectors";
+import { useBulkEnquiryModal } from "../context/BulkEnquiryModalContext";
 import {
   listingUnitPrice,
   listingPriceBounds,
@@ -267,6 +268,7 @@ export function CategoryListing() {
   const { addToCart, updateQty, cart, city, cityId } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
+  const { openBulkEnquiry } = useBulkEnquiryModal();
 
   const isShopAll = !category || category === "all";
 
@@ -1166,17 +1168,11 @@ export function CategoryListing() {
               <div className="flex gap-3 shrink-0">
                 <button
                   type="button"
-                  onClick={() => setConcreteRFQOpen(true)}
-                  className="flex items-center gap-2 bg-[#E85A00] hover:bg-[#CC4E00] text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-colors shadow-[0_4px_12px_rgba(232,90,0,0.25)]"
-                >
-                  <FileText className="w-4 h-4" /> Get RFQ
-                </button>
-                <Link
-                  to="/bulk"
-                  className="flex items-center gap-2 border border-white/25 hover:border-[#E85A00] text-white hover:text-[#E85A00] px-5 py-2.5 rounded-xl font-semibold text-sm transition-all"
+                  onClick={() => openBulkEnquiry()}
+                  className="flex items-center gap-2 bg-transparent border border-white/25 hover:border-[#E85A00] text-white hover:text-[#E85A00] px-5 py-2.5 rounded-xl font-semibold text-sm transition-all"
                 >
                   Bulk Order <ArrowRight className="w-4 h-4" />
-                </Link>
+                </button>
               </div>
             </div>
           </div>

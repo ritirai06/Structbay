@@ -66,7 +66,7 @@ export function Contact() {
             </div>
             <h3 className="text-sb-orange text-lg font-medium uppercase tracking-widest mb-4">ADDRESS</h3>
             <p className="text-gray-500 font-medium text-[13px] leading-relaxed max-w-[280px]">
-              102, Road No.4, Defence Layout,<br />Vidyaranyapura, Bengaluru 560097
+              102, Road No.4, Defence Layout, Vidyaranyapura, Bengaluru 560097
             </p>
           </div>
         </div>
@@ -85,6 +85,17 @@ export function Contact() {
                 <input
                   type="text"
                   placeholder="Your Name..."
+                  className="block w-full pl-11 pr-4 py-3 text-sm text-gray-700 bg-white border border-gray-200 rounded-full focus:outline-none focus:border-sb-orange focus:ring-1 focus:ring-sb-orange transition-colors placeholder-gray-400"
+                />
+              </div>
+
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Phone className="h-4 w-4 text-sb-orange" />
+                </div>
+                <input
+                  type="tel"
+                  placeholder="Phone Number..."
                   className="block w-full pl-11 pr-4 py-3 text-sm text-gray-700 bg-white border border-gray-200 rounded-full focus:outline-none focus:border-sb-orange focus:ring-1 focus:ring-sb-orange transition-colors placeholder-gray-400"
                 />
               </div>
@@ -136,14 +147,14 @@ export function Contact() {
           {/* Right: Map */}
           <div className="w-full lg:w-1/2 h-[400px] lg:h-full">
             <iframe
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15545.923055416035!2d77.54583191196144!3d13.068631165438883!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bae229be0b201a7%3A0xc49d0cb09d3b8417!2sVidyaranyapura%2C%20Bengaluru%2C%20Karnataka!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin"
+              src="https://maps.google.com/maps?q=102,%20Road%20No.4,%20Defence%20Layout,%20Vidyaranyapura,%20Bengaluru%20560097&t=&z=15&ie=UTF8&iwloc=&output=embed"
               width="100%"
               height="100%"
               style={{ border: 0 }}
               allowFullScreen={true}
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
-              title="StructBay Location Map"
+              title="Structbay Location Map"
             />
           </div>
         </div>

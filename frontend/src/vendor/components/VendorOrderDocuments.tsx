@@ -90,7 +90,7 @@ export function VendorOrderDocuments({ documents }: { documents?: VendorOrderDoc
           Documents not yet generated
         </p>
         <p className="text-sm" style={{ color: SB.muted }}>
-          Awaiting StructBay invoice &amp; e-way generation. Download buttons will appear here once StructBay uploads your documents.
+          Awaiting Structbay invoice &amp; e-way generation. Download buttons will appear here once Structbay uploads your documents.
         </p>
       </div>
     );
@@ -109,12 +109,12 @@ export function VendorOrderDocuments({ documents }: { documents?: VendorOrderDoc
 
       {hasInvoice ? (
         <DocButton
-          label="StructBay Invoice"
+          label="Structbay Invoice"
           url={docs.invoice_url!}
           hint={docs.invoice_number ? `Ref: ${docs.invoice_number}` : undefined}
         />
       ) : (
-        <PendingRow label="StructBay Invoice — pending" />
+        <PendingRow label="Structbay Invoice — pending" />
       )}
 
       {hasEway ? (
@@ -137,7 +137,7 @@ export function VendorOrderDocuments({ documents }: { documents?: VendorOrderDoc
 
       {docs.sent_at && (
         <p className="text-xs pt-1" style={{ color: SB.faint }}>
-          StructBay documents sent {new Date(docs.sent_at).toLocaleString('en-IN')}
+          Structbay documents sent {new Date(docs.sent_at).toLocaleString('en-IN')}
         </p>
       )}
     </div>

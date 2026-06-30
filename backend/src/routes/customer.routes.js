@@ -111,7 +111,7 @@ router.get(
 
 // ─── PIN serviceability (public — checkout / city modal) ──────────────────────
 const NOT_SERVICEABLE_PIN_MSG =
-  'StructBay currently operates in selected cities and PIN codes only. This PIN code is not in our active service area yet. Please choose a listed city or a supported PIN, or contact support for bulk and enterprise delivery options—we will be glad to help.';
+  'Structbay currently operates in selected cities and PIN codes only. This PIN code is not in our active service area yet. Please choose a listed city or a supported PIN, or contact support for bulk and enterprise delivery options—we will be glad to help.';
 
 function normalizeSixDigitPins(arr) {
   if (!Array.isArray(arr)) return [];
@@ -324,7 +324,7 @@ router.get(
       .filter((t) => mongoose.Types.ObjectId.isValid(String(t)));
     if (brandTokens.length === 1) filter.brand = brandTokens[0];
     else if (brandTokens.length > 1) filter.brand = { $in: brandTokens };
-    catalogBrowse.applyLegacyAndStructBayBadgeFilters(filter, {
+    catalogBrowse.applyLegacyAndStructbayBadgeFilters(filter, {
       assured, express, structbayAssured, structbayDelivery,
     });
 
@@ -566,7 +566,7 @@ router.get(
     if (brandTokens.length === 1) filter.brand = brandTokens[0];
     else if (brandTokens.length > 1) filter.brand = { $in: brandTokens };
 
-    catalogBrowse.applyLegacyAndStructBayBadgeFilters(filter, req.query);
+    catalogBrowse.applyLegacyAndStructbayBadgeFilters(filter, req.query);
     if (search) {
       const searchOr = await catalogBrowse.buildProductSearchOr(search);
       if (searchOr) filter.$or = searchOr.$or;
@@ -591,7 +591,7 @@ router.get(
     }
 
     const brandDistinctFilter = { status: 'ACTIVE', category: category._id };
-    catalogBrowse.applyLegacyAndStructBayBadgeFilters(brandDistinctFilter, req.query);
+    catalogBrowse.applyLegacyAndStructbayBadgeFilters(brandDistinctFilter, req.query);
     if (search) {
       const searchOr = await catalogBrowse.buildProductSearchOr(search);
       if (searchOr) brandDistinctFilter.$or = searchOr.$or;
@@ -685,7 +685,7 @@ router.get(
 
     const filter = { status: 'ACTIVE', brand: brand._id };
     if (categoryId) filter.category = categoryId;
-    catalogBrowse.applyLegacyAndStructBayBadgeFilters(filter, req.query);
+    catalogBrowse.applyLegacyAndStructbayBadgeFilters(filter, req.query);
     if (search) {
       const searchOr = await catalogBrowse.buildProductSearchOr(search);
       if (searchOr) filter.$or = searchOr.$or;
@@ -698,7 +698,7 @@ router.get(
     }
 
     const categoryDistinctFilter = { status: 'ACTIVE', brand: brand._id };
-    catalogBrowse.applyLegacyAndStructBayBadgeFilters(categoryDistinctFilter, req.query);
+    catalogBrowse.applyLegacyAndStructbayBadgeFilters(categoryDistinctFilter, req.query);
     if (search) {
       const searchOr = await catalogBrowse.buildProductSearchOr(search);
       if (searchOr) categoryDistinctFilter.$or = searchOr.$or;
@@ -817,7 +817,7 @@ router.get(
 
     const { cityOid: cityOidSearch } = await resolveStorefrontCityOid(req.query);
     const productMatch = { status: 'ACTIVE' };
-    catalogBrowse.applyLegacyAndStructBayBadgeFilters(productMatch, req.query);
+    catalogBrowse.applyLegacyAndStructbayBadgeFilters(productMatch, req.query);
     const searchOr = await catalogBrowse.buildProductSearchOr(q.trim());
     if (searchOr) productMatch.$or = searchOr.$or;
     if (cityOidSearch) {

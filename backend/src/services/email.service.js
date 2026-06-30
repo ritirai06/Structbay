@@ -71,7 +71,7 @@ const sendEmail = async ({ to, subject, html, text }) => {
   try {
     const fromAddr = defaultFrom();
     const mail = {
-      from: `"StructBay" <${fromAddr}>`,
+      from: `"Structbay" <${fromAddr}>`,
       to,
       subject,
       html,
@@ -114,7 +114,7 @@ const baseTemplate = (content) => `
     </div>
     <div class="body">${content}</div>
     <div class="footer">
-      &copy; ${new Date().getFullYear()} StructBay. All rights reserved.<br />
+      &copy; ${new Date().getFullYear()} Structbay. All rights reserved.<br />
       India's B2B Construction Material Marketplace
     </div>
   </div>
@@ -127,11 +127,11 @@ const sendVerificationEmail = async ({ to, name, token }) => {
   const url = `${base.replace(/\/$/, '')}/verify-email?token=${encodeURIComponent(token)}`;
   const info = await sendEmail({
     to,
-    subject: 'Verify your StructBay account',
-    text: `Hi ${name},\n\nVerify your StructBay account (link expires in 24 hours):\n${url}\n\nIf you did not register, ignore this email.`,
+    subject: 'Verify your Structbay account',
+    text: `Hi ${name},\n\nVerify your Structbay account (link expires in 24 hours):\n${url}\n\nIf you did not register, ignore this email.`,
     html: baseTemplate(`
       <p>Hi <strong>${name}</strong>,</p>
-      <p>Welcome to StructBay! Please verify your email address to activate your account.</p>
+      <p>Welcome to Structbay! Please verify your email address to activate your account.</p>
       <a href="${url}" class="btn">Verify Email</a>
       <div class="warning">This link expires in <strong>24 hours</strong>.</div>
       <p>If you didn't create an account, please ignore this email.</p>
@@ -151,8 +151,8 @@ const sendPasswordResetEmail = async ({ to, name, token }) => {
   const url = `${base.replace(/\/$/, '')}/reset-password?token=${encodeURIComponent(token)}`;
   return sendEmail({
     to,
-    subject: 'Reset your StructBay password',
-    text: `Hi ${name},\n\nReset your StructBay password (link expires in 1 hour):\n${url}\n\nIf you did not request this, ignore this email.`,
+    subject: 'Reset your Structbay password',
+    text: `Hi ${name},\n\nReset your Structbay password (link expires in 1 hour):\n${url}\n\nIf you did not request this, ignore this email.`,
     html: baseTemplate(`
       <p>Hi <strong>${name}</strong>,</p>
       <p>You requested to reset your password. Click the button below to set a new password.</p>
@@ -167,10 +167,10 @@ const sendPasswordResetEmail = async ({ to, name, token }) => {
 const sendVendorApplicationEmail = async ({ to, name, companyName }) => {
   return sendEmail({
     to,
-    subject: 'Vendor Application Received – StructBay',
+    subject: 'Vendor Application Received – Structbay',
     html: baseTemplate(`
       <p>Hi <strong>${name}</strong>,</p>
-      <p>Thank you for applying to become a vendor on StructBay!</p>
+      <p>Thank you for applying to become a vendor on Structbay!</p>
       <p>Your application for <strong>${companyName}</strong> has been received and is currently under review.</p>
       <p>Our team will verify your documents and notify you within <strong>2-3 business days</strong>.</p>
       <p>If you have any questions, please contact <a href="mailto:vendor@structbay.com">vendor@structbay.com</a>.</p>
@@ -184,7 +184,7 @@ const sendVendorApprovedEmail = async ({ to, name, companyName }) => {
   const loginUrl = `${base.replace(/\/$/, '')}/vendor/login`;
   return sendEmail({
     to,
-    subject: '🎉 Vendor Account Approved – StructBay',
+    subject: '🎉 Vendor Account Approved – Structbay',
     html: baseTemplate(`
       <p>Hi <strong>${name}</strong>,</p>
       <p>Congratulations! Your vendor account for <strong>${companyName}</strong> has been <strong>approved</strong>.</p>
@@ -198,7 +198,7 @@ const sendVendorApprovedEmail = async ({ to, name, companyName }) => {
 const sendVendorRejectedEmail = async ({ to, name, companyName, reason }) => {
   return sendEmail({
     to,
-    subject: 'Vendor Application Update – StructBay',
+    subject: 'Vendor Application Update – Structbay',
     html: baseTemplate(`
       <p>Hi <strong>${name}</strong>,</p>
       <p>We regret to inform you that your vendor application for <strong>${companyName}</strong> has not been approved at this time.</p>
@@ -214,10 +214,10 @@ const sendWelcomeEmail = async ({ to, name }) => {
   const shopUrl = base.replace(/\/$/, '');
   return sendEmail({
     to,
-    subject: 'Welcome to StructBay!',
+    subject: 'Welcome to Structbay!',
     html: baseTemplate(`
       <p>Hi <strong>${name}</strong>,</p>
-      <p>Welcome to <strong>StructBay</strong> – India's B2B Construction Material Marketplace!</p>
+      <p>Welcome to <strong>Structbay</strong> – India's B2B Construction Material Marketplace!</p>
       <p>Your account is now active. Start exploring thousands of construction materials from trusted vendors.</p>
       <a href="${shopUrl}" class="btn">Start Shopping</a>
     `),
@@ -235,7 +235,7 @@ const escapeHtml = (s) =>
 const sendContactFormEmail = async ({ to, name, fromEmail, subject, message }) => {
   const safeName = escapeHtml(name);
   const safeEmail = escapeHtml(fromEmail);
-  const safeSubject = escapeHtml(subject || 'StructBay enquiry');
+  const safeSubject = escapeHtml(subject || 'Structbay enquiry');
   const safeMessage = escapeHtml(message).replace(/\n/g, '<br />');
 
   const transporter = getTransporter();
@@ -247,11 +247,11 @@ const sendContactFormEmail = async ({ to, name, fromEmail, subject, message }) =
   try {
     const fromAddr = defaultFrom();
     const mail = {
-      from: `"StructBay" <${fromAddr}>`,
+      from: `"Structbay" <${fromAddr}>`,
       to,
       replyTo: fromEmail,
-      subject: `[Contact] ${subject || 'StructBay enquiry'}`,
-      text: `Name: ${name}\nEmail: ${fromEmail}\nSubject: ${subject || 'StructBay enquiry'}\n\n${message}`,
+      subject: `[Contact] ${subject || 'Structbay enquiry'}`,
+      text: `Name: ${name}\nEmail: ${fromEmail}\nSubject: ${subject || 'Structbay enquiry'}\n\n${message}`,
       html: baseTemplate(`
         <p><strong>New contact form message</strong></p>
         <p><strong>Name:</strong> ${safeName}<br />

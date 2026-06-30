@@ -13,7 +13,7 @@ const blogSchema = new mongoose.Schema(
     },
     metaTitle: { type: String, trim: true },
     metaDescription: { type: String, trim: true },
-    author: { type: String, trim: true, default: 'StructBay Team' },
+    author: { type: String, trim: true, default: 'Structbay Team' },
     publishDate: { type: Date, default: null },
     status: {
       type: String,

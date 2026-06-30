@@ -8,7 +8,7 @@ const path = require('path');
 
 /** Same asset as customer/admin UI (`frontend/shared/assets/logos/…`). Cached for invoice HTML. */
 let _logoDataUri = undefined;
-function getStructBayLogoDataUri() {
+function getStructbayLogoDataUri() {
   if (_logoDataUri !== undefined) return _logoDataUri;
   const fromEnv = process.env.INVOICE_LOGO_PATH && String(process.env.INVOICE_LOGO_PATH).trim();
   const candidates = [
@@ -64,7 +64,7 @@ function buildOrderAcknowledgementHtml(order) {
   const o = order.toObject ? order.toObject() : order;
   const addr = o.shippingAddress || {};
   const cityLabel = o.city?.name ? `${esc(o.city.name)}${o.city.state ? `, ${esc(o.city.state)}` : ''}` : '';
-  const logoUri = getStructBayLogoDataUri();
+  const logoUri = getStructbayLogoDataUri();
 
   const rows = (o.items || [])
     .map((it) => {
@@ -86,7 +86,7 @@ function buildOrderAcknowledgementHtml(order) {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>StructBay — Order ${esc(o.orderNumber)}</title>
+  <title>Structbay — Order ${esc(o.orderNumber)}</title>
   <style>
     @media print {
       body { background: #fff !important; }
@@ -100,7 +100,7 @@ function buildOrderAcknowledgementHtml(order) {
       <div style="display:flex;align-items:center;gap:14px;min-width:0;">
         ${
           logoUri
-            ? `<img src="${logoUri}" alt="StructBay" width="160" height="48" style="height:44px;width:auto;max-width:min(200px,42vw);object-fit:contain;display:block;flex-shrink:0;" />`
+            ? `<img src="${logoUri}" alt="Structbay" width="160" height="48" style="height:44px;width:auto;max-width:min(200px,42vw);object-fit:contain;display:block;flex-shrink:0;" />`
             : `<div style="font-size:22px;font-weight:800;letter-spacing:-0.02em;"><span style="color:#E85A00">Struct</span>Bay</div>`
         }
         <div style="min-width:0;">
@@ -116,7 +116,7 @@ function buildOrderAcknowledgementHtml(order) {
     <div style="padding:24px;">
       <p style="margin:0 0 16px;font-size:13px;color:#444;line-height:1.5;">
         Thank you for your order. Below is a summary for your records.
-        <strong style="color:#171717;">Official tax invoices</strong> (where applicable) may be issued at dispatch or delivery as per StructBay and vendor fulfilment.
+        <strong style="color:#171717;">Official tax invoices</strong> (where applicable) may be issued at dispatch or delivery as per Structbay and vendor fulfilment.
       </p>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
@@ -175,7 +175,7 @@ function buildOrderAcknowledgementHtml(order) {
       </div>
 
       <p style="margin:24px 0 0;font-size:11px;color:#777;line-height:1.5;border-top:1px solid #eee;padding-top:16px;">
-        StructBay · B2B marketplace · This document is generated electronically and does not require a signature.
+        Structbay · B2B marketplace · This document is generated electronically and does not require a signature.
         Additional delivery charges may apply and are payable at site where notified.
       </p>
     </div>

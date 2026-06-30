@@ -80,7 +80,7 @@ export function WarehouseDetails() {
           dispatchRemarks: instructions,
         });
       }
-      setMsg({ type: 'success', text: 'Pickup details submitted! StructBay will schedule collection shortly.' });
+      setMsg({ type: 'success', text: 'Pickup details submitted! Structbay will schedule collection shortly.' });
       setTimeout(() => navigate(vendorPath('orders', orderId!)), 1800);
     } catch (err: any) {
       setMsg({ type: 'error', text: err.message ?? 'Submission failed.' });
@@ -109,7 +109,7 @@ export function WarehouseDetails() {
         </Link>
         <div>
           <h1 className="vendor-page-title" style={{ color: SB.color }}>Pickup / Warehouse Details</h1>
-          <p className="text-sm" style={{ color: SB.muted }}>Order: {order.orderNumber} · StructBay Pickup</p>
+          <p className="text-sm" style={{ color: SB.muted }}>Order: {order.orderNumber} · Structbay Pickup</p>
         </div>
       </div>
 
@@ -166,7 +166,7 @@ export function WarehouseDetails() {
               <div className="p-4 rounded-xl flex items-start gap-3" style={{ background: 'rgba(249,115,22,0.06)', border: '1px solid var(--sb-orange-border)' }}>
                 <MapPin className="w-4 h-4 mt-0.5 shrink-0" style={{ color: SB.orange }} />
                 <p className="text-xs" style={{ color: SB.muted }}>
-                  StructBay logistics team (Porter / Delhivery / 3PL) will coordinate with your contact person for material collection within 24–48 hours.
+                  Structbay logistics team (Porter / Delhivery / 3PL) will coordinate with your contact person for material collection within 24–48 hours.
                 </p>
               </div>
 

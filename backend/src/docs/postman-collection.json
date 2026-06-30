@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "StructBay Phase 3 — Admin CMS & Platform Control",
-    "description": "Complete API collection for StructBay CMS, Admin Dashboard, and Platform Control Center.\n\n**Setup:**\n1. Set `baseUrl` variable to `http://localhost:5000/api/v1`\n2. Set `adminToken` variable after logging in as ADMIN\n\n**Auth:** All admin routes require `Authorization: Bearer {{adminToken}}`",
+    "name": "Structbay Phase 3 — Admin CMS & Platform Control",
+    "description": "Complete API collection for Structbay CMS, Admin Dashboard, and Platform Control Center.\n\n**Setup:**\n1. Set `baseUrl` variable to `http://localhost:5000/api/v1`\n2. Set `adminToken` variable after logging in as ADMIN\n\n**Auth:** All admin routes require `Authorization: Bearer {{adminToken}}`",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_postman_id": "structbay-phase3-cms"
   },
@@ -183,7 +183,7 @@
           "request": {
             "method": "POST", "url": "{{baseUrl}}/cms/testimonials",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"customerName\": \"Rahul Sharma\",\n  \"designation\": \"Project Manager\",\n  \"company\": \"BuildCo Pvt Ltd\",\n  \"review\": \"StructBay made our procurement 10x faster. Highly recommended!\",\n  \"rating\": 5,\n  \"isFeatured\": true,\n  \"status\": \"ACTIVE\"\n}" }
+            "body": { "mode": "raw", "raw": "{\n  \"customerName\": \"Rahul Sharma\",\n  \"designation\": \"Project Manager\",\n  \"company\": \"BuildCo Pvt Ltd\",\n  \"review\": \"Structbay made our procurement 10x faster. Highly recommended!\",\n  \"rating\": 5,\n  \"isFeatured\": true,\n  \"status\": \"ACTIVE\"\n}" }
           }
         },
         { "name": "Update Testimonial", "request": { "method": "PATCH", "url": "{{baseUrl}}/cms/testimonials/{{testimonialId}}", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"isFeatured\": false\n}" } } },
@@ -207,7 +207,7 @@
           "request": {
             "method": "POST", "url": "{{baseUrl}}/cms/blogs",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Top 5 Construction Materials for 2026\",\n  \"description\": \"A comprehensive guide to the best materials this year.\",\n  \"content\": \"<h2>Introduction</h2><p>Construction in 2026...</p>\",\n  \"metaTitle\": \"Top 5 Construction Materials for 2026 | StructBay\",\n  \"metaDescription\": \"Discover the top materials driving construction in 2026.\",\n  \"author\": \"StructBay Team\",\n  \"status\": \"DRAFT\",\n  \"tags\": [\"cement\", \"steel\", \"construction\"],\n  \"category\": \"Construction Tips\"\n}" }
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Top 5 Construction Materials for 2026\",\n  \"description\": \"A comprehensive guide to the best materials this year.\",\n  \"content\": \"<h2>Introduction</h2><p>Construction in 2026...</p>\",\n  \"metaTitle\": \"Top 5 Construction Materials for 2026 | Structbay\",\n  \"metaDescription\": \"Discover the top materials driving construction in 2026.\",\n  \"author\": \"Structbay Team\",\n  \"status\": \"DRAFT\",\n  \"tags\": [\"cement\", \"steel\", \"construction\"],\n  \"category\": \"Construction Tips\"\n}" }
           }
         },
         { "name": "Publish Blog", "request": { "method": "PATCH", "url": "{{baseUrl}}/cms/blogs/{{blogId}}", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"status\": \"PUBLISHED\"\n}" } } },
@@ -225,7 +225,7 @@
           "request": {
             "method": "POST", "url": "{{baseUrl}}/cms/announcements",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Platform Maintenance Scheduled\",\n  \"description\": \"StructBay will undergo scheduled maintenance on Jan 15, 2026 from 2AM to 4AM IST.\",\n  \"priority\": \"HIGH\",\n  \"isPinned\": true,\n  \"startDate\": \"2026-01-14T00:00:00.000Z\",\n  \"endDate\": \"2026-01-16T00:00:00.000Z\",\n  \"audience\": [\"ALL\"]\n}" }
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Platform Maintenance Scheduled\",\n  \"description\": \"Structbay will undergo scheduled maintenance on Jan 15, 2026 from 2AM to 4AM IST.\",\n  \"priority\": \"HIGH\",\n  \"isPinned\": true,\n  \"startDate\": \"2026-01-14T00:00:00.000Z\",\n  \"endDate\": \"2026-01-16T00:00:00.000Z\",\n  \"audience\": [\"ALL\"]\n}" }
           }
         },
         { "name": "Delete Announcement", "request": { "method": "DELETE", "url": "{{baseUrl}}/cms/announcements/{{announcementId}}" } }
@@ -259,7 +259,7 @@
           "request": {
             "method": "POST", "url": "{{baseUrl}}/cms/seo",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"page\": \"home\",\n  \"metaTitle\": \"StructBay — India's #1 Construction Marketplace\",\n  \"metaDescription\": \"Buy cement, steel, HVAC, plumbing materials from verified vendors at the best prices.\",\n  \"keywords\": [\"construction materials\", \"cement price\", \"steel price\", \"building supplies india\"],\n  \"ogTitle\": \"StructBay — India's #1 Construction Marketplace\",\n  \"ogDescription\": \"One-stop procurement for all your construction needs.\",\n  \"ogImage\": \"https://res.cloudinary.com/demo/image/upload/og_home.jpg\",\n  \"canonicalUrl\": \"https://structbay.com/\",\n  \"robotsDirective\": \"index,follow\"\n}" }
+            "body": { "mode": "raw", "raw": "{\n  \"page\": \"home\",\n  \"metaTitle\": \"Structbay — India's #1 Construction Marketplace\",\n  \"metaDescription\": \"Buy cement, steel, HVAC, plumbing materials from verified vendors at the best prices.\",\n  \"keywords\": [\"construction materials\", \"cement price\", \"steel price\", \"building supplies india\"],\n  \"ogTitle\": \"Structbay — India's #1 Construction Marketplace\",\n  \"ogDescription\": \"One-stop procurement for all your construction needs.\",\n  \"ogImage\": \"https://res.cloudinary.com/demo/image/upload/og_home.jpg\",\n  \"canonicalUrl\": \"https://structbay.com/\",\n  \"robotsDirective\": \"index,follow\"\n}" }
           }
         }
       ]
@@ -287,7 +287,7 @@
           "request": {
             "method": "PATCH", "url": "{{baseUrl}}/cms/footer",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"companyDescription\": \"StructBay combines reliability, competitive pricing, and single-window sourcing for construction.\",\n  \"copyrightText\": \"© 2026 StructBay. All Rights Reserved.\",\n  \"socialLinks\": {\n    \"instagram\": \"https://instagram.com/structbay\",\n    \"linkedin\": \"https://linkedin.com/company/structbay\"\n  }\n}" }
+            "body": { "mode": "raw", "raw": "{\n  \"companyDescription\": \"Structbay combines reliability, competitive pricing, and single-window sourcing for construction.\",\n  \"copyrightText\": \"© 2026 Structbay. All Rights Reserved.\",\n  \"socialLinks\": {\n    \"instagram\": \"https://instagram.com/structbay\",\n    \"linkedin\": \"https://linkedin.com/company/structbay\"\n  }\n}" }
           }
         },
         {

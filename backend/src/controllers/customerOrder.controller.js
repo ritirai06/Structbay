@@ -56,7 +56,7 @@ exports.cancelOrder = asyncHandler(async (req, res) => {
   if (!CUSTOMER_CANCELLABLE_MASTER_ORDER_STATUSES.includes(order.status)) {
     throw new AppError(
       order.status === 'READY_FOR_DISPATCH'
-        ? 'Order cannot be cancelled once it is Ready for Dispatch. Contact StructBay support.'
+        ? 'Order cannot be cancelled once it is Ready for Dispatch. Contact Structbay support.'
         : `Order cannot be cancelled at status: ${order.status}.`,
       422
     );
@@ -68,7 +68,7 @@ exports.cancelOrder = asyncHandler(async (req, res) => {
   });
   if (vendorDispatchStarted) {
     throw new AppError(
-      'Order cannot be cancelled after the vendor has marked it Ready for Dispatch. Contact StructBay support.',
+      'Order cannot be cancelled after the vendor has marked it Ready for Dispatch. Contact Structbay support.',
       422
     );
   }

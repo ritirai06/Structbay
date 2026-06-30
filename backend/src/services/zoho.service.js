@@ -128,7 +128,7 @@ const syncInventoryLevel = async ({ zohoItemId, quantity, warehouseId, reference
     if (!headers) return null;
     const res = await axios.post(`${INV_URL()}/inventoryadjustments?organization_id=${ORG()}`,
       {
-        reason: 'StructBay stock sync',
+        reason: 'Structbay stock sync',
         date: new Date().toISOString().split('T')[0],
         line_items: [{ item_id: zohoItemId, quantity_adjusted: quantity, warehouse_id: warehouseId }],
       },

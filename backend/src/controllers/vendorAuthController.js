@@ -18,7 +18,7 @@ exports.login = async (req, res) => {
     return ApiResponse.forbidden(res, 'Account locked due to too many failed attempts. Try again in 30 minutes.');
 
   if (user.status === 'SUSPENDED' || user.status === 'DELETED')
-    return ApiResponse.forbidden(res, 'Account is suspended. Contact StructBay support.');
+    return ApiResponse.forbidden(res, 'Account is suspended. Contact Structbay support.');
 
   const isMatch = await user.comparePassword(password);
   if (!isMatch) {

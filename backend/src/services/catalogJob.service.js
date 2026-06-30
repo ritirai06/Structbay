@@ -12,14 +12,14 @@ async function ensureUploadDir() {
 
 function defaultCatalogName(scopeType) {
   const map = {
-    ALL: 'StructBay Master Product Catalog',
-    SELECTED: 'StructBay — Selected products',
-    CATEGORY: 'StructBay — Category catalog',
-    BRAND: 'StructBay — Brand catalog',
-    PRODUCT: 'StructBay — Product sheet',
-    VENDOR: 'StructBay — Vendor catalog',
+    ALL: 'Structbay Master Product Catalog',
+    SELECTED: 'Structbay — Selected products',
+    CATEGORY: 'Structbay — Category catalog',
+    BRAND: 'Structbay — Brand catalog',
+    PRODUCT: 'Structbay — Product sheet',
+    VENDOR: 'Structbay — Vendor catalog',
   };
-  return map[scopeType] || 'StructBay Product Catalog';
+  return map[scopeType] || 'Structbay Product Catalog';
 }
 
 async function unlinkSafe(filePath) {

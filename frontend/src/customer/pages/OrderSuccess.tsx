@@ -139,7 +139,7 @@ export function OrderSuccess() {
         <p className="font-bold text-2xl tracking-wide">{orderNumber ?? "—"}</p>
         {!orderNumber && (
           <p className="text-white/80 text-sm mt-1">
-            Your StructBay order reference was sent to your registered email and phone.
+            Your Structbay order reference was sent to your registered email and phone.
           </p>
         )}
         <p className="text-white/70 text-sm mt-2">Expected Delivery: 2–4 Business Days</p>

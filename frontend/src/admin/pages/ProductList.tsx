@@ -486,7 +486,7 @@ export function ProductList() {
                       <div className="flex gap-1">
                         {p.isAssured && (
                           <span
-                            title="StructBay Assured"
+                            title="Structbay Assured"
                             className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-sb-cream-secondary text-sb-ink border border-sb-ink/12"
                           >
                             <Shield className="w-2.5 h-2.5" /> Assured
@@ -494,7 +494,7 @@ export function ProductList() {
                         )}
                         {p.isExpress && (
                           <span
-                            title="StructBay Express"
+                            title="Structbay Express"
                             className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-sb-orange/15 text-sb-orange border border-sb-orange/20"
                           >
                             <Zap className="w-2.5 h-2.5" /> Express

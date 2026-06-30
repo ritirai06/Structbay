@@ -929,7 +929,7 @@ const getBulkImportTemplate = asyncHandler(async (req, res) => {
         group: 'product',
         required: false,
       },
-      { key: 'isStructbayAssured', label: 'StructBay Assured', group: 'badges', required: false },
+      { key: 'isStructbayAssured', label: 'Structbay Assured', group: 'badges', required: false },
       { key: 'isFeatured', label: 'Featured', group: 'badges', required: false },
       { key: 'isTopSelling', label: 'Top selling', group: 'badges', required: false },
       { key: 'displayOrder', label: 'Display order', group: 'product', required: false },

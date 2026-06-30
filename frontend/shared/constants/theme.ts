@@ -1,4 +1,4 @@
-/** StructBay Shared Theme — Tailwind class bundles (enterprise cream + black chrome). */
+/** Structbay Shared Theme — Tailwind class bundles (enterprise cream + black chrome). */
 
 export const theme = {
   pageBg: "bg-sb-cream min-h-screen text-sb-ink",

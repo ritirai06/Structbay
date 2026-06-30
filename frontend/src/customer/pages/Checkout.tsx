@@ -435,7 +435,7 @@ export function Checkout() {
               <div className="space-y-3">
                 {[
                   { id: "online", label: "Online Payment (UPI, Cards, NetBanking)", sub: "Powered by Zoho Payments" },
-                  { id: "credit", label: "Buy on Credit", sub: "Pay within 30 days (StructBay Finance)" },
+                  { id: "credit", label: "Buy on Credit", sub: "Pay within 30 days (Structbay Finance)" },
                   { id: "cod", label: "Cash on Delivery", sub: "For orders below ₹50,000" },
                 ].map(opt => (
                   <label key={opt.id} className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-colors ${form.paymentMethod === opt.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}>

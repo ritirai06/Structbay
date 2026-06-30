@@ -68,7 +68,6 @@ export function FeaturedBrandsMarquee({ brands }: FeaturedBrandsMarqueeProps) {
                   {(brand.name || "?")[0]}
                 </div>
               )}
-              <span className="sf-brands-marquee__name">{brand.name}</span>
             </Link>
           ))}
         </div>

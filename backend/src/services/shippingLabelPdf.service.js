@@ -1,5 +1,5 @@
 /**
- * A6 shipping label PDF — StructBay marketplace parcel label (Amazon/Flipkart style).
+ * A6 shipping label PDF — Structbay marketplace parcel label (Amazon/Flipkart style).
  */
 const fs = require('fs');
 const path = require('path');
@@ -7,7 +7,7 @@ const PDFDocument = require('pdfkit');
 const QRCode = require('qrcode');
 const bwipjs = require('bwip-js');
 
-function getStructBayLogoPath() {
+function getStructbayLogoPath() {
   const fromEnv = process.env.INVOICE_LOGO_PATH && String(process.env.INVOICE_LOGO_PATH).trim();
   const candidates = [
     fromEnv && path.resolve(fromEnv),
@@ -37,7 +37,7 @@ function line(doc, y, margin, pageW, color = '#cccccc') {
  * @returns {Promise<Buffer>}
  */
 async function buildShippingLabelPdf(data) {
-  const logoPath = getStructBayLogoPath();
+  const logoPath = getStructbayLogoPath();
   const orange = '#E85A00';
   const black = '#111111';
   const gray = '#555555';
@@ -77,10 +77,10 @@ async function buildShippingLabelPdf(data) {
       try {
         doc.image(logoPath, margin, 8, { height: 22 });
       } catch {
-        doc.fillColor(orange).fontSize(11).font('Helvetica-Bold').text('STRUCTBAY', margin, 14);
+        doc.fillColor(orange).fontSize(11).font('Helvetica-Bold').text('Structbay', margin, 14);
       }
     } else {
-      doc.fillColor(orange).fontSize(11).font('Helvetica-Bold').text('STRUCTBAY', margin, 14);
+      doc.fillColor(orange).fontSize(11).font('Helvetica-Bold').text('Structbay', margin, 14);
     }
     doc.fillColor('#ffffff').fontSize(7).font('Helvetica-Bold')
       .text('Order Fulfillment Label', pageW - margin - 100, 12, { width: 100, align: 'right' });
@@ -170,7 +170,7 @@ async function buildShippingLabelPdf(data) {
     doc.fillColor(black).fontSize(7).font('Helvetica-Bold')
       .text('HANDLE WITH CARE', margin, footerY + 6, { width: pageW - margin * 2, align: 'center' });
     doc.fillColor(gray).fontSize(6).font('Helvetica')
-      .text('StructBay Marketplace · support@structbay.com · www.structbay.com', margin, footerY + 16, {
+      .text('Structbay Marketplace · support@structbay.com · www.structbay.com', margin, footerY + 16, {
         width: pageW - margin * 2,
         align: 'center',
       });

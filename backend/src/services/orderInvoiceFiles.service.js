@@ -57,9 +57,9 @@ async function listOrderInvoiceFiles(order) {
   };
 
   add(
-    'StructBay tax invoice',
+    'Structbay tax invoice',
     order.structbayInvoiceUrl || order.invoiceUrl,
-    'STRUCTBAY_INVOICE',
+    'Structbay_INVOICE',
     order.customerInvoiceNumber,
   );
   add('E-way bill', order.ewayBillUrl, 'EWAY_BILL', order.ewayBillNumber);
@@ -67,7 +67,7 @@ async function listOrderInvoiceFiles(order) {
   const docs = await OrderDocument.find({
     masterOrder: order._id,
     visibleToCustomer: true,
-    documentType: { $in: ['STRUCTBAY_INVOICE', 'TAX_INVOICE', 'EWAY_BILL', 'DELIVERY_CHALLAN', 'SHIPPING_LABEL'] },
+    documentType: { $in: ['Structbay_INVOICE', 'TAX_INVOICE', 'EWAY_BILL', 'DELIVERY_CHALLAN', 'SHIPPING_LABEL'] },
   }).select('documentType label url documentReference cloudinaryId').lean();
 
   for (const d of docs) {

@@ -2,9 +2,9 @@ import { useState } from "react";
 import { ChevronDown, ChevronRight, Info, Shield, Zap } from "lucide-react";
 import {
   CUSTOMER_MILESTONE_LABELS,
-  STRUCTBAY_ASSURED_BLURB,
-  STRUCTBAY_DELIVERY_FLOW,
-  STRUCTBAY_EXPRESS_BLURB,
+  Structbay_ASSURED_BLURB,
+  Structbay_DELIVERY_FLOW,
+  Structbay_EXPRESS_BLURB,
   VENDOR_DELIVERY_FLOW,
 } from "../../lib/deliveryWorkflowReference";
 
@@ -49,12 +49,12 @@ export function DeliveryWorkflowGuide() {
         <div className="px-4 pb-4 pt-0 space-y-4 text-xs text-sb-ink/70 border-t border-sb-orange/15">
           <p className="leading-relaxed pt-3">
             Each vendor sub-order is either <strong className="text-sb-ink">Type A — Vendor delivery</strong> (vendor ships) or{" "}
-            <strong className="text-sb-ink">Type B — StructBay delivery</strong> (StructBay books Porter/Delhivery and updates vendor + customer).
-            Use the <strong className="text-sb-ink">order detail page</strong> (open any order from the list) to edit <strong className="text-sb-ink">delivery details</strong> shown to the customer and StructBay logistics fields for Type B — all steps on one scrollable page.
+            <strong className="text-sb-ink">Type B — Structbay delivery</strong> (Structbay books Porter/Delhivery and updates vendor + customer).
+            Use the <strong className="text-sb-ink">order detail page</strong> (open any order from the list) to edit <strong className="text-sb-ink">delivery details</strong> shown to the customer and Structbay logistics fields for Type B — all steps on one scrollable page.
           </p>
           <div className="grid md:grid-cols-2 gap-3">
             <FlowTable title="Type A — Vendor delivery" rows={VENDOR_DELIVERY_FLOW} />
-            <FlowTable title="Type B — StructBay delivery" rows={STRUCTBAY_DELIVERY_FLOW} />
+            <FlowTable title="Type B — Structbay delivery" rows={Structbay_DELIVERY_FLOW} />
           </div>
           <div className="rounded-lg border border-sb-ink/10 bg-sb-cream px-3 py-2">
             <p className="text-[10px] font-bold text-sb-ink/50 uppercase tracking-wider mb-2">Customer-facing milestones (S → customer)</p>
@@ -68,11 +68,11 @@ export function DeliveryWorkflowGuide() {
           <div className="grid sm:grid-cols-2 gap-3">
             <div className="flex gap-2 rounded-lg border border-sb-orange/25 bg-sb-orange/8 p-3">
               <Shield className="w-5 h-5 text-sb-orange shrink-0 mt-0.5" />
-              <p>{STRUCTBAY_ASSURED_BLURB}</p>
+              <p>{Structbay_ASSURED_BLURB}</p>
             </div>
             <div className="flex gap-2 rounded-lg border border-sb-orange/25 bg-sb-orange/5 p-3">
               <Zap className="w-5 h-5 text-sb-orange shrink-0 mt-0.5" />
-              <p>{STRUCTBAY_EXPRESS_BLURB}</p>
+              <p>{Structbay_EXPRESS_BLURB}</p>
             </div>
           </div>
           <p className="text-sb-ink/50">

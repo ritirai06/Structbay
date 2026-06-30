@@ -119,7 +119,7 @@ const update = asyncHandler(async (req, res) => {
     if (assignChanged) {
       lines.push(
         assigneeName
-          ? `<p><strong>Your request is now handled by:</strong> ${escapeHtml(assigneeName)} (StructBay team).</p>`
+          ? `<p><strong>Your request is now handled by:</strong> ${escapeHtml(assigneeName)} (Structbay team).</p>`
           : '<p><strong>Assignment:</strong> Your RFQ is open for routing; a team member will pick it up shortly.</p>'
       );
     }
@@ -129,11 +129,11 @@ const update = asyncHandler(async (req, res) => {
         <p>We have an update on your <strong>concrete RFQ</strong> <strong>${escapeHtml(fresh.rfqNumber)}</strong> (${escapeHtml(fresh.grade)}, ${escapeHtml(String(fresh.quantity))} m³, ${escapeHtml(fresh.city)}).</p>
         ${lines.join('')}
         <p>If you have questions, reply to this email or contact us with your RFQ number handy.</p>
-        <p style="color:#666;font-size:13px">— StructBay</p>
+        <p style="color:#666;font-size:13px">— Structbay</p>
       </div>`;
     await sendEmail({
       to: toEmail,
-      subject: `StructBay update — RFQ ${fresh.rfqNumber}`,
+      subject: `Structbay update — RFQ ${fresh.rfqNumber}`,
       html,
     });
   }

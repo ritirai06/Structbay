@@ -214,7 +214,7 @@ const getVendorOrderById = asyncHandler(async (req, res) => {
 });
 
 // ─── PUT /api/v1/admin/vendor-orders/:id  ─────────────────────────────────────
-// Admin can update notes, status, dates, StructBay logistics (Type B delivery)
+// Admin can update notes, status, dates, Structbay logistics (Type B delivery)
 const updateVendorOrder = asyncHandler(async (req, res) => {
   const allowed = ['adminNotes', 'dispatchInstructions', 'status', 'priority',
     'expectedDispatchDate', 'expectedDeliveryDate', 'invoiceStatus'];

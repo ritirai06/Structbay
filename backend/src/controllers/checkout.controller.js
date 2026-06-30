@@ -43,7 +43,7 @@ exports.validate = asyncHandler(async (req, res) => {
 
   const city = await City.findById(cityId);
   if (!city || !city.isServiceable || city.status !== 'ACTIVE') {
-    throw new AppError('StructBay is not currently serviceable in the selected city.', 422);
+    throw new AppError('Structbay is not currently serviceable in the selected city.', 422);
   }
 
   // City match check (aliases, e.g. Bangalore / Bengaluru)
@@ -276,7 +276,7 @@ exports.placeOrder = asyncHandler(async (req, res) => {
   // Send confirmation email (non-blocking)
   sendEmail({
     to: req.user.email,
-    subject: `Order Confirmed – ${orderNumber} | StructBay`,
+    subject: `Order Confirmed – ${orderNumber} | Structbay`,
     html: `<p>Hi ${req.user.name},</p><p>Your order <strong>${orderNumber}</strong> has been placed successfully.</p><p><strong>Total: ₹${grandTotal.toLocaleString()}</strong></p><p>We will notify you once your order is processed.</p>`,
   }).catch(() => {});
 

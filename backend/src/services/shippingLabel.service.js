@@ -13,10 +13,10 @@ const storefrontOrigin = () =>
   (process.env.CUSTOMER_URL || process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
 
 const warehouseFromEnv = () => ({
-  name: process.env.STRUCTBAY_WAREHOUSE_NAME || 'StructBay Warehouse',
-  address: process.env.STRUCTBAY_WAREHOUSE_ADDRESS || 'StructBay Fulfillment Center, India',
-  phone: process.env.STRUCTBAY_WAREHOUSE_PHONE || process.env.SUPPORT_PHONE || '',
-  gst: process.env.STRUCTBAY_GST_NUMBER || '',
+  name: process.env.Structbay_WAREHOUSE_NAME || 'Structbay Warehouse',
+  address: process.env.Structbay_WAREHOUSE_ADDRESS || 'Structbay Fulfillment Center, India',
+  phone: process.env.Structbay_WAREHOUSE_PHONE || process.env.SUPPORT_PHONE || '',
+  gst: process.env.Structbay_GST_NUMBER || '',
 });
 
 async function loadOrderContext(orderId, vendorOrderId) {
@@ -302,7 +302,7 @@ async function shareShippingLabelWithVendor({ orderId, vendorOrderId, userId, ip
   const { vo } = await loadOrderContext(orderId, vendorOrderId);
   if (vo.deliveryType === 'structbay_delivery') {
     throw new AppError(
-      'Shipping labels are not shared with vendors for StructBay delivery (Type B). StructBay handles customer delivery internally.',
+      'Shipping labels are not shared with vendors for Structbay delivery (Type B). Structbay handles customer delivery internally.',
       400
     );
   }

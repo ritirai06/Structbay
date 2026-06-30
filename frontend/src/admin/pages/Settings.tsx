@@ -79,7 +79,7 @@ export function Settings() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="siteName">Site Name</Label>
-                <Input id="siteName" defaultValue="StructBay" />
+                <Input id="siteName" defaultValue="Structbay" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="supportEmail">Support Email</Label>
@@ -87,7 +87,7 @@ export function Settings() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="supportPhone">Support Phone</Label>
-                <Input id="supportPhone" defaultValue="+91 1800 123 4567" />
+                <Input id="supportPhone" defaultValue="+91 70905 70505" />
               </div>
               <Button>Save Changes</Button>
             </CardContent>

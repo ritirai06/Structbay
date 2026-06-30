@@ -291,7 +291,7 @@ export const api = {
     return res.blob();
   },
 
-  /** PDF order summary with StructBay logo. */
+  /** PDF order summary with Structbay logo. */
   downloadOrderInvoicePdf: async (orderId: string) => {
     const headers: Record<string, string> = {};
     const t = token();

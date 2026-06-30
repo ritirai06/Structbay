@@ -106,25 +106,25 @@ function pendingVendorAction(status, deliveryType) {
     case 'CHANGES_REQUESTED':
       return 'Upload packing details, optional invoice, estimated dispatch date, then submit Ready for dispatch';
     case 'READY_FOR_DISPATCH':
-      return 'Awaiting StructBay dispatch approval';
+      return 'Awaiting Structbay dispatch approval';
     case 'DISPATCH_APPROVED':
       return typeB
-        ? 'Upload final tax invoice (PDF) and pickup contact (name & phone) for StructBay pickup'
+        ? 'Upload final tax invoice (PDF) and pickup contact (name & phone) for Structbay pickup'
         : 'Upload final tax invoice (PDF)';
     case 'VENDOR_INVOICE_SUBMITTED':
-      return 'Awaiting StructBay invoice and e-way bill';
+      return 'Awaiting Structbay invoice and e-way bill';
     case 'SB_INVOICE_SENT':
       return typeB
-        ? 'StructBay will book Porter/Delhivery and deliver to the customer — no vendor dispatch needed'
+        ? 'Structbay will book Porter/Delhivery and deliver to the customer — no vendor dispatch needed'
         : 'Mark dispatched with transporter / LR / proof';
     case 'DISPATCHED':
       return typeB
-        ? 'StructBay is delivering to the customer'
+        ? 'Structbay is delivering to the customer'
         : 'Mark delivered with POD and delivery date';
     case 'DELIVERED':
       return typeB
-        ? 'Awaiting StructBay delivery confirmation'
-        : 'Awaiting StructBay delivery confirmation';
+        ? 'Awaiting Structbay delivery confirmation'
+        : 'Awaiting Structbay delivery confirmation';
     case 'REJECTED':
       return 'No further action (rejected)';
     case 'COMPLETED':

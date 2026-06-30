@@ -4,10 +4,10 @@ const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'StructBay API',
+      title: 'Structbay API',
       version: '1.0.0',
-      description: 'StructBay Construction Marketplace — Admin CMS & Platform Control Center API',
-      contact: { name: 'StructBay Team', email: 'hello@structbay.com' },
+      description: 'Structbay Construction Marketplace — Admin CMS & Platform Control Center API',
+      contact: { name: 'Structbay Team', email: 'hello@structbay.com' },
     },
     servers: [
       { url: '/api/v1', description: 'API v1' },

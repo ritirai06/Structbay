@@ -36,7 +36,7 @@ exports.createDispatch = async (req, res) => {
     }
     return ApiResponse.badRequest(
       res,
-      'This sub-order uses the StructBay workflow — use Mark dispatched / workflow actions instead of the legacy dispatch create endpoint.'
+      'This sub-order uses the Structbay workflow — use Mark dispatched / workflow actions instead of the legacy dispatch create endpoint.'
     );
   }
 
@@ -88,7 +88,7 @@ exports.updateDispatchStatus = async (req, res) => {
   if (isWorkflowVendorOrder(order)) {
     return ApiResponse.badRequest(
       res,
-      'This sub-order uses the StructBay workflow — update dispatch status from the workflow steps instead of this legacy endpoint.'
+      'This sub-order uses the Structbay workflow — update dispatch status from the workflow steps instead of this legacy endpoint.'
     );
   }
 
@@ -176,7 +176,7 @@ exports.uploadDeliveryProof = async (req, res) => {
         'Use POST /api/v1/vendor/orders/:id/workflow/mark-delivered to upload POD for this workflow order.'
       );
     }
-    return ApiResponse.badRequest(res, 'Delivery proof for this order is handled via the StructBay vendor workflow.');
+    return ApiResponse.badRequest(res, 'Delivery proof for this order is handled via the Structbay vendor workflow.');
   }
 
   dispatch.deliveryProof.push({ type: type || 'photo', url: req.file.path, cloudinaryId: req.file.filename });

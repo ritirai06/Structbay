@@ -14,7 +14,7 @@ const zohoSyncLogSchema = new mongoose.Schema(
     },
     status:     { type: String, enum: ['SUCCESS', 'FAILED', 'PENDING', 'SKIPPED'], default: 'PENDING' },
 
-    referenceId:    String,   // StructBay internal ID (order._id, product._id)
+    referenceId:    String,   // Structbay internal ID (order._id, product._id)
     zohoId:         String,   // Zoho entity ID returned
     zohoEntity:     String,   // 'invoice' | 'customer' | 'item' etc.
 
