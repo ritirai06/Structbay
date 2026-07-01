@@ -8,6 +8,14 @@ import {
 
 export type GstDisplayMode = "exclusive" | "inclusive";
 
+export type AppliedCoupon = {
+  code: string;
+  type: 'PERCENTAGE' | 'FIXED';
+  discountValue: number;
+  maxDiscount: number | null;
+  minCartValue: number;
+};
+
 const STORAGE_KEY = "sb_cart_gst_display";
 
 export type CartGstPrefs = {
@@ -51,7 +59,12 @@ export function lineSubtotalInclGst(line: CartLineForPricing & Pick<CartItem, "g
 }
 
 export function lineUnitPriceExGst(line: CartLineForPricing): number {
-  return cartLineUnitPrice(line);
+  const price = cartLineUnitPrice(line);
+  if (line.gstType === "inclusive") {
+    const pct = Number.isFinite(line.gstPercentage) && line.gstPercentage! >= 0 ? line.gstPercentage! : 18;
+    return Math.round(price / (1 + pct / 100));
+  }
+  return price;
 }
 
 export function lineUnitPriceInclGst(line: CartLineForPricing & Pick<CartItem, "gstPercentage">): number {
@@ -69,14 +82,14 @@ export type CartLineDisplay = {
 
 export function formatCartLineDisplay(
   line: CartItem,
-  mode: GstDisplayMode
+  _ignoredMode?: GstDisplayMode // Kept for backwards compatibility but ignored
 ): CartLineDisplay {
   const gstPct = lineGstPct(line);
   const gstAmount = lineGstAmount(line);
   const exSub = lineSubtotalExGst(line);
   const inclSub = exSub + gstAmount;
 
-  if (mode === "inclusive") {
+  if (line.gstType === "inclusive") {
     return {
       lineTotal: inclSub,
       unitPrice: lineUnitPriceInclGst(line),
@@ -89,7 +102,7 @@ export function formatCartLineDisplay(
   return {
     lineTotal: exSub,
     unitPrice: lineUnitPriceExGst(line),
-    priceSuffix: `ex-GST · ${gstPct}% GST at checkout`,
+    priceSuffix: line.gstType === "exclusive" ? `excl. ${gstPct}% GST` : `+ ${gstPct}% GST`,
     gstPct,
     gstAmount,
   };
@@ -110,35 +123,54 @@ export type CartSummary = {
 export function buildCartSummaryFromLines(
   lines: CartItem[],
   mode: GstDisplayMode,
-  discount = 0
+  coupon?: AppliedCoupon | null
 ): CartSummary {
   const subtotalExGst = lines.reduce((s, l) => s + lineSubtotalExGst(l), 0);
-  const gstAmount = lines.reduce((s, l) => s + lineGstAmount(l), 0);
-  const grandIncl = subtotalExGst + gstAmount;
-
-  if (mode === "inclusive") {
-    return {
-      subtotalExGst,
-      gstAmount,
-      gstMode: mode,
-      discount,
-      displaySubtotal: grandIncl,
-      subtotalLabel: "Subtotal (incl. GST)",
-      gstLabel: "GST included in subtotal",
-      total: grandIncl - discount,
-      totalLabel: "Total (incl. GST)",
-    };
+  
+  let totalDiscount = 0;
+  if (coupon) {
+    if (coupon.type === 'PERCENTAGE') {
+      totalDiscount = subtotalExGst * (coupon.discountValue / 100);
+      if (coupon.maxDiscount && totalDiscount > coupon.maxDiscount) {
+        totalDiscount = coupon.maxDiscount;
+      }
+    } else {
+      totalDiscount = coupon.discountValue;
+    }
+    // Cap discount to subtotal
+    if (totalDiscount > subtotalExGst) {
+      totalDiscount = subtotalExGst;
+    }
   }
+
+  // Calculate GST on discounted base price per line item
+  let gstAmount = 0;
+  lines.forEach((l) => {
+    const lineExGst = lineSubtotalExGst(l);
+    // Proportion of this line in the total subtotal
+    const proportion = subtotalExGst > 0 ? (lineExGst / subtotalExGst) : 0;
+    // Discount applied to this line
+    const lineDiscount = totalDiscount * proportion;
+    const discountedLineExGst = Math.max(0, lineExGst - lineDiscount);
+    
+    // Calculate GST on the discounted amount
+    const gstPct = lineGstPct(l);
+    gstAmount += (discountedLineExGst * gstPct) / 100;
+  });
+  gstAmount = Math.round(gstAmount);
+
+  const discountedSubtotal = subtotalExGst - totalDiscount;
+  const grandIncl = discountedSubtotal + gstAmount;
 
   return {
     subtotalExGst,
     gstAmount,
     gstMode: mode,
-    discount,
+    discount: Math.round(totalDiscount),
     displaySubtotal: subtotalExGst,
-    subtotalLabel: "Subtotal (ex-GST)",
-    gstLabel: "GST (as per product)",
-    total: subtotalExGst + gstAmount - discount,
-    totalLabel: "Total (ex-GST + GST)",
+    subtotalLabel: "Product Price (Base)",
+    gstLabel: "GST",
+    total: Math.round(grandIncl),
+    totalLabel: "Total",
   };
 }

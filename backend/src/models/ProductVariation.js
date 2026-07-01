@@ -4,15 +4,9 @@ const variationSchema = new mongoose.Schema(
   {
     product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
     attributes: {
-      weight: { type: String, default: null },
-      grade: { type: String, default: null },
-      size: { type: String, default: null },
-      thickness: { type: String, default: null },
-      length: { type: String, default: null },
-      color: { type: String, default: null },
-      finish: { type: String, default: null },
-      diameter: { type: String, default: null },
-      custom: [{ key: String, value: String }],
+      type: Map,
+      of: String,
+      default: {},
     },
     sku: { type: String, trim: true, sparse: true, default: null },
     barcode: { type: String, trim: true, default: null },
@@ -40,14 +34,16 @@ variationSchema.pre(/^find/, function (next) { this.where({ isDeleted: false });
 
 function buildSearchText(doc) {
   const parts = [doc.sku, doc.vendorSku, doc.barcode].filter(Boolean).map(String);
-  const a = doc.attributes || {};
-  ['weight', 'grade', 'size', 'thickness', 'length', 'color', 'finish', 'diameter'].forEach((k) => {
-    if (a[k]) parts.push(String(a[k]));
-  });
-  (a.custom || []).forEach((c) => {
-    if (c?.value) parts.push(String(c.value));
-    if (c?.key) parts.push(String(c.key));
-  });
+  const a = doc.attributes;
+  if (a && typeof a.forEach === 'function') {
+    a.forEach((val) => {
+      if (val) parts.push(String(val));
+    });
+  } else if (a && typeof a === 'object') {
+    Object.values(a).forEach((val) => {
+      if (val) parts.push(String(val));
+    });
+  }
   return parts.join(' ').toLowerCase();
 }
 

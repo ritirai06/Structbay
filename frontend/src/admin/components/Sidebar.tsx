@@ -4,7 +4,7 @@ import {
   Users, ShoppingCart, Truck,
   FileText, ClipboardList, Briefcase, CreditCard,
   UserCircle, Layout, BarChart3, History, Settings, UserCog,
-  RefreshCw,
+  RefreshCw, Ticket,
 } from "lucide-react";
 import { cn } from "@shared/components/ui/utils";
 import logoImg from "/shared/assets/logos/Structbay-Logo-F-1.png";
@@ -25,6 +25,7 @@ const navItems = [
   { path: "/admin/finance-leads", label: "Finance Leads",   icon: CreditCard },
   { path: "/admin/customers",    label: "Customers",         icon: UserCircle },
   { path: "/admin/cms",          label: "CMS Control",       icon: Layout },
+  { path: "/admin/coupons",      label: "Coupons",           icon: Ticket },
   { path: "/admin/reports",      label: "Reports",           icon: BarChart3 },
   { path: "/admin/audit-logs",   label: "Audit Logs",        icon: History },
   { path: "/admin/settings",     label: "Settings",          icon: Settings },

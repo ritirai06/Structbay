@@ -236,6 +236,8 @@ export type CartLineForPricing = {
   price: number;
   qty: number;
   pricingSnapshot?: PricingSnapshot | null;
+  gstType?: "inclusive" | "exclusive";
+  gstPercentage?: number;
 };
 
 export function cartLineUnitPrice(line: CartLineForPricing): number {
@@ -246,7 +248,13 @@ export function cartLineUnitPrice(line: CartLineForPricing): number {
 }
 
 export function cartLineSubtotalExGst(line: CartLineForPricing): number {
-  return cartLineUnitPrice(line) * line.qty;
+  const price = cartLineUnitPrice(line);
+  if (line.gstType === "inclusive") {
+    const pct = Number.isFinite(line.gstPercentage) && line.gstPercentage! >= 0 ? line.gstPercentage! : 18;
+    const base = price / (1 + pct / 100);
+    return base * line.qty;
+  }
+  return price * line.qty;
 }
 
 export function cartLineGstAmount(line: CartLineForPricing, gstPct: number): number {

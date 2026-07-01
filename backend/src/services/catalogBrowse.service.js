@@ -76,9 +76,21 @@ async function distinctAttributeValuesForProducts(productIds, filterDefs) {
       .filter((f) => f?.key && f.isActive !== false)
       .map((f) => String(f.key).toLowerCase())
   );
-  FIXED_ATTR_KEYS.forEach((k) => keys.add(k));
+  
+  if (!productIds?.length) return {};
 
-  if (!productIds?.length || !keys.size) return {};
+  const products = await Product.find({ _id: { $in: productIds } }).select('attributes').lean();
+  for (const product of products) {
+    if (Array.isArray(product.attributes)) {
+      for (const attr of product.attributes) {
+        if (attr.showInFilters !== false && attr.name) {
+          keys.add(String(attr.name).toLowerCase());
+        }
+      }
+    }
+  }
+
+  if (!keys.size) return {};
 
   const variations = await ProductVariation.find({
     product: { $in: productIds },
@@ -155,9 +167,9 @@ const DISCOVERABLE_ATTR_KEYS = ['color', 'weight', 'grade', 'size', 'finish', 'd
 function appendDiscoveredAttributeFilters(filterDefs, facets) {
   const existing = new Set((filterDefs || []).map((f) => String(f.key).toLowerCase()));
   const extra = [];
-  for (const key of DISCOVERABLE_ATTR_KEYS) {
+  let sortOrder = 50;
+  for (const [key, opts] of Object.entries(facets)) {
     if (existing.has(key)) continue;
-    const opts = facets[key] || [];
     if (!opts.length) continue;
     const label = key.charAt(0).toUpperCase() + key.slice(1);
     extra.push({
@@ -165,7 +177,7 @@ function appendDiscoveredAttributeFilters(filterDefs, facets) {
       key,
       type: 'MULTI_SELECT',
       options: opts.map((v) => ({ label: v, value: v })),
-      sortOrder: 50 + DISCOVERABLE_ATTR_KEYS.indexOf(key),
+      sortOrder: sortOrder++,
       isActive: true,
       discovered: true,
     });
@@ -240,19 +252,18 @@ async function narrowProductsByCategoryAttributeFilters(categoryId, query, categ
   const defByKey = new Map(defs.map((d) => [String(d.key).toLowerCase(), d]));
 
   const activeKeys = new Set(defs.map((d) => String(d.key).toLowerCase()));
-  for (const key of FIXED_ATTR_KEYS) {
-    const raw = query[key] ?? query[`attr_${key}`];
-    const minRaw = query[`${key}_min`];
-    const maxRaw = query[`${key}_max`];
-    if (raw || minRaw != null && minRaw !== '' || maxRaw != null && maxRaw !== '') {
-      activeKeys.add(key);
-    }
-  }
+  // Support any attribute filter from query: attr_<key> or <key>
   for (const key of Object.keys(query)) {
-    const m = /^(.+)_min$/.exec(key);
+    const m = /^attr_(.+)$/.exec(key);
     if (m && query[key] !== undefined && query[key] !== '') activeKeys.add(m[1].toLowerCase());
-    const mx = /^(.+)_max$/.exec(key);
-    if (mx && query[key] !== undefined && query[key] !== '') activeKeys.add(mx[1].toLowerCase());
+    const minM = /^(.+)_min$/.exec(key);
+    if (minM && query[key] !== undefined && query[key] !== '') activeKeys.add(minM[1].toLowerCase());
+    const maxM = /^(.+)_max$/.exec(key);
+    if (maxM && query[key] !== undefined && query[key] !== '') activeKeys.add(maxM[1].toLowerCase());
+    // Also allow bare key names that exist in the admin filter defs
+    if (defByKey.has(key.toLowerCase()) && query[key] !== undefined && query[key] !== '') {
+      activeKeys.add(key.toLowerCase());
+    }
   }
 
   if (!activeKeys.size) return null;

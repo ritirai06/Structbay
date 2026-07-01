@@ -44,6 +44,15 @@ const productSchema = new mongoose.Schema(
     faqs: [faqSchema],
     returnExchangePolicy: { type: returnExchangePolicySchema, default: () => ({}) },
 
+    attributes: [{
+      name: { type: String, required: true, trim: true },
+      values: [{ type: String, trim: true }],
+      usedForVariants: { type: Boolean, default: true },
+      showInFilters: { type: Boolean, default: true },
+      showInSpecifications: { type: Boolean, default: true },
+      visibleOnProductPage: { type: Boolean, default: true }
+    }],
+
     gstPercentage: { type: Number, enum: [0, 5, 12, 18, 28], default: 18 },
     /** When true, storefront shows city prices including GST (admin setting per product). */
     priceIncludesGst: { type: Boolean, default: false },

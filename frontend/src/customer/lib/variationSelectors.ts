@@ -62,9 +62,18 @@ export function uniqueValuesForAxis(
 
 export function axesForVariations(
   variations: any[],
-  categoryFilters: Array<{ key?: string; label?: string; sortOrder?: number; isActive?: boolean }> | undefined
+  categoryFilters: Array<{ key?: string; label?: string; sortOrder?: number; isActive?: boolean }> | undefined,
+  productAttributes?: Array<{ name: string; values: string[]; usedForVariants?: boolean; showInFilters?: boolean }>
 ): AttributeAxis[] {
-  if (!variations?.length || variations.length < 2) return [];
+  // Use product-level attribute definitions if available — the canonical source of truth.
+  if (productAttributes && productAttributes.length > 0) {
+    const variantAttrs = productAttributes.filter(a => a.usedForVariants !== false && a.values && a.values.length > 0);
+    if (variantAttrs.length > 0) {
+      return variantAttrs.map(a => ({ key: a.name, label: a.name }));
+    }
+  }
+
+  if (!variations?.length) return [];
 
   const filterDefs = [...(categoryFilters || [])]
     .filter((f) => f.key && f.isActive !== false)
@@ -85,6 +94,7 @@ export function axesForVariations(
     if (seen.has(key)) return;
     const vals = uniqueValuesForAxis(variations, key, {});
     const fromCategory = filterDefs.some((f) => normalizeKey(String(f.key)) === key);
+    // Show axis even with 1 option when admin-defined
     const minOptions = fromCategory ? 1 : 2;
     if (vals.length < minOptions) return;
     const sig = valueSignature(variations, key);
@@ -100,15 +110,13 @@ export function axesForVariations(
   for (const f of filterDefs) {
     pushAxis(String(f.key), f.label);
   }
-  // When category defines filters, stick to those — avoids duplicate axes (e.g. size + length).
-  if (!filterDefs.length) {
-    for (const k of keysInData) {
+  // Always discover from data too (works without category filter definitions)
+  for (const k of keysInData) {
+    pushAxis(k);
+  }
+  for (const k of FALLBACK_AXIS_KEYS) {
+    if ([...keysInData].some((x) => x === k || x.replace(/\s+/g, "") === k.replace(/\s+/g, ""))) {
       pushAxis(k);
-    }
-    for (const k of FALLBACK_AXIS_KEYS) {
-      if ([...keysInData].some((x) => x === k || x.replace(/\s+/g, "") === k.replace(/\s+/g, ""))) {
-        pushAxis(k);
-      }
     }
   }
 

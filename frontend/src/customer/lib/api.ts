@@ -233,6 +233,15 @@ export const api = {
   getProfile: () => req<any>('GET', '/profile'),
   updateProfile: (data: Record<string, unknown>) => req<any>('PATCH', '/profile', data),
 
+  // ─── Projects ────────────────────────────────────────────────────────────────
+  getProjects: () => req<any>('GET', '/projects'),
+  getProjectDetails: (id: string) => req<any>('GET', `/projects/${id}`),
+  createProject: (data: any) => req<any>('POST', '/projects', data),
+  updateProject: (id: string, data: any) => req<any>('PUT', `/projects/${id}`, data),
+  deleteProject: (id: string) => req<any>('DELETE', `/projects/${id}`),
+  assignOrderToProject: (data: { orderId: string, projectId: string | null }) => req<any>('POST', '/projects/assign-order', data),
+  bulkAssignOrdersToProject: (data: { orderIds: string[], projectId: string | null }) => req<any>('POST', '/projects/bulk-assign-orders', data),
+
   // ─── Saved addresses ───────────────────────────────────────────────────────
   getAddresses: () => req<any>('GET', '/addresses'),
   createAddress: (data: Record<string, unknown>) => req<any>('POST', '/addresses', data),
@@ -389,4 +398,38 @@ export const api = {
 
   submitBulkEnquiry: (data: Record<string, unknown>) =>
     reqV1<any>('POST', '/bulk-enquiries', data),
+
+  // ─── Orders ───────────────────────────────────────────────────────────────
+  /** Fetch a single master order by its Mongo _id (used by MockPaymentGateway). */
+  getOrderDetails: (orderId: string) =>
+    req<any>('GET', `/orders/${encodeURIComponent(orderId)}`),
+
+  /** Low-level authenticated fetch helper (path relative to /api/v1). */
+  fetchWithAuth: async (url: string, options: RequestInit = {}) => {
+    const headers: Record<string, string> = {
+      ...(options.headers as Record<string, string> || {}),
+    };
+    const t = token();
+    if (t) headers.Authorization = `Bearer ${t}`;
+    if (options.body && typeof options.body === 'string') {
+      headers['Content-Type'] = 'application/json';
+    }
+    let res = await fetch(url, { ...options, headers });
+    if (res.status === 401 && getCustomerRefreshToken()) {
+      const ok = await refreshCustomerAccessToken();
+      if (ok) {
+        const newT = token();
+        if (newT) headers.Authorization = `Bearer ${newT}`;
+        res = await fetch(url, { ...options, headers });
+      }
+    }
+    if (!res.ok) {
+      let json: unknown = {};
+      try { json = await res.json(); } catch { /* ignore */ }
+      if (res.status === 401) clearCustomerSession();
+      throw new Error(formatApiError(json as any));
+    }
+    return res.json();
+  },
 };
+

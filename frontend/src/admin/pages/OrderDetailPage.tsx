@@ -408,9 +408,23 @@ export function OrderDetailPage() {
                     label="Payment"
                     value={formatPaymentMethod(order.paymentMethod)}
                     sub={
-                      <span className={PAY_COLORS[order.paymentStatus] || "text-sb-ink/50"}>
-                        {formatPaymentStatus(order.paymentStatus)}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className={PAY_COLORS[order.paymentStatus] || "text-sb-ink/50"}>
+                          {formatPaymentStatus(order.paymentStatus)}
+                        </span>
+                        {order.paymentTransactionId?.providerTxnId && (
+                          <span className="text-xs text-sb-ink/60 mt-1">
+                            Txn: {order.paymentTransactionId.providerTxnId}
+                          </span>
+                        )}
+                        {order.paymentTransactionId?.paidAt && (
+                          <span className="text-xs text-sb-ink/60">
+                            {new Date(order.paymentTransactionId.paidAt).toLocaleString("en-IN", {
+                              day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
+                            })}
+                          </span>
+                        )}
+                      </div>
                     }
                   />
                 </div>

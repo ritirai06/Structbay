@@ -224,6 +224,7 @@ export function BrandLanding() {
                               image: img || "",
                               pricingSnapshot: snap || undefined,
                               gstPercentage: Number.isFinite(Number(p.gstPercentage)) ? Number(p.gstPercentage) : 18,
+                              gstType: p.priceIncludesGst ? "inclusive" : "exclusive",
                             });
                           }}
                           className="w-full mt-3 py-2 rounded-xl bg-[#E85A00] hover:bg-[#CC4E00] text-sb-on-orange text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"

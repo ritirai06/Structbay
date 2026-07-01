@@ -19,32 +19,40 @@ const FIXED_KEYS = ["weight", "grade", "size", "thickness", "length", "color", "
 export function flattenVariationAttributes(attrs: Record<string, unknown> | null | undefined): AttributeRow[] {
   const rows: AttributeRow[] = [];
   if (!attrs || typeof attrs !== "object") return rows;
-  const a = attrs as Record<string, unknown>;
 
-  for (const k of FIXED_KEYS) {
-    const v = a[k];
-    if (v != null && String(v).trim()) rows.push({ key: k, label: humanizeAttrKey(k), value: canonicalAttributeValue(v, k) });
+  // Normalize: handle Mongoose Map (has .entries()) or plain object
+  let entries: [string, unknown][];
+  if (typeof (attrs as any).entries === "function") {
+    entries = Array.from((attrs as any).entries()) as [string, unknown][];
+  } else {
+    entries = Object.entries(attrs);
   }
 
-  const custom = a.custom;
+  const used = new Set<string>();
+
+  for (const [rawKey, rawVal] of entries) {
+    // Skip "custom" legacy key
+    if (rawKey === "custom") continue;
+    if (rawVal == null || String(rawVal).trim() === "") continue;
+    const key = String(rawKey).trim();
+    if (used.has(key.toLowerCase())) continue;
+    rows.push({ key, label: humanizeAttrKey(key), value: canonicalAttributeValue(rawVal, key) });
+    used.add(key.toLowerCase());
+  }
+
+  // Handle legacy custom[] arrays (old schema)
+  const custom = (attrs as any)["custom"];
   if (Array.isArray(custom)) {
     for (const c of custom) {
       const row = c as { key?: string; value?: unknown };
       if (row?.key && row.value != null && String(row.value).trim()) {
         const key = String(row.key).trim();
-        rows.push({ key, label: humanizeAttrKey(key), value: canonicalAttributeValue(row.value, key) });
+        if (!used.has(key.toLowerCase())) {
+          rows.push({ key, label: humanizeAttrKey(key), value: canonicalAttributeValue(row.value, key) });
+          used.add(key.toLowerCase());
+        }
       }
     }
-  }
-
-  const used = new Set(rows.map((r) => r.key.toLowerCase()));
-  for (const [rawKey, rawVal] of Object.entries(a)) {
-    if (rawKey === "custom" || FIXED_KEYS.includes(rawKey as typeof FIXED_KEYS[number])) continue;
-    if (rawVal == null || !String(rawVal).trim()) continue;
-    const key = String(rawKey).trim();
-    if (used.has(key.toLowerCase())) continue;
-    rows.push({ key, label: humanizeAttrKey(key), value: canonicalAttributeValue(rawVal, key) });
-    used.add(key.toLowerCase());
   }
 
   return rows;

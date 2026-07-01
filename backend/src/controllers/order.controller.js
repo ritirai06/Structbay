@@ -40,6 +40,7 @@ const getAll = asyncHandler(async (req, res) => {
       .populate('customer', 'name email phone')
       .populate('city', 'name state')
       .populate('assignedVendor', 'name companyName')
+      .populate('paymentTransactionId')
       .sort({ createdAt: -1 })
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum),
@@ -59,6 +60,7 @@ const getById = asyncHandler(async (req, res) => {
     .populate('items.product', 'name sku images deliveryType')
     .populate('items.assignedVendorUser', 'name companyName email')
     .populate('items.variation', 'attributes sku')
+    .populate('paymentTransactionId')
     .populate({
       path: 'vendorOrders',
       select: 'orderNumber deliveryType status invoiceStatus structbayLogistics vendor totalAmount workflowVersion',

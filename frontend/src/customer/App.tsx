@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router";
 import { AppProvider } from "./context/AppContext";
+import { BulkEnquiryModalProvider } from "./context/BulkEnquiryModalContext";
 import { isRfqOnlyCategory } from "./lib/rfqCategories";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
@@ -113,7 +114,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <AppProvider>
-        <AppRoutes />
+        <BulkEnquiryModalProvider>
+          <AppRoutes />
+        </BulkEnquiryModalProvider>
       </AppProvider>
     </BrowserRouter>
   );

@@ -245,8 +245,8 @@ export function ProductDetails() {
   const isVariant = isVariantProduct(product);
   const variations: any[] = isVariant ? (product?.variations || []) : [];
   const axes = useMemo(
-    () => (isVariant ? axesForVariations(variations, product?.categoryFilters || []) : []),
-    [isVariant, variations, product?.categoryFilters]
+    () => (isVariant ? axesForVariations(variations, product?.categoryFilters || [], product?.attributes || []) : []),
+    [isVariant, variations, product?.categoryFilters, product?.attributes]
   );
 
   const selectedVar = variations.find((v: any) => String(v._id) === selectedVid);
@@ -312,10 +312,48 @@ export function ProductDetails() {
 
   const specRowsForPanel = useMemo(() => {
     if (!product) return [];
+    
+    // Build rows from product attributes that are visible in specifications
+    if (product.attributes && product.attributes.length > 0) {
+      const visibleAttrs = product.attributes.filter(
+        (a: any) => a.showInSpecifications !== false && a.visibleOnProductPage !== false
+      );
+      if (visibleAttrs.length > 0) {
+        // For variant products, try to show the value from the currently selected variation
+        const rows: { key: string; label: string; value: string }[] = [];
+        for (const attr of visibleAttrs) {
+          let value = '';
+          if (isVariant && selectedVar) {
+            // Try to get the value from the selected variation's dynamic Map attributes
+            const varAttrs = selectedVar.attributes;
+            if (varAttrs) {
+              // Handle both Map-like objects and plain objects (from JSON)
+              const attrObj = typeof varAttrs.get === 'function'
+                ? Object.fromEntries(varAttrs.entries())
+                : varAttrs;
+              const attrKey = Object.keys(attrObj).find(
+                (k) => k.toLowerCase() === attr.name.toLowerCase()
+              );
+              if (attrKey) value = String(attrObj[attrKey]).trim();
+            }
+          }
+          // Fall back to product attribute values list if no variation value
+          if (!value && attr.values && attr.values.length > 0) {
+            value = attr.values.join(', ');
+          }
+          if (value) {
+            rows.push({ key: attr.name, label: attr.name, value });
+          }
+        }
+        if (rows.length > 0) return rows;
+      }
+    }
+
+    // Fallback to legacy variation flattening
     const v = variations.find((x: any) => String(x._id) === selectedVid) || variations[0];
     const rows = flattenVariationAttributes(v?.attributes);
     return sortSpecsByCategoryFilterOrder(rows, product.categoryFilters);
-  }, [product, selectedVid, variations]);
+  }, [product, selectedVid, selectedVar, variations, isVariant]);
 
   const setAxis = (key: string, value: string) => {
     const next = { ...attrSelections, [key]: value };
@@ -388,6 +426,7 @@ export function ProductDetails() {
       image: images[0] || firstImageUrl(product.images) || "",
       pricingSnapshot: pricingSnap,
       gstPercentage: gstPct,
+      gstType: product.priceIncludesGst ? "inclusive" : "exclusive",
       productId: product._id || product.id || undefined,
     });
   };
@@ -472,7 +511,7 @@ export function ProductDetails() {
                 </div>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-xs text-gray-500">
-                    {displayPriceMeta(product)} · Shipping at checkout
+                    {displayPriceMeta(product)} · Shipping extra - Pay at site
                   </span>
                 </div>
                 {bulkFrom != null && bulkFrom < effectiveUnit && (
@@ -606,11 +645,24 @@ export function ProductDetails() {
             <div className="sf-pdp-variant-group">
               <p className="sf-pdp-variant-label">Quantity</p>
               <div className="sf-pdp-qty">
-                <button type="button" aria-label="Decrease" onClick={() => setQty((q) => Math.max(moq, q - 1))}>
+                <button type="button" aria-label="Decrease" onClick={() => setQty((q) => Math.max(moq, Number(q || moq) - 1))}>
                   <Minus className="w-4 h-4" />
                 </button>
-                <span>{qty}</span>
-                <button type="button" aria-label="Increase" onClick={() => setQty((q) => q + 1)}>
+                <input
+                  type="text"
+                  value={qty}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, "");
+                    setQty(val ? Number(val) : ("" as any));
+                  }}
+                  onBlur={(e) => {
+                    const val = Number(e.target.value);
+                    if (!val || val < moq) setQty(moq);
+                    else setQty(val);
+                  }}
+                  className="w-12 text-center bg-transparent border-none focus:outline-none focus:ring-0 p-0 text-sm font-semibold text-foreground"
+                />
+                <button type="button" aria-label="Increase" onClick={() => setQty((q) => Number(q || moq) + 1)}>
                   <Plus className="w-4 h-4" />
                 </button>
               </div>

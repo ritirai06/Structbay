@@ -62,8 +62,8 @@ export function ListingProductCard({
   const isVariant = isVariantProduct(product);
   const variations = isVariant ? (product.variations || []) : [];
   const axes = useMemo(
-    () => (isVariant ? axesForVariations(variations, categoryFilters) : []),
-    [isVariant, variations, categoryFilters]
+    () => (isVariant ? axesForVariations(variations, categoryFilters, product?.attributes || []) : []),
+    [isVariant, variations, categoryFilters, product?.attributes]
   );
 
   const seedVar = useMemo(() => {
@@ -308,7 +308,24 @@ export function ListingProductCard({
                 <button type="button" aria-label="Decrease" onClick={() => onUpdateQty(-1)}>
                   <Minus className="w-3.5 h-3.5" />
                 </button>
-                <span>{cartLine.qty}</span>
+                <input
+                  type="text"
+                  value={cartLine.qty}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, "");
+                    const target = val ? Number(val) : 0;
+                    if (target >= 0) {
+                      onUpdateQty(target - cartLine.qty);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const val = Number(e.target.value);
+                    if (!val || val < 1) {
+                      onUpdateQty(1 - cartLine.qty);
+                    }
+                  }}
+                  className="w-8 text-center bg-transparent border-none focus:outline-none focus:ring-0 p-0 text-sm font-semibold"
+                />
                 <button type="button" aria-label="Increase" onClick={() => onUpdateQty(1)}>
                   <Plus className="w-3.5 h-3.5" />
                 </button>
@@ -323,12 +340,25 @@ export function ListingProductCard({
                 <button
                   type="button"
                   aria-label="Decrease quantity"
-                  onClick={() => setQty((q) => Math.max(1, q - 1))}
+                  onClick={() => setQty((q) => Math.max(1, Number(q || 1) - 1))}
                 >
                   <Minus className="w-3.5 h-3.5" />
                 </button>
-                <span>{qty}</span>
-                <button type="button" aria-label="Increase quantity" onClick={() => setQty((q) => q + 1)}>
+                <input
+                  type="text"
+                  value={qty}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, "");
+                    setQty(val ? Number(val) : ("" as any));
+                  }}
+                  onBlur={(e) => {
+                    const val = Number(e.target.value);
+                    if (!val || val < 1) setQty(1);
+                    else setQty(val);
+                  }}
+                  className="w-8 text-center bg-transparent border-none focus:outline-none focus:ring-0 p-0 text-sm font-semibold"
+                />
+                <button type="button" aria-label="Increase quantity" onClick={() => setQty((q) => Number(q || 1) + 1)}>
                   <Plus className="w-3.5 h-3.5" />
                 </button>
               </div>

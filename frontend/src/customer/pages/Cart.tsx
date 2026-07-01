@@ -21,7 +21,7 @@ export function Cart() {
   const { cart, removeFromCart, updateQty, isLoggedIn, addToCart, cityId } = useApp();
   const navigate = useNavigate();
   const [coupon, setCoupon] = useState("");
-  const [couponApplied, setCouponApplied] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [minimumOrderValue, setMinimumOrderValue] = useState<number>(DEFAULT_MINIMUM_ORDER_VALUE);
   const [upsells, setUpsells] = useState<any[]>([]);
 
@@ -91,12 +91,9 @@ export function Cart() {
       .catch(() => {});
   }, [cart, cityId]);
 
-  const discount = couponApplied
-    ? Math.round(cart.reduce((s, item) => s + lineSubtotalExGst(item), 0) * 0.05)
-    : 0;
   const summary = useMemo(
-    () => buildCartSummaryFromLines(cart, "exclusive", discount),
-    [cart, discount]
+    () => buildCartSummaryFromLines(cart, "exclusive", appliedCoupon),
+    [cart, appliedCoupon]
   );
 
   const cartSubtotal = summary.displaySubtotal;
@@ -104,9 +101,26 @@ export function Cart() {
   const remainingAmount = Math.max(0, minimumOrderValue - cartSubtotal);
   const progressPercentage = Math.min(100, Math.round((cartSubtotal / minimumOrderValue) * 100));
 
-  const applyCoupon = () => {
-    if (coupon.toUpperCase() === "SB5") setCouponApplied(true);
-    else alert("Invalid coupon code. Try SB5 for 5% off.");
+  const applyCoupon = async () => {
+    if (!coupon.trim()) return;
+    try {
+      const base = import.meta.env.VITE_API_URL || '/api/v1';
+      const res = await fetch(`${base}/coupons/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: coupon, cartValue: summary.subtotalExGst })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAppliedCoupon(data.data);
+      } else {
+        alert(data.message || 'Invalid Coupon Code');
+        setAppliedCoupon(null);
+      }
+    } catch (err) {
+      alert('Error validating coupon. Please try again.');
+      setAppliedCoupon(null);
+    }
   };
 
   if (cart.length === 0) {
@@ -130,10 +144,10 @@ export function Cart() {
       return;
     }
     if (!isLoggedIn) {
-      navigate("/login", { state: { from: { pathname: "/checkout" } } });
+      navigate("/login", { state: { from: { pathname: "/checkout" }, coupon: appliedCoupon } });
       return;
     }
-    navigate("/checkout");
+    navigate("/checkout", { state: { coupon: appliedCoupon } });
   };
 
   return (
@@ -219,20 +233,40 @@ export function Cart() {
                   <p className="text-xs text-muted-foreground mt-0.5">per {item.unit}</p>
                   <div className="flex items-center gap-3 mt-3 flex-wrap">
                     <div className="flex items-center border border-border rounded-xl overflow-hidden">
-<button onClick={() => updateQty(item.id, item.qty - 1)} className="px-2.5 py-1.5 hover:bg-muted transition-colors" aria-label="Decrease quantity">
+<button onClick={() => updateQty(item.id, Number(item.qty || 1) - 1)} className="px-2.5 py-1.5 hover:bg-muted transition-colors" aria-label="Decrease quantity">
   <Minus className="w-3.5 h-3.5" />
 </button>
-                      <span className="px-3 py-1.5 text-sm font-semibold border-x border-border min-w-[2.5rem] text-center">{item.qty}</span>
-<button onClick={() => updateQty(item.id, item.qty + 1)} className="px-2.5 py-1.5 hover:bg-muted transition-colors" aria-label="Increase quantity">
+<input
+  type="text"
+  value={item.qty}
+  onChange={(e) => {
+    const val = e.target.value.replace(/[^0-9]/g, "");
+    updateQty(item.id, val ? Number(val) : ("" as any));
+  }}
+  onBlur={(e) => {
+    const val = Number(e.target.value);
+    if (!val || val < 1) {
+      if (window.confirm("Do you want to remove this item from the cart?")) {
+        removeFromCart(item.id);
+      } else {
+        updateQty(item.id, 1);
+      }
+    } else {
+      updateQty(item.id, val);
+    }
+  }}
+  className="w-12 text-center bg-transparent border-x border-border focus:outline-none focus:ring-0 p-0 text-sm font-semibold"
+/>
+<button onClick={() => updateQty(item.id, Number(item.qty || 1) + 1)} className="px-2.5 py-1.5 hover:bg-muted transition-colors" aria-label="Increase quantity">
   <Plus className="w-3.5 h-3.5" />
 </button>
                     </div>
                     <div>
                       <span style={{ color: "var(--sb-orange)" }} className="font-bold tabular-nums">
-                        ₹{display.lineTotal.toLocaleString("en-IN")}
+                        ₹{display.lineTotal.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
                       </span>
                       <span className="text-[10px] text-muted-foreground block mt-0.5">
-                        @ ₹{display.unitPrice.toLocaleString("en-IN")} / {item.unit} · {display.priceSuffix}
+                        @ ₹{display.unitPrice.toLocaleString("en-IN", { maximumFractionDigits: 2 })} / {item.unit} · {display.priceSuffix}
                       </span>
                     </div>
                   </div>
@@ -250,7 +284,7 @@ export function Cart() {
           summary={summary}
           coupon={coupon}
           onCouponChange={setCoupon}
-          couponApplied={couponApplied}
+          couponApplied={!!appliedCoupon}
           onApplyCoupon={applyCoupon}
           footer={
             <>
@@ -347,6 +381,7 @@ export function Cart() {
                           image: img || '',
                           pricingSnapshot: snap,
                           gstPercentage: p.gstPercentage ?? 18,
+                          gstType: p.priceIncludesGst ? "inclusive" : "exclusive",
                         });
                       }}
                       className="w-full py-2 text-sm font-semibold rounded-xl border-2 border-[#E85A00] text-[#E85A00] hover:bg-[#E85A00] hover:text-white transition-colors"

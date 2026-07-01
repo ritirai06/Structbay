@@ -229,6 +229,13 @@ export const adminRoutes: RouteObject[] = [
         },
       },
       {
+        path: "coupons",
+        lazy: async () => {
+          const { CouponManagement } = await import("../admin/pages/CouponManagement");
+          return { Component: CouponManagement };
+        },
+      },
+      {
         path: "admin-users",
         lazy: async () => {
           const { AdminUsers } = await import("../admin/pages/AdminUsers");

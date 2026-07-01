@@ -38,12 +38,12 @@ export function CartOrderSummary({
           <span className="text-muted-foreground">
             {summary.subtotalLabel} ({itemCount} items)
           </span>
-          <span className="font-medium tabular-nums">₹{summary.displaySubtotal.toLocaleString("en-IN")}</span>
+          <span className="font-medium tabular-nums">₹{summary.displaySubtotal.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>
         </div>
         <div className="flex justify-between gap-3">
           <span className="text-muted-foreground">{summary.gstLabel}</span>
           <span className="tabular-nums">
-            {summary.gstAmount > 0 ? `₹${summary.gstAmount.toLocaleString("en-IN")}` : "—"}
+            {summary.gstAmount > 0 ? `₹${summary.gstAmount.toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : "—"}
           </span>
         </div>
         <div className="flex justify-between gap-3">
@@ -52,15 +52,15 @@ export function CartOrderSummary({
         </div>
         {summary.discount > 0 && (
           <div className="flex justify-between text-green-600">
-            <span>Coupon (SB5)</span>
-            <span className="tabular-nums">-₹{summary.discount.toLocaleString("en-IN")}</span>
+            <span>Coupon {couponApplied ? `(${coupon})` : ""}</span>
+            <span className="tabular-nums">-₹{summary.discount.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>
           </div>
         )}
         <hr className="border-border" />
         <div className="flex justify-between font-bold text-base gap-3">
           <span>{summary.totalLabel}</span>
           <span className="tabular-nums" style={{ color: "var(--sb-orange)" }}>
-            ₹{summary.total.toLocaleString("en-IN")}
+            ₹{summary.total.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
           </span>
         </div>
       </div>

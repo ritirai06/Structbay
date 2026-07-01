@@ -896,6 +896,7 @@ function ProductCard({ product, compact = false }: { product: any; compact?: boo
                   gstPercentage: Number.isFinite(Number(product.gstPercentage))
                     ? Number(product.gstPercentage)
                     : 18,
+                        gstType: product.priceIncludesGst ? "inclusive" : "exclusive",
                 });
               }}
               className={`btn-primary w-full justify-center${compact ? " mt-2 py-1.5 text-xs" : " mt-3 py-2.5 text-sm"}`}

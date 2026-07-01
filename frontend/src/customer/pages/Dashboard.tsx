@@ -28,6 +28,7 @@ type CustomerUiOrder = {
   status: string;
   apiStatus: string;
   statusClass: string;
+  project: { _id: string; name: string; } | null;
 };
 
 type DashboardStats = {
@@ -63,7 +64,7 @@ type CustomerUiAddress = {
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: "Dashboard",     key: "dashboard" },
   { icon: Package,         label: "My Orders",     key: "orders" },
-  { icon: FileText,        label: "Invoices",      key: "invoices" },
+  { icon: Building2,       label: "My Projects",   key: "projects", path: "/projects" },
   { icon: MapPin,          label: "Addresses",     key: "addresses" },
   { icon: Bell,            label: "Notifications", key: "notifications" },
   { icon: UserIcon,        label: "Profile",       key: "profile" },
@@ -73,6 +74,9 @@ function mapApiStatus(status: string): { label: string; cls: string } {
   if (["DELIVERED", "COMPLETED"].includes(status)) return { label: "Delivered", cls: "text-[#E85A00]" };
   if (status === "CANCELLED") return { label: "Cancelled", cls: "text-red-400" };
   if (status === "OUT_FOR_DELIVERY") return { label: "Out for Delivery", cls: "text-[#E85A00]" };
+  if (["READY_FOR_DISPATCH", "PROCESSING", "VENDOR_ASSIGNMENT_PENDING", "DISPATCHED"].includes(status)) {
+    return { label: "Processing", cls: "text-blue-500" };
+  }
   return { label: (status || "—").replace(/_/g, " "), cls: "text-gray-500/70" };
 }
 
@@ -90,6 +94,7 @@ function mapApiOrder(o: any): CustomerUiOrder {
     status: st.label,
     apiStatus: o.status || "",
     statusClass: st.cls,
+    project: o.project ? { _id: o.project._id, name: o.project.name } : null,
   };
 }
 
@@ -137,20 +142,28 @@ function Sidebar({ user, active, setActive, close, logout }: {
         </div>
       </div>
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-        {NAV_ITEMS.map(({ icon: Icon, label, key }) => (
-          <button
-            key={key}
-            onClick={() => { setActive(key); close(); }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 ${
-              active === key
-                ? "bg-[#E85A00]/12 text-[#E85A00] font-semibold border-l-2 border-[#E85A00] pl-[10px]"
-                : "text-gray-600 hover:text-black hover:bg-gray-50"
-            }`}
-          >
-            <Icon className="w-4 h-4 shrink-0" />
-            {label}
-          </button>
-        ))}
+        {NAV_ITEMS.map(({ icon: Icon, label, key, path }) => {
+          const cls = `w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 ${
+            active === key
+              ? "bg-[#E85A00]/12 text-[#E85A00] font-semibold border-l-2 border-[#E85A00] pl-[10px]"
+              : "text-gray-600 hover:text-black hover:bg-gray-50"
+          }`;
+          return path ? (
+            <Link key={key} to={path} className={cls}>
+              <Icon className="w-4 h-4 shrink-0" />
+              {label}
+            </Link>
+          ) : (
+            <button
+              key={key}
+              onClick={() => { setActive(key); close(); }}
+              className={cls}
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+              {label}
+            </button>
+          );
+        })}
       </nav>
       <div className="p-3 border-t border-gray-200 space-y-1">
         <Link
@@ -203,7 +216,7 @@ function DashboardHome({ user, setActive, orders, stats, savedAddrCount }: {
     { label: "Bulk Enquiry",     icon: MessageSquare, onClick: openBulkEnquiry, color: "bg-black", solid: true },
     { label: "Concrete RFQ",     icon: Zap,           to: "/rfq",      color: "bg-[#CC4E00]", solid: true },
     { label: "My Orders",        icon: Package,       onClick: () => setActive("orders"), color: "bg-white border-2 border-[#E85A00]", solid: false },
-    { label: "Download Invoices",icon: Download,      onClick: () => setActive("invoices"), color: "bg-white border-2 border-gray-200", solid: false },
+    { label: "My Projects",      icon: Building2,     to: "/projects", color: "bg-white border-2 border-[#E85A00]", solid: false },
   ];
 
   return (
@@ -299,6 +312,27 @@ function DashboardHome({ user, setActive, orders, stats, savedAddrCount }: {
 function OrdersSection({ orders, onReload }: { orders: CustomerUiOrder[]; onReload: () => void }) {
   const [filter, setFilter] = useState("all");
   const [cancelId, setCancelId] = useState<string | null>(null);
+  const [projects, setProjects] = useState<{_id: string, name: string}[]>([]);
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+  
+  useEffect(() => {
+    api.getProjects().then((res: any) => {
+      setProjects(res.data || []);
+    }).catch(() => {});
+  }, []);
+
+  const handleAssignProject = async (orderId: string, projectId: string) => {
+    setAssigningId(orderId);
+    try {
+      await api.assignOrderToProject({ orderId, projectId: projectId || null });
+      onReload();
+    } catch (e: any) {
+      alert(e.message || "Failed to assign project");
+    } finally {
+      setAssigningId(null);
+    }
+  };
+
   const filtered = filter === "all" ? orders : orders.filter(o => {
     if (filter === "active") return !["Delivered", "Cancelled"].includes(o.status);
     if (filter === "delivered") return o.status === "Delivered";
@@ -355,6 +389,23 @@ function OrdersSection({ orders, onReload }: { orders: CustomerUiOrder[]; onRelo
               <p className="font-semibold text-black">{order.id}</p>
               <p className="text-sm text-gray-500/70">{order.items}</p>
               <p className="text-xs text-gray-500/40 mt-1">{order.date}</p>
+              {projects.length > 0 && (
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-xs text-gray-500">Project:</span>
+                  <select 
+                    value={order.project?._id || ""} 
+                    onChange={e => handleAssignProject(order.dbId, e.target.value)}
+                    disabled={assigningId === order.dbId}
+                    className="text-xs border border-gray-200 rounded px-2 py-1 bg-white focus:outline-none focus:border-[#E85A00]"
+                  >
+                    <option value="">Unassigned</option>
+                    {projects.map(p => (
+                      <option key={p._id} value={p._id}>{p.name}</option>
+                    ))}
+                  </select>
+                  {assigningId === order.dbId && <span className="text-xs text-gray-400">Saving...</span>}
+                </div>
+              )}
             </div>
             <div className="text-right">
               <p className="font-bold text-black">{order.total}</p>
@@ -408,78 +459,7 @@ function OrdersSection({ orders, onReload }: { orders: CustomerUiOrder[]; onRelo
   );
 }
 
-/* ─── Section: Invoices ─────────────────────────────────── */
-function InvoicesSection({ orders }: { orders: CustomerUiOrder[] }) {
-  const rows = orders.filter(o => o.status !== "Cancelled");
-  const [downloading, setDownloading] = useState<string | null>(null);
 
-  const openInvoices = async (order: CustomerUiOrder) => {
-    setDownloading(order.dbId);
-    try {
-      await openOrderInvoices(order.dbId, order.id);
-    } catch {
-      alert("Could not download invoice. Ensure you are signed in with a valid customer session.");
-    } finally {
-      setDownloading(null);
-    }
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="sf-dash-card rounded-xl border border-gray-200 overflow-hidden">
-        <div className="bg-black px-5 py-4 flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3 min-w-0">
-            <img src={logoImg} alt="StructBay" className="h-10 w-auto object-contain shrink-0" />
-            <div className="min-w-0">
-              <p className="text-white font-semibold text-sm">Your Invoices</p>
-              <p className="text-white/60 text-xs">Download order summaries & tax documents as PDF</p>
-            </div>
-          </div>
-          <span className="text-xs font-semibold text-[#E85A00] bg-[#E85A00]/15 px-3 py-1 rounded-full">
-            {rows.length} order{rows.length === 1 ? "" : "s"}
-          </span>
-        </div>
-      </div>
-
-      {rows.length === 0 ? (
-        <div className="sf-dash-card rounded-xl p-12 text-center">
-          <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500 text-sm">No invoices yet.</p>
-          <Link to="/shop" className="inline-flex mt-4 items-center gap-2 text-[#E85A00] text-sm font-semibold hover:underline">
-            Start shopping <ChevronRight className="w-4 h-4" />
-          </Link>
-        </div>
-      ) : (
-        rows.map(order => (
-          <div key={order.dbId} className="sf-dash-card rounded-xl border border-gray-200 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-[#E85A00]/30 transition-colors">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-11 h-11 rounded-xl bg-[#E85A00]/12 flex items-center justify-center shrink-0">
-                <FileText className="w-5 h-5 text-[#E85A00]" />
-              </div>
-              <div className="min-w-0">
-                <p className="font-semibold text-sm text-black">{order.id}</p>
-                <p className="text-xs text-gray-500">{order.date} · {order.total}</p>
-                <span className={`text-xs font-semibold ${order.statusClass}`}>{order.status}</span>
-              </div>
-            </div>
-            <button
-              type="button"
-              disabled={downloading === order.dbId}
-              onClick={() => openInvoices(order)}
-              className="flex items-center justify-center gap-2 bg-[#E85A00] hover:bg-[#CC4E00] disabled:opacity-60 text-white font-semibold rounded-xl px-4 py-2.5 text-xs transition-colors shrink-0"
-            >
-              <Download className="w-4 h-4" />
-              {downloading === order.dbId ? "Downloading…" : "Download PDF"}
-            </button>
-          </div>
-        ))
-      )}
-      <p className="text-xs text-gray-400 text-center pt-1">
-        StructBay and vendor tax invoices appear here when uploaded. Order summaries download as PDF with the StructBay logo.
-      </p>
-    </div>
-  );
-}
 
 /* ─── Section: Addresses ────────────────────────────────── */
 function mapApiAddress(a: Record<string, unknown>): CustomerUiAddress {
@@ -1006,7 +986,7 @@ export function Dashboard() {
   };
 
   const sectionTitle: Record<string, string> = {
-    dashboard: "Dashboard", orders: "My Orders", invoices: "Invoices",
+    dashboard: "Dashboard", orders: "My Orders", projects: "My Projects",
     addresses: "Addresses", notifications: "Notifications", profile: "Profile",
   };
 
@@ -1057,7 +1037,6 @@ export function Dashboard() {
         <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50">
           {active === "dashboard"     && <DashboardHome user={user} setActive={setActive} orders={orders} stats={dashboardStats} savedAddrCount={savedAddrCount} />}
           {active === "orders"        && <OrdersSection orders={orders} onReload={loadOrders} />}
-          {active === "invoices"      && <InvoicesSection orders={orders} />}
           {active === "addresses"     && <AddressesSection onCountChange={setSavedAddrCount} />}
           {active === "notifications" && <NotificationsSection onUnreadChange={setNotifUnread} />}
           {active === "profile"       && <ProfileSection user={user} />}

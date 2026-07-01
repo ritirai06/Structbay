@@ -24,9 +24,10 @@ const {
 
 // ─── GET /customer/orders ─────────────────────────────────────────────────────
 exports.getMyOrders = asyncHandler(async (req, res) => {
-  const { status, page = 1, limit = 10, search } = req.query;
+  const { status, page = 1, limit = 10, search, project } = req.query;
   const filter = { customer: req.user._id };
   if (status) filter.status = status;
+  if (project) filter.project = project;
   if (search) filter.orderNumber = { $regex: search, $options: 'i' };
 
   const pageNum  = Math.max(1, parseInt(page));
@@ -37,6 +38,7 @@ exports.getMyOrders = asyncHandler(async (req, res) => {
       .populate('city', 'name state')
       .populate('items.product', 'name images sku')
       .populate('items.variation', 'attributes sku')
+      .populate('project', 'name')
       .sort({ createdAt: -1 })
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum),
@@ -56,6 +58,7 @@ exports.getMyOrderById = asyncHandler(async (req, res) => {
     { path: 'city', select: 'name state' },
     { path: 'items.product', select: 'name images sku gstPercentage' },
     { path: 'items.variation', select: 'attributes sku images' },
+    { path: 'project', select: 'name' }
   ]);
   const payload = order.toObject();
   const vendorOrdersLean = await VendorOrder.find({ masterOrder: order._id }).select('status workflowVersion').lean();

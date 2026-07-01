@@ -1113,6 +1113,7 @@ export function CategoryListing() {
                           gstPercentage: Number.isFinite(Number(product.gstPercentage))
                             ? Number(product.gstPercentage)
                             : 18,
+                        gstType: product.priceIncludesGst ? "inclusive" : "exclusive",
                         });
                       }}
                       onUpdateQty={(delta) => {

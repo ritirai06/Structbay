@@ -28,6 +28,7 @@ const STRUCTBAY_DELIVERY_STATUS_FLOW = [
 /** Customer-facing milestones (mapped from master {@link Order} status in customerOrderProgress). */
 const CUSTOMER_TRACKING_STEPS = [
   'ORDER_PLACED',
+  'ORDER_CONFIRMED',
   'ORDER_PROCESSING',
   'OUT_FOR_DELIVERY',
   'PARTIAL_DELIVERED',

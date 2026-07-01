@@ -7,7 +7,7 @@ const CityPricing   = require('../models/CityPricing');
 const Inventory     = require('../models/Inventory');
 const City          = require('../models/City');
 const Notification  = require('../models/Notification');
-const { sendEmail } = require('../services/email.service');
+const { sendOrderPlacedEmail } = require('../services/email.service');
 const { notifyAllAdmins } = require('../services/staffNotification.service');
 const { resolveUnitPriceFromCityPricing } = require('../services/checkoutPricing.service');
 const { generateMasterOrderNumber, logOrderActivity } = require('../services/order.service');
@@ -92,12 +92,20 @@ exports.validate = asyncHandler(async (req, res) => {
       continue;
     }
 
-    const unitPrice = resolveUnitPriceFromCityPricing(pricing, item.quantity);
-    const lineTotal = unitPrice * item.quantity;
+    const rawUnitPrice = resolveUnitPriceFromCityPricing(pricing, item.quantity);
+    const rawLineTotal = rawUnitPrice * item.quantity;
     const gstPct = resolveGstPct(item.product.gstPercentage, gstRateOverride);
-    const gstAmt = (lineTotal * gstPct) / 100;
+    
+    let baseLineTotal, gstAmt;
+    if (item.product.priceIncludesGst) {
+      baseLineTotal = rawLineTotal / (1 + (gstPct / 100));
+      gstAmt = rawLineTotal - baseLineTotal;
+    } else {
+      baseLineTotal = rawLineTotal;
+      gstAmt = (baseLineTotal * gstPct) / 100;
+    }
 
-    subtotal += lineTotal;
+    subtotal += baseLineTotal;
     gstTotal += gstAmt;
 
     lines.push({
@@ -107,9 +115,9 @@ exports.validate = asyncHandler(async (req, res) => {
       sku: item.variation?.sku || item.product.sku,
       variationLabel: item.variation ? formatVariationLabel(item.variation.attributes) : null,
       quantity: item.quantity,
-      unitPrice,
+      unitPrice: baseLineTotal / item.quantity,
       gstPercentage: gstPct,
-      lineTotal,
+      lineTotal: baseLineTotal,
       vendorUser: item.vendorUser?._id || null,
     });
   }
@@ -170,8 +178,17 @@ exports.placeOrder = asyncHandler(async (req, res) => {
     if (item.variation) pq.variation = item.variation._id;
     const pricing = await CityPricing.findOne(pq).lean();
     if (!pricing) throw new AppError(`Pricing missing for ${item.product.name}.`, 422);
-    const unitPrice = resolveUnitPriceFromCityPricing(pricing, item.quantity);
-    subtotal += unitPrice * item.quantity;
+    const rawUnitPrice = resolveUnitPriceFromCityPricing(pricing, item.quantity);
+    const rawLineTotal = rawUnitPrice * item.quantity;
+    const gstPct = resolveGstPct(item.product.gstPercentage, gstRateOverride);
+    
+    let baseLineTotal;
+    if (item.product.priceIncludesGst) {
+      baseLineTotal = rawLineTotal / (1 + (gstPct / 100));
+    } else {
+      baseLineTotal = rawLineTotal;
+    }
+    subtotal += baseLineTotal;
   }
 
   // Validate minimum order value - this is a critical security check
@@ -199,11 +216,19 @@ exports.placeOrder = asyncHandler(async (req, res) => {
     const pricing = await CityPricing.findOne(pq).lean();
     if (!pricing) throw new AppError(`Pricing missing for ${item.product.name}.`, 422);
 
-    const unitPrice = resolveUnitPriceFromCityPricing(pricing, item.quantity);
-    const lineTotal = unitPrice * item.quantity;
+    const rawUnitPrice = resolveUnitPriceFromCityPricing(pricing, item.quantity);
+    const rawLineTotal = rawUnitPrice * item.quantity;
     const gstPct = resolveGstPct(item.product.gstPercentage, gstRateOverride);
-    const gstAmt = (lineTotal * gstPct) / 100;
-    subtotal += lineTotal;
+    
+    let baseLineTotal, gstAmt;
+    if (item.product.priceIncludesGst) {
+      baseLineTotal = rawLineTotal / (1 + (gstPct / 100));
+      gstAmt = rawLineTotal - baseLineTotal;
+    } else {
+      baseLineTotal = rawLineTotal;
+      gstAmt = (baseLineTotal * gstPct) / 100;
+    }
+
     gstTotal += gstAmt;
 
     const productDeliveryType = resolveProductDeliveryType(item.product);
@@ -215,9 +240,9 @@ exports.placeOrder = asyncHandler(async (req, res) => {
       sku: item.variation?.sku || item.product.sku,
       variationLabel: item.variation ? formatVariationLabel(item.variation.attributes) : null,
       quantity: item.quantity,
-      unitPrice,
+      unitPrice: baseLineTotal / item.quantity,
       gstPercentage: gstPct,
-      lineTotal,
+      lineTotal: baseLineTotal,
       vendorUser: item.vendorUser?._id || null,
       defaultDeliveryType: productDeliveryType,
       deliveryType: productDeliveryType,
@@ -273,11 +298,15 @@ exports.placeOrder = asyncHandler(async (req, res) => {
     metadata: { orderNumber, customerName: req.user.name },
   }).catch(() => {});
 
-  // Send confirmation email (non-blocking)
-  sendEmail({
+  // Send order placed email (non-blocking, uses master template + CMS branding)
+  sendOrderPlacedEmail({
     to: req.user.email,
-    subject: `Order Confirmed – ${orderNumber} | StructBay`,
-    html: `<p>Hi ${req.user.name},</p><p>Your order <strong>${orderNumber}</strong> has been placed successfully.</p><p><strong>Total: ₹${grandTotal.toLocaleString()}</strong></p><p>We will notify you once your order is processed.</p>`,
+    name: req.user.name || 'Customer',
+    orderNumber,
+    amount: grandTotal,
+    subtotal: Math.round(subtotal),
+    gstTotal: Math.round(gstTotal),
+    items: orderItems.map(i => ({ name: i.name, quantity: i.quantity, price: i.lineTotal })),
   }).catch(() => {});
 
   return ApiResponse.created(res, 'Order placed successfully.', order);

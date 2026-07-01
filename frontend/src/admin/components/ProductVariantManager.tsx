@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   X,
   MapPin,
+  Zap,
 } from "lucide-react";
 import { adminFetch as apiFetch } from "../../lib/adminApi";
 import {
@@ -20,6 +21,7 @@ import {
 } from "../lib/productCityConfig";
 import { ProductCityConfig } from "./ProductCityConfig";
 import { flattenVariationAttributes } from "../../customer/lib/productAttributes";
+import { type ProductAttribute } from "./ProductAttributesManager";
 
 // ============================================================================
 // Types
@@ -34,6 +36,7 @@ type Props = {
   activeCities: ActiveCity[];
   variations: any[];
   onVariationsChange: (next: any[]) => void;
+  attributes?: ProductAttribute[];
 };
 
 // ============================================================================
@@ -249,46 +252,41 @@ function ColorPreview({ value }: { value: string }) {
   );
 }
 
-// ============================================================================
-// Simple Add Variant Form
-// ============================================================================
-
-function AddVariantForm({
+function GenerateFromAttributes({
   productId,
-  onAdded,
+  attributes = [],
+  onGenerated,
 }: {
   productId: string;
-  onAdded: (newVars: any[]) => void;
+  attributes: ProductAttribute[];
+  onGenerated: (newVars: any[]) => void;
 }) {
-  const [attributes, setAttributes] = useState<{ key: string; value: string }[]>([
-    { key: "", value: "" },
-  ]);
   const [generating, setGenerating] = useState(false);
 
-  const addAttribute = () => setAttributes((prev) => [...prev, { key: "", value: "" }]);
-  const removeAttribute = (i: number) => setAttributes((prev) => prev.filter((_, j) => j !== i));
-  const updateAttribute = (i: number, field: "key" | "value", value: string) => {
-    setAttributes((prev) => prev.map((a, j) => (j === i ? { ...a, [field]: value } : a)));
-  };
-
-  const validAttributes = attributes.filter((a) => a.key.trim() && a.value.trim());
+  const variantAttributes = attributes.filter(a => a.usedForVariants && a.values.length > 0);
+  
+  if (variantAttributes.length === 0) {
+    return (
+      <div className="border border-sb-ink/10 rounded-xl p-4 bg-white text-center">
+        <p className="text-sm text-sb-ink/60">No variant attributes found.</p>
+        <p className="text-xs text-sb-ink/40 mt-1">Go to the Attributes tab and add attributes with "Used for variants" checked.</p>
+      </div>
+    );
+  }
 
   const generate = async () => {
-    if (validAttributes.length === 0) return alert("Add at least one attribute with a value.");
-
     setGenerating(true);
     try {
-      const axes = validAttributes.map((a) => ({
-        key: a.key.trim(),
-        values: [{ value: a.value.trim(), colorCode: null }],
+      const axes = variantAttributes.map((a) => ({
+        key: a.name,
+        values: a.values.map(v => ({ value: v, colorCode: null })),
       }));
 
       const res: any = await apiFetch(`/products/${productId}/variations/generate-matrix`, {
         method: "POST",
         body: JSON.stringify({ axes }),
       });
-      onAdded((res.data as any)?.created || []);
-      setAttributes([{ key: "", value: "" }]);
+      onGenerated((res.data as any)?.created || []);
     } catch (e: any) {
       alert(e.message || "Generation failed");
     } finally {
@@ -297,78 +295,37 @@ function AddVariantForm({
   };
 
   return (
-    <div className="border border-sb-ink/10 rounded-xl p-4 bg-white space-y-4">
+    <div className="border border-sb-ink/10 rounded-xl p-5 bg-white space-y-4">
       <div>
-        <h3 className="text-base font-semibold text-[#000000] tracking-tight">Add Variant</h3>
+        <h3 className="text-base font-semibold text-[#000000] tracking-tight">Auto-Generate Variants</h3>
         <p className="text-xs text-sb-ink/55 mt-1">
-          Add a variant by specifying its attributes (e.g., Diameter: 10mm, Length: 5 Meter).
+          Automatically create all possible combinations based on the attributes defined in the Attributes tab.
         </p>
       </div>
-
-      <div className="space-y-3">
-        {attributes.map((attr, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <input
-              className={`${inp} flex-1`}
-              placeholder="Attribute (e.g., Diameter, Length, Size)"
-              value={attr.key}
-              onChange={(e) => updateAttribute(i, "key", e.target.value)}
-              list={`attr-suggestions-${i}`}
-            />
-            <datalist id={`attr-suggestions-${i}`}>
-              {["Diameter", "Length", "Size", "Thickness", "Weight", "Grade", "Color"].map((k) => (
-                <option key={k} value={k} />
-              ))}
-            </datalist>
-            <input
-              className={`${inp} flex-1`}
-              placeholder="Value (e.g., 10mm, 5 Meter)"
-              title={`Value for ${attr.key || 'attribute'}`}
-              value={attr.value}
-              onChange={(e) => updateAttribute(i, "value", e.target.value)}
-            />
-            {attr.key.trim().toLowerCase() === "color" && (
-              <ColorPreview value={attr.value} />
-            )}
-            {attributes.length > 1 && (
-              <button
-                type="button"
-                onClick={() => removeAttribute(i)}
-                className="p-2 text-sb-ink/40 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                title="Remove attribute"
-                aria-label="Remove attribute"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        ))}
+      
+      <div className="bg-sb-cream-secondary p-3 rounded-lg border border-sb-ink/10">
+        <p className="text-xs font-semibold text-sb-ink mb-2">Attributes to be used:</p>
+        <ul className="space-y-1">
+          {variantAttributes.map(a => (
+            <li key={a.name} className="text-xs text-sb-ink/70">
+              <span className="font-medium text-sb-ink">{a.name}:</span> {a.values.join(", ")}
+            </li>
+          ))}
+        </ul>
       </div>
 
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={addAttribute}
-          className="flex items-center gap-1.5 text-sm text-sb-orange font-medium hover:text-sb-orange-hover transition-colors"
-        >
-          <Plus className="w-4 h-4" /> Add another attribute
-        </button>
-
-        {validAttributes.length > 0 && (
-          <button
-            type="button"
-            disabled={generating}
-            onClick={generate}
-            className="ml-auto flex items-center gap-2 bg-sb-orange hover:bg-sb-orange-hover text-white font-semibold px-5 py-2.5 rounded-lg text-sm disabled:opacity-60 transition-colors"
-          >
-            {generating ? (
-              <><Loader2 className="w-4 h-4 animate-spin" /> Adding...</>
-            ) : (
-              <><Plus className="w-4 h-4" /> Add Variant</>
-            )}
-          </button>
+      <button
+        type="button"
+        disabled={generating}
+        onClick={generate}
+        className="flex items-center justify-center w-full gap-2 bg-sb-orange hover:bg-sb-orange-hover text-white font-semibold px-5 py-2.5 rounded-lg text-sm disabled:opacity-60 transition-colors"
+      >
+        {generating ? (
+          <><Loader2 className="w-4 h-4 animate-spin" /> Generating...</>
+        ) : (
+          <><Zap className="w-4 h-4" /> Generate Variants</>
         )}
-      </div>
+      </button>
     </div>
   );
 }
@@ -384,6 +341,7 @@ export function ProductVariantManager({
   activeCities,
   variations,
   onVariationsChange,
+  attributes = [],
 }: Props) {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [draftConfigs, setDraftConfigs] = useState<Record<string, CityConfig[]>>({});
@@ -466,11 +424,12 @@ export function ProductVariantManager({
         </div>
       )}
 
-      {/* Add Variant Form */}
+      {/* Generate Variants Form */}
       <div className="border-t border-sb-ink/10 pt-6">
-        <AddVariantForm
+        <GenerateFromAttributes
           productId={productId}
-          onAdded={(newVars) => onVariationsChange([...variations, ...newVars])}
+          attributes={attributes}
+          onGenerated={(newVars) => onVariationsChange([...variations, ...newVars])}
         />
       </div>
     </div>

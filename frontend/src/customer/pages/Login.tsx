@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams, useLocation } from "react-router";
-import { Mail, Eye, EyeOff, Phone, Lock, ArrowRight, Loader2 } from "lucide-react";
+import { Mail, Eye, EyeOff, Lock, ArrowRight, Loader2 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { getApiV1Base } from "../../lib/apiBase";
 import { clearCustomerSession, setCustomerSession } from "../lib/authStorage";
@@ -8,7 +8,7 @@ import { CustomerAuthLayout } from "../components/CustomerAuthLayout";
 import { Button } from "@shared/components/ui/button";
 import { Input } from "@shared/components/ui/input";
 import { Label } from "@shared/components/ui/label";
-import { cn } from "@shared/components/ui/utils";
+
 
 type LoginEnvelope = {
   success: boolean;
@@ -57,13 +57,9 @@ export function Login() {
     (location.state as { from?: { pathname?: string } } | null)?.from?.pathname?.trim() || "";
   const resetToken = searchParams.get("token")?.trim() || "";
 
-  const [mode, setMode] = useState<"email" | "otp">("email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState("");
   const [showPass, setShowPass] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loginError, setLoginError] = useState("");
   const [verifyResendLoading, setVerifyResendLoading] = useState(false);
@@ -122,11 +118,6 @@ export function Login() {
     e.preventDefault();
     setLoginError("");
     setVerifyResendMsg("");
-
-    if (mode === "otp") {
-      setLoginError("Phone OTP sign-in is not available yet. Please use email and password.");
-      return;
-    }
 
     if (!email.trim() || !password) {
       setLoginError("Enter your email and password.");
@@ -440,36 +431,6 @@ export function Login() {
             </Link>
           </p>
 
-          <div className="mb-6 flex rounded-xl border border-[#1A1A1A]/10 bg-gray-50 p-1">
-            {(["email", "otp"] as const).map(m => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => {
-                  setMode(m);
-                  setLoginError("");
-                  setVerifyResendMsg("");
-                }}
-                className={cn(
-                  "flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all",
-                  mode === m
-                    ? "bg-[#E85A00] text-white shadow-sm"
-                    : "text-[#1A1A1A]/55 hover:text-[#1A1A1A]"
-                )}
-              >
-                {m === "email" ? (
-                  <>
-                    <Mail className="h-3.5 w-3.5" /> Email
-                  </>
-                ) : (
-                  <>
-                    <Phone className="h-3.5 w-3.5" /> OTP
-                  </>
-                )}
-              </button>
-            ))}
-          </div>
-
           <form onSubmit={handleLogin} className="space-y-4">
             {loginError && (
               <div className="rounded-lg border border-[#1A1A1A]/15 bg-gray-50 px-3 py-2 text-sm text-[#1A1A1A]/85">
@@ -477,126 +438,83 @@ export function Login() {
               </div>
             )}
 
-            {mode === "email" ? (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-xs font-semibold uppercase tracking-wider text-[#1A1A1A]/55">
-                    Email
-                  </Label>
-                  <div className="relative">
-                    <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#1A1A1A]/40" />
-                    <Input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      placeholder="you@company.com"
-                      autoComplete="email"
-                      className="h-11 border-[#1A1A1A]/12 bg-gray-50 pl-10 text-[#1A1A1A] placeholder:text-[#1A1A1A]/40 focus-visible:border-[#E85A00] focus-visible:ring-[#E85A00]/25"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="password" className="text-xs font-semibold uppercase tracking-wider text-[#1A1A1A]/55">
-                      Password
-                    </Label>
-                    <Link to="/forgot-password" className="text-xs font-semibold text-[#E85A00] hover:text-[#CC4E00]">
-                      Forgot password?
-                    </Link>
-                  </div>
-                  <div className="relative">
-                    <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#1A1A1A]/40" />
-                    <Input
-                      id="password"
-                      type={showPass ? "text" : "password"}
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      placeholder="Enter password"
-                      autoComplete="current-password"
-                      className="h-11 border-[#1A1A1A]/12 bg-gray-50 pl-10 pr-10 text-[#1A1A1A] placeholder:text-[#1A1A1A]/40 focus-visible:border-[#E85A00] focus-visible:ring-[#E85A00]/25"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPass(!showPass)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#1A1A1A]/45 hover:text-[#1A1A1A]"
-                    >
-                      {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-xs font-semibold uppercase tracking-wider text-[#1A1A1A]/55">
+                Email
+              </Label>
+              <div className="relative">
+                <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#1A1A1A]/40" />
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="you@company.com"
+                  autoComplete="email"
+                  className="h-11 border-[#1A1A1A]/12 bg-gray-50 pl-10 text-[#1A1A1A] placeholder:text-[#1A1A1A]/40 focus-visible:border-[#E85A00] focus-visible:ring-[#E85A00]/25"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-xs font-semibold uppercase tracking-wider text-[#1A1A1A]/55">
+                  Password
+                </Label>
+                <Link to="/forgot-password" className="text-xs font-semibold text-[#E85A00] hover:text-[#CC4E00]">
+                  Forgot password?
+                </Link>
+              </div>
+              <div className="relative">
+                <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#1A1A1A]/40" />
+                <Input
+                  id="password"
+                  type={showPass ? "text" : "password"}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="Enter password"
+                  autoComplete="current-password"
+                  className="h-11 border-[#1A1A1A]/12 bg-gray-50 pl-10 pr-10 text-[#1A1A1A] placeholder:text-[#1A1A1A]/40 focus-visible:border-[#E85A00] focus-visible:ring-[#E85A00]/25"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPass(!showPass)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#1A1A1A]/45 hover:text-[#1A1A1A]"
+                >
+                  {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
 
-                {isUnverifiedCustomerError(loginError) && (
-                  <div className="rounded-lg border border-[#E85A00]/25 bg-[#FFF7ED] px-3 py-3 text-sm text-[#1A1A1A]/90 space-y-2">
-                    <p className="leading-relaxed text-[#1A1A1A]/85">
-                      ईमेल में लिंक नहीं मिला? Spam देखें, या नीचे Resend दबाएँ।
-                    </p>
-                    {verifyResendMsg ? (
-                      <p className="text-xs whitespace-pre-line text-[#1A1A1A]/80">{verifyResendMsg}</p>
-                    ) : null}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={verifyResendLoading}
-                      className="w-full h-10 border-[#1A1A1A]/20 text-[#1A1A1A]"
-                      onClick={() => void handleResendVerification()}
-                    >
-                      {verifyResendLoading ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin mr-2 inline" />
-                          Sending…
-                        </>
-                      ) : (
-                        "Resend verification email"
-                      )}
-                    </Button>
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-[#1A1A1A]/55">Mobile</Label>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#1A1A1A]/40" />
-                      <Input
-                        type="tel"
-                        value={phone}
-                        onChange={e => setPhone(e.target.value)}
-                        placeholder="+91 98765 43210"
-                        className="h-11 border-[#1A1A1A]/12 bg-gray-50 pl-10 text-[#1A1A1A] placeholder:text-[#1A1A1A]/40 focus-visible:border-[#E85A00] focus-visible:ring-[#E85A00]/25"
-                      />
-                    </div>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="h-11 shrink-0 px-4 font-semibold"
-                      onClick={() => setOtpSent(true)}
-                    >
-                      {otpSent ? "Resend" : "Send OTP"}
-                    </Button>
-                  </div>
-                </div>
-                {otpSent && (
-                  <div className="space-y-2">
-                    <Label className="text-xs font-semibold uppercase tracking-wider text-[#1A1A1A]/55">OTP</Label>
-                    <Input
-                      type="text"
-                      value={otp}
-                      onChange={e => setOtp(e.target.value)}
-                      placeholder="6-digit code"
-                      maxLength={6}
-                      className="h-11 border-[#1A1A1A]/12 bg-gray-50 text-center tracking-[0.35em] text-[#1A1A1A] focus-visible:border-[#E85A00] focus-visible:ring-[#E85A00]/25"
-                    />
-                  </div>
-                )}
-              </>
+            {isUnverifiedCustomerError(loginError) && (
+              <div className="rounded-lg border border-[#E85A00]/25 bg-[#FFF7ED] px-3 py-3 text-sm text-[#1A1A1A]/90 space-y-2">
+                <p className="leading-relaxed text-[#1A1A1A]/85">
+                  ईमेल में लिंक नहीं मिला? Spam देखें, या नीचे Resend दबाएँ।
+                </p>
+                {verifyResendMsg ? (
+                  <p className="text-xs whitespace-pre-line text-[#1A1A1A]/80">{verifyResendMsg}</p>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={verifyResendLoading}
+                  className="w-full h-10 border-[#1A1A1A]/20 text-[#1A1A1A]"
+                  onClick={() => void handleResendVerification()}
+                >
+                  {verifyResendLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2 inline" />
+                      Sending…
+                    </>
+                  ) : (
+                    "Resend verification email"
+                  )}
+                </Button>
+              </div>
             )}
 
             <Button type="submit" disabled={loading} className="mt-2 h-11 w-full gap-2 text-base font-semibold shadow-md">
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              {loading ? "Signing in…" : mode === "otp" && !otpSent ? "Send OTP" : "Sign in"}
+              {loading ? "Signing in…" : "Sign in"}
               {!loading ? <ArrowRight className="h-4 w-4" /> : null}
             </Button>
           </form>

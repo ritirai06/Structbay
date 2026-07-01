@@ -47,7 +47,6 @@ const FULLSCREEN_ROUTES = [
   "/forgot-password",
   "/reset-password",
   "/verify-email",
-  "/account",
 ];
 
 function RouteFallback() {
@@ -132,9 +131,11 @@ function MarketplaceLayout() {
   if (isFullscreen) {
     return (
       <div className="sb-storefront min-h-screen">
-        <Suspense fallback={<RouteFallback />}>
-          <Outlet />
-        </Suspense>
+        <BulkEnquiryModalProvider>
+          <Suspense fallback={<RouteFallback />}>
+            <Outlet />
+          </Suspense>
+        </BulkEnquiryModalProvider>
       </div>
     );
   }
@@ -180,7 +181,9 @@ function RootLayout() {
 
   return (
     <AppProvider>
-      <Outlet />
+      <BulkEnquiryModalProvider>
+        <Outlet />
+      </BulkEnquiryModalProvider>
     </AppProvider>
   );
 }
@@ -234,6 +237,13 @@ const router = createBrowserRouter([
               return { Component: Checkout };
             },
           },
+          {
+            path: "payment-mock",
+            lazy: async () => {
+              const { MockPaymentGateway } = await import("./customer/pages/MockPaymentGateway");
+              return { Component: MockPaymentGateway };
+            },
+          },
           { path: "order-success", Component: OrderSuccess },
           { path: "orders/:id", Component: OrderTracking },
           { path: "rfq", Component: RFQ },
@@ -251,6 +261,21 @@ const router = createBrowserRouter([
           { path: "lp/:slug", Component: LandingPage },
           { path: "tools/cement-calculator", Component: ToolsQuantityEstimator },
           { path: "tools/cement-estimator", element: <Navigate to="/tools/cement-calculator" replace /> },
+
+          {
+            path: "projects",
+            lazy: async () => {
+              const module = await import("./customer/pages/MyProjects");
+              return { Component: module.default || module };
+            },
+          },
+          {
+            path: "projects/:id",
+            lazy: async () => {
+              const module = await import("./customer/pages/ProjectDetails");
+              return { Component: module.default || module };
+            },
+          },
 
           {
             path: "account",

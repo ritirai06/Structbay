@@ -9,6 +9,7 @@ import { AdminDeleteConfirmModal } from "../components/AdminDeleteConfirmModal";
 import { useAdminDeleteFlow } from "../hooks/useAdminDeleteFlow";
 import { ProductCityConfig } from "../components/ProductCityConfig";
 import { ProductVariantManager } from "../components/ProductVariantManager";
+import { ProductAttributesManager, type ProductAttribute } from "../components/ProductAttributesManager";
 import { ProductRelationshipManager } from "../components/ProductRelationshipManager";
 import {
   type ActiveCity,
@@ -47,6 +48,7 @@ const emptyForm = {
   returnExchangePolicy: emptyReturnExchangePolicy,
   videos: [] as { title: string; url: string }[],
   documents: [] as { name: string; url: string }[],
+  attributes: [] as ProductAttribute[],
 };
 
 function normalizeReturnExchangePolicy(raw: unknown) {
@@ -232,7 +234,7 @@ export function AddProduct() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEdit);
   const [newFaq, setNewFaq] = useState({ question: "", answer: "" });
-  const [tab, setTab] = useState<"info" | "cities" | "media" | "variations" | "seo" | "faqs" | "policy" | "relationships">("info");
+  const [tab, setTab] = useState<"info" | "cities" | "media" | "attributes" | "variations" | "seo" | "faqs" | "policy" | "relationships">("info");
   const [activeCities, setActiveCities] = useState<ActiveCity[]>([]);
   const [cityConfigs, setCityConfigs] = useState<CityConfig[]>([]);
   const [dirty, setDirty] = useState(false);
@@ -252,7 +254,7 @@ export function AddProduct() {
 
   useEffect(() => {
     const tabFromState = (location.state as { tab?: string } | null)?.tab;
-    const allowed = ["info", "cities", "media", "variations", "seo", "faqs", "policy", "relationships"] as const;
+    const allowed = ["info", "cities", "media", "attributes", "variations", "seo", "faqs", "policy", "relationships"] as const;
     if (tabFromState && (allowed as readonly string[]).includes(tabFromState)) {
       setTab(tabFromState as typeof tab);
     }
@@ -392,6 +394,7 @@ export function AddProduct() {
             seo: p.seo || { metaTitle: "", metaDescription: "", metaKeywords: [] },
             faqs: p.faqs || [], videos: p.videos || [], documents: p.documents || [],
             returnExchangePolicy: normalizeReturnExchangePolicy(p.returnExchangePolicy),
+            attributes: p.attributes || [],
           },
           variations: p.variations || [],
           upsellProducts: p.upsellProducts || [],
@@ -414,6 +417,7 @@ export function AddProduct() {
           seo: p.seo || { metaTitle: "", metaDescription: "", metaKeywords: [] },
           faqs: p.faqs || [], videos: p.videos || [], documents: p.documents || [],
           returnExchangePolicy: normalizeReturnExchangePolicy(p.returnExchangePolicy),
+          attributes: p.attributes || [],
         });
         setVariations(p.variations || []);
         setUpsellProducts(p.upsellProducts || []);
@@ -659,6 +663,7 @@ export function AddProduct() {
       { key: "info", label: "General" },
       { key: "cities", label: "Pricing & Inventory", simpleOnly: true },
       { key: "media", label: "Media" },
+      { key: "attributes", label: "Attributes" },
       { key: "variations", label: "Variants", variantOnly: true },
       { key: "relationships", label: "Recommendations", editOnly: true },
       { key: "seo", label: "SEO" },
@@ -976,6 +981,16 @@ export function AddProduct() {
             </Section>
           )}
 
+          {/* Attributes */}
+          {tab === "attributes" && (
+            <Section title="Product Attributes">
+              <ProductAttributesManager
+                attributes={form.attributes}
+                onChange={(attributes) => set("attributes", attributes)}
+              />
+            </Section>
+          )}
+
           {/* Variations */}
           {tab === "variations" && form.productStructure === "variant" && (
             <Section title="Variant configuration">
@@ -999,6 +1014,7 @@ export function AddProduct() {
                     activeCities={activeCities}
                     variations={variations}
                     onVariationsChange={setVariations}
+                    attributes={form.attributes}
                   />
                 </>
               )}

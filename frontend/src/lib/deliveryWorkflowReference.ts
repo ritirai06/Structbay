@@ -27,7 +27,8 @@ export const STRUCTBAY_DELIVERY_FLOW: FlowRow[] = [
 
 export const CUSTOMER_MILESTONE_LABELS = [
   "Order placed",
-  "Order processing",
+  "Order confirmed",
+  "Processing",
   "Out for delivery",
   "Partial delivered",
   "Full delivery complete",

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useLocation } from "react-router";
 import { ChevronRight, MapPin, Building2, CreditCard, Shield, AlertCircle, CheckCircle2, Plus, Minus } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { api } from "../lib/api";
@@ -17,6 +17,8 @@ import {
 export function Checkout() {
   const { cart, city, cityId, isLoggedIn, clearClientCart, updateQty } = useApp();
   const navigate = useNavigate();
+  const location = useLocation();
+  const appliedCoupon = location.state?.coupon || null;
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -97,7 +99,10 @@ export function Checkout() {
     address: "",
     deliveryCity: city || "",
     pincode: "",
-    paymentMethod: "online",
+    paymentMethod: "mock_zoho",
+    deliveryContactName: "",
+    deliveryPhone: "",
+    deliveryInstructions: "",
   });
   const [cityError, setCityError] = useState(false);
   const [deliveryCityNames, setDeliveryCityNames] = useState<string[]>([]);
@@ -108,8 +113,8 @@ export function Checkout() {
   const [orderError, setOrderError] = useState<string | null>(null);
 
   const summary = useMemo(
-    () => buildCartSummaryFromLines(cart, "exclusive"),
-    [cart]
+    () => buildCartSummaryFromLines(cart, "exclusive", appliedCoupon),
+    [cart, appliedCoupon]
   );
   const total = summary.total;
 
@@ -242,15 +247,20 @@ export function Checkout() {
       const res = await api.placeOrder({
         cityId: resolvedWarehouseCityId,
         shippingAddress: {
-          name: form.contactName.trim(),
-          phone: form.phone.trim(),
+          name: form.deliveryContactName.trim() || form.contactName.trim(),
+          phone: form.deliveryPhone.trim() || form.phone.trim(),
           line1: form.address.trim(),
           line2: line2 || undefined,
           city: form.deliveryCity.trim(),
           state: "",
           pincode: digits,
         },
+        notes: form.deliveryInstructions.trim() || undefined,
         paymentMethod: form.paymentMethod,
+        appliedCoupon: appliedCoupon ? {
+          code: appliedCoupon.code,
+          discountValue: summary.discount
+        } : undefined,
         ...(savedAddressId ? { addressId: savedAddressId } : {}),
       });
       const order = res?.data as { _id?: string; id?: string; orderNumber?: string } | undefined;
@@ -259,10 +269,9 @@ export function Checkout() {
         throw new Error("Order response was incomplete. Check My Orders or try again.");
       }
       clearClientCart();
-      navigate(
-        { pathname: "/order-success", search: `?orderId=${encodeURIComponent(String(placedId))}` },
-        { state: { order: { ...order, _id: String(placedId) } } }
-      );
+      navigate(`/payment-mock?orderId=${encodeURIComponent(String(placedId))}`, {
+        state: { order: { ...order, _id: String(placedId) } }
+      });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Could not place order.";
       if (/sign in again|session has expired/i.test(msg)) {
@@ -364,6 +373,28 @@ export function Checkout() {
                 <MapPin className="w-5 h-5" style={{ color: "var(--sb-orange)" }} /> Delivery Address
               </h3>
               <div className="space-y-4">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1.5">Receiver's Name (Optional)</label>
+                    <input
+                      type="text"
+                      value={form.deliveryContactName}
+                      onChange={e => update("deliveryContactName", e.target.value)}
+                      placeholder="Same as billing if empty"
+                      className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-input-background focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1.5">Receiver's Phone (Optional)</label>
+                    <input
+                      type="text"
+                      value={form.deliveryPhone}
+                      onChange={e => update("deliveryPhone", e.target.value)}
+                      placeholder="Same as billing if empty"
+                      className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-input-background focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                  </div>
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1.5">Full Address</label>
                   <textarea
@@ -422,6 +453,16 @@ export function Checkout() {
                     )}
                   </div>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">Delivery Instructions (Optional)</label>
+                  <textarea
+                    value={form.deliveryInstructions}
+                    onChange={e => update("deliveryInstructions", e.target.value)}
+                    placeholder="e.g. Call before delivery, drop at gate..."
+                    rows={2}
+                    className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-input-background focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -432,27 +473,9 @@ export function Checkout() {
               <h3 className="font-semibold flex items-center gap-2 mb-4">
                 <CreditCard className="w-5 h-5" style={{ color: "var(--sb-orange)" }} /> Payment Method
               </h3>
-              <div className="space-y-3">
-                {[
-                  { id: "online", label: "Online Payment (UPI, Cards, NetBanking)", sub: "Powered by Zoho Payments" },
-                  { id: "credit", label: "Buy on Credit", sub: "Pay within 30 days (StructBay Finance)" },
-                  { id: "cod", label: "Cash on Delivery", sub: "For orders below ₹50,000" },
-                ].map(opt => (
-                  <label key={opt.id} className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-colors ${form.paymentMethod === opt.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}>
-                    <input
-                      type="radio"
-                      name="payment"
-                      value={opt.id}
-                      checked={form.paymentMethod === opt.id}
-                      onChange={() => update("paymentMethod", opt.id)}
-                      className="mt-0.5"
-                    />
-                    <div>
-                      <p className="font-medium text-sm">{opt.label}</p>
-                      <p className="text-xs text-muted-foreground">{opt.sub}</p>
-                    </div>
-                  </label>
-                ))}
+              <div className="p-4 rounded-xl border-2 border-primary bg-primary/5">
+                <p className="font-medium text-sm text-foreground">Secure Online Payment</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Powered by Zoho Payments</p>
               </div>
 
               <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground bg-muted rounded-xl p-3">
@@ -460,8 +483,18 @@ export function Checkout() {
                 Your payment is secured by 256-bit SSL encryption. We never store card details.
               </div>
               <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
-                Checkout collects the <strong className="text-foreground">full order value in one payment</strong> via Zoho Payments when you pay online (no partial payments). Status will appear as Pending until the gateway confirms Paid or Failed.
+                You will be redirected to our secure payment gateway to complete your purchase.
               </p>
+
+              <div className="mt-6 border border-border rounded-xl p-5 bg-orange-50/50">
+                <h4 className="font-semibold text-sm mb-2 text-foreground">Looking for finance options?</h4>
+                <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+                  Get in touch with StructBay Finance to explore financing solutions for your purchase.
+                </p>
+                <Link to="/finance" className="inline-block text-xs font-medium text-orange-600 hover:text-orange-700 underline underline-offset-4">
+                  Contact StructBay Finance
+                </Link>
+              </div>
             </div>
           )}
         </div>
@@ -510,10 +543,10 @@ export function Checkout() {
                           </div>
                         </div>
                         <p className="text-xs font-bold mt-1 tabular-nums" style={{ color: "var(--sb-orange)" }}>
-                          ₹{display.lineTotal.toLocaleString("en-IN")}
+                          ₹{display.lineTotal.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
                         </p>
                         <p className="text-[10px] text-muted-foreground">
-                          @ ₹{display.unitPrice.toLocaleString("en-IN")} / {item.unit} · {display.priceSuffix}
+                          @ ₹{display.unitPrice.toLocaleString("en-IN", { maximumFractionDigits: 2 })} / {item.unit} · {display.priceSuffix}
                         </p>
                       </div>
                     </div>
@@ -533,12 +566,13 @@ export function Checkout() {
                 )}
                 <button
                   type="button"
-                  disabled={placingOrder}
                   onClick={() => void handlePlaceOrder()}
+                  disabled={placingOrder}
+                  className="w-full text-white px-5 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2"
                   style={{ backgroundColor: "var(--sb-orange)" }}
-                  className="w-full mt-5 py-3.5 rounded-2xl text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-60 disabled:pointer-events-none"
                 >
-                  {placingOrder ? "Placing order…" : `Place Order ₹${total.toLocaleString("en-IN")}`}
+                  {placingOrder ? "Preparing Payment..." : "Proceed to Secure Payment"}
+                  <ChevronRight className="w-5 h-5" />
                 </button>
                 <p className="text-center text-xs text-muted-foreground mt-3">
                   By placing the order, you agree to our{" "}

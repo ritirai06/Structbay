@@ -23,6 +23,7 @@ import { ReportsAnalytics } from "./pages/ReportsAnalytics";
 import { AuditLogs } from "./pages/AuditLogs";
 import { Settings } from "./pages/Settings";
 import { AdminUsers } from "./pages/AdminUsers";
+import { CouponManagement } from "./pages/CouponManagement";
 
 export const router = createBrowserRouter([
   {
@@ -52,6 +53,7 @@ export const router = createBrowserRouter([
       { path: "finance-leads", Component: FinanceLeadsManagement },
       { path: "customers", Component: CustomerManagement },
       { path: "cms", Component: CMSManagement },
+      { path: "coupons", Component: CouponManagement },
       { path: "reports", Component: ReportsAnalytics },
       { path: "audit-logs", Component: AuditLogs },
       { path: "settings", Component: Settings },

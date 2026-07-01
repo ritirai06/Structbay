@@ -19,7 +19,11 @@ function normalizeVariationAttributes(input) {
   const attrs = input?.attributes;
   if (!attrs || typeof attrs !== 'object') return out;
 
-  for (const [k, v] of Object.entries(attrs)) {
+  // Handle both Maps (Mongoose) and standard objects
+  const isMap = typeof attrs.entries === 'function' && typeof attrs.get === 'function';
+  const entries = isMap ? Array.from(attrs.entries()) : Object.entries(attrs);
+
+  for (const [k, v] of entries) {
     if (k === 'custom' && Array.isArray(v)) {
       for (const c of v) {
         const name = String(c?.key || c?.name || '').trim();
@@ -114,27 +118,12 @@ function buildVariationAttributeValueMatch(key, vals) {
 }
 
 function packageAttributesForSave(flatAttributes) {
-  const structured = {
-    weight: null,
-    grade: null,
-    size: null,
-    thickness: null,
-    length: null,
-    color: null,
-    finish: null,
-    diameter: null,
-    custom: []
-  };
-
+  const structured = {};
   if (!flatAttributes || typeof flatAttributes !== 'object') return structured;
 
   for (const [k, v] of Object.entries(flatAttributes)) {
-    if (v == null || String(v).trim() === '') continue;
-    const lowerKey = k.toLowerCase().trim();
-    if (FIXED_LEGACY_KEYS.includes(lowerKey)) {
-      structured[lowerKey] = String(v).trim();
-    } else {
-      structured.custom.push({ key: k.trim(), value: String(v).trim() });
+    if (v != null && String(v).trim() !== '') {
+      structured[k.trim()] = String(v).trim();
     }
   }
   return structured;

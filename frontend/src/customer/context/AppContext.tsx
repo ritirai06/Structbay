@@ -28,6 +28,8 @@ export interface CartItem {
   pricingSnapshot?: PricingSnapshot | null;
   /** Product GST % (ex-GST line → GST). Defaults to 18 in totals if omitted. */
   gstPercentage?: number;
+  /** Whether GST is inclusive or exclusive in the provided price. */
+  gstType?: "inclusive" | "exclusive";
 }
 
 /** Serviceable city from admin / DB — drives warehouse pricing via `cityId` on APIs. */
@@ -82,6 +84,7 @@ function readStoredCart(): CartItem[] {
         image: typeof o.image === "string" ? o.image : "",
         pricingSnapshot: parseStoredPricingSnapshot(o.pricingSnapshot),
         gstPercentage,
+        gstType: o.gstType === "inclusive" || o.gstType === "exclusive" ? o.gstType : undefined,
       });
     }
     return out;

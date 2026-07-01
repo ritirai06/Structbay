@@ -26,7 +26,7 @@ export function displayPriceMeta(
 ): string {
   const unit = product?.unit || "unit";
   const pct = productGstPct(product);
-  const gstPart = productPriceIncludesGst(product) ? `incl. ${pct}% GST` : "excl. GST";
+  const gstPart = productPriceIncludesGst(product) ? `incl. ${pct}% GST` : `excl. ${pct}% GST`;
   const base = `per ${unit} · ${gstPart}`;
   return extra ? `${base} · ${extra}` : base;
 }
