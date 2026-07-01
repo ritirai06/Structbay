@@ -4,7 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Shield, Zap, ChevronRight, Star, ArrowRight,
   Truck, HeadphonesIcon, Building2, ShoppingCart,
-  TrendingUp, FileText, Calculator,
+  TrendingUp, Calculator,
   ChevronLeft, MapPin, LayoutGrid, X,
   Package, PaintBucket, Grid3x3, PlugZap, Droplets,
   PanelsTopLeft, Wrench, Hammer, FlaskConical, Fan,
@@ -24,7 +24,6 @@ import {
 import { TopSellingProductsCarousel } from "../components/TopSellingProductsCarousel";
 import { ListingProductCard } from "../components/ListingProductCard";
 import { FeaturedBrandsMarquee } from "../components/FeaturedBrandsMarquee";
-import { ConcreteRFQModal } from "../components/ConcreteRFQModal";
 import { productHref } from "../lib/productRoutes";
 import { isVariantProduct, validateCartLine } from "../lib/productStructure";
 import { useCmsPageSeo } from "../hooks/useCmsPageSeo";
@@ -943,7 +942,6 @@ export function Homepage() {
   useCmsPageSeo("home");
   const { city, cityId, cart, addToCart, updateQty } = useApp();
   const { openBulkEnquiry } = useBulkEnquiryModal();
-  const [concreteRFQOpen, setConcreteRFQOpen] = useState(false);
   const [varChoice, setVarChoice] = useState<Record<string, string>>({});
 
   const [banners, setBanners]           = useState<any[]>([]);
@@ -1104,7 +1102,6 @@ export function Homepage() {
 
   return (
     <div className="min-h-screen">
-      <ConcreteRFQModal open={concreteRFQOpen} onClose={() => setConcreteRFQOpen(false)} />
       {announcementsReady && announcements.length > 0 && (
         <div
           className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6"
@@ -1327,9 +1324,9 @@ export function Homepage() {
 
      
 
-      {/* â”€â”€ CTA Banners Row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── CTA Banners Row ──────────────────────────────────────────────────────────────── */}
       <section
-        className="max-w-7xl mx-auto px-5 lg:px-6 py-12 grid gap-5 md:grid-cols-3"
+        className="max-w-7xl mx-auto px-5 lg:px-6 py-12 grid gap-5 md:grid-cols-2"
       >
         <div className="bg-white border border-black/10 rounded-2xl p-6 flex flex-col justify-between hover:border-[#E85A00]/40 transition-colors shadow-sm">
           <div>
@@ -1347,32 +1344,24 @@ export function Homepage() {
         </div>
         <div className="bg-white border border-black/10 rounded-2xl p-6 flex flex-col justify-between hover:border-[#E85A00]/40 transition-colors shadow-sm">
           <div>
-            <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4 bg-[#E85A00]/15 border border-[#E85A00]/20"><FileText className="w-5 h-5 text-[#E85A00]" /></div>
-            <h3 className="text-sb-ink mb-2">Concrete RFQ</h3>
-            <p className="text-sb-ink-muted/60 text-sm">Get instant quotes for Ready Mix Concrete. Specify grade, quantity, and delivery address.</p>
+            <div className="flex items-start justify-between mb-4">
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-[#E85A00]/15 border border-[#E85A00]/20">
+                <Calculator className="w-5 h-5 text-[#E85A00]" />
+              </div>
+              <span className="inline-flex items-center text-[10px] font-bold px-2.5 py-0.5 bg-amber-100 text-amber-800 rounded-full uppercase tracking-wider">
+                Coming Soon
+              </span>
+            </div>
+            <h3 className="text-sb-ink mb-2">Quantity Estimator</h3>
+            <p className="text-sb-ink-muted/60 text-sm">Estimate construction material quantities with ease.</p>
           </div>
           <button
             type="button"
-            onClick={() => setConcreteRFQOpen(true)}
-            className="mt-5 inline-flex items-center gap-2 bg-transparent border border-[#E85A00]/50 hover:bg-[#E85A00] text-[#E85A00] hover:text-sb-on-orange px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
+            disabled
+            className="mt-5 inline-flex items-center gap-2 bg-gray-100 text-gray-400 border border-gray-200 px-4 py-2.5 rounded-xl text-sm font-bold cursor-not-allowed w-fit"
           >
-            Get Concrete Quote <ArrowRight className="w-4 h-4" />
+            Coming Soon
           </button>
-        </div>
-        <div className="bg-white border border-black/10 rounded-2xl p-6 flex flex-col justify-between hover:border-[#E85A00]/40 transition-colors shadow-sm">
-          <div>
-            <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4 bg-[#E85A00]/15 border border-[#E85A00]/20">
-              <Calculator className="w-5 h-5 text-[#E85A00]" />
-            </div>
-            <h3 className="text-sb-ink mb-2">Cement Calculator</h3>
-            <p className="text-sb-ink-muted/60 text-sm">Estimate the cement quantity required for your construction project instantly. Get accurate material estimates before placing your order.</p>
-          </div>
-          <Link
-            to="/tools/cement-calculator"
-            className="mt-5 inline-flex items-center gap-2 bg-[#E85A00] hover:bg-[#CC4E00] text-sb-on-orange px-4 py-2.5 rounded-xl text-sm font-bold transition-colors"
-          >
-            Open Calculator <ArrowRight className="w-4 h-4" />
-          </Link>
         </div>
       </section>
 
