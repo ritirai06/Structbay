@@ -493,10 +493,10 @@ export function Header() {
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48 bg-white border border-gray-100 shadow-xl rounded-xl p-1 z-50">
-                      <DropdownMenuItem asChild className="rounded-lg hover:bg-orange-50 focus:bg-orange-50 cursor-pointer">
-                        <Link to="/tools/cement-calculator" className="flex items-center w-full px-3 py-2 text-sm text-gray-800">
-                          Cement Calculator
-                        </Link>
+                      <DropdownMenuItem className="rounded-lg opacity-50 cursor-not-allowed">
+                        <span className="flex items-center w-full px-3 py-2 text-sm text-gray-800">
+                          Quantity Estimator (Coming Soon)
+                        </span>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild className="rounded-lg hover:bg-orange-50 focus:bg-orange-50 cursor-pointer">
                         <button onClick={() => openBulkEnquiry()} className="flex items-center w-full px-3 py-2 text-sm text-gray-800">
@@ -799,9 +799,9 @@ export function Header() {
 
               <p className="text-xs font-bold uppercase tracking-wider mb-2 mt-4 text-white/50">Menu</p>
               <Link to="/blogs" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-white">Blog</Link>
-              <Link to="/tools/cement-calculator" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-white">
-                Cement calculator
-              </Link>
+              <span className="block py-2 text-sm text-white/50 cursor-not-allowed">
+                Quantity estimator (Coming soon)
+              </span>
               <button
                 type="button"
                 onClick={() => { openBulkEnquiry(); setMenuOpen(false); }}
