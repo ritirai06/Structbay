@@ -204,7 +204,7 @@ app.use(`${V1}/customer/projects`,  projectRoutes);
 // ─── Swagger UI (admin-only in production) ──────────────────────────────────────────────
 if (process.env.NODE_ENV !== 'production') {
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-    customSiteTitle: 'StructBay API Docs',
+    customSiteTitle: 'Structbay API Docs',
     swaggerOptions: { persistAuthorization: true },
   }));
   app.get('/api-docs.json', (req, res) => res.json(swaggerSpec));
@@ -218,7 +218,7 @@ app.get('/', (req, res) => {
   }
   res.json({
     success: true,
-    message: 'StructBay API is running',
+    message: 'Structbay API is running',
     version: '1.0.0',
     docs: `${req.protocol}://${req.get('host')}${V1}/health`,
   });

@@ -29,7 +29,7 @@ const interpolate = (text = '', vars = {}) =>
 // ─── Transporter ──────────────────────────────────────────────────────────────
 
 const buildTransporter = () => {
-  const host    = trim(process.env.SMTP_HOST);
+  const host = trim(process.env.SMTP_HOST);
   const smtpUser = trim(process.env.SMTP_USER);
   const smtpPass = trim(process.env.SMTP_PASS);
   const gmailUser = trim(process.env.GMAIL_USER);
@@ -38,7 +38,7 @@ const buildTransporter = () => {
   const authPass = smtpPass || gmailPass;
 
   if (host && authUser && authPass) {
-    const port   = parseInt(String(trim(process.env.SMTP_PORT) || '587'), 10) || 587;
+    const port = parseInt(String(trim(process.env.SMTP_PORT) || '587'), 10) || 587;
     const secure = String(trim(process.env.SMTP_SECURE)).toLowerCase() === 'true';
     if (/gmail\.com/i.test(host) && !/@(gmail\.com|googlemail\.com)$/i.test(authUser)) {
       logger.warn(
@@ -84,7 +84,7 @@ const getEmailBranding = async () => {
     if (fs.existsSync(logoPath)) {
       defaultLogo = `data:image/png;base64,${fs.readFileSync(logoPath).toString('base64')}`;
     }
-  } catch (e) {}
+  } catch (e) { }
 
   const exactDesc = "StructBay combines the reliability of branded materials, the power of affordable pricing, and the ease of single-window sourcing — everything you need to finish projects faster and better.";
 
@@ -94,35 +94,35 @@ const getEmailBranding = async () => {
     const footer = cms.footer || {};
     const base = trim(process.env.FRONTEND_URL) || 'http://localhost:3000';
     return {
-      siteUrl:       base.replace(/\/$/, ''),
-      companyName:   'StructBay',
-      logoUrl:       trim(cms.brandLogoUrl) || defaultLogo,
-      address:       trim(footer.address)   || 'Vidyaranyapura, Bengaluru',
-      phone:         trim(footer.phone)     || '+91 70905 70505',
-      email:         trim(footer.email)     || 'hello@structbay.com',
-      copyright:     trim(footer.copyrightText) || `© ${new Date().getFullYear()} StructBay. All Rights Reserved.`,
-      description:   trim(footer.companyDescription) || exactDesc,
+      siteUrl: base.replace(/\/$/, ''),
+      companyName: 'StructBay',
+      logoUrl: trim(cms.brandLogoUrl) || defaultLogo,
+      address: trim(footer.address) || 'Vidyaranyapura, Bengaluru',
+      phone: trim(footer.phone) || '+91 70905 70505',
+      email: trim(footer.email) || 'hello@structbay.com',
+      copyright: trim(footer.copyrightText) || `© ${new Date().getFullYear()} StructBay. All Rights Reserved.`,
+      description: trim(footer.companyDescription) || exactDesc,
       social: {
-        facebook:  trim(footer.socialLinks?.facebook),
+        facebook: trim(footer.socialLinks?.facebook),
         instagram: trim(footer.socialLinks?.instagram),
-        twitter:   trim(footer.socialLinks?.twitter),
-        linkedin:  trim(footer.socialLinks?.linkedin),
-        youtube:   trim(footer.socialLinks?.youtube),
+        twitter: trim(footer.socialLinks?.twitter),
+        linkedin: trim(footer.socialLinks?.linkedin),
+        youtube: trim(footer.socialLinks?.youtube),
       },
     };
   } catch (err) {
     logger.warn(`Email branding load failed (using defaults): ${err.message}`);
     const base = trim(process.env.FRONTEND_URL) || 'http://localhost:3000';
     return {
-      siteUrl:     base.replace(/\/$/, ''),
+      siteUrl: base.replace(/\/$/, ''),
       companyName: 'StructBay',
-      logoUrl:     defaultLogo,
-      address:     'Vidyaranyapura, Bengaluru',
-      phone:       '+91 70905 70505',
-      email:       'hello@structbay.com',
-      copyright:   `© ${new Date().getFullYear()} StructBay. All Rights Reserved.`,
+      logoUrl: defaultLogo,
+      address: 'Vidyaranyapura, Bengaluru',
+      phone: '+91 70905 70505',
+      email: 'hello@structbay.com',
+      copyright: `© ${new Date().getFullYear()} StructBay. All Rights Reserved.`,
       description: exactDesc,
-      social:      {},
+      social: {},
     };
   }
 };
@@ -232,8 +232,8 @@ const masterTemplate = ({ title, greeting, bodyHtml, cta, branding }) => {
             <div style="margin-bottom:14px;">
               <a href="${esc(siteUrl)}" target="_blank" style="text-decoration:none;">
                 ${logoUrl
-                  ? `<img src="${esc(logoUrl)}" alt="${esc(companyName)}" style="max-height:36px;max-width:140px;display:block;margin:0 auto;" />`
-                  : `<span style="font-size:20px;font-weight:900;color:#E85A00;font-family:Arial,sans-serif;letter-spacing:-1px;">Struct<span style="color:#ffffff;">Bay</span></span>`}
+      ? `<img src="${esc(logoUrl)}" alt="${esc(companyName)}" style="max-height:36px;max-width:140px;display:block;margin:0 auto;" />`
+      : `<span style="font-size:20px;font-weight:900;color:#E85A00;font-family:Arial,sans-serif;letter-spacing:-1px;">Struct<span style="color:#ffffff;">Bay</span></span>`}
               </a>
             </div>
             <!-- Description -->
@@ -285,14 +285,14 @@ const sendEmail = async ({ to, subject, html, text, replyTo }) => {
       return null;
     }
     const mail = {
-      from: `"StructBay" <${fromAddr}>`,
+      from: `"Structbay" <${fromAddr}>`,
       to,
       subject,
       html,
     };
-    if (text)    mail.text    = text;
+    if (text) mail.text = text;
     if (replyTo) mail.replyTo = replyTo;
-    else         mail.replyTo = fromAddr;
+    else mail.replyTo = fromAddr;
 
     const info = await transporter.sendMail(mail);
     logger.info(`Email sent to ${to}: ${info.messageId}`);
@@ -322,15 +322,15 @@ const _buildAndSend = async ({ to, subject, title, greeting, bodyHtml, cta, vars
   // Interpolate vars in all text fields
   const resolvedBodyHtml = interpolate(bodyHtml, vars);
   const resolvedGreeting = interpolate(greeting || '', vars);
-  const resolvedTitle    = interpolate(title, vars);
-  const resolvedSubject  = interpolate(subject, vars);
-  const resolvedCta      = cta ? { label: interpolate(cta.label, vars), url: interpolate(cta.url, vars) } : null;
+  const resolvedTitle = interpolate(title, vars);
+  const resolvedSubject = interpolate(subject, vars);
+  const resolvedCta = cta ? { label: interpolate(cta.label, vars), url: interpolate(cta.url, vars) } : null;
 
   const html = masterTemplate({
-    title:    resolvedTitle,
+    title: resolvedTitle,
     greeting: resolvedGreeting,
     bodyHtml: resolvedBodyHtml,
-    cta:      resolvedCta,
+    cta: resolvedCta,
     branding,
   });
 
@@ -363,7 +363,7 @@ const sendWelcomeEmail = async ({ to, name }) => {
 const sendVerificationEmail = async ({ to, name, token }) => {
   const branding = await getEmailBranding();
   const base = branding.siteUrl;
-  const url  = `${base}/verify-email?token=${encodeURIComponent(token)}`;
+  const url = `${base}/verify-email?token=${encodeURIComponent(token)}`;
   return _buildAndSend({
     to, subject: 'Verify your StructBay account',
     title: 'Verify Your Email Address',

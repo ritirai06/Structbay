@@ -73,7 +73,7 @@ function PolicyPageView({ slug }: { slug: string }) {
               <h2 className="text-lg font-bold text-black mb-3 pb-2 border-b border-[#E85A00]/30">
                 {section.title}
               </h2>
-              <div className="space-y-3 text-sm sm:text-[15px] text-gray-600 leading-relaxed">
+              <div className="space-y-3 text-sm sm:text-[15px] text-gray-600 leading-relaxed text-justify" style={{ textAlign: "justify" }}>
                 {(section.body || []).map((para, i) => (
                   <p key={i}>{para}</p>
                 ))}

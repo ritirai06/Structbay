@@ -116,7 +116,7 @@ exports.assuredExpressPerformance = asyncHandler(async (req, res) => {
     ]),
   ]);
 
-  return ApiResponse.success(res, 200, 'StructBay Assured & Express performance.', {
+  return ApiResponse.success(res, 200, 'Structbay Assured & Express performance.', {
     assured:  assured[0]  || { revenue: 0, quantity: 0, count: 0 },
     express:  express[0]  || { revenue: 0, quantity: 0, count: 0 },
   });

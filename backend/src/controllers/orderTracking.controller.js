@@ -107,7 +107,7 @@ exports.getTracking = asyncHandler(async (req, res) => {
     deliveryType: vo.deliveryType,
     deliveryTypeLabel:
       vo.deliveryType === 'structbay_delivery'
-        ? 'Type B — StructBay delivery'
+        ? 'Type B — Structbay delivery'
         : 'Type A — Vendor delivery',
     vendorLabel: vo.vendor?.companyName || vo.vendor?.name || 'Vendor',
     status: vo.status,
@@ -150,7 +150,7 @@ exports.getDocuments = asyncHandler(async (req, res) => {
 });
 
 // ─── GET /customer/orders/:id/invoices ─────────────────────────────────────────
-/** PDFs / documents the customer may download (StructBay invoice, e-way, vendor tax invoices). */
+/** PDFs / documents the customer may download (Structbay invoice, e-way, vendor tax invoices). */
 exports.getOrderInvoices = asyncHandler(async (req, res) => {
   const order = await Order.findOne({ _id: req.params.id, customer: req.user._id })
     .select('orderNumber structbayInvoiceUrl invoiceUrl ewayBillUrl customerInvoiceNumber ewayBillNumber');
@@ -200,7 +200,7 @@ exports.downloadInvoiceSummary = asyncHandler(async (req, res) => {
   if (!order) throw new AppError('Order not found.', 404);
 
   const html = buildOrderAcknowledgementHtml(order);
-  const safeName = `StructBay-order-${String(order.orderNumber || 'order').replace(/[^\w.-]+/g, '_')}.html`;
+  const safeName = `Structbay-order-${String(order.orderNumber || 'order').replace(/[^\w.-]+/g, '_')}.html`;
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${safeName}"`);
@@ -208,7 +208,7 @@ exports.downloadInvoiceSummary = asyncHandler(async (req, res) => {
 });
 
 // ─── GET /customer/orders/:id/invoice-pdf ───────────────────────────────────────
-/** PDF order summary with StructBay logo for customer download. */
+/** PDF order summary with Structbay logo for customer download. */
 exports.downloadInvoicePdf = asyncHandler(async (req, res) => {
   const order = await Order.findOne({ _id: req.params.id, customer: req.user._id })
     .populate('city', 'name state')
@@ -217,7 +217,7 @@ exports.downloadInvoicePdf = asyncHandler(async (req, res) => {
   if (!order) throw new AppError('Order not found.', 404);
 
   const pdf = await buildOrderAcknowledgementPdf(order);
-  const safeName = `StructBay-order-${String(order.orderNumber || 'order').replace(/[^\w.-]+/g, '_')}.pdf`;
+  const safeName = `Structbay-order-${String(order.orderNumber || 'order').replace(/[^\w.-]+/g, '_')}.pdf`;
 
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="${safeName}"`);
@@ -233,7 +233,7 @@ exports.cancelOrder = asyncHandler(async (req, res) => {
   if (!CUSTOMER_CANCELLABLE_MASTER_ORDER_STATUSES.includes(order.status)) {
     throw new AppError(
       order.status === 'READY_FOR_DISPATCH'
-        ? 'Order cannot be cancelled once it is Ready for Dispatch. Contact StructBay support.'
+        ? 'Order cannot be cancelled once it is Ready for Dispatch. Contact Structbay support.'
         : `Order cannot be cancelled at status: ${order.status}.`,
       422
     );
@@ -245,7 +245,7 @@ exports.cancelOrder = asyncHandler(async (req, res) => {
   });
   if (vendorDispatchStarted) {
     throw new AppError(
-      'Order cannot be cancelled after the vendor has marked it Ready for Dispatch. Contact StructBay support.',
+      'Order cannot be cancelled after the vendor has marked it Ready for Dispatch. Contact Structbay support.',
       422
     );
   }

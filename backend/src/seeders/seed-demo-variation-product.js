@@ -125,7 +125,7 @@ async function main() {
     shortDescription:
       'Demo listing product — shows Coil Size, Wire Thickness and Colour dropdowns on shop/category pages.',
     description:
-      'StructBay demo SKU for variation selectors. Use this product to verify storefront dropdowns before going live with real wire SKUs.',
+      'Structbay demo SKU for variation selectors. Use this product to verify storefront dropdowns before going live with real wire SKUs.',
     images: [{ url: PLACEHOLDER_IMAGE }],
     gstPercentage: 18,
     priceIncludesGst: false,

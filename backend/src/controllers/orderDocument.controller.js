@@ -10,7 +10,7 @@ const { logOrderActivity, notifyCustomer } = require('../services/order.service'
 const { generateRefNumber } = require('../services/refNumber.service');
 
 async function allocateDocumentReference(documentType) {
-  if (documentType === 'STRUCTBAY_INVOICE' || documentType === 'TAX_INVOICE') {
+  if (documentType === 'Structbay_INVOICE' || documentType === 'TAX_INVOICE') {
     return generateRefNumber('CUSTOMER_INVOICE');
   }
   if (documentType === 'EWAY_BILL') return generateRefNumber('EWAY_BILL');
@@ -47,7 +47,7 @@ exports.upload = asyncHandler(async (req, res) => {
 
   const orderRefUpdates = {};
   // Sync invoice URL on master order
-  if (documentType === 'STRUCTBAY_INVOICE' || documentType === 'TAX_INVOICE') {
+  if (documentType === 'Structbay_INVOICE' || documentType === 'TAX_INVOICE') {
     orderRefUpdates.structbayInvoiceUrl = url;
     orderRefUpdates.invoiceUrl = url;
     if (documentReference) orderRefUpdates.customerInvoiceNumber = documentReference;
@@ -88,7 +88,7 @@ exports.upload = asyncHandler(async (req, res) => {
 
   const masterOrder = await Order.findById(masterOrderId).select('customer orderNumber');
 
-  if (documentType === 'STRUCTBAY_INVOICE' || documentType === 'TAX_INVOICE') {
+  if (documentType === 'Structbay_INVOICE' || documentType === 'TAX_INVOICE') {
     const invMsg = documentReference
       ? `Invoice ${documentReference} is now available for your order ${masterOrder?.orderNumber}.`
       : `An invoice is now available for your order ${masterOrder?.orderNumber}.`;

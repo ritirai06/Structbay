@@ -473,7 +473,7 @@ export function OrderTracking() {
             >
               <span className="flex items-center gap-2">
                 <MessageCircle className="w-4 h-4 text-[#E85A00]" />
-                Message StructBay
+                Message Structbay
               </span>
               <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${showChat ? "rotate-90" : ""}`} />
             </button>

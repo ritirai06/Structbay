@@ -96,7 +96,7 @@ const DEFAULT_SUB =
 const INTRO_TITLE = "Smart Construction Starts With Smarter Sourcing";
 const INTRO_TAGLINE = "Built for Contractors, Backed by Brands.";
 const INTRO_BODY_DEFAULT =
-  "StructBay combines the reliability of branded materials, the power of affordable pricing, and the ease of single-window sourcing â€” everything you need to finish projects faster and better.";
+  "Structbay combines the reliability of branded materials, the power of affordable pricing, and the ease of single-window sourcing â€” everything you need to finish projects faster and better.";
 
 /** Desktop reference: line break before â€œthe ease ofâ€¦â€ */
 function IntroBodyText({ text }: { text: string }) {
@@ -116,15 +116,15 @@ function IntroBodyText({ text }: { text: string }) {
 }
 
 const CATEGORIES_SUB =
-  "From trusted materials to seamless procurement â€” StructBay simplifies your construction journey. Explore our wide range of products.";
+  "From trusted materials to seamless procurement â€” Structbay simplifies your construction journey. Explore our wide range of products.";
 
 /** Homepage shows up to 14 categories. */
 const HOMEPAGE_CATEGORY_LIMIT = 14;
 
 const WHY_CHOOSE_STATS = [
-  { icon: iconStatProducts, target: 2000, label: "Products from Top Brands" },
-  { icon: iconStatContractors, target: 1000, label: "Trusted Contractors" },
+  { icon: iconStatProducts, target: 10000, label: "Products from Top Brands" },
   { icon: iconStatCities, target: 5, label: "Cities Indian Covered" },
+  { icon: iconStatContractors, target: 500, label: "Trusted Contractors" },
 ] as const;
 
 function useStatsInView(threshold = 0.25) {
@@ -335,6 +335,7 @@ function FeatureCardSlider({ featureCards }: { featureCards: ResolvedFeatureCard
 function HomeContactForm({ fallbackEmail }: { fallbackEmail: string }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -348,7 +349,7 @@ function HomeContactForm({ fallbackEmail }: { fallbackEmail: string }) {
       const res = await fetch("/api/v1/cms/contact/message", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, subject, message }),
+        body: JSON.stringify({ name, email, phone, subject, message }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.success === false) {
@@ -365,6 +366,7 @@ function HomeContactForm({ fallbackEmail }: { fallbackEmail: string }) {
       });
       setName("");
       setEmail("");
+      setPhone("");
       setSubject("");
       setMessage("");
     } catch {
@@ -394,6 +396,10 @@ function HomeContactForm({ fallbackEmail }: { fallbackEmail: string }) {
       <div className="sf-field">
         <User className="w-4 h-4" aria-hidden />
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your Name..." required />
+      </div>
+      <div className="sf-field">
+        <Phone className="w-4 h-4" aria-hidden />
+        <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone Number..." required />
       </div>
       <div className="sf-field">
         <Mail className="w-4 h-4" aria-hidden />
@@ -564,7 +570,7 @@ function buildHeroSlides(rawBanners: any[], cms: Record<string, unknown>): HeroS
     ];
   }
 
-  return DEFAULT_HERO_SLIDES.map((s, i) => ({ ...s, id: `default-${i}` }));
+  return [];
 }
 
 /** Optional CMS overlay â€” only when `overlayOpacity` is set above 0. */
@@ -608,14 +614,18 @@ function parseHeroTitle(title: string): { line1: string; line2: string | null } 
   return { line1: t, line2: null };
 }
 
-function StructBayHero({
+function StructbayHero({
   rawBanners,
   cms,
+  city,
+  cityId,
+  isLoading,
 }: {
   rawBanners: any[];
   cms: Record<string, unknown>;
   city: string | null;
   cityId: string | null;
+  isLoading?: boolean;
 }) {
   const slides = buildHeroSlides(rawBanners, cms);
   const [current, setCurrent] = useState(0);
@@ -623,10 +633,10 @@ function StructBayHero({
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const n = slides.length;
-  const slide = slides[Math.min(current, n - 1)] || slides[0];
+  const slide = slides[Math.min(current, Math.max(n - 1, 0))] || {};
   const hasTitle = Boolean(String(slide.title || "").trim());
   const hasSub = Boolean(String(slide.sub || "").trim());
-  const { line1, line2 } = hasTitle ? parseHeroTitle(slide.title) : { line1: "", line2: null };
+  const { line1, line2 } = hasTitle ? parseHeroTitle(slide.title || "") : { line1: "", line2: null };
 
   useEffect(() => {
     setCurrent((c) => Math.min(c, Math.max(n - 1, 0)));
@@ -701,6 +711,24 @@ function StructBayHero({
     touchEndX.current = null;
     touchEndY.current = null;
   }, [next, prev]);
+
+  if (isLoading) {
+    return (
+      <section className="sf-hero-ref bg-slate-900 flex flex-col items-center justify-center animate-pulse min-h-[500px]">
+        <div className="w-12 h-12 border-4 border-sb-orange border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-gray-400 font-medium">Loading banners...</p>
+      </section>
+    );
+  }
+
+  if (n === 0) {
+    return (
+      <section className="sf-hero-ref bg-slate-900 flex flex-col items-center justify-center min-h-[500px] border-y border-gray-800">
+        <h2 className="text-white text-2xl font-bold mb-2">Welcome to Structbay</h2>
+        <p className="text-gray-400">Please add banners via the Admin Panel.</p>
+      </section>
+    );
+  }
 
   return (
     <section
@@ -919,6 +947,7 @@ export function Homepage() {
   const [varChoice, setVarChoice] = useState<Record<string, string>>({});
 
   const [banners, setBanners]           = useState<any[]>([]);
+  const [bannersLoading, setBannersLoading] = useState(true);
   const [categories, setCategories]     = useState<any[]>([]);
   const [brands, setBrands]             = useState<any[]>([]);
   const [topProducts, setTopProducts]   = useState<any[]>([]);
@@ -965,19 +994,17 @@ export function Homepage() {
 
   // CMS hero + static blocks (not warehouse-specific).
   useEffect(() => {
-    void api
-      .getCmsHomepage()
-      .then((d) => setCmsHome(d && typeof d === "object" ? (d as Record<string, unknown>) : {}))
-      .catch(() => setCmsHome({}));
-
-    api.getActiveBanners()
-      .then((d) => {
+    Promise.allSettled([
+      api.getCmsHomepage().then((d) => setCmsHome(d && typeof d === "object" ? (d as Record<string, unknown>) : {})),
+      api.getActiveBanners().then((d) => {
         const live = (d.data || [])
           .filter((b: any) => b.status !== "INACTIVE" && b.isLive !== false)
           .sort((a: any, b: any) => (Number(a.displayOrder) || 0) - (Number(b.displayOrder) || 0));
         setBanners(live);
       })
-      .catch(() => {});
+    ]).finally(() => {
+      setBannersLoading(false);
+    });
 
     api.getTestimonials()
       .then((d) => setTestimonials(d.data || []))
@@ -1142,7 +1169,7 @@ export function Homepage() {
       )}
 
       {/* â”€â”€ Hero Carousel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-      <StructBayHero rawBanners={banners} cms={cmsHome} city={city} cityId={cityId} />
+      <StructbayHero rawBanners={banners} cms={cmsHome} city={city} cityId={cityId} isLoading={bannersLoading} />
 
       {/* â”€â”€ Intro + feature cards (reference layout) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <section className="sf-dot-grid sf-intro" id="about">
@@ -1206,10 +1233,10 @@ export function Homepage() {
         </section>
       )}
       
-      {/* â”€â”€ Why StructBay? â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* â”€â”€ Why Structbay? â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <section className="sf-dot-grid border-y border-black/8 py-14 px-5 lg:px-6">
         <div className="max-w-5xl mx-auto text-center mb-10">
-          <h2 className="text-sb-ink text-3xl font-black mb-3">Why Choose StructBay?</h2>
+          <h2 className="text-sb-ink text-3xl font-black mb-3">Why Choose Structbay?</h2>
           <p className="text-sb-ink-muted/70 text-sm leading-relaxed max-w-2xl mx-auto mb-6">
             {footerCms.companyDescription}
           </p>
@@ -1457,7 +1484,7 @@ export function Homepage() {
             </div>
             <div className="min-h-[400px] lg:min-h-full w-full bg-gray-100 relative">
               <iframe
-                title="StructBay office location"
+                title="Structbay office location"
                 className="absolute inset-0 w-full h-full border-0"
                 loading="lazy"
                 src={`https://maps.google.com/maps?q=${mapQuery}&output=embed`}

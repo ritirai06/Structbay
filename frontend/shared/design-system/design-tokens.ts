@@ -1,5 +1,5 @@
 /**
- * StructBay Enterprise Design System — approved palette.
+ * Structbay Enterprise Design System — approved palette.
  * All UI must reference these tokens (or CSS variables mapped from them).
  */
 export const palette = {

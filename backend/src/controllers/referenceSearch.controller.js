@@ -19,7 +19,7 @@ const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /**
  * GET /api/v1/admin/reference-search?q=ORD080626001&limit=10
- * Cross-module lookup for StructBay reference numbers (admin).
+ * Cross-module lookup for Structbay reference numbers (admin).
  */
 exports.searchReferences = asyncHandler(async (req, res) => {
   const raw = (req.query.q || '').trim();

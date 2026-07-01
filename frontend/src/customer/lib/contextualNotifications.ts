@@ -190,7 +190,7 @@ export function buildContextualNotices({
       notices.push({
         id: "page-generic",
         scope: "page",
-        title: "StructBay",
+        title: "Structbay",
         message: cityLabel
           ? `You are browsing the ${cityLabel} storefront. Change city anytime from the bottom-right pill.`
           : "Select a city to unlock local pricing across the site.",

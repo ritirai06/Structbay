@@ -52,7 +52,7 @@ export function OrdersList() {
     <div className="space-y-5">
       <div>
         <h1 className="vendor-page-title" style={{ color: SB.color }}>Assigned Orders</h1>
-        <p className="text-sm mt-0.5" style={{ color: SB.muted }}>Only orders assigned to you by StructBay are shown here.</p>
+        <p className="text-sm mt-0.5" style={{ color: SB.muted }}>Only orders assigned to you by Structbay are shown here.</p>
       </div>
 
       <div className="rounded-2xl overflow-hidden" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>

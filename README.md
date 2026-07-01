@@ -1,4 +1,4 @@
-# StructBay
+# Structbay
 
 B2B construction marketplace monorepo: **Express + MongoDB** API and a **React (Vite)** single-page app that serves the **public shop**, **admin control center**, and **vendor portal** from one build.
 

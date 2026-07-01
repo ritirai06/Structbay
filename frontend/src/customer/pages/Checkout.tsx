@@ -511,45 +511,45 @@ export function Checkout() {
                   {cart.map((item) => {
                     const display = formatCartLineDisplay(item, "exclusive");
                     return (
-                    <div key={item.id} className="flex gap-3">
-                      <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded-xl bg-muted shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium line-clamp-2 text-foreground">{item.name}</p>
-                        {item.variationLabel && (
-                          <p className="text-[10px] text-muted-foreground mt-0.5">{item.variationLabel}</p>
-                        )}
-                        <p className="text-[10px] text-muted-foreground mt-0.5">{item.unit}</p>
-                        <div className="mt-1.5 flex items-center gap-2">
-                          <div className="inline-flex items-stretch rounded-lg border border-border overflow-hidden bg-muted/40">
-                            <button
-                              type="button"
-                              aria-label="Decrease quantity"
-                              onClick={() => updateQty(item.id, item.qty - 1)}
-                              className="w-7 flex items-center justify-center text-foreground hover:bg-muted transition-colors"
-                            >
-                              <Minus className="w-3.5 h-3.5" />
-                            </button>
-                            <span className="min-w-[1.5rem] px-1 flex items-center justify-center text-xs font-bold tabular-nums border-x border-border">
-                              {item.qty}
-                            </span>
-                            <button
-                              type="button"
-                              aria-label="Increase quantity"
-                              onClick={() => updateQty(item.id, item.qty + 1)}
-                              className="w-7 flex items-center justify-center text-foreground hover:bg-muted transition-colors"
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                            </button>
+                      <div key={item.id} className="flex gap-3">
+                        <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded-xl bg-muted shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium line-clamp-2 text-foreground">{item.name}</p>
+                          {item.variationLabel && (
+                            <p className="text-[10px] text-muted-foreground mt-0.5">{item.variationLabel}</p>
+                          )}
+                          <p className="text-[10px] text-muted-foreground mt-0.5">{item.unit}</p>
+                          <div className="mt-1.5 flex items-center gap-2">
+                            <div className="inline-flex items-stretch rounded-lg border border-border overflow-hidden bg-muted/40">
+                              <button
+                                type="button"
+                                aria-label="Decrease quantity"
+                                onClick={() => updateQty(item.id, item.qty - 1)}
+                                className="w-7 flex items-center justify-center text-foreground hover:bg-muted transition-colors"
+                              >
+                                <Minus className="w-3.5 h-3.5" />
+                              </button>
+                              <span className="min-w-[1.5rem] px-1 flex items-center justify-center text-xs font-bold tabular-nums border-x border-border">
+                                {item.qty}
+                              </span>
+                              <button
+                                type="button"
+                                aria-label="Increase quantity"
+                                onClick={() => updateQty(item.id, item.qty + 1)}
+                                className="w-7 flex items-center justify-center text-foreground hover:bg-muted transition-colors"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
+                          <p className="text-xs font-bold mt-1 tabular-nums" style={{ color: "var(--sb-orange)" }}>
+                            ₹{display.lineTotal.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            @ ₹{display.unitPrice.toLocaleString("en-IN", { maximumFractionDigits: 2 })} / {item.unit} · {display.priceSuffix}
+                          </p>
                         </div>
-                        <p className="text-xs font-bold mt-1 tabular-nums" style={{ color: "var(--sb-orange)" }}>
-                          ₹{display.lineTotal.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground">
-                          @ ₹{display.unitPrice.toLocaleString("en-IN", { maximumFractionDigits: 2 })} / {item.unit} · {display.priceSuffix}
-                        </p>
                       </div>
-                    </div>
                     );
                   })}
                 </div>

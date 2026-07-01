@@ -137,7 +137,7 @@ export function Support() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Contact Info — from CMS */}
         <div className="rounded-2xl p-5 space-y-4" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
-          <h2 className="vendor-section-title" style={{ color: SB.muted }}>Contact StructBay</h2>
+          <h2 className="vendor-section-title" style={{ color: SB.muted }}>Contact Structbay</h2>
           {phone && (
             <div className="flex items-start gap-3 p-3 rounded-xl" style={{ background: SB.bg, border: `1px solid ${SB.border}` }}>
               <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--sb-orange-subtle)' }}>

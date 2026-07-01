@@ -3,7 +3,7 @@ const DEFAULT_POLICIES = [
   {
     slug: 'privacy',
     title: 'Privacy Policy',
-    subtitle: 'How StructBay collects, uses, and protects your business information.',
+    subtitle: 'How Structbay collects, uses, and protects your business information.',
     lastUpdated: '17 June 2026',
     sortOrder: 0,
     isActive: true,
@@ -11,7 +11,7 @@ const DEFAULT_POLICIES = [
       {
         title: '1. Who we are',
         body: [
-          'StructBay is a B2B construction materials marketplace operated for builders, contractors, and procurement teams. We partner with authorised brands and city warehouses to fulfil orders placed on structbay.com.',
+          'Structbay is a B2B construction materials marketplace operated for builders, contractors, and procurement teams. We partner with authorised brands and city warehouses to fulfil orders placed on structbay.com.',
           'This policy explains how we handle personal and business data when you browse, register, place orders, submit RFQs, or contact support.',
         ],
       },
@@ -27,19 +27,19 @@ const DEFAULT_POLICIES = [
       {
         title: '3. How we use your information',
         body: [
-          'To create and manage your customer account (guest checkout is not supported on StructBay).',
-          'To validate city serviceability, calculate GST-exclusive pricing at checkout, and fulfil orders through assigned vendors or StructBay logistics.',
+          'To create and manage your customer account (guest checkout is not supported on Structbay).',
+          'To validate city serviceability, calculate GST-exclusive pricing at checkout, and fulfil orders through assigned vendors or Structbay logistics.',
           'To generate tax invoices, e-way bills, delivery updates, and downloadable documents in your account.',
           'To send order confirmations, dispatch alerts, and service notifications by email and in-app dashboard.',
-          'To respond to support requests, RFQs, bulk enquiries, and StructBay Finance enquiries.',
+          'To respond to support requests, RFQs, bulk enquiries, and Structbay Finance enquiries.',
         ],
       },
       {
         title: '4. Sharing with third parties',
         body: [
           'Assigned vendors receive only the product lines and documents required to fulfil your order — not your full catalogue history.',
-          'Payment partners (e.g. Zoho Payments) process transactions; we do not store full card credentials on StructBay servers.',
-          'Logistics partners may receive delivery contact details when StructBay-managed delivery (Type B) is used.',
+          'Payment partners (e.g. Zoho Payments) process transactions; we do not store full card credentials on Structbay servers.',
+          'Logistics partners may receive delivery contact details when Structbay-managed delivery (Type B) is used.',
           'We do not sell personal data. Disclosure occurs only for legal compliance, fraud prevention, or with your consent.',
         ],
       },
@@ -63,7 +63,7 @@ const DEFAULT_POLICIES = [
   {
     slug: 'terms',
     title: 'Terms & Conditions',
-    subtitle: 'Terms governing use of the StructBay B2B procurement platform.',
+    subtitle: 'Terms governing use of the Structbay B2B procurement platform.',
     lastUpdated: '17 June 2026',
     sortOrder: 1,
     isActive: true,
@@ -71,8 +71,8 @@ const DEFAULT_POLICIES = [
       {
         title: '1. Platform scope',
         body: [
-          'StructBay is a business-to-business marketplace for construction materials. By using the site you confirm you are procuring for a commercial project or registered business entity.',
-          'Product catalogue, pricing, stock, and promotions are controlled by StructBay administrators. Vendors fulfil assigned orders but do not publish or edit catalogue data.',
+          'Structbay is a business-to-business marketplace for construction materials. By using the site you confirm you are procuring for a commercial project or registered business entity.',
+          'Product catalogue, pricing, stock, and promotions are controlled by Structbay administrators. Vendors fulfil assigned orders but do not publish or edit catalogue data.',
         ],
       },
       {
@@ -95,10 +95,10 @@ const DEFAULT_POLICIES = [
       {
         title: '4. Orders & fulfilment',
         body: [
-          'Placing an order constitutes an offer to purchase subject to stock confirmation and vendor assignment by StructBay.',
+          'Placing an order constitutes an offer to purchase subject to stock confirmation and vendor assignment by Structbay.',
           'A master order number (format YYMMDD0001) may split into vendor sub-orders when multiple suppliers are involved.',
-          'Fulfilment may follow Vendor Delivery (Type A) or StructBay Delivery (Type B) workflows as applicable to the products ordered.',
-          'StructBay Assured and StructBay Express badges indicate quality-verified or priority-delivery eligible products where enabled by admin.',
+          'Fulfilment may follow Vendor Delivery (Type A) or Structbay Delivery (Type B) workflows as applicable to the products ordered.',
+          'Structbay Assured and Structbay Express badges indicate quality-verified or priority-delivery eligible products where enabled by admin.',
         ],
       },
       {
@@ -119,7 +119,7 @@ const DEFAULT_POLICIES = [
       {
         title: '7. Limitation & governing law',
         body: [
-          'StructBay is not liable for project delays caused by site access issues, force majeure, or incorrect address/contact details supplied by the customer.',
+          'Structbay is not liable for project delays caused by site access issues, force majeure, or incorrect address/contact details supplied by the customer.',
           'These terms are governed by the laws of India. Courts at Bengaluru, Karnataka shall have exclusive jurisdiction, subject to applicable consumer protection law.',
           'For disputes: hello@structbay.com',
         ],
@@ -129,7 +129,7 @@ const DEFAULT_POLICIES = [
   {
     slug: 'returns',
     title: 'Return & Refund Policy',
-    subtitle: 'Cancellation, replacement, and refund rules for StructBay orders.',
+    subtitle: 'Cancellation, replacement, and refund rules for Structbay orders.',
     lastUpdated: '17 June 2026',
     sortOrder: 2,
     isActive: true,
@@ -137,14 +137,14 @@ const DEFAULT_POLICIES = [
       {
         title: '1. Overview',
         body: [
-          'Construction materials are procured for site use. Returns and refunds are limited to the conditions below and managed centrally by StructBay — not directly by vendors on the storefront.',
+          'Construction materials are procured for site use. Returns and refunds are limited to the conditions below and managed centrally by Structbay — not directly by vendors on the storefront.',
         ],
       },
       {
         title: '2. Order cancellation',
         body: [
           'You may cancel an order from your account only before the vendor marks it Ready for Dispatch (while status is still processing).',
-          'Once fulfilment reaches Ready for Dispatch or material is dispatched, cancellation is not permitted through self-service. Contact StructBay support for exceptional cases.',
+          'Once fulfilment reaches Ready for Dispatch or material is dispatched, cancellation is not permitted through self-service. Contact Structbay support for exceptional cases.',
           'If cancellation is accepted before dispatch, any paid amount will be refunded per payment gateway timelines to the original payment method.',
         ],
       },
@@ -154,23 +154,23 @@ const DEFAULT_POLICIES = [
           'Replacement is allowed only when:',
           '• Wrong product was delivered, or',
           '• Damaged product was delivered.',
-          'All replacement requests are verified by StructBay with delivery proof, photos, and order records. Approved replacements are coordinated with the assigned vendor or StructBay logistics.',
+          'All replacement requests are verified by Structbay with delivery proof, photos, and order records. Approved replacements are coordinated with the assigned vendor or Structbay logistics.',
           'Defective or non-conforming bulk materials must be reported promptly at site acceptance. Stock that has been used, cut, or mixed may not qualify for replacement.',
         ],
       },
       {
         title: '4. Refunds',
         body: [
-          'Refunds, when applicable, are issued only after StructBay confirms eligibility — typically for paid orders cancelled before dispatch or for verified non-delivery / duplicate charges.',
+          'Refunds, when applicable, are issued only after Structbay confirms eligibility — typically for paid orders cancelled before dispatch or for verified non-delivery / duplicate charges.',
           'Refund amount excludes non-recoverable logistics or site handling charges already incurred, where applicable.',
-          'Processing time depends on your bank/payment provider after StructBay initiates the refund.',
+          'Processing time depends on your bank/payment provider after Structbay initiates the refund.',
           'Payment status REFUNDED will reflect in your order history when complete.',
         ],
       },
       {
         title: '5. How to raise a request',
         body: [
-          'Sign in → My Orders → open the order → use Message StructBay or email hello@structbay.com with order number, photos, and site contact details.',
+          'Sign in → My Orders → open the order → use Message Structbay or email hello@structbay.com with order number, photos, and site contact details.',
           'Include delivery challan / invoice references where available.',
         ],
       },
@@ -187,22 +187,22 @@ const DEFAULT_POLICIES = [
       {
         title: '1. Delivery model',
         body: [
-          'StructBay sources materials from authorised brand partnerships and city warehouses. After you place an order, material is picked up and delivered to your site address.',
-          'Delivery may be executed as Vendor Delivery (Type A) or StructBay Delivery (Type B) depending on product and city configuration.',
+          'Structbay sources materials from authorised brand partnerships and city warehouses. After you place an order, material is picked up and delivered to your site address.',
+          'Delivery may be executed as Vendor Delivery (Type A) or Structbay Delivery (Type B) depending on product and city configuration.',
         ],
       },
       {
         title: '2. Type A — Vendor delivery',
         body: [
-          'The assigned vendor arranges shipment to your site after StructBay confirms dispatch.',
-          'Typical workflow: order alert → ready dispatch → dispatch confirmation → vendor invoice → StructBay invoice & e-way bill → dispatched → delivered → delivery confirmed.',
+          'The assigned vendor arranges shipment to your site after Structbay confirms dispatch.',
+          'Typical workflow: order alert → ready dispatch → dispatch confirmation → vendor invoice → Structbay invoice & e-way bill → dispatched → delivered → delivery confirmed.',
           'Tracking updates appear in your account as statuses progress.',
         ],
       },
       {
-        title: '3. Type B — StructBay delivery',
+        title: '3. Type B — Structbay delivery',
         body: [
-          'StructBay books logistics (e.g. Porter / Delhivery), shares invoice and e-way bill PDFs with the vendor, and coordinates pickup from the warehouse.',
+          'Structbay books logistics (e.g. Porter / Delhivery), shares invoice and e-way bill PDFs with the vendor, and coordinates pickup from the warehouse.',
           'Pickup schedule, logistics company name, and driver/coordinator contact may be recorded for your order.',
           'You receive customer-facing milestones: Order Placed → Order Processing → Out for Delivery → Partial Delivered → Full Delivery Complete.',
         ],
@@ -220,20 +220,20 @@ const DEFAULT_POLICIES = [
         title: '5. City serviceability',
         body: [
           'You must select a serviceable city before browsing and purchasing.',
-          'Delivery address must align with StructBay\'s serviceable geography for the selected city. Mismatched city and address combinations are blocked at checkout.',
+          'Delivery address must align with Structbay\'s serviceable geography for the selected city. Mismatched city and address combinations are blocked at checkout.',
           'Products without stock in your selected city are not shown as purchasable for that city.',
         ],
       },
       {
-        title: '6. StructBay Express',
+        title: '6. Structbay Express',
         body: [
-          'Products marked StructBay Express are eligible for same-day or priority dispatch where operational capacity allows. Express availability is shown on shop, category, and product pages.',
+          'Products marked Structbay Express are eligible for same-day or priority dispatch where operational capacity allows. Express availability is shown on shop, category, and product pages.',
         ],
       },
       {
         title: '7. Delivery acceptance',
         body: [
-          'Inspect material at delivery. Note shortages or visible damage on the delivery challan and notify StructBay immediately.',
+          'Inspect material at delivery. Note shortages or visible damage on the delivery challan and notify Structbay immediately.',
           'For multi-vendor orders, lines may arrive in separate shipments aligned to each vendor sub-order.',
         ],
       },

@@ -62,12 +62,12 @@ type CustomerUiAddress = {
 };
 
 const NAV_ITEMS = [
-  { icon: LayoutDashboard, label: "Dashboard",     key: "dashboard" },
-  { icon: Package,         label: "My Orders",     key: "orders" },
-  { icon: Building2,       label: "My Projects",   key: "projects", path: "/projects" },
-  { icon: MapPin,          label: "Addresses",     key: "addresses" },
-  { icon: Bell,            label: "Notifications", key: "notifications" },
-  { icon: UserIcon,        label: "Profile",       key: "profile" },
+  { icon: LayoutDashboard, label: "Dashboard", key: "dashboard" },
+  { icon: Package, label: "My Orders", key: "orders" },
+  { icon: Building2, label: "My Projects", key: "projects", path: "/projects" },
+  { icon: MapPin, label: "Addresses", key: "addresses" },
+  { icon: Bell, label: "Notifications", key: "notifications" },
+  { icon: UserIcon, label: "Profile", key: "profile" },
 ];
 
 function mapApiStatus(status: string): { label: string; cls: string } {
@@ -143,11 +143,10 @@ function Sidebar({ user, active, setActive, close, logout }: {
       </div>
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
         {NAV_ITEMS.map(({ icon: Icon, label, key, path }) => {
-          const cls = `w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 ${
-            active === key
+          const cls = `w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 ${active === key
               ? "bg-[#E85A00]/12 text-[#E85A00] font-semibold border-l-2 border-[#E85A00] pl-[10px]"
               : "text-gray-600 hover:text-black hover:bg-gray-50"
-          }`;
+            }`;
           return path ? (
             <Link key={key} to={path} className={cls}>
               <Icon className="w-4 h-4 shrink-0" />
@@ -202,21 +201,21 @@ function DashboardHome({ user, setActive, orders, stats, savedAddrCount }: {
   const { openBulkEnquiry } = useBulkEnquiryModal();
 
   const widgets = [
-    { label: "Total Orders",   value: String(totalOrders),    icon: Package,    accent: "bg-[#E85A00]/12", iconColor: "text-[#E85A00]" },
-    { label: "Pending Orders", value: String(pendingOrders), icon: Clock,      accent: "bg-[#E85A00]/12", iconColor: "text-[#E85A00]" },
-    { label: "Total Spent",    value: `₹${totalSpent.toLocaleString("en-IN")}`, icon: TrendingUp, accent: "bg-[#E85A00]/12", iconColor: "text-[#E85A00]" },
-    { label: "Active RFQs",    value: String(rfqs),     icon: FileText,   accent: "bg-[#E85A00]/12", iconColor: "text-[#E85A00]" },
-    { label: "Bulk Enquiries", value: String(bulkEnquiries),     icon: MessageSquare, accent: "bg-[#E85A00]/12", iconColor: "text-[#E85A00]" },
-    { label: "Saved Addresses",value: String(addressCount),     icon: MapPin,     accent: "bg-black/5", iconColor: "text-black" },
+    { label: "Total Orders", value: String(totalOrders), icon: Package, accent: "bg-[#E85A00]/12", iconColor: "text-[#E85A00]" },
+    { label: "Pending Orders", value: String(pendingOrders), icon: Clock, accent: "bg-[#E85A00]/12", iconColor: "text-[#E85A00]" },
+    { label: "Total Spent", value: `₹${totalSpent.toLocaleString("en-IN")}`, icon: TrendingUp, accent: "bg-[#E85A00]/12", iconColor: "text-[#E85A00]" },
+    { label: "Active RFQs", value: String(rfqs), icon: FileText, accent: "bg-[#E85A00]/12", iconColor: "text-[#E85A00]" },
+    { label: "Bulk Enquiries", value: String(bulkEnquiries), icon: MessageSquare, accent: "bg-[#E85A00]/12", iconColor: "text-[#E85A00]" },
+    { label: "Saved Addresses", value: String(addressCount), icon: MapPin, accent: "bg-black/5", iconColor: "text-black" },
   ];
 
   const quickActions = [
-    { label: "Shop Materials",   icon: ShoppingBag,   to: "/shop",     color: "bg-[#E85A00]", solid: true },
-    { label: "Browse Categories",icon: ClipboardList, to: "/shop", color: "bg-[#E85A00]", solid: true },
-    { label: "Bulk Enquiry",     icon: MessageSquare, onClick: openBulkEnquiry, color: "bg-black", solid: true },
-    { label: "Concrete RFQ",     icon: Zap,           to: "/rfq",      color: "bg-[#CC4E00]", solid: true },
-    { label: "My Orders",        icon: Package,       onClick: () => setActive("orders"), color: "bg-white border-2 border-[#E85A00]", solid: false },
-    { label: "My Projects",      icon: Building2,     to: "/projects", color: "bg-white border-2 border-[#E85A00]", solid: false },
+    { label: "Shop Materials", icon: ShoppingBag, to: "/shop", color: "bg-[#E85A00]", solid: true },
+    { label: "Browse Categories", icon: ClipboardList, to: "/shop", color: "bg-[#E85A00]", solid: true },
+    { label: "Bulk Enquiry", icon: MessageSquare, onClick: openBulkEnquiry, color: "bg-black", solid: true },
+    { label: "Concrete RFQ", icon: Zap, to: "/rfq", color: "bg-[#CC4E00]", solid: true },
+    { label: "My Orders", icon: Package, onClick: () => setActive("orders"), color: "bg-white border-2 border-[#E85A00]", solid: false },
+    { label: "My Projects", icon: Building2, to: "/projects", color: "bg-white border-2 border-[#E85A00]", solid: false },
   ];
 
   return (
@@ -274,24 +273,24 @@ function DashboardHome({ user, setActive, orders, stats, savedAddrCount }: {
           {orders.length === 0 ? (
             <div className="p-8 text-center text-sm text-gray-500">No orders yet. Browse the store and place your first order.</div>
           ) : (
-          orders.slice(0, 3).map(order => (
-            <div key={order.id} className="flex items-center justify-between p-4 hover:bg-gray-50">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-[#E85A00]/15 flex items-center justify-center mt-0.5 shrink-0">
-                  <Package className="w-4 h-4 text-[#E85A00]" />
+            orders.slice(0, 3).map(order => (
+              <div key={order.id} className="flex items-center justify-between p-4 hover:bg-gray-50">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-[#E85A00]/15 flex items-center justify-center mt-0.5 shrink-0">
+                    <Package className="w-4 h-4 text-[#E85A00]" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm text-black">{order.id}</p>
+                    <p className="text-xs text-gray-500">{order.items}</p>
+                    <p className="text-xs text-gray-400">{order.date}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-semibold text-sm text-black">{order.id}</p>
-                  <p className="text-xs text-gray-500">{order.items}</p>
-                  <p className="text-xs text-gray-400">{order.date}</p>
+                <div className="text-right">
+                  <p className="font-bold text-sm text-black">{order.total}</p>
+                  <span className={`text-xs font-semibold ${order.statusClass}`}>{order.status}</span>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="font-bold text-sm text-black">{order.total}</p>
-                <span className={`text-xs font-semibold ${order.statusClass}`}>{order.status}</span>
-              </div>
-            </div>
-          ))
+            ))
           )}
         </div>
       </div>
@@ -312,13 +311,13 @@ function DashboardHome({ user, setActive, orders, stats, savedAddrCount }: {
 function OrdersSection({ orders, onReload }: { orders: CustomerUiOrder[]; onReload: () => void }) {
   const [filter, setFilter] = useState("all");
   const [cancelId, setCancelId] = useState<string | null>(null);
-  const [projects, setProjects] = useState<{_id: string, name: string}[]>([]);
+  const [projects, setProjects] = useState<{ _id: string, name: string }[]>([]);
   const [assigningId, setAssigningId] = useState<string | null>(null);
-  
+
   useEffect(() => {
     api.getProjects().then((res: any) => {
       setProjects(res.data || []);
-    }).catch(() => {});
+    }).catch(() => { });
   }, []);
 
   const handleAssignProject = async (orderId: string, projectId: string) => {
@@ -365,13 +364,12 @@ function OrdersSection({ orders, onReload }: { orders: CustomerUiOrder[]; onRelo
   return (
     <div className="space-y-4">
       <div className="flex gap-2 overflow-x-auto pb-1">
-        {[["all","All"],["active","Active"],["delivered","Delivered"],["cancelled","Cancelled"]].map(([v, l]) => (
+        {[["all", "All"], ["active", "Active"], ["delivered", "Delivered"], ["cancelled", "Cancelled"]].map(([v, l]) => (
           <button
             key={v}
             onClick={() => setFilter(v)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-              filter === v ? "bg-[#E85A00] text-white" : "bg-white text-gray-500 border border-gray-200 hover:border-gray-300"
-            }`}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${filter === v ? "bg-[#E85A00] text-white" : "bg-white text-gray-500 border border-gray-200 hover:border-gray-300"
+              }`}
           >
             {l}
           </button>
@@ -381,79 +379,79 @@ function OrdersSection({ orders, onReload }: { orders: CustomerUiOrder[]; onRelo
       {filtered.length === 0 ? (
         <div className="text-center py-16 text-gray-500/50 text-sm">No orders to show.</div>
       ) : (
-      <div className="max-h-[min(72vh,800px)] overflow-y-auto space-y-4 pr-1 -mr-1">
-      {filtered.map(order => (
-        <div key={order.dbId} className="sf-dash-card rounded-xl border border-gray-200 p-4 hover:border-gray-300 transition-colors">
-          <div className="flex items-start justify-between mb-3">
-            <div>
-              <p className="font-semibold text-black">{order.id}</p>
-              <p className="text-sm text-gray-500/70">{order.items}</p>
-              <p className="text-xs text-gray-500/40 mt-1">{order.date}</p>
-              {projects.length > 0 && (
-                <div className="mt-2 flex items-center gap-2">
-                  <span className="text-xs text-gray-500">Project:</span>
-                  <select 
-                    value={order.project?._id || ""} 
-                    onChange={e => handleAssignProject(order.dbId, e.target.value)}
-                    disabled={assigningId === order.dbId}
-                    className="text-xs border border-gray-200 rounded px-2 py-1 bg-white focus:outline-none focus:border-[#E85A00]"
-                  >
-                    <option value="">Unassigned</option>
-                    {projects.map(p => (
-                      <option key={p._id} value={p._id}>{p.name}</option>
-                    ))}
-                  </select>
-                  {assigningId === order.dbId && <span className="text-xs text-gray-400">Saving...</span>}
+        <div className="max-h-[min(72vh,800px)] overflow-y-auto space-y-4 pr-1 -mr-1">
+          {filtered.map(order => (
+            <div key={order.dbId} className="sf-dash-card rounded-xl border border-gray-200 p-4 hover:border-gray-300 transition-colors">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <p className="font-semibold text-black">{order.id}</p>
+                  <p className="text-sm text-gray-500/70">{order.items}</p>
+                  <p className="text-xs text-gray-500/40 mt-1">{order.date}</p>
+                  {projects.length > 0 && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-xs text-gray-500">Project:</span>
+                      <select
+                        value={order.project?._id || ""}
+                        onChange={e => handleAssignProject(order.dbId, e.target.value)}
+                        disabled={assigningId === order.dbId}
+                        className="text-xs border border-gray-200 rounded px-2 py-1 bg-white focus:outline-none focus:border-[#E85A00]"
+                      >
+                        <option value="">Unassigned</option>
+                        {projects.map(p => (
+                          <option key={p._id} value={p._id}>{p.name}</option>
+                        ))}
+                      </select>
+                      {assigningId === order.dbId && <span className="text-xs text-gray-400">Saving...</span>}
+                    </div>
+                  )}
                 </div>
-              )}
+                <div className="text-right">
+                  <p className="font-bold text-black">{order.total}</p>
+                  <span className={`text-sm font-semibold ${order.statusClass}`}>{order.status}</span>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-100">
+                <Link
+                  to={`/orders/${order.dbId}`}
+                  className="flex-1 min-w-[120px] flex items-center justify-center gap-1.5 border border-gray-200 hover:border-[#E85A00]/40 rounded-xl py-2 text-xs text-gray-500 hover:text-black transition-all"
+                >
+                  <Truck className="w-3.5 h-3.5" /> Track
+                </Link>
+                <Link
+                  to={`/orders/${order.dbId}#chat`}
+                  className="flex-1 min-w-[120px] flex items-center justify-center gap-1.5 border border-gray-200 hover:border-[#E85A00]/40 rounded-xl py-2 text-xs text-gray-500 hover:text-black transition-all"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" /> Message StructBay
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => openInvoices(order)}
+                  className="flex-1 flex items-center justify-center gap-1.5 border border-gray-200 hover:border-[#E85A00]/40 rounded-xl py-2 text-xs text-gray-500 hover:text-black transition-all"
+                >
+                  <Download className="w-3.5 h-3.5" /> Invoice PDF
+                </button>
+                {!canCustomerCancelOrder(order.apiStatus) ? null : (
+                  <button
+                    type="button"
+                    disabled={cancelId === order.dbId}
+                    onClick={() => void cancelOrder(order)}
+                    className="flex-1 min-w-[120px] flex items-center justify-center gap-1.5 border border-red-200 text-red-600 hover:bg-red-50 rounded-xl py-2 text-xs font-semibold transition-all disabled:opacity-60"
+                  >
+                    <XCircle className="w-3.5 h-3.5" /> {cancelId === order.dbId ? "Cancelling…" : "Cancel"}
+                  </button>
+                )}
+                {order.status === "Delivered" && (
+                  <Link
+                    to="/shop"
+                    className="flex-1 flex items-center justify-center gap-1.5 bg-[#E85A00] hover:bg-[#CC4E00] text-white font-semibold rounded-xl py-2 text-xs transition-colors"
+                  >
+                    <RefreshCcw className="w-3.5 h-3.5" /> Reorder
+                  </Link>
+                )}
+              </div>
             </div>
-            <div className="text-right">
-              <p className="font-bold text-black">{order.total}</p>
-              <span className={`text-sm font-semibold ${order.statusClass}`}>{order.status}</span>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-100">
-            <Link
-              to={`/orders/${order.dbId}`}
-              className="flex-1 min-w-[120px] flex items-center justify-center gap-1.5 border border-gray-200 hover:border-[#E85A00]/40 rounded-xl py-2 text-xs text-gray-500 hover:text-black transition-all"
-            >
-              <Truck className="w-3.5 h-3.5" /> Track
-            </Link>
-            <Link
-              to={`/orders/${order.dbId}#chat`}
-              className="flex-1 min-w-[120px] flex items-center justify-center gap-1.5 border border-gray-200 hover:border-[#E85A00]/40 rounded-xl py-2 text-xs text-gray-500 hover:text-black transition-all"
-            >
-              <MessageCircle className="w-3.5 h-3.5" /> Message StructBay
-            </Link>
-            <button
-              type="button"
-              onClick={() => openInvoices(order)}
-              className="flex-1 flex items-center justify-center gap-1.5 border border-gray-200 hover:border-[#E85A00]/40 rounded-xl py-2 text-xs text-gray-500 hover:text-black transition-all"
-            >
-              <Download className="w-3.5 h-3.5" /> Invoice PDF
-            </button>
-            {!canCustomerCancelOrder(order.apiStatus) ? null : (
-              <button
-                type="button"
-                disabled={cancelId === order.dbId}
-                onClick={() => void cancelOrder(order)}
-                className="flex-1 min-w-[120px] flex items-center justify-center gap-1.5 border border-red-200 text-red-600 hover:bg-red-50 rounded-xl py-2 text-xs font-semibold transition-all disabled:opacity-60"
-              >
-                <XCircle className="w-3.5 h-3.5" /> {cancelId === order.dbId ? "Cancelling…" : "Cancel"}
-              </button>
-            )}
-            {order.status === "Delivered" && (
-              <Link
-                to="/shop"
-                className="flex-1 flex items-center justify-center gap-1.5 bg-[#E85A00] hover:bg-[#CC4E00] text-white font-semibold rounded-xl py-2 text-xs transition-colors"
-              >
-                <RefreshCcw className="w-3.5 h-3.5" /> Reorder
-              </Link>
-            )}
-          </div>
+          ))}
         </div>
-      ))}
-      </div>
       )}
     </div>
   );
@@ -670,7 +668,7 @@ function AddressesSection({ onCountChange }: { onCountChange?: (n: number) => vo
               <button
                 type="button"
                 onClick={() => {
-                  api.setDefaultAddress(addr.id).catch(() => {});
+                  api.setDefaultAddress(addr.id).catch(() => { });
                   setAddresses(prev => prev.map(a => ({ ...a, isDefault: a.id === addr.id })));
                 }}
                 className="text-xs text-gray-500/50 hover:text-[#E85A00] transition-colors px-3 py-2 border border-gray-200 rounded-xl"
@@ -767,32 +765,32 @@ function NotificationsSection({ onUnreadChange }: { onUnreadChange?: (n: number)
       {!loading && notifs.map(n => {
         const NotifIcon = NOTIFICATION_ICONS[n.type] || Bell;
         return (
-        <div
-          key={n.id}
-          className={`sf-dash-card rounded-xl border p-4 transition-colors ${n.isRead ? "border-gray-100" : "border-[#E85A00]/30"}`}
-        >
-          <div className="flex items-start gap-3">
-            <NotifIcon className="w-5 h-5 shrink-0 text-gray-500/55" aria-hidden />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-2">
-                <p className={`text-sm font-semibold ${n.isRead ? "text-gray-500/80" : "text-black"}`}>{n.title}</p>
-                {!n.isRead && <span className="w-2 h-2 rounded-full bg-[#E85A00] shrink-0" />}
+          <div
+            key={n.id}
+            className={`sf-dash-card rounded-xl border p-4 transition-colors ${n.isRead ? "border-gray-100" : "border-[#E85A00]/30"}`}
+          >
+            <div className="flex items-start gap-3">
+              <NotifIcon className="w-5 h-5 shrink-0 text-gray-500/55" aria-hidden />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <p className={`text-sm font-semibold ${n.isRead ? "text-gray-500/80" : "text-black"}`}>{n.title}</p>
+                  {!n.isRead && <span className="w-2 h-2 rounded-full bg-[#E85A00] shrink-0" />}
+                </div>
+                <p className="text-xs text-gray-500/60 mt-0.5">{n.message}</p>
+                <p className="text-xs text-gray-500/30 mt-1">{n.time}</p>
               </div>
-              <p className="text-xs text-gray-500/60 mt-0.5">{n.message}</p>
-              <p className="text-xs text-gray-500/30 mt-1">{n.time}</p>
-            </div>
-            <div className="flex gap-2 shrink-0">
-              {!n.isRead && (
-                <button type="button" onClick={() => markRead(n.id)} className="text-gray-400 hover:text-[#E85A00] transition-colors" aria-label="Mark read">
-                  <CheckCheck className="w-4 h-4" />
+              <div className="flex gap-2 shrink-0">
+                {!n.isRead && (
+                  <button type="button" onClick={() => markRead(n.id)} className="text-gray-400 hover:text-[#E85A00] transition-colors" aria-label="Mark read">
+                    <CheckCheck className="w-4 h-4" />
+                  </button>
+                )}
+                <button type="button" onClick={() => remove(n.id)} className="text-gray-500/40 hover:text-red-400 transition-colors" aria-label="Dismiss">
+                  <X className="w-4 h-4" />
                 </button>
-              )}
-              <button type="button" onClick={() => remove(n.id)} className="text-gray-500/40 hover:text-red-400 transition-colors" aria-label="Dismiss">
-                <X className="w-4 h-4" />
-              </button>
+              </div>
             </div>
           </div>
-        </div>
         );
       })}
     </div>
@@ -803,11 +801,11 @@ function NotificationsSection({ onUnreadChange }: { onUnreadChange?: (n: number)
 function ProfileSection({ user }: { user: any }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
-    name:        user?.name        || "",
-    company:     user?.company     || "",
-    email:       user?.email       || "",
-    phone:       "",
-    gst:         "",
+    name: user?.name || "",
+    company: user?.company || "",
+    email: user?.email || "",
+    phone: "",
+    gst: "",
   });
 
   return (
@@ -851,10 +849,10 @@ function ProfileSection({ user }: { user: any }) {
           <>
             <div className="space-y-3">
               {[
-                ["Name",       form.name],
-                ["Company",    form.company],
-                ["Email",      form.email],
-                ["Phone",      form.phone],
+                ["Name", form.name],
+                ["Company", form.company],
+                ["Email", form.email],
+                ["Phone", form.phone],
                 ["GST Number", form.gst],
               ].map(([label, value]) => (
                 <div key={label} className="flex justify-between items-center py-1 border-b border-gray-100">
@@ -894,9 +892,9 @@ function ProfileSection({ user }: { user: any }) {
 /* ─── Main Dashboard ────────────────────────────────────── */
 export function Dashboard() {
   const { user, setIsLoggedIn, setUser, isLoggedIn } = useApp();
-  const navigate    = useNavigate();
+  const navigate = useNavigate();
   const { section } = useParams<{ section?: string }>();
-  const [active, setActive]           = useState(section || "dashboard");
+  const [active, setActive] = useState(section || "dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [orders, setOrders] = useState<CustomerUiOrder[]>([]);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
@@ -1035,11 +1033,11 @@ export function Dashboard() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50">
-          {active === "dashboard"     && <DashboardHome user={user} setActive={setActive} orders={orders} stats={dashboardStats} savedAddrCount={savedAddrCount} />}
-          {active === "orders"        && <OrdersSection orders={orders} onReload={loadOrders} />}
-          {active === "addresses"     && <AddressesSection onCountChange={setSavedAddrCount} />}
+          {active === "dashboard" && <DashboardHome user={user} setActive={setActive} orders={orders} stats={dashboardStats} savedAddrCount={savedAddrCount} />}
+          {active === "orders" && <OrdersSection orders={orders} onReload={loadOrders} />}
+          {active === "addresses" && <AddressesSection onCountChange={setSavedAddrCount} />}
           {active === "notifications" && <NotificationsSection onUnreadChange={setNotifUnread} />}
-          {active === "profile"       && <ProfileSection user={user} />}
+          {active === "profile" && <ProfileSection user={user} />}
         </div>
       </div>
     </div>

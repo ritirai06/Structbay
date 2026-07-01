@@ -20,14 +20,14 @@ async function notifyVendor({ vendorId, type, title, message, priority = 'normal
     if (vendor?.notifications?.email !== false) {
       await sendEmail({
         to: vendor.email,
-        subject: `StructBay: ${title}`,
+        subject: `Structbay: ${title}`,
         html: `
           <div style="font-family:sans-serif;max-width:560px;margin:0 auto;">
             <h2 style="color:#FE5E00;">${title}</h2>
             <p style="color:#333;">${message}</p>
             ${actionUrl ? `<a href="${process.env.VENDOR_URL}${actionUrl}" style="display:inline-block;margin-top:16px;padding:10px 24px;background:#FE5E00;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">${actionLabel || 'View Details'}</a>` : ''}
             <hr style="margin-top:32px;border-color:#eee;">
-            <p style="font-size:12px;color:#999;">StructBay Vendor Portal — Do not reply to this email.</p>
+            <p style="font-size:12px;color:#999;">Structbay Vendor Portal — Do not reply to this email.</p>
           </div>
         `,
       });

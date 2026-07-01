@@ -16,7 +16,7 @@ const vendorDispatchSchema = new mongoose.Schema({
     driverLicense: String
   },
   
-  // For StructBay Pickup
+  // For Structbay Pickup
   pickupDetails: {
     pickupAddress: String,
     contactPerson: String,

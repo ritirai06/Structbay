@@ -8,7 +8,7 @@ const orderDocumentSchema = new mongoose.Schema(
     documentType: {
       type: String,
       enum: [
-        'STRUCTBAY_INVOICE',
+        'Structbay_INVOICE',
         'VENDOR_INVOICE',
         'TAX_INVOICE',
         'EWAY_BILL',
@@ -21,7 +21,7 @@ const orderDocumentSchema = new mongoose.Schema(
       required: true,
     },
 
-    /** StructBay document reference (INV… / EWB… / DEL…), shown on portals & PDFs */
+    /** Structbay document reference (INV… / EWB… / DEL…), shown on portals & PDFs */
     documentReference: { type: String, default: null, index: true },
 
     label:        String,

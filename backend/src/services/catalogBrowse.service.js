@@ -405,11 +405,11 @@ async function buildProductSearchOr(search) {
 }
 
 /**
- * Assured / delivery filters: include legacy `isAssured` / `isExpress` OR new StructBay flags.
+ * Assured / delivery filters: include legacy `isAssured` / `isExpress` OR new Structbay flags.
  * @param {Record<string, unknown>} filter mongoose query object (mutated)
  * @param {Record<string, unknown>} query req.query
  */
-function applyLegacyAndStructBayBadgeFilters(filter, query) {
+function applyLegacyAndStructbayBadgeFilters(filter, query) {
   const assured = query.assured === 'true' || query.structbayAssured === 'true';
   const delivery = query.express === 'true' || query.structbayDelivery === 'true';
   if (!assured && !delivery) return;
@@ -485,7 +485,7 @@ async function computeCityScopedProductIdSubset(query, cityOid) {
 
 module.exports = {
   buildProductSearchOr,
-  applyLegacyAndStructBayBadgeFilters,
+  applyLegacyAndStructbayBadgeFilters,
   computeCityScopedProductIdSubset,
   narrowProductsByCategoryAttributeFilters,
   unionSimpleProductsForCategory,

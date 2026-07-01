@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useCallback, useMemo, type FormEvent } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, type FormEvent } from "react";
 import { NavLink, Link, useNavigate, useLocation } from "react-router";
 import {
   Search, User, MapPin, ChevronDown, Menu, X,
@@ -24,6 +24,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@shared/components/ui/dropdown-menu";
+import { ShopMegaMenu } from "./ShopMegaMenu";
 import logoImg from "/shared/assets/logos/Structbay-Logo-F-1.png";
 
 type CustomerNotification = {
@@ -56,9 +57,9 @@ function notificationPath(n: CustomerNotification): string {
 /** After user picks a city in the onboarding modal â€” persisted via `locationOnboarding.ts`. */
 
 const MARQUEE_SEGMENTS_DEFAULT = [
-  "Super fast same day delivery",
-  "Minimum Order Value Rs. 2000.",
-  "Additional Delivery Charges Applicable - pay at site.",
+  "Super fast same day delivery*",
+  "Minimum Order Value Rs. 2000",
+  "Additional Delivery Charges Applicable - pay at site",
 ];
 
 const MARQUEE_HOLD_MS = 3000;
@@ -114,7 +115,7 @@ function TopMarquee({ segments }: { segments: string[] }) {
       >
         <p
           key={index}
-          className={`sb-top-marquee-message text-white/95 text-[12px] sm:text-lg font-medium tracking-wide text-center px-1 ${
+          className={`sb-top-marquee-message text-black text-[12px] sm:text-lg font-medium tracking-wide text-center px-1 ${
             fading ? "opacity-0" : "opacity-100"
           }`}
         >
@@ -406,13 +407,28 @@ export function Header() {
               {topBarText}
             </div>
           ) : (
-            <div className="sf-announce flex items-center justify-center gap-3">
-              <ChevronLeft className="w-3.5 h-3.5 opacity-50 shrink-0" aria-hidden />
-              <div className="flex-1 min-w-0 overflow-hidden">
-                <TopMarquee segments={marqueeFromCms} />
-              </div>
-              <ChevronRight className="w-3.5 h-3.5 opacity-50 shrink-0" aria-hidden />
-            </div>
+            // <div className="sf-announce flex items-center justify-center gap-3">
+            //   <ChevronLeft className="w-4.0 h-4.0  opacity-50 shrink-0" aria-hidden />
+            //   <div className="flex-1 min-w-0 overflow-hidden">
+            //     <TopMarquee segments={marqueeFromCms} />
+            //   </div>
+            //   <ChevronRight className="w-4.0 h-4.0 opacity-50 shrink-0"  aria-hidden />
+            // </div>
+            <div className="sf-announce flex items-center justify-center gap-2 lg:gap-4">
+  <ChevronLeft
+    className="w-5 h-5 lg:w-7 lg:h-7 text-black shrink-0 lg:ml-30"
+    aria-hidden
+  />
+
+  <div className="flex-1 min-w-0 overflow-hidden px-2 lg:px-4">
+    <TopMarquee segments={marqueeFromCms} />
+  </div>
+
+  <ChevronRight
+    className="w-5 h-5 lg:w-7 lg:h-7 text-black shrink-0 lg:mr-30"
+    aria-hidden
+  />
+</div>
           )}
         </div>
 
@@ -429,72 +445,42 @@ export function Header() {
               </button>
 
               <Link to="/" className="shrink-0 sf-header-logo-link">
-                <img src={logoImg} alt="StructBay" className="sf-header-logo" />
+                <img src={logoImg} alt="Structbay" className="sf-header-logo" />
               </Link>
 
               <nav className="sf-nav" aria-label="Main">
                 <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>Home</NavLink>
-                <DropdownMenu open={catOpen} onOpenChange={setCatOpen}>
-                  <DropdownMenuTrigger asChild>
-                    <button type="button" className="sf-nav-shop" aria-expanded={catOpen}>
-                      Shop <ChevronDown className={`w-3.5 h-3.5 transition-transform ${catOpen ? "rotate-180" : ""}`} />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="center"
-                    side="bottom"
-                    sideOffset={8}
-                    collisionPadding={12}
-                    className="sf-shop-dropdown w-56 max-h-[min(70vh,420px)] overflow-y-auto rounded-lg shadow-2xl z-[60] p-0 py-1.5 bg-white border border-gray-200 text-gray-800"
-                  >
-                    <DropdownMenuItem asChild className="p-0 rounded-none focus:bg-transparent">
-                      <Link
-                        to="/shop"
-                        onClick={() => setCatOpen(false)}
-                        className="sf-shop-dropdown__all px-4 py-2.5 cursor-pointer"
-                      >
-                        All Categories <ChevronRight className="w-3.5 h-3.5" />
-                      </Link>
-                    </DropdownMenuItem>
-                    {categories.map((cat) => (
-                      <DropdownMenuItem key={cat.slug} asChild className="p-0 rounded-none focus:bg-orange-50">
-                        <NavLink
-                          to={`/category/${cat.slug}`}
-                          onClick={() => {
-                            setCatOpen(false);
-                            signalSandAggregatesQuoteOpen(cat);
-                          }}
-                          className="block w-full px-4 py-2.5 hover:bg-orange-50 cursor-pointer"
-                        >
-                          {cat.name}
-                        </NavLink>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <ShopMegaMenu 
+                  categories={categories} 
+                  onCategoryClick={(cat) => signalSandAggregatesQuoteOpen(cat)}
+                />
                 <Link to="/blogs">Blog</Link>
                 <Link to="/about">About Us</Link>
                 <Link to="/contact">Contact Us</Link>
               </nav>
 
               <div className="sf-header-actions">
-                {/* Search (Mobile/Tablet) */}
-                <button type="button" onClick={() => setSearchOpen((v) => !v)} className="hidden sm:flex p-2 text-white hover:text-sb-orange transition-colors" aria-label="Search">
-                  <Search className="w-5 h-5" />
-                </button>
-
                 {/* Desktop Actions (Hidden on smaller screens) */}
-                                <button
+                <button
                   type="button"
                   onClick={() => openBulkEnquiry()}
-                  className="sf-btn-outline hidden md:inline-flex"
+                  className="sf-btn-outline hidden md:inline-flex !px-2.5 !py-1.5 !text-[0.65rem]"
                 >
                   Bulk Order
                 </button>
-                <NavLink to="/cart" className="sf-btn-outline relative hidden md:inline-flex">
-                  View Cart &gt;&gt;
+                <NavLink to="/finance" className="sf-btn-outline hidden md:inline-flex !px-2.5 !py-1.5 !text-[0.65rem]">
+                  Finance
+                </NavLink>
+
+                {/* Search */}
+                <button type="button" onClick={() => setSearchOpen((v) => !v)} className="hidden sm:flex p-2 text-white hover:text-sb-orange transition-colors" aria-label="Search">
+                  <Search className="w-[26px] h-[26px]" />
+                </button>
+
+                <NavLink to="/cart" className="relative hidden md:flex p-2 text-white hover:text-sb-orange transition-colors items-center justify-center" aria-label="Cart">
+                  <ShoppingCart className="w-[26px] h-[26px]" />
                   {cartCount > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 min-w-[1.1rem] h-[1.1rem] rounded-full bg-sb-orange text-white text-[10px] font-bold flex items-center justify-center px-0.5">{cartCount}</span>
+                    <span className="absolute top-0 right-0 min-w-[1.1rem] h-[1.1rem] rounded-full bg-sb-orange text-white text-[10px] font-bold flex items-center justify-center px-0.5">{cartCount}</span>
                   )}
                 </NavLink>
 
@@ -530,7 +516,7 @@ export function Header() {
                 </div>
                 <div className="relative hidden lg:block" ref={userRef}>
                   <button type="button" onClick={() => setUserOpen((v) => !v)} className="p-2 text-white/80 hover:text-white" aria-label="Account">
-                    <User className="w-5 h-5" />
+                    <User className="w-[26px] h-[26px]" />
                   </button>
                   {userOpen && (
                     <div className="absolute right-0 top-full mt-2 rounded-lg shadow-2xl w-52 z-50 py-1.5 bg-white border border-gray-200">
@@ -683,15 +669,15 @@ export function Header() {
 
             {/* Mobile Responsive Header Layout (max-width: 767px) */}
             <div className="flex md:hidden items-center justify-between w-full sf-header-mobile-wrapper">
-              {/* Left Section: StructBay Logo */}
+              {/* Left Section: Structbay Logo */}
               <div className="flex items-center">
                 <Link to="/" className="shrink-0 flex items-center">
-                  <img src={logoImg} alt="StructBay" className="sf-header-mobile-logo" />
+                  <img src={logoImg} alt="Structbay" className="sf-header-mobile-logo" />
                 </Link>
               </div>
 
-              {/* Center Section: Bulk Order Button */}
-              <div>
+              {/* Center Section: Bulk Order & Finance Buttons */}
+              <div className="flex gap-1">
                 <button
                   type="button"
                   onClick={() => openBulkEnquiry()}
@@ -699,18 +685,21 @@ export function Header() {
                 >
                   Bulk Order
                 </button>
+                <NavLink to="/finance" className="sf-btn-outline-mobile">
+                  Finance
+                </NavLink>
               </div>
 
               {/* Right Section: Icons (Cart, Search, Hamburger) */}
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center -space-x-1">
                 {/* Cart Icon with badge */}
                 <Link
                   to="/cart"
-                  className="relative p-1.5 text-white hover:text-sb-orange transition-colors shrink-0 flex items-center justify-center"
+                  className="relative w-8 h-8 text-white hover:text-sb-orange transition-colors shrink-0 flex items-center justify-center"
                   aria-label="Cart"
                 >
                   <ShoppingCart className="w-[22px] h-[22px]" />
-                  <span className="sf-header-mobile-cart-badge">
+                  <span className="sf-header-mobile-cart-badge" style={{ top: '-1px', right: '-3px' }}>
                     {cartCount}
                   </span>
                 </Link>
@@ -719,7 +708,7 @@ export function Header() {
                 <button
                   type="button"
                   onClick={() => setSearchOpen((v) => !v)}
-                  className="p-1.5 text-white hover:text-sb-orange transition-colors shrink-0 flex items-center justify-center"
+                  className="w-8 h-8 text-white hover:text-sb-orange transition-colors shrink-0 flex items-center justify-center"
                   aria-label="Search"
                 >
                   <Search className="w-[22px] h-[22px]" />
@@ -730,7 +719,7 @@ export function Header() {
                 <button
                   type="button"
                   onClick={() => setMenuOpen(true)}
-                  className="p-1.5 text-white hover:text-sb-orange transition-colors shrink-0 flex items-center justify-center"
+                  className="w-8 h-8 text-white hover:text-sb-orange transition-colors shrink-0 flex items-center justify-center"
                   aria-label="Open menu"
                 >
                   <Menu className="w-6 h-6 text-white" />
@@ -783,7 +772,7 @@ export function Header() {
             onClick={e => e.stopPropagation()}
           >
             <div className="flex justify-between items-center p-4 border-b border-sb-border-dark">
-              <img src={logoImg} alt="StructBay" className="sf-header-logo" />
+              <img src={logoImg} alt="Structbay" className="sf-header-logo" />
               <button onClick={() => setMenuOpen(false)} style={{ color: "var(--sb-chrome-fg-muted)" }}>
                 <X className="w-5 h-5" />
               </button>
@@ -801,36 +790,12 @@ export function Header() {
 
             <div className="px-4 py-3 flex-1">
               <p className="text-xs font-bold uppercase tracking-wider mb-2 text-white/50">Categories</p>
-              <NavLink
-                to="/shop"
-                onClick={() => setMenuOpen(false)}
-                className="block py-2.5 text-sm font-semibold transition-colors"
-                style={{ color: "var(--sb-orange)", borderBottom: "1px solid rgba(55,65,81,0.3)" }}
-              >
-                All Categories
-              </NavLink>
-              {categories.map(cat => (
-                <NavLink
-                  key={cat.slug}
-                  to={`/category/${cat.slug}`}
-                  onClick={() => {
-                    setMenuOpen(false);
-                    signalSandAggregatesQuoteOpen(cat);
-                  }}
-                  className={({ isActive }) =>
-                    `flex items-center gap-2.5 py-2.5 text-sm transition-colors ${
-                      isActive ? "font-semibold pl-1 border-l-2" : ""
-                    }`
-                  }
-                  style={({ isActive }) => ({
-                    color: isActive ? "var(--sb-orange)" : "var(--sb-chrome-fg)",
-                    borderColor: "var(--sb-orange)",
-                    borderBottom: "1px solid rgba(55,65,81,0.2)",
-                  })}
-                >
-                  {cat.name}
-                </NavLink>
-              ))}
+              <ShopMegaMenu 
+                categories={categories} 
+                isMobile 
+                onNavigate={() => setMenuOpen(false)}
+                onCategoryClick={(cat) => signalSandAggregatesQuoteOpen(cat)}
+              />
 
               <p className="text-xs font-bold uppercase tracking-wider mb-2 mt-4 text-white/50">Menu</p>
               <Link to="/blogs" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-white">Blog</Link>

@@ -699,7 +699,7 @@ export function ProductDetails() {
                   </ul>
                 ) : (
                   <p className="text-sm text-gray-600 leading-relaxed">
-                    {product.shortDescription || "Premium quality product from verified StructBay vendors."}
+                    {product.shortDescription || "Premium quality product from verified Structbay vendors."}
                   </p>
                 )}
                 {brandName && (

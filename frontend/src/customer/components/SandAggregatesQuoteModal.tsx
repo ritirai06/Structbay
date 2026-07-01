@@ -37,6 +37,7 @@ export function SandAggregatesQuoteModal({ open, onClose }: Props) {
     name: isLoggedIn ? user?.name || "" : "",
     company: isLoggedIn ? user?.company || "" : "",
     phone: "",
+    email: "",
     siteAddress: "",
   });
   const [lines, setLines] = useState<QuoteLine[]>([{ size: "", quantity: "" }]);
@@ -113,6 +114,7 @@ export function SandAggregatesQuoteModal({ open, onClose }: Props) {
         quoteType: "SAND_AGGREGATES",
         customerName: form.name,
         customerPhone: form.phone,
+        customerEmail: form.email || undefined,
         companyName: form.company || undefined,
         deliveryAddress: form.siteAddress,
         city: form.siteAddress,
@@ -138,7 +140,7 @@ export function SandAggregatesQuoteModal({ open, onClose }: Props) {
       }}
     >
       <div
-        className="relative w-full max-w-[760px] max-h-[92vh] overflow-y-auto rounded-2xl bg-white shadow-2xl"
+        className="relative w-full max-w-[760px] max-h-[92vh] overflow-hidden rounded-2xl bg-[#FFF9F2] shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="sand-aggregates-quote-title"
@@ -153,6 +155,7 @@ export function SandAggregatesQuoteModal({ open, onClose }: Props) {
           <X className="h-4 w-4" />
         </button>
 
+        <div className="overflow-y-auto max-h-[92vh] w-full">
         {submitted ? (
           <div className="px-6 py-12 text-center sm:px-10">
             <CheckCircle2 className="mx-auto mb-4 h-14 w-14 text-green-600" />
@@ -199,6 +202,11 @@ export function SandAggregatesQuoteModal({ open, onClose }: Props) {
               <label className="block">
                 <span className="mb-2 block text-sm font-bold text-gray-700">Phone Number</span>
                 <input className={fieldClass} value={form.phone} onChange={(e) => updateForm("phone", e.target.value)} />
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-bold text-gray-700">Email Address</span>
+                <input type="email" className={fieldClass} value={form.email} onChange={(e) => updateForm("email", e.target.value)} />
               </label>
 
               <label className="block">
@@ -256,6 +264,7 @@ export function SandAggregatesQuoteModal({ open, onClose }: Props) {
             </div>
           </form>
         )}
+        </div>
       </div>
     </div>
   );

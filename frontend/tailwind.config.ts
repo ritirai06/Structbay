@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
 
 /**
- * StructBay Tailwind theme extension (v4).
+ * Structbay Tailwind theme extension (v4).
  * Source of truth for hex values is `shared/design-system/design-tokens.ts`.
  */
 export default {

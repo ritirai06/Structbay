@@ -38,7 +38,7 @@ export function Sidebar() {
   return (
     <div className="sb-sidebar flex h-screen w-64 shrink-0 flex-col border-r border-sb-border-dark">
       <div className="flex h-[72px] shrink-0 items-center gap-3 border-b border-sb-border-dark px-5">
-        <img src={logoImg} alt="StructBay" className="h-10 w-auto object-contain" />
+        <img src={logoImg} alt="Structbay" className="h-10 w-auto object-contain" />
         <span className="ml-auto shrink-0 text-[10px] font-medium uppercase tracking-widest text-white/55">
           Admin
         </span>

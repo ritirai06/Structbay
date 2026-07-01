@@ -1,12 +1,12 @@
-const asyncHandler  = require('../utils/asyncHandler');
-const ApiResponse   = require('../utils/apiResponse');
-const AppError      = require('../utils/AppError');
-const Cart          = require('../models/Cart');
-const Order         = require('../models/Order');
-const CityPricing   = require('../models/CityPricing');
-const Inventory     = require('../models/Inventory');
-const City          = require('../models/City');
-const Notification  = require('../models/Notification');
+const asyncHandler = require('../utils/asyncHandler');
+const ApiResponse = require('../utils/apiResponse');
+const AppError = require('../utils/AppError');
+const Cart = require('../models/Cart');
+const Order = require('../models/Order');
+const CityPricing = require('../models/CityPricing');
+const Inventory = require('../models/Inventory');
+const City = require('../models/City');
+const Notification = require('../models/Notification');
 const { sendOrderPlacedEmail } = require('../services/email.service');
 const { notifyAllAdmins } = require('../services/staffNotification.service');
 const { resolveUnitPriceFromCityPricing } = require('../services/checkoutPricing.service');
@@ -43,7 +43,7 @@ exports.validate = asyncHandler(async (req, res) => {
 
   const city = await City.findById(cityId);
   if (!city || !city.isServiceable || city.status !== 'ACTIVE') {
-    throw new AppError('StructBay is not currently serviceable in the selected city.', 422);
+    throw new AppError('Structbay is not currently serviceable in the selected city.', 422);
   }
 
   // City match check (aliases, e.g. Bangalore / Bengaluru)
@@ -95,7 +95,7 @@ exports.validate = asyncHandler(async (req, res) => {
     const rawUnitPrice = resolveUnitPriceFromCityPricing(pricing, item.quantity);
     const rawLineTotal = rawUnitPrice * item.quantity;
     const gstPct = resolveGstPct(item.product.gstPercentage, gstRateOverride);
-    
+
     let baseLineTotal, gstAmt;
     if (item.product.priceIncludesGst) {
       baseLineTotal = rawLineTotal / (1 + (gstPct / 100));
@@ -129,7 +129,7 @@ exports.validate = asyncHandler(async (req, res) => {
   // Validate minimum order value
   const minOrderValidation = await validateMinimumOrder(subtotal);
   if (!minOrderValidation.meetsMinimum) {
-    return ApiResponse.error(res, 422, 
+    return ApiResponse.error(res, 422,
       `Minimum order value is ₹${minOrderValidation.minimumValue.toLocaleString('en-IN')}. Add ₹${minOrderValidation.difference.toLocaleString('en-IN')} more to continue.`, {
       minimumOrder: minOrderValidation,
     });
@@ -181,7 +181,7 @@ exports.placeOrder = asyncHandler(async (req, res) => {
     const rawUnitPrice = resolveUnitPriceFromCityPricing(pricing, item.quantity);
     const rawLineTotal = rawUnitPrice * item.quantity;
     const gstPct = resolveGstPct(item.product.gstPercentage, gstRateOverride);
-    
+
     let baseLineTotal;
     if (item.product.priceIncludesGst) {
       baseLineTotal = rawLineTotal / (1 + (gstPct / 100));
@@ -219,7 +219,7 @@ exports.placeOrder = asyncHandler(async (req, res) => {
     const rawUnitPrice = resolveUnitPriceFromCityPricing(pricing, item.quantity);
     const rawLineTotal = rawUnitPrice * item.quantity;
     const gstPct = resolveGstPct(item.product.gstPercentage, gstRateOverride);
-    
+
     let baseLineTotal, gstAmt;
     if (item.product.priceIncludesGst) {
       baseLineTotal = rawLineTotal / (1 + (gstPct / 100));
@@ -272,8 +272,10 @@ exports.placeOrder = asyncHandler(async (req, res) => {
     statusHistory: [{ status: 'VENDOR_ASSIGNMENT_PENDING', changedBy: req.user._id, note: 'Order placed by customer.' }],
   });
 
-  await logOrderActivity({ masterOrder: order._id, actorType: 'CUSTOMER', actor: req.user._id,
-    action: 'ORDER_PLACED', description: `Order ${orderNumber} placed by customer.` });
+  await logOrderActivity({
+    masterOrder: order._id, actorType: 'CUSTOMER', actor: req.user._id,
+    action: 'ORDER_PLACED', description: `Order ${orderNumber} placed by customer.`
+  });
 
   // Clear cart active items
   await Cart.findOneAndUpdate(
@@ -296,7 +298,7 @@ exports.placeOrder = asyncHandler(async (req, res) => {
     message: `Order ${orderNumber} from ${req.user.name || 'customer'} · ₹${grandTotal.toLocaleString('en-IN')}`,
     relatedMasterOrder: order._id,
     metadata: { orderNumber, customerName: req.user.name },
-  }).catch(() => {});
+  }).catch(() => { });
 
   // Send order placed email (non-blocking, uses master template + CMS branding)
   sendOrderPlacedEmail({
@@ -307,7 +309,9 @@ exports.placeOrder = asyncHandler(async (req, res) => {
     subtotal: Math.round(subtotal),
     gstTotal: Math.round(gstTotal),
     items: orderItems.map(i => ({ name: i.name, quantity: i.quantity, price: i.lineTotal })),
-  }).catch(() => {});
+    subject: `Order Confirmed – ${orderNumber} | Structbay`,
+    html: `<p>Hi ${req.user.name},</p><p>Your order <strong>${orderNumber}</strong> has been placed successfully.</p><p><strong>Total: ₹${grandTotal.toLocaleString()}</strong></p><p>We will notify you once your order is processed.</p>`,
+  }).catch(() => { });
 
   return ApiResponse.created(res, 'Order placed successfully.', order);
 });

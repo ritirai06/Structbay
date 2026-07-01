@@ -97,7 +97,7 @@ const orderSchema = new mongoose.Schema(
     // Multi-vendor sub-orders
     vendorOrders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'VendorOrder' }],
 
-    // Documents (URLs) + StructBay reference numbers (user-facing; never expose raw Mongo ids in UI)
+    // Documents (URLs) + Structbay reference numbers (user-facing; never expose raw Mongo ids in UI)
     structbayInvoiceUrl: { type: String, default: null },
     customerInvoiceNumber: { type: String, default: null, sparse: true },
     ewayBillUrl:         { type: String, default: null },

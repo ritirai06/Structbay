@@ -301,7 +301,7 @@ export function Login() {
     authPath === "forgot"
       ? "We will email you a reset link if an account exists for that address."
       : authPath === "reset"
-        ? "Choose a strong password for your StructBay account."
+        ? "Choose a strong password for your Structbay account."
         : "Customer portal — use your business email.";
 
   return (

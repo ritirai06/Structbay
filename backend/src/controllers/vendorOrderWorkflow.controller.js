@@ -188,10 +188,10 @@ exports.markDispatched = asyncHandler(async (req, res) => {
   if (!vo) throw new AppError('Order not found or not assigned to you.', 404);
   if (!isWorkflowVendorOrder(vo)) throw new AppError('Workflow not available for this order.', 400);
   if (vo.deliveryType === 'structbay_delivery') {
-    throw new AppError('StructBay handles pickup and delivery for this order (Type B). You do not need to mark dispatch.', 400);
+    throw new AppError('Structbay handles pickup and delivery for this order (Type B). You do not need to mark dispatch.', 400);
   }
   if (vo.status !== 'SB_INVOICE_SENT') {
-    throw new AppError('Dispatch is only allowed after StructBay has approved dispatch and sent invoice & e-way bill.', 400);
+    throw new AppError('Dispatch is only allowed after Structbay has approved dispatch and sent invoice & e-way bill.', 400);
   }
 
   const proof = req.file;
@@ -292,7 +292,7 @@ exports.markDelivered = asyncHandler(async (req, res) => {
   if (!vo) throw new AppError('Order not found or not assigned to you.', 404);
   if (!isWorkflowVendorOrder(vo)) throw new AppError('Workflow not available for this order.', 400);
   if (vo.deliveryType === 'structbay_delivery') {
-    throw new AppError('StructBay confirms delivery for Type B orders. Upload POD is not required from vendor.', 400);
+    throw new AppError('Structbay confirms delivery for Type B orders. Upload POD is not required from vendor.', 400);
   }
   if (vo.status !== 'DISPATCHED') {
     throw new AppError('Proof of delivery can only be submitted after dispatch.', 400);

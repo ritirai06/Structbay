@@ -25,7 +25,7 @@ export function canCustomerRequestReplacement(apiStatus: string): boolean {
 }
 
 export const CANCEL_POLICY_HINT =
-  "You can cancel only before the vendor marks the order Ready for Dispatch. After that, contact StructBay support.";
+  "You can cancel only before the vendor marks the order Ready for Dispatch. After that, contact Structbay support.";
 
 export const REPLACEMENT_POLICY_HINT =
   "Replacement requests apply only after delivery when the wrong or damaged product was received.";

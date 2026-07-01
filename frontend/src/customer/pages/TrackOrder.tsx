@@ -62,7 +62,7 @@ export function TrackOrder() {
       <UtilityHero
         icon={Package}
         title="Track your order"
-        description="Sign in with the account used at checkout, then enter your StructBay order number."
+        description="Sign in with the account used at checkout, then enter your Structbay order number."
       />
 
       <UtilityCard>

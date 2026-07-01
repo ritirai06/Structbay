@@ -106,7 +106,7 @@ exports.updateOrderStatus = async (req, res) => {
   if (Number(order.workflowVersion) === 2) {
     return ApiResponse.badRequest(
       res,
-      'This order uses the StructBay workflow — use Accept / Ready for dispatch / Mark delivered actions instead of manual status updates.'
+      'This order uses the Structbay workflow — use Accept / Ready for dispatch / Mark delivered actions instead of manual status updates.'
     );
   }
 
@@ -155,7 +155,7 @@ exports.updateOrderStatus = async (req, res) => {
       vendorId: req.user._id,
       type: 'dispatch_confirmation',
       title: 'Dispatch confirmed',
-      message: `You confirmed dispatch for ${order.orderNumber}. StructBay and the customer have been notified.`,
+      message: `You confirmed dispatch for ${order.orderNumber}. Structbay and the customer have been notified.`,
       relatedOrder: order._id,
       actionUrl: `/orders/${order._id}`,
       actionLabel: 'View order',

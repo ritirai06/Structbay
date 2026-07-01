@@ -28,12 +28,12 @@ import { FOOTER_QUICK_LINKS } from "@shared/constants/footerQuickLinks";
 
 const DEFAULTS: FooterData = {
   companyDescription:
-    "StructBay combines the reliability of branded materials, the power of affordable pricing, and the ease of single-window sourcing — everything you need to finish projects faster and better.",
-  address: "Vidyaranyapura, Bengaluru",
+    "Structbay combines the reliability of branded materials, the power of affordable pricing, and the ease of single-window sourcing — everything you need to finish projects faster and better.",
+  address: "102, Road No.4, Defence Layout, Vidyaranyapura, Bengaluru 560097",
   phone: "+91 70905 70505",
   email: "hello@structbay.com",
   newsletterText: "Subscribe for exciting offers & newsletters",
-  copyrightText: "© 2026 StructBay. All Rights Reserved. Developed By HSDA Digital.",
+  copyrightText: "© 2026 Structbay. All Rights Reserved. Developed By HSDA Digital.",
   quickLinks: FOOTER_QUICK_LINKS.map((l, i) => ({
     _id: String(i + 1),
     label: l.label,
@@ -62,6 +62,8 @@ export function useFooterCMS() {
       .then(json => {
         if (!cancelled && json?.data) {
           const api = json.data as Partial<FooterData>;
+          // Force override the address to ensure full address is always shown
+          api.address = "102, Road No.4, Defence Layout, Vidyaranyapura, Bengaluru 560097";
           const quickLinks =
             Array.isArray(api.quickLinks) && api.quickLinks.length > 0
               ? api.quickLinks
