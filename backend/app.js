@@ -67,6 +67,7 @@ const adminCouponRoutes   = require('./src/routes/admin/coupon.routes');
 const customerCouponRoutes = require('./src/routes/customer/coupon.routes');
 const paymentRoutes       = require('./src/routes/customer/payment.routes');
 const projectRoutes       = require('./src/routes/customer/project.routes');
+const contactRoutes       = require('./src/routes/contact.routes');
 
 const app = express();
 
@@ -200,6 +201,7 @@ app.use(`${V1}/admin/coupons`,      adminCouponRoutes);
 app.use(`${V1}/coupons`,            customerCouponRoutes);
 app.use(`${V1}/payments`,           paymentRoutes);
 app.use(`${V1}/customer/projects`,  projectRoutes);
+app.use(`${V1}/contact`,            contactRoutes);
 
 // ─── Swagger UI (admin-only in production) ──────────────────────────────────────────────
 if (process.env.NODE_ENV !== 'production') {

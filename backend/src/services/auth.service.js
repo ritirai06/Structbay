@@ -384,10 +384,36 @@ const changePassword = async (userId, currentPassword, newPassword) => {
   await RefreshToken.revokeAllForUser(userId);
 };
 
+/**
+ * Admin-only admin creation: ACTIVE, email treated as verified.
+ */
+const createAdminByAdmin = async (
+  { name, email, phone, password, role = ROLES.ADMIN, status = USER_STATUS.ACTIVE },
+  adminUser
+) => {
+  const emailNorm = normalizeEmail(email);
+  const existing = await User.findOne({ email: emailNorm, status: { $ne: USER_STATUS.DELETED } });
+  if (existing) throw new AppError('An account with this email already exists.', 409);
+
+  const doc = {
+    name,
+    email: emailNorm,
+    phone: phone || null,
+    password,
+    role: role || ROLES.ADMIN,
+    status: status || USER_STATUS.ACTIVE,
+    isEmailVerified: true,
+  };
+
+  const user = await User.create(doc);
+  return user;
+};
+
 module.exports = {
   registerCustomer,
   registerVendor,
   createVendorByAdmin,
+  createAdminByAdmin,
   login,
   issueTokenPair,
   refreshAccessToken,

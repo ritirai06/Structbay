@@ -577,6 +577,234 @@ const bulkDeleteVendors = asyncHandler(async (req, res) => {
   });
 });
 
+// ─── POST /api/v1/admin/admins ───────────────────────────────────────────────
+const createAdmin = asyncHandler(async (req, res) => {
+  const { name, email, phone, password, confirmPassword, role, status } = req.body;
+
+  // Validation
+  if (!name || !name.trim()) throw new AppError('Name is required.', 400);
+  if (!email || !email.trim()) throw new AppError('Email is required.', 400);
+  if (!password || !password.trim()) throw new AppError('Password is required.', 400);
+  if (!confirmPassword || !confirmPassword.trim()) throw new AppError('Confirm Password is required.', 400);
+  if (password !== confirmPassword) throw new AppError('Passwords do not match.', 400);
+  if (password.length < 8) throw new AppError('Password must be at least 8 characters.', 400);
+
+  // Email validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email.trim())) throw new AppError('Invalid email address.', 400);
+
+  // Check email uniqueness
+  const emailNorm = email.trim().toLowerCase();
+  const existingEmail = await User.findOne({ email: emailNorm, status: { $ne: USER_STATUS.DELETED } });
+  if (existingEmail) throw new AppError('An account with this email already exists.', 409);
+
+  // Create admin
+  const user = await authService.createAdminByAdmin(
+    {
+      name: name.trim(),
+      email: emailNorm,
+      phone: phone ? phone.trim() : null,
+      password,
+      role: role || ROLES.ADMIN,
+      status: status || USER_STATUS.ACTIVE,
+    },
+    req.user
+  );
+
+  // Log action
+  await logAction({
+    adminId: req.user._id,
+    action: 'CREATE',
+    module: 'Admin',
+    targetId: user._id.toString(),
+    description: `Created admin account for ${user.name} (${user.email})`,
+    ipAddress: req.ip,
+  });
+
+  return ApiResponse.created(res, 'Admin account created successfully.', user);
+});
+
+// ─── GET /api/v1/admin/admins ─────────────────────────────────────────────────
+const getAllAdmins = asyncHandler(async (req, res) => {
+  const {
+    page = PAGINATION.DEFAULT_PAGE,
+    limit = PAGINATION.DEFAULT_LIMIT,
+    status,
+    search,
+    sortBy = 'createdAt',
+    sortOrder = 'desc',
+  } = req.query;
+
+  const pageNum = Math.max(1, parseInt(page));
+  const limitNum = Math.min(parseInt(limit), PAGINATION.MAX_LIMIT);
+  const skip = (pageNum - 1) * limitNum;
+
+  const filter = { role: ROLES.ADMIN };
+  if (status) filter.status = status;
+  if (search) {
+    filter.$or = [
+      { name: { $regex: search, $options: 'i' } },
+      { email: { $regex: search, $options: 'i' } },
+      { phone: { $regex: search, $options: 'i' } },
+    ];
+  }
+
+  const sort = { [sortBy]: sortOrder === 'asc' ? 1 : -1 };
+
+  const [admins, total] = await Promise.all([
+    User.find(filter).sort(sort).skip(skip).limit(limitNum),
+    User.countDocuments(filter),
+  ]);
+
+  return ApiResponse.success(
+    res,
+    200,
+    'Admins retrieved.',
+    admins,
+    {
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(total / limitNum),
+    }
+  );
+});
+
+// ─── GET /api/v1/admin/admins/:id ─────────────────────────────────────────────
+const getAdminById = asyncHandler(async (req, res) => {
+  const admin = await User.findOne({ _id: req.params.id, role: ROLES.ADMIN });
+  if (!admin) throw new AppError('Admin not found.', 404);
+  return ApiResponse.success(res, 200, 'Admin retrieved.', admin);
+});
+
+// ─── PUT /api/v1/admin/admins/:id ─────────────────────────────────────────────
+const updateAdmin = asyncHandler(async (req, res) => {
+  const admin = await User.findOne({ _id: req.params.id, role: ROLES.ADMIN });
+  if (!admin) throw new AppError('Admin not found.', 404);
+
+  const { name, email, phone, status } = req.body;
+
+  // Email uniqueness check
+  if (email && email.toLowerCase() !== admin.email.toLowerCase()) {
+    const emailNorm = email.toLowerCase();
+    const existingEmail = await User.findOne({
+      email: emailNorm,
+      _id: { $ne: admin._id },
+      status: { $ne: USER_STATUS.DELETED },
+    });
+    if (existingEmail) throw new AppError('An account with this email already exists.', 409);
+    admin.email = emailNorm;
+  }
+
+  if (name !== undefined) admin.name = name.trim();
+  if (phone !== undefined) admin.phone = phone ? phone.trim() : null;
+  if (status !== undefined) {
+    admin.status = status;
+    if (status === USER_STATUS.SUSPENDED || status === USER_STATUS.DELETED) {
+      await RefreshToken.revokeAllForUser(admin._id);
+      await Session.updateMany({ user: admin._id, isActive: true }, { isActive: false, logoutAt: new Date() });
+    }
+  }
+
+  await admin.save({ validateBeforeSave: false });
+
+  await logAction({
+    adminId: req.user._id,
+    action: 'UPDATE',
+    module: 'Admin',
+    targetId: admin._id.toString(),
+    description: `Updated admin account for ${admin.name}`,
+    ipAddress: req.ip,
+  });
+
+  return ApiResponse.success(res, 200, 'Admin updated successfully.', admin);
+});
+
+// ─── PUT /api/v1/admin/admins/:id/status ──────────────────────────────────────
+const updateAdminStatus = asyncHandler(async (req, res) => {
+  const { status } = req.body;
+  if (!Object.values(USER_STATUS).includes(status)) {
+    throw new AppError(`Invalid status. Must be one of: ${Object.values(USER_STATUS).join(', ')}`, 400);
+  }
+
+  const admin = await User.findOne({ _id: req.params.id, role: ROLES.ADMIN });
+  if (!admin) throw new AppError('Admin not found.', 404);
+
+  admin.status = status;
+  if (status === USER_STATUS.SUSPENDED || status === USER_STATUS.DELETED) {
+    await RefreshToken.revokeAllForUser(admin._id);
+    await Session.updateMany({ user: admin._id, isActive: true }, { isActive: false, logoutAt: new Date() });
+  }
+
+  await admin.save({ validateBeforeSave: false });
+
+  await logAction({
+    adminId: req.user._id,
+    action: 'UPDATE',
+    module: 'Admin',
+    targetId: admin._id.toString(),
+    description: `Changed admin status to ${status}`,
+    ipAddress: req.ip,
+  });
+
+  return ApiResponse.success(res, 200, `Admin status updated to ${status}.`, admin);
+});
+
+// ─── POST /api/v1/admin/admins/:id/reset-password ────────────────────────────
+const resetAdminPassword = asyncHandler(async (req, res) => {
+  const { newPassword, confirmPassword } = req.body;
+
+  if (!newPassword || !newPassword.trim()) throw new AppError('New password is required.', 400);
+  if (!confirmPassword || !confirmPassword.trim()) throw new AppError('Confirm password is required.', 400);
+  if (newPassword !== confirmPassword) throw new AppError('Passwords do not match.', 400);
+  if (newPassword.length < 8) throw new AppError('Password must be at least 8 characters.', 400);
+
+  const admin = await User.findOne({ _id: req.params.id, role: ROLES.ADMIN }).select('+password');
+  if (!admin) throw new AppError('Admin not found.', 404);
+
+  admin.password = newPassword;
+  await admin.save();
+
+  // Revoke all sessions
+  await RefreshToken.revokeAllForUser(admin._id);
+  await Session.updateMany({ user: admin._id, isActive: true }, { isActive: false, logoutAt: new Date() });
+
+  await logAction({
+    adminId: req.user._id,
+    action: 'UPDATE',
+    module: 'Admin',
+    targetId: admin._id.toString(),
+    description: `Reset password for admin ${admin.name}`,
+    ipAddress: req.ip,
+  });
+
+  return ApiResponse.success(res, 200, 'Admin password reset successfully.');
+});
+
+// ─── DELETE /api/v1/admin/admins/:id ──────────────────────────────────────────
+const deleteAdmin = asyncHandler(async (req, res) => {
+  const admin = await User.findOne({ _id: req.params.id, role: ROLES.ADMIN });
+  if (!admin) throw new AppError('Admin not found.', 404);
+
+  await RefreshToken.revokeAllForUser(admin._id);
+  await Promise.all([
+    Session.deleteMany({ user: admin._id }),
+    RefreshToken.deleteMany({ user: admin._id }),
+    User.deleteOne({ _id: admin._id }),
+  ]);
+
+  await logAction({
+    adminId: req.user._id,
+    action: 'DELETE',
+    module: 'Admin',
+    targetId: admin._id.toString(),
+    description: `Deleted admin account for ${admin.name}`,
+    ipAddress: req.ip,
+  });
+
+  return ApiResponse.success(res, 200, 'Admin deleted successfully.');
+});
+
 module.exports = {
   getAllUsers,
   getUserById,
@@ -591,4 +819,11 @@ module.exports = {
   uploadCancelledCheque,
   deleteVendor,
   bulkDeleteVendors,
+  createAdmin,
+  getAllAdmins,
+  getAdminById,
+  updateAdmin,
+  updateAdminStatus,
+  resetAdminPassword,
+  deleteAdmin,
 };

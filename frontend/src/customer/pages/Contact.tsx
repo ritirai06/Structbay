@@ -7,19 +7,60 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
 export function Contact() {
   const { cms, loading, error } = useCmsHomepage();
-  
+  const [formData, setFormData] = React.useState({
+    name: "",
+    phone: "",
+    email: "",
+    subject: "",
+    message: "",
+  });
+  const [submitting, setSubmitting] = React.useState(false);
+  const [submitStatus, setSubmitStatus] = React.useState<{ type: "success" | "error"; message: string } | null>(null);
+
   // Get banner URL from CMS - same pattern as Homepage
   let bannerUrl = cms?.pageBanners?.contactUsUrl;
-  
+
   // If URL is relative (starts with /), prepend API_BASE_URL
   if (bannerUrl && bannerUrl.startsWith("/")) {
     bannerUrl = `${API_BASE_URL}${bannerUrl}`;
   }
-  
+
   // If still no banner URL, use a default fallback (never show broken image)
   if (!bannerUrl) {
     bannerUrl = "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=2400&q=82";
   }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.currentTarget;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setSubmitStatus(null);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/contact`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSubmitStatus({ type: "success", message: data.message || "Message sent successfully!" });
+        setFormData({ name: "", phone: "", email: "", subject: "", message: "" });
+      } else {
+        setSubmitStatus({ type: "error", message: data.message || "Failed to send message." });
+      }
+    } catch (err) {
+      setSubmitStatus({ type: "error", message: "Network error. Please try again." });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -39,7 +80,7 @@ export function Contact() {
             CONNECT WITH US
           </h2>
         </div>
-        
+
         <div className="grid md:grid-cols-3 gap-8">
           {/* Card 1 */}
           <div className="bg-white p-12 flex flex-col items-center text-center shadow-sm">
@@ -49,7 +90,7 @@ export function Contact() {
             <h3 className="text-sb-orange text-lg font-medium uppercase tracking-widest mb-4">CALL US</h3>
             <p className="text-gray-500 font-medium text-sm tracking-wider">+91 73488 44465</p>
           </div>
-          
+
           {/* Card 2 */}
           <div className="bg-white p-12 flex flex-col items-center text-center shadow-sm">
             <div className="mb-6 text-gray-400">
@@ -77,14 +118,29 @@ export function Contact() {
         <div className="flex flex-col lg:flex-row bg-white shadow-sm overflow-hidden h-auto lg:h-[600px]">
           {/* Left: Form */}
           <div className="w-full lg:w-1/2 p-10 md:p-16 flex flex-col justify-center bg-white">
-            <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+            {submitStatus && (
+              <div
+                className={`mb-6 p-4 rounded-lg ${
+                  submitStatus.type === "success"
+                    ? "bg-green-50 text-green-700 border border-green-200"
+                    : "bg-red-50 text-red-700 border border-red-200"
+                }`}
+              >
+                {submitStatus.message}
+              </div>
+            )}
+            <form className="space-y-6" onSubmit={handleSubmit}>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <User className="h-4 w-4 text-sb-orange" />
                 </div>
                 <input
                   type="text"
+                  name="name"
                   placeholder="Your Name..."
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  required
                   className="block w-full pl-11 pr-4 py-3 text-sm text-gray-700 bg-white border border-gray-200 rounded-full focus:outline-none focus:border-sb-orange focus:ring-1 focus:ring-sb-orange transition-colors placeholder-gray-400"
                 />
               </div>
@@ -95,7 +151,11 @@ export function Contact() {
                 </div>
                 <input
                   type="tel"
+                  name="phone"
                   placeholder="Phone Number..."
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  required
                   className="block w-full pl-11 pr-4 py-3 text-sm text-gray-700 bg-white border border-gray-200 rounded-full focus:outline-none focus:border-sb-orange focus:ring-1 focus:ring-sb-orange transition-colors placeholder-gray-400"
                 />
               </div>
@@ -106,7 +166,11 @@ export function Contact() {
                 </div>
                 <input
                   type="email"
+                  name="email"
                   placeholder="Email Address..."
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  required
                   className="block w-full pl-11 pr-4 py-3 text-sm text-gray-700 bg-white border border-gray-200 rounded-full focus:outline-none focus:border-sb-orange focus:ring-1 focus:ring-sb-orange transition-colors placeholder-gray-400"
                 />
               </div>
@@ -117,7 +181,11 @@ export function Contact() {
                 </div>
                 <input
                   type="text"
+                  name="subject"
                   placeholder="Subject..."
+                  value={formData.subject}
+                  onChange={handleInputChange}
+                  required
                   className="block w-full pl-11 pr-4 py-3 text-sm text-gray-700 bg-white border border-gray-200 rounded-full focus:outline-none focus:border-sb-orange focus:ring-1 focus:ring-sb-orange transition-colors placeholder-gray-400"
                 />
               </div>
@@ -128,7 +196,11 @@ export function Contact() {
                 </div>
                 <textarea
                   rows={5}
+                  name="message"
                   placeholder="Your Message"
+                  value={formData.message}
+                  onChange={handleInputChange}
+                  required
                   className="block w-full pl-11 pr-4 py-3 text-sm text-gray-700 bg-white border border-gray-200 rounded-[20px] focus:outline-none focus:border-sb-orange focus:ring-1 focus:ring-sb-orange transition-colors resize-none placeholder-gray-400"
                 />
               </div>
@@ -136,9 +208,10 @@ export function Contact() {
               <div className="pt-4">
                 <button
                   type="submit"
-                  className="px-8 py-3 bg-white border border-sb-orange text-sb-orange font-medium text-sm rounded-full hover:bg-sb-orange hover:text-white transition-colors uppercase tracking-widest"
+                  disabled={submitting}
+                  className="px-8 py-3 bg-white border border-sb-orange text-sb-orange font-medium text-sm rounded-full hover:bg-sb-orange hover:text-white transition-colors uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  SEND MESSAGE
+                  {submitting ? "SENDING..." : "SEND MESSAGE"}
                 </button>
               </div>
             </form>

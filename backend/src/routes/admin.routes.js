@@ -128,6 +128,15 @@ router.put('/vendors/:id/approve',      ...adminOnly, adminUserController.approv
 router.put('/vendors/:id/reject',       ...adminOnly, rejectVendorValidator, validate, adminUserController.rejectVendor);
 router.delete('/vendors/:id',           ...adminOnly, adminUserController.deleteVendor);
 
+// ─── Admin Management ─────────────────────────────────────────────────────────
+router.post('/admins',                  ...adminOnly, adminUserController.createAdmin);
+router.get('/admins',                   ...adminOnly, adminUserController.getAllAdmins);
+router.get('/admins/:id',               ...adminOnly, adminUserController.getAdminById);
+router.put('/admins/:id',               ...adminOnly, adminUserController.updateAdmin);
+router.put('/admins/:id/status',        ...adminOnly, adminUserController.updateAdminStatus);
+router.post('/admins/:id/reset-password', ...adminOnly, adminUserController.resetAdminPassword);
+router.delete('/admins/:id',            ...adminOnly, adminUserController.deleteAdmin);
+
 // ─── Order Activity Logs ─────────────────────────────────────────────────────
 const OrderActivityLog = require('../models/OrderActivityLog');
 router.get('/order-activity/:orderId', ...adminOnly, asyncHandler(async (req, res) => {

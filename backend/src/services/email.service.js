@@ -78,28 +78,24 @@ const fs = require('fs');
  * Nothing is hardcoded — all values come from Admin Settings.
  */
 const getEmailBranding = async () => {
-  let defaultLogo = 'http://localhost:3000/banner/Structbay%20logo.png';
-  try {
-    const logoPath = 'c:\\Users\\HP\\Desktop\\RITI RAI\\HSDA\\STRUCTBAY\\frontend\\dist\\banner\\Structbay logo.png';
-    if (fs.existsSync(logoPath)) {
-      defaultLogo = `data:image/png;base64,${fs.readFileSync(logoPath).toString('base64')}`;
-    }
-  } catch (e) { }
+  const frontendUrl = trim(process.env.FRONTEND_URL) || 'https://structbay.com';
+  const base = frontendUrl.replace(/\/$/, '');
+  
+  const logoUrl = `${base}/shared/assets/logos/Structbay-Logo-F-1.png`;
 
-  const exactDesc = "StructBay combines the reliability of branded materials, the power of affordable pricing, and the ease of single-window sourcing — everything you need to finish projects faster and better.";
+  const exactDesc = "Your Trusted Construction Materials Marketplace";
 
   try {
     const CMS = require('../models/CMS');
     const cms = await CMS.getOrCreate();
     const footer = cms.footer || {};
-    const base = trim(process.env.FRONTEND_URL) || 'http://localhost:3000';
     return {
-      siteUrl: base.replace(/\/$/, ''),
+      siteUrl: base,
       companyName: 'StructBay',
-      logoUrl: trim(cms.brandLogoUrl) || defaultLogo,
+      logoUrl: trim(cms.brandLogoUrl) || logoUrl,
       address: trim(footer.address) || 'Vidyaranyapura, Bengaluru',
       phone: trim(footer.phone) || '+91 70905 70505',
-      email: trim(footer.email) || 'hello@structbay.com',
+      email: trim(footer.email) || 'support@structbay.com',
       copyright: trim(footer.copyrightText) || `© ${new Date().getFullYear()} StructBay. All Rights Reserved.`,
       description: trim(footer.companyDescription) || exactDesc,
       social: {
@@ -112,14 +108,13 @@ const getEmailBranding = async () => {
     };
   } catch (err) {
     logger.warn(`Email branding load failed (using defaults): ${err.message}`);
-    const base = trim(process.env.FRONTEND_URL) || 'http://localhost:3000';
     return {
-      siteUrl: base.replace(/\/$/, ''),
+      siteUrl: base,
       companyName: 'StructBay',
-      logoUrl: defaultLogo,
+      logoUrl,
       address: 'Vidyaranyapura, Bengaluru',
       phone: '+91 70905 70505',
-      email: 'hello@structbay.com',
+      email: 'support@structbay.com',
       copyright: `© ${new Date().getFullYear()} StructBay. All Rights Reserved.`,
       description: exactDesc,
       social: {},
@@ -148,8 +143,8 @@ const masterTemplate = ({ title, greeting, bodyHtml, cta, branding }) => {
     : `<span style="font-size:26px;font-weight:900;color:#E85A00;letter-spacing:-1px;font-family:Arial,sans-serif;">Struct<span style="color:#ffffff;">Bay</span></span>`;
 
   const ctaBlock = cta
-    ? `<table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin:28px auto 8px;"><tr><td align="center" style="border-radius:6px;background-color:#E85A00;">
-        <a href="${esc(cta.url)}" target="_blank" style="display:inline-block;padding:14px 36px;font-family:Arial,sans-serif;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:6px;letter-spacing:0.3px;">${esc(cta.label)}</a>
+    ? `<table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin:28px auto 8px;"><tr><td align="center" style="border-radius:8px;background-color:#FF6A00;box-shadow:0 4px 12px rgba(255,106,0,0.3);">
+        <a href="${esc(cta.url)}" target="_blank" style="display:inline-block;padding:16px 40px;font-family:Arial,sans-serif;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px;letter-spacing:0.5px;">${esc(cta.label)}</a>
        </td></tr></table>` : '';
 
   const socialIcons = [];
@@ -161,7 +156,7 @@ const masterTemplate = ({ title, greeting, bodyHtml, cta, branding }) => {
 
   const contactLine = [
     phone ? `📞 ${esc(phone)}` : null,
-    email ? `✉️ <a href="mailto:${esc(email)}" style="color:#E85A00;text-decoration:none;">${esc(email)}</a>` : null,
+    email ? `✉️ <a href="mailto:${esc(email)}" style="color:#FF6A00;text-decoration:none;">${esc(email)}</a>` : null,
     address ? `📍 ${esc(address)}` : null,
   ].filter(Boolean).join('&nbsp;&nbsp;|&nbsp;&nbsp;');
 
@@ -232,8 +227,8 @@ const masterTemplate = ({ title, greeting, bodyHtml, cta, branding }) => {
             <div style="margin-bottom:14px;">
               <a href="${esc(siteUrl)}" target="_blank" style="text-decoration:none;">
                 ${logoUrl
-      ? `<img src="${esc(logoUrl)}" alt="${esc(companyName)}" style="max-height:36px;max-width:140px;display:block;margin:0 auto;" />`
-      : `<span style="font-size:20px;font-weight:900;color:#E85A00;font-family:Arial,sans-serif;letter-spacing:-1px;">Struct<span style="color:#ffffff;">Bay</span></span>`}
+      ? `<img src="${esc(logoUrl)}" alt="${esc(companyName)}" style="max-height:40px;max-width:160px;display:block;margin:0 auto;" />`
+      : `<span style="font-size:22px;font-weight:900;color:#FF6A00;font-family:Arial,sans-serif;letter-spacing:-1px;">Struct<span style="color:#ffffff;">Bay</span></span>`}
               </a>
             </div>
             <!-- Description -->
@@ -243,8 +238,8 @@ const masterTemplate = ({ title, greeting, bodyHtml, cta, branding }) => {
             <!-- Contact -->
             ${contactLine ? `<p style="margin:0 0 10px;font-family:Arial,sans-serif;font-size:11px;color:rgba(255,255,255,0.45);line-height:1.8;">${contactLine}</p>` : ''}
             <!-- Website -->
-            <p style="margin:0 0 14px;font-family:Arial,sans-serif;font-size:11px;">
-              <a href="${esc(siteUrl)}" style="color:#E85A00;text-decoration:none;">${esc(siteUrl)}</a>
+            <p style="margin:0 0 14px;font-family:Arial,sans-serif;font-size:12px;">
+              <a href="${esc(siteUrl)}" style="color:#FF6A00;text-decoration:none;font-weight:600;">${esc(siteUrl)}</a>
             </p>
             <!-- Divider -->
             <hr style="border:0;border-top:1px solid rgba(255,255,255,0.1);margin:10px 0 14px;" />
@@ -447,7 +442,7 @@ const sendOrderPlacedEmail = async ({ to, name, orderNumber, amount, subtotal, g
       </table>`
     : `<p style="background:#f8f8f8;padding:14px;border-radius:6px;font-size:14px;color:#555;">
         Order Total: <strong style="color:#E85A00;">₹${Number(amount || 0).toLocaleString('en-IN')}</strong>
-       </p>`;
+      </p>`;
 
   return _buildAndSend({
     to, subject: `Order Placed — ${orderNumber}`,
@@ -534,7 +529,7 @@ const sendOrderDeliveredEmail = async ({ to, name, orderNumber, orderId }) => {
         <p style="margin:0;font-size:13px;color:#166534;">✅ Delivery confirmed. We hope you're happy with your purchase.</p>
       </div>
       <p>If you have any issues with the delivered materials, please contact our support team or raise a replacement request from your order details page.</p>
-      <p>Thank you for choosing StructBay! 🙏</p>`,
+      <p>Thank you for choosing StructBay! </p>`,
     cta: { label: 'Open Dashboard', url: `${branding.siteUrl}/account/orders` },
     vars: {},
   });
