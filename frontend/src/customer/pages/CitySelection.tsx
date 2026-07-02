@@ -15,7 +15,7 @@ function publicAsset(rel: string): string {
   return base.endsWith("/") ? `${base}${path}` : `${base}/${path}`;
 }
 
-const TRUCK_PNG = publicAsset("marketing/structbay-delivery-truck.png");
+const TRUCK_PNG = publicAsset("marketing/structbay-truck.png");
 const TRUCK_SVG_FALLBACK = publicAsset("marketing/structbay-delivery-truck.svg");
 
 function writeRecent(c: SelectedCity) {
