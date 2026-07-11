@@ -16,7 +16,7 @@ router.post('/',                  ...adminOnly, ctrl.create);
 router.patch('/:id/edit',         ...adminOnly, ctrl.patchOrderDetails);
 router.patch('/:id/payment',      ...adminOnly, ctrl.confirmPayment);
 router.patch('/:id/status',       ...adminOnly, ctrl.updateStatus);
-router.patch('/:id/assign-vendor',...adminOnly, ctrl.assignVendor);
+// router.patch('/:id/assign-vendor',...adminOnly, ctrl.assignVendor);
 router.patch('/:id/items/fulfillment', ...adminOnly, ctrl.bulkPatchItemFulfillment);
 router.patch('/:id/items/:itemId/fulfillment', ...adminOnly, ctrl.patchItemFulfillment);
 router.get('/:id/delivery-type-overrides', ...adminOnly, ctrl.listDeliveryTypeOverrides);

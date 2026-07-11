@@ -13,6 +13,7 @@ import {
   lowestBulkSlabPrice,
   resolveVariationFromSelections,
   variationOptionLabel,
+  uniqueValuesForAxis,
 } from "../lib/variationSelectors";
 import {
   listingUnitPrice,
@@ -78,6 +79,7 @@ export function ListingProductCard({
   );
   const [qty, setQty] = useState(1);
   const [bulkUnlocked, setBulkUnlocked] = useState(false);
+  const [customColorText, setCustomColorText] = useState("");
 
   const selectedVar = useMemo(() => {
     if (!isVariant) return null;
@@ -132,6 +134,7 @@ export function ListingProductCard({
     setSelections(initSelectionsForVariation(seedVar, axes));
     setBulkUnlocked(false);
     setQty(1);
+    setCustomColorText("");
   }, [slug, selectedVariationId]);
 
   useEffect(() => {
@@ -148,6 +151,20 @@ export function ListingProductCard({
     onVariationChange(variationId);
     const v = variations.find((x: any) => String(x._id) === variationId);
     if (v && axes.length) setSelections(initSelectionsForVariation(v, axes));
+    setBulkUnlocked(false);
+    setQty(1);
+  };
+
+  const handleAttributeSelect = (axisKey: string, value: string) => {
+    const next = { ...selections, [axisKey]: value };
+    const resolved = resolveVariationFromSelections(variations, next);
+    
+    if (resolved?._id) {
+      onVariationChange(String(resolved._id));
+      setSelections(initSelectionsForVariation(resolved, axes));
+    } else {
+      setSelections(next);
+    }
     setBulkUnlocked(false);
     setQty(1);
   };
@@ -183,7 +200,9 @@ export function ListingProductCard({
     onAdd({
       qty: addQty,
       variationId: isVariant ? vid || undefined : undefined,
-      variationLabel: isVariant && selectedVar ? formatVariationLabel(selectedVar) : undefined,
+      variationLabel: isVariant && selectedVar 
+        ? formatVariationLabel(selectedVar) + ((selections["Color"] === "Custom" || selections["Colour"] === "Custom") && customColorText ? ` (Custom: ${customColorText})` : "") 
+        : undefined,
       unitPrice: priceAtQty,
       pricingSnapshot: snap,
       image: image || "",
@@ -255,11 +274,56 @@ export function ListingProductCard({
           <p className="sf-listing-card__moq">Min order: {selectedVar.moq} units</p>
         )}
 
-        {!simple && isVariant && variations.length > 1 && (
+        {!simple && isVariant && axes.length > 0 && (
+          <div className="flex flex-col gap-2 mt-2 mb-3">
+            {axes.map((axis) => {
+              const options = uniqueValuesForAxis(variations, axis.key, selections);
+              if (!options.length) return null;
+              
+              const isColorAxis = axis.key.toLowerCase() === "color" || axis.key.toLowerCase() === "colour";
+
+              return (
+                <div key={axis.key}>
+                  <label className="sf-listing-card__field">
+                    <span className="sf-listing-card__field-label">{axis.label}</span>
+                    <select
+                      className="sf-listing-card__select"
+                      value={selections[axis.key] || ""}
+                      onChange={(e) => handleAttributeSelect(axis.key, e.target.value)}
+                    >
+                      {options.map((opt) => {
+                        const partial = { ...selections, [axis.key]: opt };
+                        const v = resolveVariationFromSelections(variations, partial);
+                        const isOos = v && availabilityForProduct(product, String(v._id), true).stockStatus === "OUT_OF_STOCK";
+                        
+                        return (
+                          <option key={opt} value={opt} disabled={isOos}>
+                            {opt} {isOos ? " (Out of stock)" : ""}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </label>
+                  {isColorAxis && selections[axis.key] === "Custom" && (
+                    <div className="mt-1">
+                      <input
+                        type="text"
+                        value={customColorText}
+                        onChange={(e) => setCustomColorText(e.target.value)}
+                        placeholder="Enter custom color"
+                        className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-sb-orange focus:ring-1 focus:ring-sb-orange"
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {!simple && isVariant && axes.length === 0 && variations.length > 1 && (
           <label className="sf-listing-card__field">
-            <span className="sf-listing-card__field-label">
-              {axes.length === 1 ? axes[0].label : axes.length > 1 ? "Select option" : "Size / pack"}
-            </span>
+            <span className="sf-listing-card__field-label">Size / pack</span>
             <select
               className="sf-listing-card__select"
               value={vid}
@@ -286,7 +350,7 @@ export function ListingProductCard({
           </p>
         )}
 
-        {!simple && <p className="sf-listing-card__policy">7 day replacement · GST invoice</p>}
+        {!simple && <p className="sf-listing-card__policy">{product.replacementPolicy || "No Replacement"} · GST invoice</p>}
 
         {!simple && bulkApplied && bulkFrom != null && bulkFrom < baseUnit && (
           <p className="sf-listing-card__bulk-applied">

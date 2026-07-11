@@ -114,10 +114,10 @@ const create = asyncHandler(async (req, res) => {
 
   const {
     name, sku, category, brand, shortDescription, description,
-    gstPercentage, priceIncludesGst, status, isFeatured, isTopSelling, isAssured, isExpress,
+    gstPercentage, priceIncludesGst, status, alwaysInStock, isFeatured, isTopSelling, isAssured, isExpress,
     isStructbayAssured, isStructbayDelivery, deliveryType, assuredVerifiedAt, assuredVerifiedBy,
     structbayDeliverySupported, structbayDeliveryZones, structbayDeliveryLeadTimeDays,
-    displayOrder, seo, faqs, videos, documents, returnExchangePolicy, productStructure, attributes,
+    displayOrder, seo, faqs, videos, documents, returnExchangePolicy, replacementPolicy, productStructure, attributes,
   } = productFields;
 
   const structureRaw = String(productStructure || 'simple').toLowerCase();
@@ -130,10 +130,10 @@ const create = asyncHandler(async (req, res) => {
 
     const [product] = await Product.create([{
     name, sku, category, brand, shortDescription, description,
-    gstPercentage, priceIncludesGst, status, isFeatured, isTopSelling, isAssured, isExpress,
+    gstPercentage, priceIncludesGst, status, alwaysInStock, isFeatured, isTopSelling, isAssured, isExpress,
     isStructbayAssured, isStructbayDelivery, deliveryType, assuredVerifiedAt, assuredVerifiedBy,
     structbayDeliverySupported, structbayDeliveryZones, structbayDeliveryLeadTimeDays,
-    displayOrder, seo, faqs, videos, documents, returnExchangePolicy, attributes,
+    displayOrder, seo, faqs, videos, documents, returnExchangePolicy, replacementPolicy, attributes,
     productStructure: resolvedStructure,
     referenceNumber,
     createdBy: req.user._id,
@@ -180,10 +180,10 @@ const update = asyncHandler(async (req, res) => {
 
   const allowed = [
     'name', 'sku', 'category', 'brand', 'shortDescription', 'description',
-    'gstPercentage', 'priceIncludesGst', 'status', 'isFeatured', 'isTopSelling', 'isAssured', 'isExpress',
+    'gstPercentage', 'priceIncludesGst', 'status', 'alwaysInStock', 'isFeatured', 'isTopSelling', 'isAssured', 'isExpress',
     'isStructbayAssured', 'isStructbayDelivery', 'deliveryType', 'assuredVerifiedAt', 'assuredVerifiedBy',
     'structbayDeliverySupported', 'structbayDeliveryZones', 'structbayDeliveryLeadTimeDays',
-    'displayOrder', 'seo', 'faqs', 'videos', 'documents', 'returnExchangePolicy', 'productStructure',
+    'displayOrder', 'seo', 'faqs', 'videos', 'documents', 'returnExchangePolicy', 'replacementPolicy', 'productStructure',
     'upsellProducts', 'crossSellProducts', 'attributes',
   ];
   allowed.forEach(f => { if (productFields[f] !== undefined) product[f] = productFields[f]; });

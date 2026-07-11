@@ -188,6 +188,20 @@ exports.updateStatus = asyncHandler(async (req, res) => {
   );
   await auditAction(req.user._id, 'FINANCE_STATUS_UPDATE', { leadId: lead._id, status });
 
+  // Notify applicant of status update
+  if (updated.email || updated.mobile) {
+    communicationSvc.notifyFinanceStatusUpdate({
+      to: { email: updated.email, phone: updated.mobile },
+      vars: {
+        customerName: updated.name,
+        financeNumber: updated.financeNumber,
+        status: status,
+        note: note,
+      },
+      recipientRef: updated._id,
+    }).catch(() => {});
+  }
+
   return ApiResponse.success(res, 200, 'Lead status updated.', updated);
 });
 

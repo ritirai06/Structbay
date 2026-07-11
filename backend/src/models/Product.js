@@ -43,6 +43,7 @@ const productSchema = new mongoose.Schema(
     videos: [{ title: String, url: String }],
     faqs: [faqSchema],
     returnExchangePolicy: { type: returnExchangePolicySchema, default: () => ({}) },
+    replacementPolicy: { type: String, trim: true, default: '7 Day Replacement' },
 
     attributes: [{
       name: { type: String, required: true, trim: true },
@@ -60,6 +61,7 @@ const productSchema = new mongoose.Schema(
     productStructure: { type: String, enum: ['simple', 'variant'], default: 'simple' },
 
     status: { type: String, enum: ['DRAFT', 'ACTIVE', 'ARCHIVED'], default: 'DRAFT' },
+    alwaysInStock: { type: Boolean, default: false },
     isFeatured: { type: Boolean, default: false },
     isTopSelling: { type: Boolean, default: false },
     isAssured: { type: Boolean, default: false },      // legacy “assured” flag (kept for backward compatibility)

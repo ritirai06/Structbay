@@ -33,7 +33,7 @@ exports.validate = asyncHandler(async (req, res) => {
   const gstRateOverride = [0, 12, 18].includes(Number(gstRateRaw)) ? Number(gstRateRaw) : null;
 
   const cart = await Cart.findOne({ customer: req.user._id })
-    .populate('items.product', 'name sku status gstPercentage productStructure')
+    .populate('items.product', 'name sku status gstPercentage priceIncludesGst alwaysInStock')
     .populate('items.variation', 'attributes sku')
     .populate('items.vendorUser', 'name companyName');
 
@@ -87,7 +87,7 @@ exports.validate = asyncHandler(async (req, res) => {
     if (item.variation) invQ.variation = item.variation._id;
     const inv = await Inventory.findOne(invQ).lean();
     const available = inv ? Math.max(0, inv.quantity - inv.reserved) : 0;
-    if (available < item.quantity) {
+    if (!item.product.alwaysInStock && available < item.quantity) {
       errors.push(`Insufficient stock for ${item.product.name}. Available: ${available}.`);
       continue;
     }
@@ -162,7 +162,7 @@ exports.placeOrder = asyncHandler(async (req, res) => {
   }
 
   const cart = await Cart.findOne({ customer: req.user._id })
-    .populate('items.product', 'name sku status gstPercentage deliveryType isStructbayDelivery isExpress structbayDeliverySupported productStructure')
+    .populate('items.product', 'name sku status gstPercentage deliveryType isStructbayDelivery isExpress structbayDeliverySupported productStructure priceIncludesGst alwaysInStock')
     .populate('items.variation', 'attributes sku')
     .populate('items.vendorUser', 'name companyName');
 
@@ -249,9 +249,11 @@ exports.placeOrder = asyncHandler(async (req, res) => {
     });
 
     // Reserve inventory
-    const invQ = { product: item.product._id, city: cityId };
-    if (item.variation) invQ.variation = item.variation._id;
-    await Inventory.findOneAndUpdate(invQ, { $inc: { reserved: item.quantity } });
+    if (!item.product.alwaysInStock) {
+      const invQ = { product: item.product._id, city: cityId };
+      if (item.variation) invQ.variation = item.variation._id;
+      await Inventory.findOneAndUpdate(invQ, { $inc: { reserved: item.quantity } });
+    }
   }
 
   const grandTotal = Math.round(subtotal + gstTotal);
