@@ -795,7 +795,7 @@ export function ProductDetails() {
         {/* Cross-sell products (from admin configuration) */}
         {crossSells.length > 0 && (
           <section className="sf-pdp-related mt-14">
-            <h2 className="sf-pdp-related__title">Related Products</h2>
+            <h2 className="sf-pdp-related__title">You may also like</h2>
             <div className="sf-pdp-related__grid">
               {crossSells.slice(0, 8).map((p: any) => {
                 // Debug: Log the product sent to pricing helper
@@ -833,44 +833,6 @@ export function ProductDetails() {
           </section>
         )}
 
-        {/* Category-based "You may also like" (existing) */}
-        {related.length > 0 && (
-          <section className="sf-pdp-related mt-14">
-            <h2 className="sf-pdp-related__title">You may also like</h2>
-            <div className="sf-pdp-related__grid">
-              {related.slice(0, 4).map((p: any) => {
-                const img = firstImageUrl(p.images);
-                const { unit, mrp: relMrp, discount: relDisc } = relatedCardPricing(p);
-                const pslug = p.slug || p._id;
-                return (
-                  <Link key={p._id || pslug} to={productHref(pslug)} className="sf-pdp-related-card group">
-                    <div className="sf-pdp-related-card__image-wrap">
-                      {relDisc > 0 && (
-                        <span className="sf-pdp-related-card__discount">{relDisc}% OFF</span>
-                      )}
-                      {img ? (
-                        <img src={img} alt={p.name} className="sf-pdp-related-card__image" loading="lazy" />
-                      ) : (
-                        <div className="sf-pdp-related-card__image sf-pdp-related-card__image--empty" />
-                      )}
-                    </div>
-                    <p className="sf-pdp-related-card__title">{p.name}</p>
-                    <div className="sf-pdp-related-card__price-row">
-                      {relDisc > 0 && (
-                        <span className="sf-pdp-related-card__was">
-                          ₹{relMrp.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                        </span>
-                      )}
-                      <span className="sf-pdp-related-card__price">
-                        ₹{unit.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </section>
-        )}
       </div>
 
       {showBulkPricingModal && (

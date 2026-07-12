@@ -198,26 +198,53 @@ async function assignOrderLineFulfillment({
     if (item.vendorOrderId) {
       vendorOrder = await VendorOrder.findById(item.vendorOrderId);
       if (vendorOrder) {
-        if (String(vendorOrder.vendor) !== String(vendor._id) && !EARLY_VO_STATUSES.has(vendorOrder.status)) {
-          throw new AppError('Cannot reassign vendor after fulfillment has progressed.', 409);
+        if (String(vendorOrder.vendor) !== String(vendor._id)) {
+          if (!EARLY_VO_STATUSES.has(vendorOrder.status)) {
+            throw new AppError('Cannot reassign vendor after fulfillment has progressed.', 409);
+          }
+          // Remove the item from the old vendor order
+          vendorOrder.items = vendorOrder.items.filter(i => String(i.masterItemId) !== String(item._id));
+          vendorOrder.totalAmount = vendorOrder.items.reduce((sum, i) => sum + (Number(i.lineTotal) || 0), 0);
+          await vendorOrder.save();
+          vendorOrder = null; // Force finding/creating a new vendor order for the new vendor
+        } else {
+          // Vendor is the same; update the item details
+          vendorOrder.deliveryType = effectiveType;
+          const idx = vendorOrder.items.findIndex(i => String(i.masterItemId) === String(item._id));
+          if (idx !== -1) {
+            vendorOrder.items[idx] = buildVoItemFromOrderLine(item);
+          } else {
+            vendorOrder.items.push(buildVoItemFromOrderLine(item));
+          }
+          vendorOrder.totalAmount = vendorOrder.items.reduce((sum, i) => sum + (Number(i.lineTotal) || 0), 0);
+          await vendorOrder.save();
         }
-        vendorOrder.vendor = vendor._id;
-        vendorOrder.deliveryType = effectiveType;
-        vendorOrder.items = [buildVoItemFromOrderLine(item)];
-        vendorOrder.totalAmount = Number(item.lineTotal) || 0;
-        await vendorOrder.save();
       }
     }
 
     if (!vendorOrder) {
-      vendorOrder = await createVendorOrderForLine({
-        order,
-        line: item,
-        vendor,
-        deliveryType: effectiveType,
-        adminUserId,
+      // Check if there is an existing vendor order for this vendor that we can append to
+      vendorOrder = await VendorOrder.findOne({
+        masterOrder: order._id,
+        vendor: vendor._id,
+        status: { $in: Array.from(EARLY_VO_STATUSES) }
       });
-      item.vendorOrderId = vendorOrder._id;
+
+      if (vendorOrder) {
+        vendorOrder.items.push(buildVoItemFromOrderLine(item));
+        vendorOrder.totalAmount = vendorOrder.items.reduce((sum, i) => sum + (Number(i.lineTotal) || 0), 0);
+        await vendorOrder.save();
+        item.vendorOrderId = vendorOrder._id;
+      } else {
+        vendorOrder = await createVendorOrderForLine({
+          order,
+          line: item,
+          vendor,
+          deliveryType: effectiveType,
+          adminUserId,
+        });
+        item.vendorOrderId = vendorOrder._id;
+      }
     }
 
     await maybeAdvanceMasterOrderStatus(order, adminUserId);

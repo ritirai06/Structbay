@@ -29,59 +29,7 @@ async function vendorIdsForUser(user) {
  */
 async function vendorOrderMatch(user) {
   const ids = await vendorIdsForUser(user);
-  const byVendorField = { vendor: { $in: ids } };
-
-  if (!user?._id) return byVendorField;
-
-  const masters = await Order.find({ assignedVendor: user._id })
-    .select('vendorOrders')
-    .lean();
-
-  const voIds = new Set();
-  const mastersNeedingFallback = [];
-  for (const m of masters || []) {
-    const explicit = (m.vendorOrders || []).map((x) => String(x)).filter(Boolean);
-    if (explicit.length) {
-      explicit.forEach((id) => voIds.add(id));
-    } else {
-      mastersNeedingFallback.push(m._id);
-    }
-  }
-
-  if (mastersNeedingFallback.length) {
-    const allVo = await VendorOrder.find({ masterOrder: { $in: mastersNeedingFallback } })
-      .select('_id masterOrder vendor')
-      .lean();
-    const idStr = new Set(ids.map((id) => String(id)));
-    const byMaster = new Map();
-    for (const vo of allVo) {
-      const k = String(vo.masterOrder);
-      if (!byMaster.has(k)) byMaster.set(k, []);
-      byMaster.get(k).push(vo);
-    }
-    for (const mid of mastersNeedingFallback) {
-      const list = byMaster.get(String(mid)) || [];
-      for (const vo of list) {
-        if (idStr.has(String(vo.vendor))) voIds.add(String(vo._id));
-      }
-      if (list.length === 1 && user?._id) {
-        voIds.add(String(list[0]._id));
-      }
-    }
-  }
-
-  const voOidList = [...voIds]
-    .filter((id) => isValidId(id))
-    .map((id) => String(id));
-
-  if (!voOidList.length) return byVendorField;
-
-  return {
-    $or: [
-      byVendorField,
-      { _id: { $in: voOidList } },
-    ],
-  };
+  return { vendor: { $in: ids } };
 }
 
 module.exports = { vendorIdsForUser, vendorOrderMatch };
