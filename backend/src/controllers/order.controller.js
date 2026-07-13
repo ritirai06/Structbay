@@ -94,6 +94,17 @@ const updateStatus = asyncHandler(async (req, res) => {
   await order.save();
   await logAction({ adminId: req.user._id, action: 'UPDATE', module: 'Order', targetId: order._id.toString(),
     description: `Status: ${oldStatus} → ${status}`, ipAddress: req.ip });
+
+  try {
+    const socketManager = require('../socket');
+    socketManager.broadcastToAdmins('order_updated', {
+      orderId: order._id,
+      message: `Order ${order.orderNumber} status changed to ${status}`
+    });
+  } catch (err) {
+    // Ignore socket error
+  }
+
   return ApiResponse.success(res, 200, 'Order status updated.', order);
 });
 

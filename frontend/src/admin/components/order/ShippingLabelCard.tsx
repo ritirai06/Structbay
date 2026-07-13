@@ -212,7 +212,7 @@ export function ShippingLabelCard({
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+          <div className="flex flex-col gap-3 mb-4">
             <div className="rounded-lg border border-sb-ink/10 bg-white px-3 py-2">
               <div className="text-[11px] font-medium text-sb-ink/50">Label status</div>
               <div className="text-sm font-medium text-sb-ink mt-0.5">{labelStatusText(label)}</div>

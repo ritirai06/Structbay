@@ -248,7 +248,9 @@ async function assignOrderLineFulfillment({
     }
 
     await maybeAdvanceMasterOrderStatus(order, adminUserId);
-  } else if (item.vendorOrderId && deliveryType) {
+  }
+
+  if (!vendor && item.vendorOrderId && deliveryType) {
     vendorOrder = await VendorOrder.findById(item.vendorOrderId);
     if (vendorOrder) {
       if (!EARLY_VO_STATUSES.has(vendorOrder.status)) {
@@ -260,6 +262,17 @@ async function assignOrderLineFulfillment({
   }
 
   await order.save();
+
+  try {
+    const socketManager = require('../socket');
+    socketManager.broadcastToAdmins('order_updated', {
+      orderId: order._id,
+      message: `Line item assigned to vendor`
+    });
+  } catch (err) {
+    // Ignore socket error
+  }
+
   return { order, vendorOrder };
 }
 

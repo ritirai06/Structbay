@@ -60,6 +60,27 @@ export function buildLogisticsDraft(vos: any[] | undefined) {
   return m;
 }
 
+export type DeliveryType = "vendor_delivery" | "structbay_delivery";
+
+export function productDeliveryType(item: any): DeliveryType {
+  return item?.product?.deliveryType === "structbay_delivery" ||
+    item?.product?.isStructbayDelivery ||
+    item?.product?.isExpress ||
+    item?.product?.structbayDeliverySupported
+    ? "structbay_delivery"
+    : "vendor_delivery";
+}
+
+export function lineDefaultDeliveryType(item: any): DeliveryType {
+  if (item?.defaultDeliveryType === "structbay_delivery" || item?.deliveryType === "structbay_delivery") {
+    return "structbay_delivery";
+  }
+  if (item?.defaultDeliveryType === "vendor_delivery" || item?.deliveryType === "vendor_delivery") {
+    return "vendor_delivery";
+  }
+  return productDeliveryType(item);
+}
+
 export function OrderStep({
   step,
   title,

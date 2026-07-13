@@ -66,7 +66,7 @@ export function OrderHistory() {
               <table className="w-full text-sm min-w-[900px]">
                 <thead>
                   <tr style={{ borderBottom: `1px solid ${SB.border}` }}>
-                    {['Order #', 'Product', 'Customer', 'City', 'Delivered', 'Total', 'Status', 'Actions'].map(h => (
+                    {['Order #', 'Product', 'Customer', 'City', 'Delivered', 'Status', 'Actions'].map(h => (
                       <th key={h} className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: SB.faint }}>{h}</th>
                     ))}
                   </tr>
@@ -85,9 +85,6 @@ export function OrderHistory() {
                       <td className="py-3.5 px-4 whitespace-nowrap" style={{ color: SB.muted }}>{o.deliveryAddress?.city ?? '—'}</td>
                       <td className="py-3.5 px-4 whitespace-nowrap" style={{ color: SB.muted }}>
                         {o.actualDeliveryDate ? new Date(o.actualDeliveryDate).toLocaleDateString('en-IN') : '—'}
-                      </td>
-                      <td className="py-3.5 px-4 whitespace-nowrap font-semibold" style={{ color: SB.color }}>
-                        ₹{o.totalAmount?.toLocaleString('en-IN') ?? '—'}
                       </td>
                       <td className="py-3.5 px-4"><StatusBadge status={o.status} /></td>
                       <td className="py-3.5 px-4">

@@ -30,6 +30,10 @@ const startServer = async () => {
     logger.info(`   Health      : http://localhost:${PORT}/api/v1/health`);
   });
 
+  const socketManager = require('./src/socket');
+  socketManager.init(server);
+  logger.info(`   Socket.IO   : Initialized`);
+
   // ─── Graceful Shutdown ──────────────────────────────────────────────────────
   const shutdown = (signal) => {
     logger.info(`${signal} received. Closing server gracefully...`);

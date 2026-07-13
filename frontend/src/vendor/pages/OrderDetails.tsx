@@ -174,9 +174,6 @@ export function OrderDetails() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <InfoRow label="Method" value={formatPaymentMethod(order.masterOrder.paymentMethod)} />
             <InfoRow label="Status" value={formatPaymentStatus(order.masterOrder.paymentStatus)} />
-            {order.masterOrder.grandTotal != null && (
-              <InfoRow label="Order total" value={`₹${Number(order.masterOrder.grandTotal).toLocaleString('en-IN')}`} />
-            )}
             {order.masterOrder.orderNumber && (
               <InfoRow label="Master order" value={String(order.masterOrder.orderNumber)} />
             )}
@@ -250,13 +247,10 @@ export function OrderDetails() {
                 <InfoRow label="SKU" value={p.sku ?? p.product?.sku ?? '—'} />
                 <InfoRow label="Quantity" value={String(p.quantity ?? '—')} />
                 <InfoRow label="GST %" value={p.gstPercentage != null ? String(p.gstPercentage) : '—'} />
-                <InfoRow label="Unit Price" value={p.unitPrice != null ? `₹${Number(p.unitPrice).toLocaleString('en-IN')}` : '—'} />
-                <InfoRow label="Line Total" value={p.lineTotal != null ? `₹${Number(p.lineTotal).toLocaleString('en-IN')}` : '—'} />
               </div>
             </div>
           ))}
           <div className="grid grid-cols-2 gap-3 pt-2 border-t border-black/6">
-            <InfoRow label="Sub-order total" value={`₹${order.totalAmount?.toLocaleString('en-IN') ?? '—'}`} />
             <InfoRow label="Invoice status" value={order.invoiceStatus ?? '—'} />
           </div>
           </div>

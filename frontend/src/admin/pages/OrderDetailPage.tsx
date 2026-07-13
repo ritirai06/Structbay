@@ -18,10 +18,14 @@ import {
   WorkflowSplit,
   buildLogisticsDraft,
   vendorUserId,
+  lineDefaultDeliveryType,
+  productDeliveryType,
+  DeliveryType
 } from "../components/order/orderDetailShared";
 import { ShippingLabelCard } from "../components/order/ShippingLabelCard";
 import { adminToast } from "../lib/adminToast";
 import { AdminInputModal } from "../components/AdminInputModal";
+import { ProductCard } from "../components/order/ProductCard";
 
 type InputModalState = {
   title: string;
@@ -35,34 +39,10 @@ type InputModalState = {
   onConfirm: (value: string) => void | Promise<void>;
 };
 
-const STEPS = [
-  { id: "step-overview", label: "Overview" },
-  { id: "step-vendor", label: "Vendor" },
-  { id: "step-fulfillment", label: "Fulfillment" },
-  { id: "step-status", label: "Status" },
-] as const;
-
-type DeliveryType = "vendor_delivery" | "structbay_delivery";
-
-function productDeliveryType(item: any): DeliveryType {
-  return item?.product?.deliveryType === "structbay_delivery" ||
-    item?.product?.isStructbayDelivery ||
-    item?.product?.isExpress ||
-    item?.product?.structbayDeliverySupported
-    ? "structbay_delivery"
-    : "vendor_delivery";
-}
-
-function lineDefaultDeliveryType(item: any): DeliveryType {
-  if (item?.defaultDeliveryType === "structbay_delivery" || item?.deliveryType === "structbay_delivery") {
-    return "structbay_delivery";
-  }
-  if (item?.defaultDeliveryType === "vendor_delivery" || item?.deliveryType === "vendor_delivery") {
-    return "vendor_delivery";
-  }
-  return productDeliveryType(item);
-}
-
+const formatStatusText = (s: string) => {
+  if (!s) return '—';
+  return s.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+};
 export function OrderDetailPage() {
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
@@ -80,6 +60,8 @@ export function OrderDetailPage() {
   const [savingLines, setSavingLines] = useState(false);
   const [inputModal, setInputModal] = useState<InputModalState | null>(null);
   const [inputModalBusy, setInputModalBusy] = useState(false);
+  const [statusDraft, setStatusDraft] = useState({ status: "PENDING", note: "" });
+  const [statusSaving, setStatusSaving] = useState(false);
 
   const loadOrder = useCallback(async () => {
     if (!orderId) return;
@@ -120,6 +102,10 @@ export function OrderDetailPage() {
     } else {
       setDeliveryTypePick("vendor_delivery");
     }
+    
+    if (order.status) {
+      setStatusDraft((prev) => ({ ...prev, status: order.status }));
+    }
   }, [order]);
 
   useEffect(() => {
@@ -137,17 +123,27 @@ export function OrderDetailPage() {
       setLineDrafts({});
       return;
     }
-    const drafts: Record<string, { vendorId: string; deliveryType: DeliveryType; reason: string }> = {};
-    for (const item of order.items as any[]) {
-      if (!item?._id) continue;
-      drafts[item._id] = {
-        vendorId: vendorUserId(item.assignedVendorUser) || vendorUserId(item.assignedVendor) || "",
-        deliveryType: lineDefaultDeliveryType(item),
-        reason: "",
-      };
-    }
-    setLineDrafts(drafts);
-  }, [order?._id, order?.items]);
+    setLineDrafts(prev => {
+      const drafts = { ...prev };
+      let changed = false;
+      for (const item of order.items as any[]) {
+        if (!item?._id) continue;
+        const dbVendorId = vendorUserId(item.assignedVendorUser) || vendorUserId(item.assignedVendor) || "";
+        
+        // Keep row state isolated and prevent overwrite if user hasn't saved.
+        // If draft doesn't exist, OR if we aren't saving lines right now and the DB differs (implying remote update or successful save), update it.
+        if (!drafts[item._id] || (!savingLines && drafts[item._id].vendorId !== dbVendorId)) {
+          drafts[item._id] = {
+            vendorId: dbVendorId,
+            deliveryType: lineDefaultDeliveryType(item),
+            reason: "",
+          };
+          changed = true;
+        }
+      }
+      return changed ? drafts : prev;
+    });
+  }, [order?._id, order?.items, savingLines]);
 
   useEffect(() => {
     if (!order?.vendorOrders?.length) {
@@ -182,6 +178,13 @@ export function OrderDetailPage() {
     } catch (e) {
       adminToast.error(e instanceof Error ? e.message : "Status update failed");
     }
+  };
+
+  const saveStatus = async () => {
+    setStatusSaving(true);
+    await updateStatus(statusDraft.status, statusDraft.note);
+    setStatusDraft((prev) => ({ ...prev, note: "" }));
+    setStatusSaving(false);
   };
 
   const saveLineFulfillment = async (itemId: string) => {
@@ -347,7 +350,23 @@ export function OrderDetailPage() {
     );
   }
 
-  const hasFulfillment = !!order.vendorOrders?.length;
+  const totalProducts = order.items?.length || 0;
+  const acceptedProducts = order.items?.filter((item: any) => {
+     const vo = order.vendorOrders?.find((v: any) => v._id === item.vendorOrderId);
+     return vo && ["ACCEPTED", "READY_FOR_DISPATCH", "PARTIALLY_DISPATCHED", "DISPATCHED", "DELIVERED", "COMPLETED"].includes(vo.status);
+  }).length || 0;
+  const invoicePending = order.items?.filter((item: any) => {
+     const vo = order.vendorOrders?.find((v: any) => v._id === item.vendorOrderId);
+     return vo && vo.invoiceStatus === "PENDING" && vo.status !== "NEW_ASSIGNED";
+  }).length || 0;
+  const dispatchPending = order.items?.filter((item: any) => {
+     const vo = order.vendorOrders?.find((v: any) => v._id === item.vendorOrderId);
+     return vo && ["READY_FOR_DISPATCH", "PARTIALLY_DISPATCHED"].includes(vo.status);
+  }).length || 0;
+  const deliveredProducts = order.items?.filter((item: any) => {
+     const vo = order.vendorOrders?.find((v: any) => v._id === item.vendorOrderId);
+     return vo && ["DELIVERED", "COMPLETED"].includes(vo.status);
+  }).length || 0;
 
   return (
     <div className="admin-page">
@@ -365,142 +384,241 @@ export function OrderDetailPage() {
         <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border ${ORDER_STATUS_COLORS[order.status] || "bg-sb-cream-secondary text-sb-ink/55 border-sb-ink/12"}`}>
           {order.status}
         </span>
+      </div>      {/* Top Header Information */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <InfoTile label="Customer" value={order.customer?.name ?? "—"} sub={order.customer?.phone} />
+        <InfoTile
+          label="Delivery city"
+          value={order.city?.name || order.shippingAddress?.city || "—"}
+          sub={[order.shippingAddress?.state || order.city?.state, order.shippingAddress?.pincode].filter(Boolean).join(" · ") || undefined}
+        />
+        <InfoTile
+          label="Order total"
+          value={order.grandTotal != null ? `₹${Number(order.grandTotal).toLocaleString("en-IN")}` : "—"}
+        />
+        <InfoTile
+          label="Payment"
+          value={formatPaymentMethod(order.paymentMethod)}
+          sub={
+            <div className="flex flex-col">
+              <span className={PAY_COLORS[order.paymentStatus] || "text-sb-ink/50"}>{formatPaymentStatus(order.paymentStatus)}</span>
+              {order.paymentTransactionId?.providerTxnId && <span className="text-xs text-sb-ink/60 mt-1">Txn: {order.paymentTransactionId.providerTxnId}</span>}
+              {order.paymentTransactionId?.paidAt && (
+                <span className="text-xs text-sb-ink/60">
+                  {new Date(order.paymentTransactionId.paidAt).toLocaleString("en-IN", {
+                    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
+                  })}
+                </span>
+              )}
+            </div>
+          }
+        />
       </div>
 
-      <nav className="admin-order-steps-nav mb-6" aria-label="Order workflow steps">
-        {STEPS.filter((s) => s.id !== "step-fulfillment" || hasFulfillment).map((s, i) => (
-          <a
-            key={s.id}
-            href={`#${s.id}`}
-            className="admin-order-steps-nav__link"
-          >
-            {i + 1}. {s.label}
-          </a>
-        ))}
-      </nav>
+      {order.customerVendorFulfillmentMilestone && (
+        <div className="wf-milestone mb-6">
+          Milestone: <strong>{order.customerVendorFulfillmentMilestone}</strong>
+        </div>
+      )}
+
+      {/* Order Summary */}
+      <div className="mb-6 grid grid-cols-2 lg:grid-cols-5 gap-4">
+         <div className="bg-white rounded-xl p-4 border border-sb-ink/10 shadow-sm text-center">
+           <div className="text-2xl font-bold text-sb-ink">{totalProducts}</div>
+           <div className="text-[11px] text-sb-ink/50 uppercase tracking-wider mt-1 font-bold">Products</div>
+         </div>
+         <div className="bg-white rounded-xl p-4 border border-sb-ink/10 shadow-sm text-center">
+           <div className="text-2xl font-bold text-sb-ink">{acceptedProducts}</div>
+           <div className="text-[11px] text-sb-ink/50 uppercase tracking-wider mt-1 font-bold">Accepted</div>
+         </div>
+         <div className="bg-white rounded-xl p-4 border border-sb-ink/10 shadow-sm text-center">
+           <div className="text-2xl font-bold text-sb-ink">{invoicePending}</div>
+           <div className="text-[11px] text-sb-ink/50 uppercase tracking-wider mt-1 font-bold">Invoice Pending</div>
+         </div>
+         <div className="bg-white rounded-xl p-4 border border-sb-ink/10 shadow-sm text-center">
+           <div className="text-2xl font-bold text-sb-ink">{dispatchPending}</div>
+           <div className="text-[11px] text-sb-ink/50 uppercase tracking-wider mt-1 font-bold">Dispatch Pending</div>
+         </div>
+         <div className="bg-white rounded-xl p-4 border border-sb-ink/10 shadow-sm text-center">
+           <div className="text-2xl font-bold text-green-600">{deliveredProducts}</div>
+           <div className="text-[11px] text-sb-ink/50 uppercase tracking-wider mt-1 font-bold">Delivered</div>
+         </div>
+      </div>
+
+      {/* Main Workspace Split */}
+      <WorkflowSplit
+        main={
+          <div className="space-y-4">
+            <h2 className="text-lg font-bold text-sb-ink flex items-center justify-between">
+              Product Fulfillment
+            </h2>
+            <div className="space-y-2">
+              {(order.items as any[]).map((item: any) => {
+                const lineDefaultType = lineDefaultDeliveryType(item);
+                const draft = lineDrafts[item._id] || {
+                  vendorId: "",
+                  deliveryType: lineDefaultType,
+                  reason: "",
+                };
+                const vo = order.vendorOrders?.find((v: any) => v._id === item.vendorOrderId);
+                const voDetail = vo ? voDetailById[vo._id] : undefined;
+                return (
+                  <ProductCard
+                    key={item._id}
+                    item={item}
+                    order={order}
+                    draft={draft}
+                    approvedVendors={approvedVendors}
+                    savingLines={savingLines}
+                    setLineDrafts={setLineDrafts}
+                    saveLineFulfillment={saveLineFulfillment}
+                    vo={vo}
+                    voDetail={voDetail}
+                    saveDeliveryType={saveDeliveryType}
+                    logisticsDraft={logisticsDraft}
+                    setLogisticsDraft={setLogisticsDraft}
+                    saveStructbayLogistics={saveStructbayLogistics}
+                    labelRefreshKey={labelRefreshKey}
+                    openConfirmPaymentModal={openConfirmPaymentModal}
+                    apiFetch={apiFetch}
+                    adminToast={adminToast}
+                    loadOrder={loadOrder}
+                    setInputModal={setInputModal}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        }
+        aside={
+          <div className="space-y-6">
+            {/* Global Actions */}
+            {approvedVendors.length > 0 && (
+              <WorkflowCard title="Assign All" variant="accent">
+                <p className="text-xs text-sb-ink/50 -mt-1 mb-3">Assign one vendor to all {totalProducts} products.</p>
+                <DeliveryTypeSelector
+                  name="assign-delivery-type"
+                  value={deliveryTypePick}
+                  onChange={setDeliveryTypePick}
+                />
+                <select
+                  value={vendorPick}
+                  onChange={(e) => setVendorPick(e.target.value)}
+                  className="wf-field__input w-full mt-2"
+                >
+                  <option value="">— Select vendor —</option>
+                  {approvedVendors.map((v) => (
+                    <option key={v._id} value={v._id}>
+                      {(v.companyName || v.name || "Vendor").trim()}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  disabled={!vendorPick}
+                  onClick={() => {
+                    if (!vendorPick) return;
+                    void assignVendor(vendorPick, deliveryTypePick);
+                  }}
+                  className="wf-btn wf-btn--primary w-full justify-center mt-3"
+                >
+                  Assign all to one vendor
+                </button>
+              </WorkflowCard>
+            )}
+
+            {/* Tracking Notes */}
+            <WorkflowCard title="Tracking notes" variant="accent">
+              <div className="wf-field">
+                <label className="wf-field__label">Visible to customer</label>
+                <textarea
+                  className="wf-field__input min-h-[100px] resize-y"
+                  placeholder="Pickup window, driver contact…"
+                  value={order.deliveryDetails ?? ""}
+                  onChange={(e) => setOrder((p: any) => ({ ...p, deliveryDetails: e.target.value }))}
+                />
+              </div>
+              <div className="flex flex-col gap-2 pt-1">
+                {order.paymentStatus === "PENDING" && (
+                  <button type="button" onClick={() => openConfirmPaymentModal()} className="wf-btn wf-btn--secondary w-full justify-center">
+                    Confirm payment
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await apiFetch(`/orders/${order._id}/edit`, {
+                        method: "PATCH",
+                        body: JSON.stringify({ deliveryDetails: order.deliveryDetails ?? "" }),
+                      });
+                      adminToast.success("Notes saved");
+                    } catch (e) {
+                      adminToast.error(e instanceof Error ? e.message : "Could not save notes");
+                    }
+                  }}
+                  className="wf-btn wf-btn--primary w-full justify-center"
+                >
+                  Save notes
+                </button>
+                <Link to={adminPath("orders", order._id, "chat")} className="wf-btn wf-btn--secondary no-underline w-full justify-center">
+                  <MessageCircle className="w-4 h-4" /> Chat
+                </Link>
+              </div>
+            </WorkflowCard>
+          </div>
+        }
+      />
+
+
 
       <div className="space-y-5">
+
+
         <OrderStep
           step={1}
-          id="step-overview"
-          title="Order overview"
-          description="Customer, payment & line items."
+          id="step-status"
+          title="Order status"
+          description="Master order status."
         >
           <WorkflowSplit
             main={
-              <>
-                <div className="wf-info-grid wf-info-grid--2">
-                  <InfoTile label="Customer" value={order.customer?.name ?? "—"} sub={order.customer?.phone} />
-                  <InfoTile
-                    label="Delivery city"
-                    value={order.city?.name || order.shippingAddress?.city || "—"}
-                    sub={
-                      [order.shippingAddress?.state || order.city?.state, order.shippingAddress?.pincode]
-                        .filter(Boolean)
-                        .join(" · ") || undefined
-                    }
+              <WorkflowCard title="Status">
+                <div className="flex flex-wrap gap-4">
+                  <select
+                    className="wf-field__input flex-1 min-w-[200px]"
+                    value={statusDraft.status}
+                    onChange={(e) => setStatusDraft((p) => ({ ...p, status: e.target.value as any }))}
+                  >
+                    {ALL_ORDER_STATUSES.map((st) => (
+                      <option key={st} value={st}>
+                        {st}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    className="wf-field__input flex-1 min-w-[200px]"
+                    placeholder="Status note (optional)"
+                    value={statusDraft.note}
+                    onChange={(e) => setStatusDraft((p) => ({ ...p, note: e.target.value }))}
                   />
-                  <InfoTile
-                    label="Order total"
-                    value={order.grandTotal != null ? `₹${Number(order.grandTotal).toLocaleString("en-IN")}` : "—"}
-                  />
-                  <InfoTile
-                    label="Payment"
-                    value={formatPaymentMethod(order.paymentMethod)}
-                    sub={
-                      <div className="flex flex-col">
-                        <span className={PAY_COLORS[order.paymentStatus] || "text-sb-ink/50"}>
-                          {formatPaymentStatus(order.paymentStatus)}
-                        </span>
-                        {order.paymentTransactionId?.providerTxnId && (
-                          <span className="text-xs text-sb-ink/60 mt-1">
-                            Txn: {order.paymentTransactionId.providerTxnId}
-                          </span>
-                        )}
-                        {order.paymentTransactionId?.paidAt && (
-                          <span className="text-xs text-sb-ink/60">
-                            {new Date(order.paymentTransactionId.paidAt).toLocaleString("en-IN", {
-                              day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
-                            })}
-                          </span>
-                        )}
-                      </div>
-                    }
-                  />
-                </div>
-
-                {order.customerVendorFulfillmentMilestone && (
-                  <div className="wf-milestone">
-                    Milestone: <strong>{order.customerVendorFulfillmentMilestone}</strong>
-                  </div>
-                )}
-
-                <WorkflowCard title="Line items">
-                  <div className="overflow-x-auto rounded-lg border border-sb-ink/10">
-                    <table className="wf-items-table">
-                      <thead>
-                        <tr>
-                          <th>Product</th>
-                          <th className="text-right w-20">Qty</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {order.items?.map((item: any, i: number) => (
-                          <tr key={i}>
-                            <td>
-                              <div>{item.name}</div>
-                              {(item.variationLabel || item.sku) && (
-                                <div className="text-xs text-sb-ink/50 mt-0.5">
-                                  {item.variationLabel || item.sku}
-                                </div>
-                              )}
-                            </td>
-                            <td className="text-right text-sb-ink/55">×{item.quantity}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </WorkflowCard>
-              </>
-            }
-            aside={
-              <WorkflowCard title="Tracking notes" variant="accent">
-                <div className="wf-field">
-                  <label className="wf-field__label">Visible to customer</label>
-                  <textarea
-                    className="wf-field__input min-h-[100px] resize-y"
-                    placeholder="Pickup window, driver contact…"
-                    value={order.deliveryDetails ?? ""}
-                    onChange={(e) => setOrder((p: any) => ({ ...p, deliveryDetails: e.target.value }))}
-                  />
-                </div>
-                <div className="flex flex-col gap-2 pt-1">
-                  {order.paymentStatus === "PENDING" && (
-                    <button type="button" onClick={() => openConfirmPaymentModal()} className="wf-btn wf-btn--secondary w-full justify-center">
-                      Confirm payment
-                    </button>
-                  )}
                   <button
                     type="button"
-                    onClick={async () => {
-                      try {
-                        await apiFetch(`/orders/${order._id}/edit`, {
-                          method: "PATCH",
-                          body: JSON.stringify({ deliveryDetails: order.deliveryDetails ?? "" }),
-                        });
-                        adminToast.success("Notes saved");
-                      } catch (e) {
-                        adminToast.error(e instanceof Error ? e.message : "Could not save notes");
-                      }
-                    }}
-                    className="wf-btn wf-btn--primary w-full justify-center"
+                    disabled={statusSaving}
+                    onClick={() => void saveStatus()}
+                    className="wf-btn wf-btn--primary"
                   >
-                    Save notes
+                    {statusSaving ? "Saving…" : "Update master status"}
                   </button>
-                  <Link to={adminPath("orders", order._id, "chat")} className="wf-btn wf-btn--secondary no-underline w-full justify-center">
-                    <MessageCircle className="w-4 h-4" /> Chat
-                  </Link>
+                </div>
+              </WorkflowCard>
+            }
+            aside={
+              <WorkflowCard title="Summary" variant="muted">
+                <div className="space-y-2 text-sm">
+                  <p><span className="text-sb-ink/50">Current</span><br /><strong>{formatStatusText(order.status)}</strong></p>
+                  <p><span className="text-sb-ink/50">Payment</span><br /><strong>{formatPaymentStatus(order.paymentStatus)}</strong></p>
+                  <p><span className="text-sb-ink/50">Total</span><br /><strong>{order.grandTotal != null ? `₹${Number(order.grandTotal).toLocaleString("en-IN")}` : "—"}</strong></p>
                 </div>
               </WorkflowCard>
             }
@@ -509,510 +627,29 @@ export function OrderDetailPage() {
 
         <OrderStep
           step={2}
-          id="step-vendor"
-          title="Assign vendors"
-          description="One vendor per product line."
+          id="step-timeline"
+          title="Activity Timeline"
+          description="Log of order status changes and vendor actions."
         >
           <WorkflowSplit
             main={
-              vendorsLoading ? (
-                <div className="flex items-center gap-2 text-sm text-sb-ink/50 py-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-sb-orange" /> Loading vendors…
-                </div>
-              ) : !approvedVendors.length ? (
-                <p className="text-xs text-sb-ink/45">No approved vendors. Approve vendors under Vendors first.</p>
-              ) : (
-                <>
-                  <div className="overflow-x-auto rounded-xl border border-sb-ink/10">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-sb-cream-secondary text-left text-xs text-sb-ink/55">
-                          <th className="px-3 py-2.5 font-semibold">Product</th>
-                          <th className="px-3 py-2.5 font-semibold">Default</th>
-                          <th className="px-3 py-2.5 font-semibold">Type</th>
-                          <th className="px-3 py-2.5 font-semibold min-w-[12rem]">Vendor</th>
-                          <th className="px-3 py-2.5 font-semibold">Override reason</th>
-                          <th className="px-3 py-2.5 font-semibold" />
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(order.items as any[]).map((item: any) => {
-                          const lineDefaultType = lineDefaultDeliveryType(item);
-                          const draft = lineDrafts[item._id] || {
-                            vendorId: "",
-                            deliveryType: lineDefaultType,
-                            reason: "",
-                          };
-                          const defaultType = lineDefaultType === "structbay_delivery" ? "Type B" : "Type A";
-                          const assigned = item.assignedVendorUser?.companyName || item.assignedVendorUser?.name;
-                          return (
-                            <tr key={item._id} className="border-t border-sb-ink/8">
-                              <td className="px-3 py-2.5">
-                                <div className="font-medium text-sb-ink">{item.name}</div>
-                                {(item.variationLabel || item.sku) && (
-                                  <div className="text-xs text-sb-ink/50">{item.variationLabel || item.sku}</div>
-                                )}
-                                <div className="text-xs text-sb-ink/45">Qty {item.quantity} · ₹{Number(item.lineTotal).toLocaleString("en-IN")}</div>
-                                {assigned && (
-                                  <div className="text-xs text-green-700 mt-0.5">Assigned: {assigned}</div>
-                                )}
-                              </td>
-                              <td className="px-3 py-2.5 text-sb-ink/70">{defaultType}</td>
-                              <td className="px-3 py-2.5">
-                                <select
-                                  className="wf-field__input text-xs py-1.5"
-                                  value={draft.deliveryType}
-                                  onChange={(e) =>
-                                    setLineDrafts((prev) => ({
-                                      ...prev,
-                                      [item._id]: {
-                                        ...draft,
-                                        deliveryType: e.target.value as DeliveryType,
-                                      },
-                                    }))
-                                  }
-                                >
-                                  <option value="vendor_delivery">Type A</option>
-                                  <option value="structbay_delivery">Type B</option>
-                                </select>
-                              </td>
-                              <td className="px-3 py-2.5">
-                                <select
-                                  className="wf-field__input text-xs py-1.5 w-full"
-                                  value={draft.vendorId}
-                                  onChange={(e) =>
-                                    setLineDrafts((prev) => ({
-                                      ...prev,
-                                      [item._id]: { ...draft, vendorId: e.target.value },
-                                    }))
-                                  }
-                                >
-                                  <option value="">— Select —</option>
-                                  {approvedVendors.map((v) => (
-                                    <option key={v._id} value={v._id}>
-                                      {(v.companyName || v.name || "Vendor").trim()}
-                                    </option>
-                                  ))}
-                                </select>
-                              </td>
-                              <td className="px-3 py-2.5">
-                                {draft.deliveryType !== lineDefaultType ? (
-                                  <input
-                                    type="text"
-                                    className="wf-field__input text-xs py-1.5 w-full"
-                                    placeholder="Reason (optional)"
-                                    value={draft.reason}
-                                    onChange={(e) =>
-                                      setLineDrafts((prev) => ({
-                                        ...prev,
-                                        [item._id]: { ...draft, reason: e.target.value },
-                                      }))
-                                    }
-                                  />
-                                ) : (
-                                  <span className="text-xs text-sb-ink/35">—</span>
-                                )}
-                              </td>
-                              <td className="px-3 py-2.5">
-                                <button
-                                  type="button"
-                                  disabled={savingLines || !draft.vendorId}
-                                  onClick={() => void saveLineFulfillment(item._id)}
-                                  className="wf-btn wf-btn--secondary text-xs py-1.5 px-2.5"
-                                >
-                                  Save
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                  <button
-                    type="button"
-                    disabled={savingLines}
-                    onClick={() => void saveAllLineFulfillment()}
-                    className="wf-btn wf-btn--primary"
-                  >
-                    {savingLines ? "Saving…" : "Save all lines"}
-                  </button>
-                </>
-              )
-            }
-            aside={
-              approvedVendors.length > 0 ? (
-                <WorkflowCard title="Quick assign" variant="accent">
-                  <p className="text-xs text-sb-ink/50 -mt-1 mb-1">One vendor for the whole order (legacy).</p>
-                  <DeliveryTypeSelector
-                    name="assign-delivery-type"
-                    value={deliveryTypePick}
-                    onChange={setDeliveryTypePick}
-                  />
-                  <select
-                    value={vendorPick}
-                    onChange={(e) => setVendorPick(e.target.value)}
-                    className="wf-field__input"
-                  >
-                    <option value="">— Select vendor —</option>
-                    {approvedVendors.map((v) => (
-                      <option key={v._id} value={v._id}>
-                        {(v.companyName || v.name || "Vendor").trim()}
-                        {v.email ? ` · ${v.email}` : ""}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    disabled={!vendorPick}
-                    onClick={() => {
-                      if (!vendorPick) return;
-                      void assignVendor(vendorPick, deliveryTypePick);
-                    }}
-                    className="wf-btn wf-btn--primary w-full justify-center"
-                  >
-                    Assign all to one vendor
-                  </button>
-                </WorkflowCard>
-              ) : undefined
-            }
-          />
-        </OrderStep>
-
-        {hasFulfillment && (
-          <OrderStep
-            step={3}
-            id="step-fulfillment"
-            title="Fulfillment"
-            description="Labels, logistics & vendor docs."
-          >
-            <div className="space-y-4">
-              {order.vendorOrders.map((vo: any) => {
-                const workflowLocked = ["DISPATCH_APPROVED", "VENDOR_INVOICE_SUBMITTED", "SB_INVOICE_SENT", "DISPATCHED", "DELIVERED", "COMPLETED"].includes(vo.status);
-                const deliveryTypeLocked = workflowLocked;
-                const typeLabel = vo.deliveryType === "structbay_delivery" ? "Type B" : "Type A";
-                const hasAdminActions =
-                  vo.status === "READY_FOR_DISPATCH" ||
-                  vo.status === "DELIVERED" ||
-                  (vo.deliveryType === "structbay_delivery" &&
-                    (vo.status === "SB_INVOICE_SENT" || vo.status === "DISPATCHED"));
-                return (
-                  <div key={vo._id} className="wf-suborder-card">
-                    <div className="wf-suborder-card__head">
-                      <span className="wf-suborder-card__id">{vo.orderNumber}</span>
-                      <span className="wf-suborder-card__status">{typeLabel} · {vo.status}</span>
+              <WorkflowCard title="Recent Activity">
+                <div className="relative border-l border-sb-orange/20 ml-3 pl-4 space-y-6 pb-2">
+                  {order.statusHistory?.slice().reverse().map((sh: any, i: number) => (
+                    <div key={`ms-${i}`} className="relative">
+                      <div className="absolute -left-[1.35rem] top-1 w-2.5 h-2.5 rounded-full bg-sb-orange"></div>
+                      <p className="text-xs text-sb-ink/50 mb-0.5">{new Date(sh.changedAt || sh.timestamp).toLocaleString("en-IN", {
+                        day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit"
+                      })}</p>
+                      <p className="text-sm text-sb-ink">
+                        <span className="font-semibold">{formatStatusText(sh.status)}</span>
+                        {sh.note && <span className="text-sb-ink/70"> - {sh.note}</span>}
+                      </p>
                     </div>
-                    <div className="wf-suborder-card__body">
-                      <div className="wf-fulfillment-grid">
-                        <div className="wf-fulfillment-main">
-                          <div className="wf-fulfillment-pair">
-                            <WorkflowCard title="Delivery type">
-                              <DeliveryTypeSelector
-                                name={`dt-${vo._id}`}
-                                value={vo.deliveryType === "structbay_delivery" ? "structbay_delivery" : "vendor_delivery"}
-                                onChange={(v) => void saveDeliveryType(vo._id, v)}
-                                disabled={deliveryTypeLocked}
-                              />
-                              {deliveryTypeLocked && (
-                                <p className="text-[11px] text-sb-ink/45">
-                                  {workflowLocked ? "Locked after dispatch approval." : "Change in step 2 if needed."}
-                                </p>
-                              )}
-                            </WorkflowCard>
-
-                            {vo.deliveryType === "structbay_delivery" && (
-                              <WorkflowCard title="Structbay logistics">
-                                {(vo.structbayLogistics?.pickupContactName || vo.structbayLogistics?.pickupContactPhone) && (
-                                  <p className="text-xs text-sb-ink/65 bg-sb-cream border border-sb-ink/8 rounded-lg px-3 py-2">
-                                    Pickup · <strong>{vo.structbayLogistics.pickupContactName || "—"}</strong>
-                                    {vo.structbayLogistics.pickupContactPhone ? ` · ${vo.structbayLogistics.pickupContactPhone}` : ""}
-                                  </p>
-                                )}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                  <div className="wf-field">
-                                    <label className="wf-field__label">Pickup window</label>
-                                    <input
-                                      className="wf-field__input"
-                                      placeholder="e.g. 18 Jun, 10 AM–2 PM"
-                                      value={logisticsDraft[vo._id]?.pickupScheduledText ?? ""}
-                                      onChange={(e) => setLogisticsDraft((prev) => ({
-                                        ...prev,
-                                        [vo._id]: { ...prev[vo._id], pickupScheduledText: e.target.value, companyName: prev[vo._id]?.companyName ?? "", driverContactDetails: prev[vo._id]?.driverContactDetails ?? "" },
-                                      }))}
-                                    />
-                                  </div>
-                                  <div className="wf-field">
-                                    <label className="wf-field__label">Logistics partner</label>
-                                    <input
-                                      className="wf-field__input"
-                                      placeholder="Porter / Delhivery"
-                                      value={logisticsDraft[vo._id]?.companyName ?? ""}
-                                      onChange={(e) => setLogisticsDraft((prev) => ({
-                                        ...prev,
-                                        [vo._id]: { ...prev[vo._id], companyName: e.target.value, pickupScheduledText: prev[vo._id]?.pickupScheduledText ?? "", driverContactDetails: prev[vo._id]?.driverContactDetails ?? "" },
-                                      }))}
-                                    />
-                                  </div>
-                                  <div className="wf-field sm:col-span-2">
-                                    <label className="wf-field__label">Driver / coordinator</label>
-                                    <input
-                                      className="wf-field__input"
-                                      placeholder="Name & phone"
-                                      value={logisticsDraft[vo._id]?.driverContactDetails ?? ""}
-                                      onChange={(e) => setLogisticsDraft((prev) => ({
-                                        ...prev,
-                                        [vo._id]: { ...prev[vo._id], driverContactDetails: e.target.value, pickupScheduledText: prev[vo._id]?.pickupScheduledText ?? "", companyName: prev[vo._id]?.companyName ?? "" },
-                                      }))}
-                                    />
-                                  </div>
-                                </div>
-                                <div className="wf-form-footer border-0 pt-2 mt-0">
-                                  <button type="button" onClick={() => saveStructbayLogistics(vo._id)} className="wf-btn wf-btn--primary">
-                                    Save logistics
-                                  </button>
-                                </div>
-                              </WorkflowCard>
-                            )}
-                          </div>
-
-                          <div className="wf-fulfillment-pair">
-                            <ShippingLabelCard
-                              orderId={order._id}
-                              vendorOrderId={vo._id}
-                              vendorOrderNumber={vo.orderNumber}
-                              deliveryType={vo.deliveryType === "structbay_delivery" ? "structbay_delivery" : "vendor_delivery"}
-                              refreshKey={labelRefreshKey}
-                            />
-
-                          {vo.workflowVersion === 2 && (
-                            <VendorWorkflowSubmissions detail={voDetailById[vo._id]} />
-                          )}
-                          </div>
-
-                          {vo.workflowVersion === 2 && vo.status === "VENDOR_INVOICE_SUBMITTED" && (
-                            <WorkflowCard title="Structbay invoice & e-way">
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <WorkflowFileUpload label="Invoice (PDF)" accept=".pdf,application/pdf" name={`sb-inv-${vo._id}`} />
-                                <WorkflowFileUpload label="E-way bill (PDF)" accept=".pdf,application/pdf" name={`sb-ew-${vo._id}`} />
-                              </div>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div className="wf-field">
-                                  <label className="wf-field__label">Invoice no.</label>
-                                  <input id={`sb-${vo._id}-inum`} className="wf-field__input" placeholder="INV-…" />
-                                </div>
-                                <div className="wf-field">
-                                  <label className="wf-field__label">E-way no.</label>
-                                  <input id={`sb-${vo._id}-enum`} className="wf-field__input" placeholder="EWB-…" />
-                                </div>
-                              </div>
-                              <div className="wf-form-footer border-0 pt-2 mt-0">
-                                <button
-                                  type="button"
-                                  className="wf-btn wf-btn--primary"
-                                  onClick={async () => {
-                                    const invEl = document.querySelector(`input[name="sb-inv-${vo._id}"]`) as HTMLInputElement | null;
-                                    const ewEl = document.querySelector(`input[name="sb-ew-${vo._id}"]`) as HTMLInputElement | null;
-                                    const inum = (document.getElementById(`sb-${vo._id}-inum`) as HTMLInputElement | null)?.value;
-                                    const enumv = (document.getElementById(`sb-${vo._id}-enum`) as HTMLInputElement | null)?.value;
-                                    if (!invEl?.files?.[0] || !ewEl?.files?.[0] || !inum || !enumv) {
-                                      adminToast.warning("Both PDFs and both numbers are required.");
-                                      return;
-                                    }
-                                    const fd = new FormData();
-                                    fd.append("sbInvoice", invEl.files[0]);
-                                    fd.append("ewayBill", ewEl.files[0]);
-                                    fd.append("invoice_number", inum);
-                                    fd.append("eway_bill_number", enumv);
-                                    try {
-                                      await apiFetch(`/admin/vendor-orders/${vo._id}/workflow/sb-docs`, { method: "POST", body: fd });
-                                      await loadOrder();
-                                      adminToast.success("Documents sent to vendor");
-                                    } catch (e) {
-                                      adminToast.error(e instanceof Error ? e.message : "Upload failed");
-                                    }
-                                  }}
-                                >
-                                  Send to vendor
-                                </button>
-                              </div>
-                            </WorkflowCard>
-                          )}
-
-                          {vo.workflowVersion === 2 && voDetailById[vo._id]?.statusAudits?.length > 0 && (
-                            <details className="wf-event-history">
-                              <summary>Event history ({voDetailById[vo._id].statusAudits.length})</summary>
-                              <div className="max-h-36 overflow-y-auto space-y-1 pt-2 border-t border-sb-ink/8 mt-1">
-                                {(voDetailById[vo._id].statusAudits as any[]).slice(0, 15).map((a: any) => (
-                                  <div key={a._id}>
-                                    {a.changedAt ? new Date(a.changedAt).toLocaleString() : ""} — {a.status}
-                                    {a.remarks ? ` · ${a.remarks}` : ""}
-                                  </div>
-                                ))}
-                              </div>
-                            </details>
-                          )}
-                        </div>
-
-                        {vo.workflowVersion === 2 && hasAdminActions && (
-                          <aside className="wf-fulfillment-aside">
-                            <WorkflowCard title="Actions" variant="accent">
-                              <div className="wf-action-bar flex-col items-stretch">
-                                {vo.status === "READY_FOR_DISPATCH" && (
-                                    <>
-                                      <button
-                                        type="button"
-                                        className="wf-btn wf-btn--primary w-full justify-center"
-                                        onClick={async () => {
-                                          const ok = await adminToast.confirm("Approve dispatch for this sub-order?", {
-                                            description: vo.orderNumber,
-                                            confirmLabel: "Approve",
-                                          });
-                                          if (!ok) return;
-                                          try {
-                                            await apiFetch(`/admin/vendor-orders/${vo._id}/workflow/approve-dispatch`, { method: "POST" });
-                                            await loadOrder();
-                                            adminToast.success("Dispatch approved");
-                                          } catch (e) {
-                                            adminToast.error(e instanceof Error ? e.message : "Approve dispatch failed");
-                                          }
-                                        }}
-                                      >
-                                        Approve dispatch
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="wf-btn wf-btn--secondary w-full justify-center"
-                                        onClick={() => {
-                                          setInputModal({
-                                            title: "Request changes",
-                                            label: "Note for vendor",
-                                            required: true,
-                                            multiline: true,
-                                            confirmLabel: "Send request",
-                                            onConfirm: async (note) => {
-                                              await apiFetch(`/admin/vendor-orders/${vo._id}/workflow/request-changes`, {
-                                                method: "POST",
-                                                body: JSON.stringify({ note }),
-                                              });
-                                              await loadOrder();
-                                              adminToast.success("Change request sent");
-                                            },
-                                          });
-                                        }}
-                                      >
-                                        Request changes
-                                      </button>
-                                    </>
-                                  )}
-                                  {vo.status === "DELIVERED" && (
-                                    <button
-                                      type="button"
-                                      className="wf-btn wf-btn--primary w-full justify-center"
-                                      onClick={async () => {
-                                        const ok = await adminToast.confirm("Confirm delivery for this sub-order?", {
-                                          confirmLabel: "Confirm",
-                                        });
-                                        if (!ok) return;
-                                        try {
-                                          await apiFetch(`/admin/vendor-orders/${vo._id}/workflow/confirm-delivery`, { method: "POST" });
-                                          await loadOrder();
-                                          adminToast.success("Delivery confirmed");
-                                        } catch (e) {
-                                          adminToast.error(e instanceof Error ? e.message : "Confirm delivery failed");
-                                        }
-                                      }}
-                                    >
-                                      Confirm delivery
-                                    </button>
-                                  )}
-                                  {vo.deliveryType === "structbay_delivery" && vo.status === "SB_INVOICE_SENT" && (
-                                    <button
-                                      type="button"
-                                      className="wf-btn wf-btn--primary w-full justify-center"
-                                      onClick={async () => {
-                                        const ok = await adminToast.confirm("Mark this order out for delivery?", {
-                                          confirmLabel: "Mark dispatched",
-                                        });
-                                        if (!ok) return;
-                                        try {
-                                          await apiFetch(`/admin/vendor-orders/${vo._id}/workflow/mark-sb-dispatched`, { method: "POST" });
-                                          await loadOrder();
-                                          adminToast.success("Marked out for delivery");
-                                        } catch (e) {
-                                          adminToast.error(e instanceof Error ? e.message : "Mark out for delivery failed");
-                                        }
-                                      }}
-                                    >
-                                      Mark out for delivery
-                                    </button>
-                                  )}
-                                  {vo.deliveryType === "structbay_delivery" && vo.status === "DISPATCHED" && (
-                                    <button
-                                      type="button"
-                                      className="wf-btn wf-btn--primary w-full justify-center"
-                                      onClick={() => {
-                                        setInputModal({
-                                          title: "Mark delivered",
-                                          label: "Delivery note (optional)",
-                                          defaultValue: "Delivered to customer",
-                                          multiline: true,
-                                          confirmLabel: "Mark delivered",
-                                          onConfirm: async (note) => {
-                                            await apiFetch(`/admin/vendor-orders/${vo._id}/workflow/mark-sb-delivered`, {
-                                              method: "POST",
-                                              body: JSON.stringify({ note: note || undefined }),
-                                            });
-                                            await loadOrder();
-                                            adminToast.success("Marked as delivered");
-                                          },
-                                        });
-                                      }}
-                                    >
-                                      Mark delivered
-                                    </button>
-                                  )}
-                              </div>
-                            </WorkflowCard>
-                          </aside>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </OrderStep>
-        )}
-
-        <OrderStep
-          step={hasFulfillment ? 4 : 3}
-          id="step-status"
-          title="Order status"
-          description="Master order status."
-        >
-          <WorkflowSplit
-            main={
-              <WorkflowCard title="Status">
-                <div className="wf-field max-w-md">
-                  <label className="wf-field__label">Shown to customer & reports</label>
-                  <select
-                    value={order.status}
-                    onChange={(e) => void updateStatus(e.target.value)}
-                    className="wf-field__input"
-                  >
-                    {ALL_ORDER_STATUSES.map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
-              </WorkflowCard>
-            }
-            aside={
-              <WorkflowCard title="Summary" variant="muted">
-                <div className="space-y-2 text-sm">
-                  <p><span className="text-sb-ink/50">Current</span><br /><strong>{order.status}</strong></p>
-                  <p><span className="text-sb-ink/50">Payment</span><br /><strong>{formatPaymentStatus(order.paymentStatus)}</strong></p>
-                  <p><span className="text-sb-ink/50">Total</span><br /><strong>{order.grandTotal != null ? `₹${Number(order.grandTotal).toLocaleString("en-IN")}` : "—"}</strong></p>
+                  ))}
+                  {(!order.statusHistory || order.statusHistory.length === 0) && (
+                    <p className="text-sm text-sb-ink/50">No recent activity.</p>
+                  )}
                 </div>
               </WorkflowCard>
             }
