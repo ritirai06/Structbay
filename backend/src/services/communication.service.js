@@ -110,6 +110,12 @@ const FALLBACK_EMAIL_SENDERS = {
     html: `<p>Hi ${vars.customerName || 'Customer'}, your finance application has been received. Our team will contact you shortly.</p>`,
   }),
 
+  FINANCE_STATUS_UPDATE: (to, vars) => emailSvc.sendEmail({
+    to,
+    subject: `Finance Application Status Updated: ${vars.status} — StructBay`,
+    html: `<p>Hi ${vars.customerName || 'Customer'},</p><p>The status of your finance application (Ref: ${vars.financeNumber || ''}) has been updated to: <strong>${vars.status || ''}</strong>.</p>${vars.note ? `<p>Note: ${vars.note}</p>` : ''}<p>Thank you.</p>`,
+  }),
+
   PROJECT_CREATED: (to, vars) => emailSvc.sendProjectCreatedEmail({
     to,
     name:        vars.customerName || 'Customer',
@@ -203,6 +209,7 @@ const notifyDispatchUpdate  = (opts) => dispatch({ event: 'DISPATCH_UPDATE',    
 const notifyDelivered       = (opts) => dispatch({ event: 'DELIVERED',                ...opts });
 const notifyInvoiceReady    = (opts) => dispatch({ event: 'INVOICE_GENERATED',        ...opts });
 const notifyFinanceApp      = (opts) => dispatch({ event: 'FINANCE_APPLICATION',      ...opts });
+const notifyFinanceStatusUpdate = (opts) => dispatch({ event: 'FINANCE_STATUS_UPDATE',...opts });
 const notifyRFQSubmitted    = (opts) => dispatch({ event: 'RFQ_SUBMITTED',            ...opts });
 const notifyRFQApproved     = (opts) => dispatch({ event: 'RFQ_APPROVED',             ...opts });
 const notifyRFQRejected     = (opts) => dispatch({ event: 'RFQ_REJECTED',             ...opts });
@@ -220,6 +227,7 @@ module.exports = {
   notifyDelivered,
   notifyInvoiceReady,
   notifyFinanceApp,
+  notifyFinanceStatusUpdate,
   notifyRFQSubmitted,
   notifyRFQApproved,
   notifyRFQRejected,

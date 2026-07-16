@@ -152,7 +152,7 @@ async function enrichProductsSummary(products) {
       .map((pr) => pr.city?.name)
       .filter(Boolean);
 
-    const totalStock = inventory.reduce((sum, inv) => sum + (inv.quantity || 0), 0);
+    const totalStock = json.alwaysInStock ? 999999 : inventory.reduce((sum, inv) => sum + (inv.quantity || 0), 0);
 
     return {
       ...json,

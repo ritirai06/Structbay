@@ -28,6 +28,10 @@ export default defineConfig(({ mode }) => {
         target: apiOrigin,
         changeOrigin: true,
       },
+      '/socket.io': {
+        target: apiOrigin,
+        ws: true,
+      }
     },
   },
   build: {

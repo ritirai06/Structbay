@@ -17,7 +17,19 @@ async function notifyAllAdmins({ type, title, message, relatedVendorOrder, relat
     relatedMasterOrder,
     metadata,
   }));
-  return StaffNotification.insertMany(docs, { ordered: false });
+  const inserted = await StaffNotification.insertMany(docs, { ordered: false });
+
+  try {
+    const socketManager = require('../socket');
+    // Notify connected admins in real time
+    if (inserted && inserted.length > 0) {
+      socketManager.broadcastToAdmins('notification', inserted[0]);
+    }
+  } catch (err) {
+    // Ignore socket error
+  }
+
+  return inserted;
 }
 
 module.exports = { notifyAllAdmins };

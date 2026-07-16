@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useParams, useNavigate } from "react-router";
-import { Zap, Plus, Minus, Download, ChevronDown, Package } from "lucide-react";
+import { Zap, Plus, Minus, Download, ChevronDown, Package, X } from "lucide-react";
 import { api } from "../lib/api";
 import { useApp } from "../context/AppContext";
 import {
@@ -50,7 +50,7 @@ function PdpAccordion({
   );
 }
 
-function ReturnExchangePolicyContent({ policy }: { policy: any }) {
+function ReturnExchangePolicyContent({ policy, replacementPolicy }: { policy: any; replacementPolicy?: string }) {
   const ret = policy?.return || {};
   const ex = policy?.exchange || {};
   const hasReturn =
@@ -64,7 +64,7 @@ function ReturnExchangePolicyContent({ policy }: { policy: any }) {
     ex.windowDays ||
     ex.instructions ||
     (ex.conditions?.length ?? 0) > 0;
-  const hasAny = hasReturn || hasExchange;
+  const hasAny = hasReturn || hasExchange || (replacementPolicy && replacementPolicy !== "No Replacement");
 
   if (!hasAny) {
     return (
@@ -76,6 +76,12 @@ function ReturnExchangePolicyContent({ policy }: { policy: any }) {
 
   return (
     <div className="space-y-5 text-sm text-gray-600">
+      {replacementPolicy && replacementPolicy !== "No Replacement" && (
+        <div>
+          <p className="font-semibold text-gray-900 mb-2">Replacement Policy</p>
+          <p className="text-sm leading-relaxed">{replacementPolicy}</p>
+        </div>
+      )}
       {hasReturn && (
         <div>
           <p className="font-semibold text-gray-900 mb-2">Return Policy</p>
@@ -176,6 +182,8 @@ export function ProductDetails() {
   const [selectedVid, setSelectedVid] = useState<string | null>(null);
   const [attrSelections, setAttrSelections] = useState<Record<string, string>>({});
   const [crossSells, setCrossSells] = useState<any[]>([]);
+  const [showBulkPricingModal, setShowBulkPricingModal] = useState(false);
+  const [customColorText, setCustomColorText] = useState("");
 
   // Debug: Log the Related Products API Response
   useEffect(() => {
@@ -268,6 +276,7 @@ export function ProductDetails() {
   useEffect(() => {
     if (!selectedVar || !axes.length) return;
     setAttrSelections(initSelectionsForVariation(selectedVar, axes));
+    setCustomColorText("");
   }, [selectedVid, axes.length, selectedVar]);
 
   useEffect(() => {
@@ -417,7 +426,9 @@ export function ProductDetails() {
       id: cartId,
       productSlug: pslug,
       variationId: vid,
-      variationLabel: isVariant && selectedVar ? formatVariationLabel(selectedVar) : undefined,
+      variationLabel: isVariant && selectedVar 
+        ? formatVariationLabel(selectedVar) + ((attrSelections["Color"] === "Custom" || attrSelections["Colour"] === "Custom") && customColorText ? ` (Custom: ${customColorText})` : "") 
+        : undefined,
       name: product.name,
       brand: brandName,
       price: effectiveUnit,
@@ -515,10 +526,10 @@ export function ProductDetails() {
                   </span>
                 </div>
                 {bulkFrom != null && bulkFrom < effectiveUnit && (
-                  <p className="sf-pdp-bulk-hint">
+                  <button type="button" className="sf-pdp-bulk-hint text-left hover:underline w-full" onClick={() => setShowBulkPricingModal(true)}>
                     Unlock bulk prices from ₹{displayBulkFrom?.toLocaleString("en-IN")}
                     {product?.priceIncludesGst ? ` incl. ${gstPct}% GST` : " ex-GST"}
-                  </p>
+                  </button>
                 )}
               </div>
             ) : (
@@ -532,7 +543,7 @@ export function ProductDetails() {
               axes.map((axis) => {
                 const options = uniqueValuesForAxis(variations, axis.key, attrSelections);
                 if (!options.length) return null;
-                const isColorAxis = axis.key.toLowerCase() === "color";
+                const isColorAxis = axis.key.toLowerCase() === "color" || axis.key.toLowerCase() === "colour";
 
                 // Build color code map for color axis: colorName → colorCode
                 const colorCodeMap: Record<string, string> = {};
@@ -607,6 +618,20 @@ export function ProductDetails() {
                         );
                       })}
                     </div>
+                    {isColorAxis && attrSelections[axis.key] === "Custom" && (
+                      <div className="mt-3">
+                        <label className="text-sm font-medium text-gray-700 block mb-1">
+                          Enter your custom color
+                        </label>
+                        <input
+                          type="text"
+                          value={customColorText}
+                          onChange={(e) => setCustomColorText(e.target.value)}
+                          placeholder="e.g. Cobalt Blue, #0047AB"
+                          className="w-full sm:w-64 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-sb-orange focus:ring-1 focus:ring-sb-orange"
+                        />
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -766,7 +791,7 @@ export function ProductDetails() {
                 open={openSection === "returns"}
                 onToggle={() => toggleSection("returns")}
               >
-                <ReturnExchangePolicyContent policy={product.returnExchangePolicy} />
+                <ReturnExchangePolicyContent policy={product.returnExchangePolicy} replacementPolicy={product.replacementPolicy} />
               </PdpAccordion>
             </div>
           </div>
@@ -775,7 +800,7 @@ export function ProductDetails() {
         {/* Cross-sell products (from admin configuration) */}
         {crossSells && crossSells.length > 0 && (
           <section className="sf-pdp-related mt-14">
-            <h2 className="sf-pdp-related__title">Related Products</h2>
+            <h2 className="sf-pdp-related__title">You may also like</h2>
             <div className="sf-pdp-related__grid">
               {crossSells.slice(0, 8).map((p: any) => {
                 // Debug: Log the product sent to pricing helper
@@ -840,18 +865,23 @@ export function ProductDetails() {
                         <span className="sf-pdp-related-card__was">
                           ₹{relMrp.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                         </span>
-                      )}
-                      <span className="sf-pdp-related-card__price">
-                        ₹{unit.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                  </Link>
-                );
-              })}
+                        <div className="text-right">
+                          <span className="font-semibold text-sb-orange">₹{price.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                          <div className="text-[10px] text-gray-500">
+                            {product?.priceIncludesGst ? `incl. ${gstPct}% GST` : "ex-GST"}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 text-center py-4">No bulk pricing available for this selection.</p>
+              )}
             </div>
-          </section>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
 
       {/* Mobile sticky add */}
       {effectiveUnit > 0 && inStock ? (

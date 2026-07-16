@@ -13,6 +13,7 @@ type Props = {
   configs: CityConfig[];
   onChange: (configs: CityConfig[]) => void;
   defaultTax?: number;
+  alwaysInStock?: boolean;
 };
 
 function numVal(v: number | ""): string {
@@ -25,7 +26,7 @@ function parseNum(v: string): number | "" {
   return Number.isFinite(n) ? n : "";
 }
 
-export function ProductCityConfig({ configs, onChange, defaultTax = 18 }: Props) {
+export function ProductCityConfig({ configs, onChange, defaultTax = 18, alwaysInStock = false }: Props) {
   const updateCity = (cityId: string, patch: Partial<CityConfig>) => {
     onChange(configs.map((c) => (c.cityId === cityId ? { ...c, ...patch } : c)));
   };
@@ -133,14 +134,16 @@ export function ProductCityConfig({ configs, onChange, defaultTax = 18 }: Props)
               </div>
               <span
                 className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full ${
-                  status === "IN_STOCK"
+                  alwaysInStock
+                    ? "bg-emerald-500/12 text-emerald-800"
+                    : status === "IN_STOCK"
                     ? "bg-emerald-500/12 text-emerald-800"
                     : status === "LOW_STOCK"
                       ? "bg-amber-500/12 text-amber-800"
                       : "bg-red-500/12 text-red-800"
                 }`}
               >
-                {stockStatusLabel(status)}
+                {alwaysInStock ? "In Stock" : stockStatusLabel(status)}
               </span>
             </button>
 
@@ -391,7 +394,7 @@ export function ProductCityConfig({ configs, onChange, defaultTax = 18 }: Props)
                   </div>
                   <p className="text-xs text-sb-ink/45 mt-2 flex items-center gap-1">
                     <Copy className="w-3 h-3" />
-                    Status: <strong>{stockStatusLabel(status)}</strong> (auto-calculated)
+                    Status: <strong>{alwaysInStock ? "In Stock (Always)" : stockStatusLabel(status)}</strong> (auto-calculated)
                   </p>
                 </div>
               </div>

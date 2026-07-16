@@ -41,7 +41,7 @@ const emptyForm = {
   gstPercentage: 18, priceIncludesGst: false, status: "DRAFT",
   deliveryType: "vendor_delivery" as "vendor_delivery" | "structbay_delivery",
   productStructure: "simple" as "simple" | "variant",
-  isFeatured: false, isTopSelling: false, isAssured: false, isExpress: false,
+  isFeatured: false, isTopSelling: false, isAssured: false, isExpress: false, alwaysInStock: false,
   displayOrder: 0,
   seo: { metaTitle: "", metaDescription: "", metaKeywords: [] },
   faqs: [] as { question: string; answer: string }[],
@@ -49,6 +49,7 @@ const emptyForm = {
   videos: [] as { title: string; url: string }[],
   documents: [] as { name: string; url: string }[],
   attributes: [] as ProductAttribute[],
+  replacementPolicy: "7 Day Replacement",
 };
 
 function normalizeReturnExchangePolicy(raw: unknown) {
@@ -390,11 +391,12 @@ export function AddProduct() {
                 ? "variant"
                 : "simple",
             status: p.status, isFeatured: p.isFeatured, isTopSelling: p.isTopSelling,
-            isAssured: p.isAssured, isExpress: p.isExpress, displayOrder: p.displayOrder,
+            isAssured: p.isAssured, isExpress: p.isExpress, alwaysInStock: !!p.alwaysInStock, displayOrder: p.displayOrder,
             seo: p.seo || { metaTitle: "", metaDescription: "", metaKeywords: [] },
             faqs: p.faqs || [], videos: p.videos || [], documents: p.documents || [],
             returnExchangePolicy: normalizeReturnExchangePolicy(p.returnExchangePolicy),
             attributes: p.attributes || [],
+            replacementPolicy: p.replacementPolicy || "7 Day Replacement",
           },
           variations: p.variations || [],
           upsellProducts: p.upsellProducts || [],
@@ -413,11 +415,12 @@ export function AddProduct() {
               ? "variant"
               : "simple",
           status: p.status, isFeatured: p.isFeatured, isTopSelling: p.isTopSelling,
-          isAssured: p.isAssured, isExpress: p.isExpress, displayOrder: p.displayOrder,
+          isAssured: p.isAssured, isExpress: p.isExpress, alwaysInStock: !!p.alwaysInStock, displayOrder: p.displayOrder,
           seo: p.seo || { metaTitle: "", metaDescription: "", metaKeywords: [] },
           faqs: p.faqs || [], videos: p.videos || [], documents: p.documents || [],
           returnExchangePolicy: normalizeReturnExchangePolicy(p.returnExchangePolicy),
           attributes: p.attributes || [],
+          replacementPolicy: p.replacementPolicy || "7 Day Replacement",
         });
         setVariations(p.variations || []);
         setUpsellProducts(p.upsellProducts || []);
@@ -518,6 +521,7 @@ export function AddProduct() {
         documents: form.documents.filter(d => d.name.trim() && d.url.trim()),
         videos: form.videos.filter(v => v.title.trim() || v.url.trim()),
         returnExchangePolicy: serializeReturnExchangePolicy(form.returnExchangePolicy),
+        replacementPolicy: form.replacementPolicy.trim(),
       };
       const body: Record<string, unknown> = { product };
       if (!isVariantProduct) {
@@ -531,7 +535,12 @@ export function AddProduct() {
         await apiFetch(`/products/${id}`, { method: "PATCH", body: JSON.stringify(body) });
         setDirty(false);
         initialSnapshot.current = snapshotState();
-        navigate(adminPath("products"));
+        if (overrideStatus === "DRAFT") {
+          toast.success("Draft saved successfully.");
+        } else {
+          toast.success("Product updated successfully.");
+          navigate(adminPath("products"));
+        }
       } else {
         console.log("DEBUG: API Payload", body);
         const res = await apiFetch("/products", { method: "POST", body: JSON.stringify(body) });
@@ -857,8 +866,9 @@ export function AddProduct() {
               </p>
               <ProductCityConfig
                 configs={cityConfigs}
-                onChange={handleCityConfigsChange}
+                onChange={(c) => { setCityConfigs(c); setDirty(true); }}
                 defaultTax={form.gstPercentage}
+                alwaysInStock={form.alwaysInStock}
               />
             </Section>
           )}
@@ -1091,7 +1101,44 @@ export function AddProduct() {
               </p>
 
               <div className="space-y-6">
-                <div className="rounded-xl border border-sb-ink/10 bg-white p-4 space-y-4">
+                <div className="rounded-xl border border-sb-ink/10 bg-white p-4 space-y-4 mb-4">
+                  <h4 className="text-sm font-semibold text-sb-ink">Replacement Policy</h4>
+                  <Field label="Policy Selection">
+                    <select
+                      className={sel}
+                      value={["No Replacement", "3 Day Replacement", "5 Day Replacement", "7 Day Replacement", "10 Day Replacement", "15 Day Replacement", "30 Day Replacement"].includes(form.replacementPolicy) ? form.replacementPolicy : "Custom"}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "Custom") {
+                          set("replacementPolicy", ""); 
+                        } else {
+                          set("replacementPolicy", val);
+                        }
+                      }}
+                    >
+                      <option value="No Replacement">No Replacement</option>
+                      <option value="3 Day Replacement">3 Day Replacement</option>
+                      <option value="5 Day Replacement">5 Day Replacement</option>
+                      <option value="7 Day Replacement">7 Day Replacement</option>
+                      <option value="10 Day Replacement">10 Day Replacement</option>
+                      <option value="15 Day Replacement">15 Day Replacement</option>
+                      <option value="30 Day Replacement">30 Day Replacement</option>
+                      <option value="Custom">Custom</option>
+                    </select>
+                  </Field>
+                  {(!["No Replacement", "3 Day Replacement", "5 Day Replacement", "7 Day Replacement", "10 Day Replacement", "15 Day Replacement", "30 Day Replacement"].includes(form.replacementPolicy)) && (
+                    <Field label="Custom Replacement Policy" required>
+                      <input
+                        className={inp}
+                        value={form.replacementPolicy}
+                        onChange={(e) => set("replacementPolicy", e.target.value)}
+                        placeholder="e.g. Replacement within 45 Days"
+                      />
+                    </Field>
+                  )}
+                </div>
+
+                <div className="rounded-xl border border-sb-ink/10 bg-white p-4 space-y-4 mb-4">
                   <h4 className="text-sm font-semibold text-sb-ink">Return Policy</h4>
                   <Toggle
                     checked={form.returnExchangePolicy.return.allowed}
@@ -1200,6 +1247,12 @@ export function AddProduct() {
             <p className="text-xs text-sb-ink/50 mt-2">
               Sets the default fulfillment workflow for this product on new orders.
             </p>
+          </Section>
+
+          <Section title="Product Options">
+            <div className="space-y-2">
+              <Toggle checked={form.alwaysInStock} onChange={v => set("alwaysInStock", v)} label="Always In Stock (Dropship)" icon={RefreshCw} />
+            </div>
           </Section>
 
           <Section title="Product Badges">

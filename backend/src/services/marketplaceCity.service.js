@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 const City = require('../models/City');
 const CityPricing = require('../models/CityPricing');
 const Inventory = require('../models/Inventory');
+const Product = require('../models/Product');
 
 async function resolveMarketplaceCityId(cityId, cityName) {
   if (cityId && mongoose.Types.ObjectId.isValid(String(cityId))) {
@@ -43,7 +44,7 @@ async function getPricedProductIdsForCity(cityOid) {
 }
 
 async function getSellableProductIdsForCity(cityOid) {
-  const [priced, invAgg] = await Promise.all([
+  const [priced, invAgg, alwaysInStockProducts] = await Promise.all([
     getPricedProductIdsForCity(cityOid),
     Inventory.aggregate([
       { $match: { city: cityOid, isDeleted: false } },
@@ -51,9 +52,14 @@ async function getSellableProductIdsForCity(cityOid) {
       { $match: { available: { $gt: 0 } } },
       { $group: { _id: '$product' } },
     ]),
+    Product.find({ alwaysInStock: true, isDeleted: { $ne: true } }).select('_id').lean()
   ]);
 
-  const stocked = new Set(invAgg.map((x) => String(x._id)));
+  const stocked = new Set([
+    ...invAgg.map((x) => String(x._id)),
+    ...alwaysInStockProducts.map((p) => String(p._id))
+  ]);
+  
   return priced.filter((pid) => stocked.has(String(pid)));
 }
 

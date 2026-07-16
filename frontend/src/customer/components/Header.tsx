@@ -469,7 +469,7 @@ export function Header() {
                   Bulk Order
                 </button>
                 <NavLink to="/finance" className="sf-btn-outline hidden md:inline-flex !px-2.5 !py-1.5 !text-[0.65rem]">
-                  Finance
+                Structbay Finance
                 </NavLink>
 
                 {/* Search */}
@@ -686,7 +686,7 @@ export function Header() {
                   Bulk Order
                 </button>
                 <NavLink to="/finance" className="sf-btn-outline-mobile">
-                  Finance
+                 Structbay Finance
                 </NavLink>
               </div>
 

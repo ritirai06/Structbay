@@ -61,8 +61,36 @@ export function Header() {
 
   useEffect(() => {
     void loadNotifications();
-    const id = window.setInterval(() => void loadNotifications(), 60_000);
-    return () => window.clearInterval(id);
+    
+    // Connect to Socket.IO
+    import("socket.io-client").then(({ io }) => {
+      // Connect to the same origin, relying on proxy for dev or relative path for prod
+      const socket = io({
+        withCredentials: true,
+      });
+
+      socket.on("connect", () => {
+        socket.emit("join_admin");
+      });
+
+      socket.on("notification", (payload: StaffNotification) => {
+        setNotifications((prev) => {
+          const exists = prev.some((n) => n._id === payload._id);
+          if (exists) return prev;
+          return [payload, ...prev].slice(0, 8);
+        });
+        setUnreadCount((c) => c + 1);
+      });
+
+      socket.on("order_updated", () => {
+        // We could selectively refresh, but for the bell we just want to know if there's a notif.
+        // The page itself might also listen to this if needed.
+      });
+
+      return () => {
+        socket.disconnect();
+      };
+    });
   }, [loadNotifications]);
 
   const markRead = async (id: string) => {
