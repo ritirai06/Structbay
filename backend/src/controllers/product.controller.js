@@ -572,6 +572,25 @@ const deleteVariation = asyncHandler(async (req, res) => {
   return ApiResponse.success(res, 200, 'Variation deleted.');
 });
 
+const addVariationImages = asyncHandler(async (req, res) => {
+  const variation = await ProductVariation.findOne({ _id: req.params.varId, product: req.params.id });
+  if (!variation) throw new AppError('Variation not found.', 404);
+  if (!req.body.images || !Array.isArray(req.body.images)) throw new AppError('images array is required.', 400);
+  variation.images.push(...req.body.images);
+  await variation.save();
+  return ApiResponse.success(res, 200, 'Images added.', variation);
+});
+
+const removeVariationImage = asyncHandler(async (req, res) => {
+  const variation = await ProductVariation.findOne({ _id: req.params.varId, product: req.params.id });
+  if (!variation) throw new AppError('Variation not found.', 404);
+  const img = variation.images.id(req.params.imageId);
+  if (img?.publicId) await deleteFile(img.publicId).catch(() => {});
+  variation.images = variation.images.filter(i => i._id.toString() !== req.params.imageId);
+  await variation.save();
+  return ApiResponse.success(res, 200, 'Image removed.', variation);
+});
+
 const BULK_MAX_ROWS = 200;
 
 function bulkProductRowError(e) {
@@ -1158,6 +1177,6 @@ const bulkImportVariants = asyncHandler(async (req, res) => {
 module.exports = {
   getAll, getById, getBySlug, create, update, addImages, removeImage, remove, bulkImport, bulkImportVariants,
   getBulkImportTemplate,
-  getVariations, createVariation, updateVariation, deleteVariation,
+  getVariations, createVariation, updateVariation, deleteVariation, addVariationImages, removeVariationImage,
   getVariationConfiguration, saveVariationConfiguration, generateVariationMatrix,
 };

@@ -197,6 +197,7 @@ export function VendorWorkflowSubmissions({ detail }: { detail: any }) {
   const pre = detail.preDispatch;
   const ship = detail.shipmentDispatch;
   const pod = detail.deliveryProof;
+  const vendorInv = detail.vendorInvoice;
   const hasPre =
     pre?.remarks ||
     pre?.invoiceFileUrl ||
@@ -205,7 +206,8 @@ export function VendorWorkflowSubmissions({ detail }: { detail: any }) {
   const hasShip =
     ship?.transporterName || ship?.lrNumber || ship?.vehicleNumber || ship?.proofUrl || ship?.dispatchDate;
   const hasPod = pod?.podUrl || pod?.deliveryDate;
-  if (!hasPre && !hasShip && !hasPod) return null;
+  const hasVendorInv = vendorInv?.invoicePdfUrl;
+  if (!hasPre && !hasShip && !hasPod && !hasVendorInv) return null;
 
   const packingFiles = Array.isArray(pre?.packingFiles)
     ? pre.packingFiles
@@ -252,6 +254,16 @@ export function VendorWorkflowSubmissions({ detail }: { detail: any }) {
             {ship?.proofUrl && (
               <WorkflowFilePreview files={[{ url: ship.proofUrl, label: "Dispatch proof" }]} />
             )}
+          </div>
+        )}
+        {hasVendorInv && (
+          <div className="wf-doc-block">
+            <p className="wf-doc-block__heading">Vendor invoice</p>
+            <div className="text-xs text-sb-ink/65 space-y-1">
+              {vendorInv.invoiceNumber && <p>Invoice # · <strong>{vendorInv.invoiceNumber}</strong></p>}
+              {vendorInv.uploadedAt && <p>Uploaded · <strong>{fmtDate(vendorInv.uploadedAt)}</strong></p>}
+            </div>
+            <WorkflowFilePreview files={[{ url: vendorInv.invoicePdfUrl, label: "Vendor invoice" }]} />
           </div>
         )}
         {hasPod && (

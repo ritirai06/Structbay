@@ -223,18 +223,6 @@ export function ProductCityConfig({ configs, onChange, defaultTax = 18 }: Props)
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold text-[#000000] mb-1 block">Delivery Charge (₹)</label>
-                      <input
-                        type="number"
-                        min={0}
-                        className={inp}
-                        value={numVal(cfg.pricing.deliveryCharge)}
-                        onChange={(e) =>
-                          updatePricing(cfg.cityId, { deliveryCharge: parseNum(e.target.value) })
-                        }
-                      />
-                    </div>
-                    <div>
                       <label className="text-xs font-semibold text-[#000000] mb-1 block">Tax %</label>
                       <input
                         type="number"

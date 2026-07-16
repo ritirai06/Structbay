@@ -38,6 +38,7 @@ export function ReadyDispatch() {
   const [contactNumber, setContactNumber] = useState('');
   const [pickupTime, setPickupTime] = useState('');
   const [dispatchDate, setDispatchDate] = useState('');
+  const [dispatchTime, setDispatchTime] = useState('');
   const [expectedDelivery, setExpectedDelivery] = useState('');
   const [remarks, setRemarks] = useState('');
 
@@ -57,7 +58,7 @@ export function ReadyDispatch() {
     setSubmitting(true); setMsg(null);
     try {
       const body: Record<string, unknown> = {
-        orderId, dispatchType, dispatchDate, expectedDeliveryDate: expectedDelivery, dispatchRemarks: remarks,
+        orderId, dispatchType, dispatchDate: dispatchDate && dispatchTime ? `${dispatchDate}T${dispatchTime}` : dispatchDate, expectedDeliveryDate: expectedDelivery, dispatchRemarks: remarks,
       };
       if (dispatchType === 'vendor_delivery') {
         Object.assign(body, { vehicleNumber, vehicleType, driverName, driverPhone });
@@ -171,11 +172,15 @@ export function ReadyDispatch() {
                   <input type="date" value={dispatchDate} onChange={e => setDispatchDate(e.target.value)}
                     required className={inputCls} style={inputStyle} />
                 </Field>
-                <Field label="Expected Delivery Date">
-                  <input type="date" value={expectedDelivery} onChange={e => setExpectedDelivery(e.target.value)}
-                    className={inputCls} style={inputStyle} />
+                <Field label="Dispatch Time" required>
+                  <input type="time" value={dispatchTime} onChange={e => setDispatchTime(e.target.value)}
+                    required className={inputCls} style={inputStyle} />
                 </Field>
               </div>
+              <Field label="Expected Delivery Date">
+                <input type="date" value={expectedDelivery} onChange={e => setExpectedDelivery(e.target.value)}
+                  className={inputCls} style={inputStyle} />
+              </Field>
 
               <Field label="Remarks">
                 <textarea value={remarks} onChange={e => setRemarks(e.target.value)} rows={3}

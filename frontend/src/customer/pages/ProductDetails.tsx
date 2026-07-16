@@ -689,6 +689,11 @@ export function ProductDetails() {
                 open={openSection === "highlights"}
                 onToggle={() => toggleSection("highlights")}
               >
+                {product.shortDescription && (
+                  <p className="text-sm text-gray-600 leading-relaxed mb-4">
+                    {product.shortDescription}
+                  </p>
+                )}
                 {specRowsForPanel.length > 0 ? (
                   <ul className="sf-pdp-list">
                     {specRowsForPanel.map((row) => (
@@ -699,7 +704,7 @@ export function ProductDetails() {
                   </ul>
                 ) : (
                   <p className="text-sm text-gray-600 leading-relaxed">
-                    {product.shortDescription || "Premium quality product from verified Structbay vendors."}
+                    Premium quality product from verified Structbay vendors.
                   </p>
                 )}
                 {brandName && (
@@ -768,7 +773,7 @@ export function ProductDetails() {
         </div>
 
         {/* Cross-sell products (from admin configuration) */}
-        {crossSells.length > 0 && (
+        {crossSells && crossSells.length > 0 && (
           <section className="sf-pdp-related mt-14">
             <h2 className="sf-pdp-related__title">Related Products</h2>
             <div className="sf-pdp-related__grid">
@@ -809,7 +814,7 @@ export function ProductDetails() {
         )}
 
         {/* Category-based "You may also like" (existing) */}
-        {related.length > 0 && (
+        {related && related.length > 0 && (
           <section className="sf-pdp-related mt-14">
             <h2 className="sf-pdp-related__title">You may also like</h2>
             <div className="sf-pdp-related__grid">

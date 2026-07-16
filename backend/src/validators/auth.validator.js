@@ -1,5 +1,24 @@
 const { body } = require('express-validator');
 
+// ─── Custom email validator (RFC 5322 compliant) ────────────────────────────
+const isValidEmail = (email) => {
+  // RFC 5322 simplified regex that accepts: . _ - + in local part
+  const emailRegex = /^[a-zA-Z0-9._+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  return emailRegex.test(String(email).trim());
+};
+
+const emailValidator = (field = 'email') =>
+  body(field)
+    .trim()
+    .notEmpty().withMessage('Email is required')
+    .custom((value) => {
+      if (!isValidEmail(value)) {
+        throw new Error('Please enter a valid email address');
+      }
+      return true;
+    })
+    .normalizeEmail();
+
 // ─── Password rule (reusable) ─────────────────────────────────────────────────
 const strongPassword = (field = 'password') =>
   body(field)
@@ -18,11 +37,7 @@ const registerCustomerValidator = [
     .notEmpty().withMessage('Name is required')
     .isLength({ min: 2, max: 100 }).withMessage('Name must be 2–100 characters'),
 
-  body('email')
-    .trim()
-    .notEmpty().withMessage('Email is required')
-    .isEmail().withMessage('Please enter a valid email')
-    .normalizeEmail(),
+  emailValidator('email'),
 
   body('phone')
     .optional({ nullable: true })
@@ -58,11 +73,7 @@ const registerVendorValidator = [
     .notEmpty().withMessage('Contact name is required')
     .isLength({ min: 2, max: 100 }).withMessage('Name must be 2–100 characters'),
 
-  body('email')
-    .trim()
-    .notEmpty().withMessage('Email is required')
-    .isEmail().withMessage('Please enter a valid email')
-    .normalizeEmail(),
+  emailValidator('email'),
 
   body('phone')
     .notEmpty().withMessage('Phone number is required')
@@ -106,11 +117,7 @@ const adminCreateVendorValidator = [
     .notEmpty().withMessage('Contact name is required')
     .isLength({ min: 2, max: 100 }).withMessage('Name must be 2–100 characters'),
 
-  body('email')
-    .trim()
-    .notEmpty().withMessage('Email is required')
-    .isEmail().withMessage('Please enter a valid email')
-    .normalizeEmail(),
+  emailValidator('email'),
 
   body('phone')
     .notEmpty().withMessage('Phone number is required')
@@ -142,22 +149,14 @@ const adminCreateVendorValidator = [
 
 // ─── Login ────────────────────────────────────────────────────────────────────
 const loginValidator = [
-  body('email')
-    .trim()
-    .notEmpty().withMessage('Email is required')
-    .isEmail().withMessage('Please enter a valid email')
-    .normalizeEmail(),
+  emailValidator('email'),
 
   body('password').notEmpty().withMessage('Password is required'),
 ];
 
 // ─── Forgot Password ──────────────────────────────────────────────────────────
 const forgotPasswordValidator = [
-  body('email')
-    .trim()
-    .notEmpty().withMessage('Email is required')
-    .isEmail().withMessage('Please enter a valid email')
-    .normalizeEmail(),
+  emailValidator('email'),
 ];
 
 // ─── Reset Password ───────────────────────────────────────────────────────────
@@ -209,7 +208,12 @@ const adminUpdateVendorValidator = [
     .optional()
     .trim()
     .notEmpty().withMessage('Email cannot be empty')
-    .isEmail().withMessage('Please enter a valid email')
+    .custom((value) => {
+      if (!isValidEmail(value)) {
+        throw new Error('Please enter a valid email address');
+      }
+      return true;
+    })
     .normalizeEmail(),
 
   body('phone')

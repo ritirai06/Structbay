@@ -12,7 +12,6 @@ type BulkFields = {
   sellingPrice: string;
   mrp: string;
   purchaseCost: string;
-  deliveryCharge: string;
   taxPercentage: string;
   stock: string;
   reorderLevel: string;
@@ -21,7 +20,7 @@ type BulkFields = {
 
 type PricingFields = Pick<
   BulkFields,
-  "sellingPrice" | "mrp" | "purchaseCost" | "deliveryCharge" | "taxPercentage"
+  "sellingPrice" | "mrp" | "purchaseCost" | "taxPercentage"
 >;
 
 type InventoryFields = Pick<BulkFields, "stock" | "reorderLevel" | "safetyStock">;
@@ -47,7 +46,6 @@ export function VariantBulkPricingPanel({
     sellingPrice: "",
     mrp: "",
     purchaseCost: "",
-    deliveryCharge: "",
     taxPercentage: "",
     stock: "",
     reorderLevel: "",
@@ -62,7 +60,6 @@ export function VariantBulkPricingPanel({
     sellingPrice: fields.sellingPrice,
     mrp: fields.mrp,
     purchaseCost: fields.purchaseCost,
-    deliveryCharge: fields.deliveryCharge,
     taxPercentage: fields.taxPercentage,
   };
 
@@ -114,10 +111,6 @@ export function VariantBulkPricingPanel({
               <div>
                 <label className="text-xs text-sb-ink/50 mb-1 block">Purchase Cost</label>
                 <input type="number" min={0} className={inp} value={fields.purchaseCost} onChange={(e) => set("purchaseCost", e.target.value)} />
-              </div>
-              <div>
-                <label className="text-xs text-sb-ink/50 mb-1 block">Delivery Charge</label>
-                <input type="number" min={0} className={inp} value={fields.deliveryCharge} onChange={(e) => set("deliveryCharge", e.target.value)} />
               </div>
               <div>
                 <label className="text-xs text-sb-ink/50 mb-1 block">Tax %</label>

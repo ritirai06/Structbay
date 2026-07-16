@@ -116,7 +116,7 @@ function pendingVendorAction(status, deliveryType) {
     case 'SB_INVOICE_SENT':
       return typeB
         ? 'Structbay will book Porter/Delhivery and deliver to the customer — no vendor dispatch needed'
-        : 'Mark dispatched with transporter / LR / proof';
+        : 'Confirm dispatch, then upload final tax invoice';
     case 'DISPATCHED':
       return typeB
         ? 'Structbay is delivering to the customer'

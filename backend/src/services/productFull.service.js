@@ -37,7 +37,6 @@ function normalizeCityPricingRow(row, productGst = 18) {
   const mrp = mrpRaw != null && mrpRaw !== '' ? Number(mrpRaw) : sellingPrice;
   const purchaseCostRaw = row.purchaseCost ?? row.purchase_cost;
   const purchaseCost = purchaseCostRaw != null && purchaseCostRaw !== '' ? Number(purchaseCostRaw) : null;
-  const deliveryCharge = Number(row.deliveryCharge ?? row.delivery_charge ?? 0);
   const taxRaw = row.taxPercentage ?? row.tax ?? row.tax_percentage;
   const taxPercentage = taxRaw != null && taxRaw !== ''
     ? Number(taxRaw)
@@ -52,7 +51,6 @@ function normalizeCityPricingRow(row, productGst = 18) {
     salePrice: sellingPrice,
     mrp: Number.isFinite(mrp) && mrp >= 0 ? mrp : null,
     purchaseCost: Number.isFinite(purchaseCost) && purchaseCost >= 0 ? purchaseCost : null,
-    deliveryCharge: Number.isFinite(deliveryCharge) && deliveryCharge >= 0 ? deliveryCharge : 0,
     taxPercentage: Number.isFinite(taxPercentage) && taxPercentage >= 0 ? taxPercentage : null,
     wholesaleSlabs: normalizeSlabs(row.wholesaleSlabs || []),
     isVisible,
@@ -202,7 +200,6 @@ async function getProductConfiguration(productId) {
         sellingPrice: pricing.salePrice ?? pricing.regularPrice,
         mrp: pricing.mrp ?? pricing.regularPrice,
         purchaseCost: pricing.purchaseCost ?? null,
-        deliveryCharge: pricing.deliveryCharge ?? 0,
         taxPercentage: pricing.taxPercentage ?? null,
         isAvailable: pricing.isVisible !== false,
         wholesaleSlabs: pricing.wholesaleSlabs || [],
@@ -257,7 +254,6 @@ async function getVariationConfiguration(productId, variationId) {
         sellingPrice: pricing.salePrice ?? pricing.regularPrice,
         mrp: pricing.mrp ?? pricing.regularPrice,
         purchaseCost: pricing.purchaseCost ?? null,
-        deliveryCharge: pricing.deliveryCharge ?? 0,
         taxPercentage: pricing.taxPercentage ?? null,
         isAvailable: pricing.isVisible !== false,
         wholesaleSlabs: pricing.wholesaleSlabs || [],
@@ -312,7 +308,6 @@ async function saveScopedConfiguration(
           salePrice: normalized.salePrice,
           mrp: normalized.mrp,
           purchaseCost: normalized.purchaseCost,
-          deliveryCharge: normalized.deliveryCharge,
           taxPercentage: normalized.taxPercentage,
           wholesaleSlabs: normalized.wholesaleSlabs,
           isVisible: normalized.isVisible,
