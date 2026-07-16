@@ -353,3 +353,51 @@ exports.markDelivered = asyncHandler(async (req, res) => {
 
   return ApiResponse.success(res, 200, 'Delivery recorded.', decorateVendorOrderForPortal(vo));
 });
+
+exports.uploadVendorInvoice = asyncHandler(async (req, res) => {
+  const { invoice_number: invoiceNumber } = req.body;
+  if (!invoiceNumber) throw new AppError('invoice_number is required.', 400);
+
+  const match = await vendorOrderMatch(req.user);
+  const vo = await VendorOrder.findOne({ _id: req.params.id, ...match });
+  if (!vo) throw new AppError('Order not found or not assigned to you.', 404);
+  if (!isWorkflowVendorOrder(vo)) throw new AppError('Workflow not available for this order.', 400);
+  if (vo.status !== 'SB_INVOICE_SENT') {
+    throw new AppError('Invoice can only be uploaded after Structbay has sent the invoice and e-way bill.', 400);
+  }
+  if (vo.dispatchStatus !== 'CONFIRMED') {
+    throw new AppError('Invoice upload is only available after dispatch confirmation.', 400);
+  }
+  if (!req.file) throw new AppError('Invoice PDF file is required.', 400);
+
+  vo.vendorInvoice = {
+    invoicePdfUrl: req.file.path,
+    invoicePdfCloudinaryId: req.file.filename,
+    invoiceNumber,
+    uploadedAt: new Date(),
+    uploadedBy: req.user._id,
+  };
+  vo.invoiceStatus = 'UPLOADED';
+  pushEmbeddedHistory(vo, 'VENDOR_INVOICE_SUBMITTED', req.user._id, 'User', `Vendor uploaded invoice ${invoiceNumber}.`);
+  await vo.save();
+  await appendAudit(vo._id, 'VENDOR_INVOICE_SUBMITTED', `Invoice ${invoiceNumber} uploaded`, req.user._id, 'User');
+
+  notifyAllAdmins({
+    type: 'VENDOR_INVOICE_UPLOADED',
+    title: 'Vendor invoice uploaded',
+    message: `Vendor uploaded invoice for sub-order ${vo.orderNumber}.`,
+    relatedVendorOrder: vo._id,
+  }).catch(() => {});
+
+  await logAction({
+    adminId: req.user._id,
+    action: 'UPDATE',
+    module: 'VendorOrder',
+    targetId: vo._id.toString(),
+    description: `Vendor uploaded invoice ${invoiceNumber} for ${vo.orderNumber}`,
+    ipAddress: req.ip,
+    platform: (req.get('user-agent') || 'WEB').slice(0, 200),
+  });
+
+  return ApiResponse.success(res, 200, 'Invoice uploaded successfully.', decorateVendorOrderForPortal(vo));
+});

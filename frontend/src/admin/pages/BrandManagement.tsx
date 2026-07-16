@@ -229,12 +229,10 @@ export function BrandManagement() {
           {brands.map(brand => (
             <div key={brand._id} className="bg-sb-cream-secondary border border-sb-ink/10 rounded-xl overflow-hidden hover:border-sb-ink/20 transition-colors group">
               {/* Banner / Logo Area */}
-              <div className="h-24 bg-[#222] relative flex items-center justify-center border-b border-sb-ink/10">
+              <div className="h-24 bg-gradient-to-br from-sb-cream-secondary to-sb-cream relative flex items-center justify-center border-b border-sb-ink/10">
                 {brand.banner?.url
                   ? <img src={brand.banner.url} alt="" className="w-full h-full object-cover" />
-                  : <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-sb-cream-secondary to-sb-cream">
-                      <Image className="w-8 h-8 text-sb-ink/20" />
-                    </div>
+                  : <Image className="w-8 h-8 text-sb-ink/20" />
                 }
                 <div className="absolute bottom-2 left-3">
                   {brand.logo?.url

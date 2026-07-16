@@ -8,7 +8,6 @@ export type CityPricingConfig = {
   sellingPrice: number | "";
   mrp: number | "";
   purchaseCost: number | "";
-  deliveryCharge: number | "";
   taxPercentage: number | "";
   isAvailable: boolean;
   wholesaleSlabs: WholesaleSlab[];
@@ -35,7 +34,6 @@ export const emptyPricing = (defaultTax = 18): CityPricingConfig => ({
   sellingPrice: "",
   mrp: "",
   purchaseCost: "",
-  deliveryCharge: "",
   taxPercentage: defaultTax,
   isAvailable: true,
   wholesaleSlabs: [],
@@ -56,7 +54,6 @@ export function buildCityConfigsFromApi(
       sellingPrice?: number;
       mrp?: number;
       purchaseCost?: number | null;
-      deliveryCharge?: number;
       taxPercentage?: number | null;
       isAvailable?: boolean;
       wholesaleSlabs?: WholesaleSlab[];
@@ -87,7 +84,6 @@ export function buildCityConfigsFromApi(
         sellingPrice: pricing?.sellingPrice ?? "",
         mrp: pricing?.mrp ?? "",
         purchaseCost: pricing?.purchaseCost ?? "",
-        deliveryCharge: pricing?.deliveryCharge ?? "",
         taxPercentage: pricing?.taxPercentage ?? defaultTax,
         isAvailable: pricing?.isAvailable !== false,
         wholesaleSlabs: (pricing?.wholesaleSlabs || []).map((s) => ({
@@ -159,7 +155,6 @@ export function cityConfigsToPayload(configs: CityConfig[]) {
       sellingPrice: Number(c.pricing.sellingPrice),
       mrp: c.pricing.mrp !== "" ? Number(c.pricing.mrp) : Number(c.pricing.sellingPrice),
       purchaseCost: c.pricing.purchaseCost !== "" ? Number(c.pricing.purchaseCost) : null,
-      deliveryCharge: c.pricing.deliveryCharge !== "" ? Number(c.pricing.deliveryCharge) : 0,
       taxPercentage: c.pricing.taxPercentage !== "" ? Number(c.pricing.taxPercentage) : null,
       isAvailable: c.pricing.isAvailable,
       wholesaleSlabs: c.pricing.wholesaleSlabs,

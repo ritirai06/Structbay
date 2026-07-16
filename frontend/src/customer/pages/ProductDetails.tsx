@@ -714,6 +714,11 @@ export function ProductDetails() {
                 open={openSection === "highlights"}
                 onToggle={() => toggleSection("highlights")}
               >
+                {product.shortDescription && (
+                  <p className="text-sm text-gray-600 leading-relaxed mb-4">
+                    {product.shortDescription}
+                  </p>
+                )}
                 {specRowsForPanel.length > 0 ? (
                   <ul className="sf-pdp-list">
                     {specRowsForPanel.map((row) => (
@@ -724,7 +729,7 @@ export function ProductDetails() {
                   </ul>
                 ) : (
                   <p className="text-sm text-gray-600 leading-relaxed">
-                    {product.shortDescription || "Premium quality product from verified Structbay vendors."}
+                    Premium quality product from verified Structbay vendors.
                   </p>
                 )}
                 {brandName && (
@@ -793,7 +798,7 @@ export function ProductDetails() {
         </div>
 
         {/* Cross-sell products (from admin configuration) */}
-        {crossSells.length > 0 && (
+        {crossSells && crossSells.length > 0 && (
           <section className="sf-pdp-related mt-14">
             <h2 className="sf-pdp-related__title">You may also like</h2>
             <div className="sf-pdp-related__grid">
@@ -833,35 +838,32 @@ export function ProductDetails() {
           </section>
         )}
 
-      </div>
-
-      {showBulkPricingModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-gray-100">
-              <h3 className="font-semibold text-lg text-gray-900">Bulk Pricing</h3>
-              <button
-                type="button"
-                onClick={() => setShowBulkPricingModal(false)}
-                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-4 overflow-y-auto">
-              <p className="text-sm text-gray-600 mb-4">
-                Buy more, save more! Wholesale tier pricing applied automatically at checkout.
-              </p>
-              {pricingSnap?.wholesaleSlabs && pricingSnap.wholesaleSlabs.length > 0 ? (
-                <div className="space-y-3">
-                  {pricingSnap.wholesaleSlabs.map((slab, index) => {
-                    const price = displayUnitFromExGst(slab.price, product);
-                    return (
-                      <div key={index} className="flex justify-between items-center p-3 border border-gray-100 rounded-lg bg-gray-50/50">
-                        <span className="font-medium text-gray-800">
-                          {slab.maxQty == null || slab.maxQty === Infinity 
-                            ? `${slab.minQty}+ ${product.unit || 'units'}` 
-                            : `${slab.minQty} - ${slab.maxQty} ${product.unit || 'units'}`}
+        {/* Category-based "You may also like" (existing) */}
+        {related && related.length > 0 && (
+          <section className="sf-pdp-related mt-14">
+            <h2 className="sf-pdp-related__title">You may also like</h2>
+            <div className="sf-pdp-related__grid">
+              {related.slice(0, 4).map((p: any) => {
+                const img = firstImageUrl(p.images);
+                const { unit, mrp: relMrp, discount: relDisc } = relatedCardPricing(p);
+                const pslug = p.slug || p._id;
+                return (
+                  <Link key={p._id || pslug} to={productHref(pslug)} className="sf-pdp-related-card group">
+                    <div className="sf-pdp-related-card__image-wrap">
+                      {relDisc > 0 && (
+                        <span className="sf-pdp-related-card__discount">{relDisc}% OFF</span>
+                      )}
+                      {img ? (
+                        <img src={img} alt={p.name} className="sf-pdp-related-card__image" loading="lazy" />
+                      ) : (
+                        <div className="sf-pdp-related-card__image sf-pdp-related-card__image--empty" />
+                      )}
+                    </div>
+                    <p className="sf-pdp-related-card__title">{p.name}</p>
+                    <div className="sf-pdp-related-card__price-row">
+                      {relDisc > 0 && (
+                        <span className="sf-pdp-related-card__was">
+                          ₹{relMrp.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                         </span>
                         <div className="text-right">
                           <span className="font-semibold text-sb-orange">₹{price.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>

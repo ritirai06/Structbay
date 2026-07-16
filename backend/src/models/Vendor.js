@@ -2,7 +2,13 @@ const mongoose = require('mongoose');
 
 const vendorSchema = new mongoose.Schema({
   // Authentication
-  email: { type: String, required: true, unique: true, lowercase: true },
+  email: { 
+    type: String, 
+    required: true, 
+    unique: true, 
+    lowercase: true,
+    match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Please provide a valid email address']
+  },
   password: { type: String, required: true },
   role: { type: String, default: 'vendor', enum: ['vendor'] },
   referenceNumber: { type: String, unique: true, sparse: true }, // VND...

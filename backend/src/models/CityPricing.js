@@ -19,7 +19,6 @@ const cityPricingSchema = new mongoose.Schema(
     salePrice: { type: Number, default: null, min: 0 },
     mrp: { type: Number, default: null, min: 0 },
     purchaseCost: { type: Number, default: null, min: 0 },
-    deliveryCharge: { type: Number, default: 0, min: 0 },
     taxPercentage: { type: Number, default: null, min: 0, max: 100 },
 
     wholesaleSlabs: [wholesaleSlabSchema],

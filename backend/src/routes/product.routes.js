@@ -25,6 +25,8 @@ router.post('/:id/variations/generate-matrix', ...adminOnly, ctrl.generateVariat
 router.get('/:id/variations/:varId/configuration', ...adminOnly, ctrl.getVariationConfiguration);
 router.patch('/:id/variations/:varId/configuration', ...adminOnly, ctrl.saveVariationConfiguration);
 router.patch('/:id/variations/:varId',    ...adminOnly, ctrl.updateVariation);
+router.post('/:id/variations/:varId/images', ...adminOnly, ctrl.addVariationImages);
+router.delete('/:id/variations/:varId/images/:imageId', ...adminOnly, ctrl.removeVariationImage);
 router.delete('/:id/variations/:varId',   ...adminOnly, ctrl.deleteVariation);
 
 module.exports = router;

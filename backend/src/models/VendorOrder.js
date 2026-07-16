@@ -147,6 +147,15 @@ const vendorOrderSchema = new mongoose.Schema(
       sentBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     },
 
+    /** Vendor-uploaded invoice (after dispatch confirmation) */
+    vendorInvoice: {
+      invoicePdfUrl: String,
+      invoicePdfCloudinaryId: String,
+      invoiceNumber: String,
+      uploadedAt: Date,
+      uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    },
+
     /** 2 = Structbay admin/vendor workflow; undefined/1 = legacy behaviour */
     workflowVersion: { type: Number, default: 2 },
 

@@ -10,6 +10,7 @@ import {
   X,
   MapPin,
   Zap,
+  Image,
 } from "lucide-react";
 import { adminFetch as apiFetch } from "../../lib/adminApi";
 import {
@@ -20,6 +21,7 @@ import {
   validateCityConfigs,
 } from "../lib/productCityConfig";
 import { ProductCityConfig } from "./ProductCityConfig";
+import { VariationImageUpload } from "./VariationImageUpload";
 import { flattenVariationAttributes } from "../../customer/lib/productAttributes";
 import { type ProductAttribute } from "./ProductAttributesManager";
 
@@ -65,6 +67,7 @@ function getCombinationText(attributes: any): string {
 
 type SimpleVariantRowProps = {
   variant: any;
+  productId: string;
   onSave: () => void;
   onDelete: () => void;
   isSaving: boolean;
@@ -72,10 +75,12 @@ type SimpleVariantRowProps = {
   gstPercentage: number;
   cityConfigs: CityConfig[];
   onCityConfigsChange: (configs: CityConfig[]) => void;
+  onImagesChange: (images: any[]) => void;
 };
 
 function SimpleVariantRow({
   variant,
+  productId,
   onSave,
   onDelete,
   isSaving,
@@ -83,9 +88,11 @@ function SimpleVariantRow({
   gstPercentage,
   cityConfigs,
   onCityConfigsChange,
+  onImagesChange,
 }: SimpleVariantRowProps) {
   const [expanded, setExpanded] = useState(false);
   const [showCityPricing, setShowCityPricing] = useState(false);
+  const [showImages, setShowImages] = useState(false);
   const chips = flattenAttributesToDisplay(variant.attributes);
 
   return (
@@ -96,38 +103,38 @@ function SimpleVariantRow({
     >
       {/* Main Row - Always Visible */}
       <div className="flex items-center gap-3 p-3">
-          {/* Variant Description */}
-          <div className="flex-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-1.5">
-              {chips.map((c: any) => (
-                <span
-                  key={`${c.key}-${c.value}`}
-                  className="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-sb-cream-secondary border border-sb-ink/15 text-sb-ink rounded-full"
-                >
-                  {c.key.trim().toLowerCase() === "color" && (
-                    <span
-                      style={{
-                        width: 16,
-                        height: 16,
-                        borderRadius: "50%",
-                        background: c.value,
-                        border: "#fff #ffffff white yellow #ffff00".includes(c.value.trim().toLowerCase())
-                          ? "1px solid #bbb"
-                          : "1px solid #eee",
-                        display: "inline-block",
-                        marginRight: 6,
-                      }}
-                    />
-                  )}
-                  <span className="text-sb-ink/50 mr-1">{c.label}:</span>
-                  <strong className="text-[#000000]">{c.value}</strong>
-                </span>
-              ))}
-            </div>
-            {variant.sku && (
-              <p className="text-[10px] font-mono text-sb-orange/70 mt-1.5">{variant.sku}</p>
-            )}
+        {/* Variant Description */}
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {chips.map((c: any) => (
+              <span
+                key={`${c.key}-${c.value}`}
+                className="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-sb-cream-secondary border border-sb-ink/15 text-sb-ink rounded-full"
+              >
+                {c.key.trim().toLowerCase() === "color" && (
+                  <span
+                    style={{
+                      width: 16,
+                      height: 16,
+                      borderRadius: "50%",
+                      background: c.value,
+                      border: "#fff #ffffff white yellow #ffff00".includes(c.value.trim().toLowerCase())
+                        ? "1px solid #bbb"
+                        : "1px solid #eee",
+                      display: "inline-block",
+                      marginRight: 6,
+                    }}
+                  />
+                )}
+                <span className="text-sb-ink/50 mr-1">{c.label}:</span>
+                <strong className="text-[#000000]">{c.value}</strong>
+              </span>
+            ))}
           </div>
+          {variant.sku && (
+            <p className="text-[10px] font-mono text-sb-orange/70 mt-1.5">{variant.sku}</p>
+          )}
+        </div>
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2 shrink-0">
@@ -175,6 +182,14 @@ function SimpleVariantRow({
           <div className="flex flex-wrap items-center gap-2 pt-2">
             <button
               type="button"
+              onClick={() => setShowImages(!showImages)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-sb-ink/15 text-sb-ink/70 hover:border-sb-orange hover:text-sb-orange transition-colors"
+            >
+              <Image className="w-3.5 h-3.5" />
+              {showImages ? "Hide" : "Manage"} Images
+            </button>
+            <button
+              type="button"
               onClick={() => setShowCityPricing(!showCityPricing)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-sb-ink/15 text-sb-ink/70 hover:border-sb-orange hover:text-sb-orange transition-colors"
             >
@@ -182,6 +197,22 @@ function SimpleVariantRow({
               {showCityPricing ? "Hide" : "Manage"} City Pricing & Inventory
             </button>
           </div>
+
+          {/* Image Upload Panel */}
+          {showImages && (
+            <div className="border border-sb-ink/10 rounded-xl p-4 bg-white">
+              <h5 className="text-sm font-semibold text-[#000000] mb-3 flex items-center gap-2 tracking-tight">
+                <Image className="w-4 h-4 text-sb-orange" />
+                Variation Images
+              </h5>
+              <VariationImageUpload
+                productId={productId}
+                variationId={String(variant._id)}
+                images={variant.images || []}
+                onImagesChange={onImagesChange}
+              />
+            </div>
+          )}
 
           {/* City Pricing Panel (Collapsible) */}
           {showCityPricing && (
@@ -390,6 +421,12 @@ export function ProductVariantManager({
     setDraftConfigs((prev) => ({ ...prev, [variantId]: configs }));
   };
 
+  const handleVariantImagesChange = (variantId: string, images: any[]) => {
+    onVariationsChange(
+      variations.map((v) => (String(v._id) === variantId ? { ...v, images } : v))
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Existing Variants Section */}
@@ -410,11 +447,13 @@ export function ProductVariantManager({
               <div key={v._id}>
                 <SimpleVariantRow
                   variant={v}
+                  productId={productId}
                   isSaving={savingId === String(v._id)}
                   activeCities={activeCities}
                   gstPercentage={gstPercentage}
                   cityConfigs={getCityConfigs(v)}
                   onCityConfigsChange={(configs) => handleVariantConfigChange(String(v._id), configs)}
+                  onImagesChange={(images) => handleVariantImagesChange(String(v._id), images)}
                   onSave={() => saveVariationConfig(v)}
                   onDelete={() => deleteVariation(String(v._id))}
                 />

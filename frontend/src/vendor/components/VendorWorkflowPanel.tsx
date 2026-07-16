@@ -44,6 +44,7 @@ function SubmittedDocuments({ order }: { order: any }) {
   const pre = order?.preDispatch;
   const ship = order?.shipmentDispatch;
   const pod = order?.deliveryProof;
+  const vendorInv = order?.vendorInvoice;
 
   const blocks: {
     title: string;
@@ -52,10 +53,14 @@ function SubmittedDocuments({ order }: { order: any }) {
   }[] = [];
 
   if (pre?.remarks || pre?.invoiceFileUrl || pre?.packingFiles?.length || order?.expectedDispatchDate) {
+    const dispatchDt = order?.expectedDispatchDate ? new Date(order.expectedDispatchDate) : null;
+    const dispatchStr = dispatchDt
+      ? dispatchDt.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+      : '';
     blocks.push({
       title: 'Ready for dispatch',
       meta: [
-        order?.expectedDispatchDate ? `Est. dispatch: ${fmtWhen(order.expectedDispatchDate)}` : '',
+        dispatchStr ? `Est. dispatch: ${dispatchStr}` : '',
         pre?.remarks ? `Remarks: ${pre.remarks}` : '',
       ].filter(Boolean),
       files: [
@@ -82,6 +87,17 @@ function SubmittedDocuments({ order }: { order: any }) {
         ship.dispatchDate ? `Date: ${fmtWhen(ship.dispatchDate)}` : '',
       ].filter(Boolean),
       files: ship.proofUrl ? [{ url: ship.proofUrl, label: 'Dispatch proof' }] : [],
+    });
+  }
+
+  if (vendorInv?.invoicePdfUrl) {
+    blocks.push({
+      title: 'Vendor invoice',
+      meta: [
+        vendorInv.invoiceNumber ? `Invoice #: ${vendorInv.invoiceNumber}` : '',
+        vendorInv.uploadedAt ? `Uploaded: ${fmtWhen(vendorInv.uploadedAt)}` : '',
+      ].filter(Boolean),
+      files: [{ url: vendorInv.invoicePdfUrl, label: 'Vendor invoice' }],
     });
   }
 
@@ -125,6 +141,7 @@ export function VendorWorkflowPanel({
   const [busy, setBusy] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [readyDate, setReadyDate] = useState('');
+  const [readyTime, setReadyTime] = useState('');
   const [readyRemark, setReadyRemark] = useState('');
   const [dispTransporter, setDispTransporter] = useState('');
   const [dispVehicle, setDispVehicle] = useState('');
@@ -257,8 +274,13 @@ export function VendorWorkflowPanel({
               className="space-y-4"
               onSubmit={(e) => {
                 e.preventDefault();
+                if (!readyDate || !readyTime) {
+                  alert('Both date and time are required.');
+                  return;
+                }
                 const fd = new FormData();
-                fd.append('estimatedDispatchDate', readyDate);
+                const combined = `${readyDate}T${readyTime}`;
+                fd.append('estimatedDispatchDate', combined);
                 if (readyRemark) fd.append('remarks', readyRemark);
                 const inp = (e.target as HTMLFormElement).elements.namedItem('packing') as HTMLInputElement;
                 const inv = (e.target as HTMLFormElement).elements.namedItem('invoice') as HTMLInputElement;
@@ -267,15 +289,27 @@ export function VendorWorkflowPanel({
                 void run(() => api.workflowReadyDispatch(orderId, fd));
               }}
             >
-              <div className="wf-field">
-                <label className="wf-field__label">Estimated dispatch date *</label>
-                <input
-                  required
-                  type="date"
-                  value={readyDate}
-                  onChange={(e) => setReadyDate(e.target.value)}
-                  className="wf-field__input"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="wf-field">
+                  <label className="wf-field__label">Estimated dispatch date *</label>
+                  <input
+                    required
+                    type="date"
+                    value={readyDate}
+                    onChange={(e) => setReadyDate(e.target.value)}
+                    className="wf-field__input"
+                  />
+                </div>
+                <div className="wf-field">
+                  <label className="wf-field__label">Estimated dispatch time *</label>
+                  <input
+                    required
+                    type="time"
+                    value={readyTime}
+                    onChange={(e) => setReadyTime(e.target.value)}
+                    className="wf-field__input"
+                  />
+                </div>
               </div>
               <div className="wf-field">
                 <label className="wf-field__label">Remarks (optional)</label>

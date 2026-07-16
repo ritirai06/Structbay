@@ -889,7 +889,7 @@ export function AddProduct() {
                 {(images.length > 0 || pendingPreviews.length > 0) && (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
                     {images.map(img => (
-                      <div key={img._id || img.url} className="relative group rounded-lg overflow-hidden border border-sb-ink/10 bg-[#111] aspect-square">
+                      <div key={img._id || img.url} className="relative group rounded-lg overflow-hidden border border-sb-ink/10 bg-white aspect-square">
                         <img src={img.url} alt="" className="w-full h-full object-cover" />
                         {img._id && (
                           <button type="button" onClick={() => removeProductImage(img._id!)}
@@ -900,7 +900,7 @@ export function AddProduct() {
                       </div>
                     ))}
                     {pendingPreviews.map((url, i) => (
-                      <div key={url} className="relative group rounded-lg overflow-hidden border border-dashed border-sb-orange/40 bg-[#111] aspect-square">
+                      <div key={url} className="relative group rounded-lg overflow-hidden border border-dashed border-sb-orange/40 bg-white aspect-square">
                         <img src={url} alt="" className="w-full h-full object-cover opacity-90" />
                         <span className="absolute bottom-2 left-2 text-[10px] font-semibold bg-sb-orange/90 text-white px-1.5 py-0.5 rounded">
                           Pending save
@@ -1054,7 +1054,7 @@ export function AddProduct() {
           {tab === "faqs" && (
             <Section title="Product FAQs">
               {form.faqs.map((faq, i) => (
-                <div key={i} className="p-3 bg-[#111] border border-sb-ink/10 rounded-lg space-y-2">
+                <div key={i} className="p-3 bg-sb-cream-secondary border border-sb-ink/10 rounded-lg space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-sm font-medium text-sb-ink">Q: {faq.question}</p>
                     <button onClick={() => set("faqs", form.faqs.filter((_, j) => j !== i))}
@@ -1065,12 +1065,12 @@ export function AddProduct() {
                   <p className="text-xs text-sb-ink/55">A: {faq.answer}</p>
                 </div>
               ))}
-              <div className="border border-sb-ink/10 rounded-lg p-4 space-y-3 bg-sb-cream">
+              <div className="border border-sb-ink/10 rounded-lg p-4 space-y-3 bg-sb-cream-secondary">
                 <Field label="Question">
                   <input className={inp} value={newFaq.question} onChange={e => setNewFaq(f => ({ ...f, question: e.target.value }))} />
                 </Field>
                 <Field label="Answer">
-                  <textarea className={`${inp} resize-none`} rows={2} value={newFaq.answer} onChange={e => setNewFaq(f => ({ ...f, answer: e.target.value }))} />
+                  <textarea className={`${inp} resize-none bg-white text-sb-ink placeholder:text-sb-ink/40`} rows={2} value={newFaq.answer} onChange={e => setNewFaq(f => ({ ...f, answer: e.target.value }))} />
                 </Field>
                 <button onClick={addFaq} className="flex items-center gap-2 bg-sb-orange/15 hover:bg-sb-orange/25 text-sb-orange font-medium px-4 py-2 rounded-lg text-sm transition-colors">
                   <Plus className="w-4 h-4" /> Add FAQ

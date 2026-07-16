@@ -507,18 +507,8 @@ router.get(
         baseInventory?.lowStockThreshold ?? 50
       );
 
-    // Related products (same category, city-sellable when city selected)
-    const relatedBase = {
-      category: product.category,
-      _id: { $ne: product._id },
-      status: 'ACTIVE',
-    };
-    if (cityOid && listedForPdp) {
-      const ids = listedForPdp.filter((id) => String(id) !== String(product._id));
-      relatedBase._id = { $in: ids };
-    }
-    const related = await Product.find(relatedBase)
-      .limit(8).populate('brand', 'name slug logo').select('name slug images brand isAssured isExpress isStructbayAssured isStructbayDelivery');
+    // Related products (only cross-sell products explicitly assigned by admin)
+    let related = [];
 
     const catId = product.category?._id || product.category;
     const categoryFilterDoc = await CategoryFilter.findOne({ category: catId }).lean();
