@@ -9,7 +9,10 @@ const ReferenceAllocation = require('../models/ReferenceAllocation');
 const MODULE_PREFIXES = {
   ORDER:           'ORD',
   BULK_ENQUIRY:    'BULK',
-  CONCRETE_RFQ:    'RFQCON',
+  CONCRETE_RFQ:    'CON',
+  AGGREGATES_RFQ:  'AGG',
+  BLOCKS_RFQ:      'BLOC',
+  CONTACT_US:      'ENQ',
   RFQ:             'RFQ',
   CUSTOMER_INVOICE:'INV',
   VENDOR_INVOICE:  'VINV',
@@ -17,7 +20,7 @@ const MODULE_PREFIXES = {
   SHIPMENT:        'SHP',
   TRACKING:        'TRK',
   DELIVERY:        'DEL',
-  FINANCE:         'FIN',
+  FINANCE:         'SFIN',
   CUSTOMER:        'CUS',
   VENDOR:          'VND',
   PRODUCT:         'PRD',
@@ -112,11 +115,11 @@ function generateSubOrderNumber(masterOrderNumber, subIndex) {
 }
 
 /**
- * Concrete RFQ reference: `RFQCON` + `YYMMDD` + 4-digit daily sequence (e.g. RFQCON2606120001).
+ * Concrete RFQ reference: `CON` + `YYMMDD` + 4-digit daily sequence (e.g. CON2606120001).
  */
 async function generateConcreteRfqNumber(options = {}) {
   const module = 'CONCRETE_RFQ';
-  const prefix = 'RFQCON';
+  const prefix = 'CON';
   const date = getDateKeyYYMMDD();
   const maxRetries = 6;
 

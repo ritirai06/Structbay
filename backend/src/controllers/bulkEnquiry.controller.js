@@ -10,7 +10,18 @@ const {
 } = require('../services/bulkEnquiryTemplate.service');
 const { BULK_ENQUIRY_TEXT_EXAMPLE } = require('../constants/bulkEnquiryTemplate');
 
-const genNumber = () => generateRefNumber('BULK_ENQUIRY');
+const genNumber = (req) => {
+  const qt = req.body.quoteType;
+  if (qt === 'SAND_AGGREGATES' || qt === 'AGGREGATES') return generateRefNumber('AGGREGATES_RFQ');
+  if (qt === 'BLOCKS') return generateRefNumber('BLOCKS_RFQ');
+  if (qt === 'CONTACT_US' || req.body.isContactUs) return generateRefNumber('CONTACT_US');
+  
+  const requirement = (req.body.requirement || '').toLowerCase();
+  if (requirement.includes('aggregate')) return generateRefNumber('AGGREGATES_RFQ');
+  if (requirement.includes('block')) return generateRefNumber('BLOCKS_RFQ');
+  
+  return generateRefNumber('BULK_ENQUIRY');
+};
 
 const getAll = asyncHandler(async (req, res) => {
   const { status, page = 1, limit = 20 } = req.query;
@@ -49,7 +60,7 @@ const create = asyncHandler(async (req, res) => {
   if (!req.body.customerName?.trim() || !req.body.customerPhone?.trim()) {
     throw new AppError('Customer name and phone are required.', 400);
   }
-  const enquiryNumber = await genNumber();
+  const enquiryNumber = await genNumber(req);
   const payload = {
     ...req.body,
     enquiryNumber,

@@ -1,4 +1,5 @@
-import { ChevronDown, Copy, Plus, Trash2 } from "lucide-react";
+import React from "react";
+import { ChevronDown, Copy, Plus, Trash2, Zap } from "lucide-react";
 import {
   type CityConfig,
   computeStockStatus,
@@ -101,10 +102,18 @@ export function ProductCityConfig({ configs, onChange, defaultTax = 18, alwaysIn
 
   return (
     <div className="space-y-3">
+      {alwaysInStock && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex items-start gap-2">
+          <Zap className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+          <div className="text-sm text-emerald-800">
+            <strong>Dropship Mode Active:</strong> All inventory fields are hidden. This product will show as <strong>In Stock</strong> in all cities automatically.
+          </div>
+        </div>
+      )}
       {configs.map((cfg) => {
-        const qty = cfg.inventory.quantity !== "" ? Number(cfg.inventory.quantity) : 0;
+        const qty = alwaysInStock ? 999999 : (cfg.inventory.quantity !== "" ? Number(cfg.inventory.quantity) : 0);
         const reorder = cfg.inventory.reorderLevel !== "" ? Number(cfg.inventory.reorderLevel) : 50;
-        const status = computeStockStatus(qty, reorder);
+        const status = alwaysInStock ? "IN_STOCK" : computeStockStatus(qty, reorder);
         const otherCities = configs.filter((c) => c.cityId !== cfg.cityId);
 
         return (
@@ -127,7 +136,7 @@ export function ProductCityConfig({ configs, onChange, defaultTax = 18, alwaysIn
                     {cfg.pricing.sellingPrice !== ""
                       ? `₹${cfg.pricing.sellingPrice}`
                       : "No pricing set"}
-                    {cfg.inventory.quantity !== "" ? ` · ${cfg.inventory.quantity} units` : ""}
+                    {alwaysInStock ? " · Unlimited stock" : cfg.inventory.quantity !== "" ? ` · ${cfg.inventory.quantity} units` : ""}
                     {cfg.pricing.isAvailable ? "" : " · Unavailable"}
                   </p>
                 </div>
@@ -149,7 +158,7 @@ export function ProductCityConfig({ configs, onChange, defaultTax = 18, alwaysIn
 
             {cfg.expanded && (
               <div className="px-5 pb-5 space-y-6 border-t border-sb-ink/10 pt-5">
-                {otherCities.length > 0 && (
+                {otherCities.length > 0 && !alwaysInStock && (
                   <div className="flex flex-wrap gap-2">
                     <select
                       className={`${inp} max-w-[180px] text-xs`}
@@ -338,65 +347,75 @@ export function ProductCityConfig({ configs, onChange, defaultTax = 18, alwaysIn
                   )}
                 </div>
 
-                <div>
-                  <h4 className="text-sm font-semibold text-[#000000] mb-3 tracking-tight">
-                    Inventory
-                  </h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div>
-                      <label className="text-xs font-semibold text-[#000000] mb-1 block">Available Stock</label>
-                      <input
-                        type="number"
-                        min={0}
-                        className={inp}
-                        value={numVal(cfg.inventory.quantity)}
-                        onChange={(e) =>
-                          updateInventory(cfg.cityId, { quantity: parseNum(e.target.value) })
-                        }
-                      />
+                {!alwaysInStock && (
+                  <div>
+                    <h4 className="text-sm font-semibold text-[#000000] mb-3 tracking-tight">
+                      Inventory
+                    </h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div>
+                        <label className="text-xs font-semibold text-[#000000] mb-1 block">Available Stock</label>
+                        <input
+                          type="number"
+                          min={0}
+                          className={inp}
+                          value={numVal(cfg.inventory.quantity)}
+                          onChange={(e) =>
+                            updateInventory(cfg.cityId, { quantity: parseNum(e.target.value) })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-[#000000] mb-1 block">Reserved Stock</label>
+                        <input
+                          type="number"
+                          min={0}
+                          className={inp}
+                          value={numVal(cfg.inventory.reserved)}
+                          onChange={(e) =>
+                            updateInventory(cfg.cityId, { reserved: parseNum(e.target.value) })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-[#000000] mb-1 block">Reorder Level</label>
+                        <input
+                          type="number"
+                          min={0}
+                          className={inp}
+                          value={numVal(cfg.inventory.reorderLevel)}
+                          onChange={(e) =>
+                            updateInventory(cfg.cityId, { reorderLevel: parseNum(e.target.value) })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-[#000000] mb-1 block">Safety Stock</label>
+                        <input
+                          type="number"
+                          min={0}
+                          className={inp}
+                          value={numVal(cfg.inventory.safetyStock)}
+                          onChange={(e) =>
+                            updateInventory(cfg.cityId, { safetyStock: parseNum(e.target.value) })
+                          }
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-xs font-semibold text-[#000000] mb-1 block">Reserved Stock</label>
-                      <input
-                        type="number"
-                        min={0}
-                        className={inp}
-                        value={numVal(cfg.inventory.reserved)}
-                        onChange={(e) =>
-                          updateInventory(cfg.cityId, { reserved: parseNum(e.target.value) })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-[#000000] mb-1 block">Reorder Level</label>
-                      <input
-                        type="number"
-                        min={0}
-                        className={inp}
-                        value={numVal(cfg.inventory.reorderLevel)}
-                        onChange={(e) =>
-                          updateInventory(cfg.cityId, { reorderLevel: parseNum(e.target.value) })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-[#000000] mb-1 block">Safety Stock</label>
-                      <input
-                        type="number"
-                        min={0}
-                        className={inp}
-                        value={numVal(cfg.inventory.safetyStock)}
-                        onChange={(e) =>
-                          updateInventory(cfg.cityId, { safetyStock: parseNum(e.target.value) })
-                        }
-                      />
-                    </div>
+                    <p className="text-xs text-sb-ink/45 mt-2 flex items-center gap-1">
+                      <Copy className="w-3 h-3" />
+                      Status: <strong>{stockStatusLabel(status)}</strong> (auto-calculated)
+                    </p>
                   </div>
-                  <p className="text-xs text-sb-ink/45 mt-2 flex items-center gap-1">
-                    <Copy className="w-3 h-3" />
-                    Status: <strong>{alwaysInStock ? "In Stock (Always)" : stockStatusLabel(status)}</strong> (auto-calculated)
-                  </p>
-                </div>
+                )}
+
+                {alwaysInStock && (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                    <p className="text-xs text-emerald-800">
+                      <strong>Dropship:</strong> Inventory management is disabled. This product will always show as <strong>In Stock</strong> with unlimited availability.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>

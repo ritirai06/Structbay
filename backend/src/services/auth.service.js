@@ -93,10 +93,13 @@ const registerCustomer = async ({ name, email, phone, password, companyName, gst
 };
 
 // ─── Register Vendor ──────────────────────────────────────────────────────────
-const registerVendor = async (
-  { name, email, phone, password, companyName, contactPerson, gstNumber, businessRegNumber },
-  req
-) => {
+const registerVendor = async ({ name, email, phone, password, companyName, contactPerson, gstNumber, vendorCode }) => {
+  if (!gstNumber || !String(gstNumber).trim()) {
+    throw new AppError('GST Number is mandatory for vendors.', 400);
+  }
+  if (!vendorCode || !String(vendorCode).trim()) {
+    throw new AppError('Vendor Code is mandatory.', 400);
+  }
   const allowPublic = String(process.env.ALLOW_PUBLIC_VENDOR_REGISTRATION || '')
     .toLowerCase()
     .trim() === 'true';
@@ -111,7 +114,10 @@ const registerVendor = async (
   const existing = await User.findOne({ email: emailNorm, status: { $ne: USER_STATUS.DELETED } });
   if (existing) throw new AppError('An account with this email already exists.', 409);
 
-  const referenceNumber = await generateRefNumber('VENDOR');
+  const existingRef = await User.findOne({ referenceNumber: vendorCode.trim().toUpperCase() });
+  if (existingRef) throw new AppError('This Vendor Code is already in use.', 409);
+
+  const referenceNumber = vendorCode.trim().toUpperCase();
 
   const user = await User.create({
     name,
@@ -124,8 +130,7 @@ const registerVendor = async (
     vendorStatus: VENDOR_STATUS.PENDING_APPROVAL,
     companyName,
     contactPerson,
-    gstNumber: gstNumber && String(gstNumber).trim() ? String(gstNumber).trim().toUpperCase() : null,
-    businessRegNumber: businessRegNumber && String(businessRegNumber).trim() ? String(businessRegNumber).trim() : null,
+    gstNumber: String(gstNumber).trim().toUpperCase(),
     referenceNumber,
   });
 
@@ -142,14 +147,24 @@ const registerVendor = async (
  * Does not send vendor application email (account is trusted).
  */
 const createVendorByAdmin = async (
-  { name, email, phone, password, companyName, contactPerson, gstNumber, businessRegNumber },
+  { name, email, phone, password, companyName, contactPerson, gstNumber, vendorCode },
   adminUser
 ) => {
+  if (!gstNumber || !String(gstNumber).trim()) {
+    throw new AppError('GST Number is mandatory for vendors.', 400);
+  }
+  if (!vendorCode || !String(vendorCode).trim()) {
+    throw new AppError('Vendor Code is mandatory.', 400);
+  }
+  
   const emailNorm = normalizeEmail(email);
   const existing = await User.findOne({ email: emailNorm, status: { $ne: USER_STATUS.DELETED } });
   if (existing) throw new AppError('An account with this email already exists.', 409);
 
-  const referenceNumber = await generateRefNumber('VENDOR');
+  const existingRef = await User.findOne({ referenceNumber: vendorCode.trim().toUpperCase() });
+  if (existingRef) throw new AppError('This Vendor Code is already in use.', 409);
+
+  const referenceNumber = vendorCode.trim().toUpperCase();
 
   const doc = {
     name,

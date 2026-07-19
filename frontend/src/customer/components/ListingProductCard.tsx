@@ -279,9 +279,90 @@ export function ListingProductCard({
             {axes.map((axis) => {
               const options = uniqueValuesForAxis(variations, axis.key, selections);
               if (!options.length) return null;
-              
-              const isColorAxis = axis.key.toLowerCase() === "color" || axis.key.toLowerCase() === "colour";
 
+              const _axisKeyLower = axis.key.toLowerCase();
+              const isColorAxis =
+                _axisKeyLower.startsWith("color") ||
+                _axisKeyLower.startsWith("colour");
+
+              if (isColorAxis) {
+                const inputVal = customColorText;
+                const currentSelected = selections[axis.key] || "";
+                // Only filter/show suggestions when user has typed something
+                const filtered = inputVal.trim()
+                  ? options.filter((o) =>
+                      o.toLowerCase().includes(inputVal.trim().toLowerCase())
+                    )
+                  : [];
+
+                return (
+                  <div key={axis.key}>
+                    <span className="sf-listing-card__field-label">{axis.label}</span>
+                    {/* Show currently selected color as a small badge */}
+                    {currentSelected && !inputVal.trim() && (
+                      <p className="text-[11px] text-gray-500 mt-0.5 mb-1">
+                        Selected: <span className="font-semibold text-sb-ink">{currentSelected}</span>
+                      </p>
+                    )}
+                    <div className="relative mt-1">
+                      <input
+                        type="text"
+                        value={customColorText}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setCustomColorText(val);
+                          // Auto-select if typed text exactly matches an option (case-insensitive)
+                          const exact = options.find(
+                            (o) => o.toLowerCase() === val.trim().toLowerCase()
+                          );
+                          if (exact) handleAttributeSelect(axis.key, exact);
+                        }}
+                        placeholder={currentSelected ? currentSelected : "Type color name…"}
+                        className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-sb-orange focus:ring-1 focus:ring-sb-orange"
+                      />
+                    </div>
+                    {/* Suggestion pills — only when user has typed something */}
+                    {inputVal.trim() && filtered.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {filtered.map((opt) => {
+                          const partial = { ...selections, [axis.key]: opt };
+                          const v = resolveVariationFromSelections(variations, partial);
+                          const isOos =
+                            v &&
+                            availabilityForProduct(product, String(v._id), true)
+                              .stockStatus === "OUT_OF_STOCK";
+                          const isActive = currentSelected === opt;
+                          return (
+                            <button
+                              key={opt}
+                              type="button"
+                              disabled={!!isOos}
+                              onClick={() => {
+                                setCustomColorText(opt);
+                                handleAttributeSelect(axis.key, opt);
+                              }}
+                              className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${
+                                isActive
+                                  ? "bg-[#E85A00] text-white border-[#E85A00]"
+                                  : isOos
+                                  ? "border-gray-200 text-gray-400 line-through cursor-not-allowed"
+                                  : "border-gray-300 text-gray-700 hover:border-[#E85A00] hover:text-[#E85A00]"
+                              }`}
+                            >
+                              {opt}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {inputVal.trim() && filtered.length === 0 && (
+                      <p className="text-[11px] text-gray-400 mt-1">No matching color found.</p>
+                    )}
+                  </div>
+                );
+              }
+
+              // Non-color axes: keep as dropdown
               return (
                 <div key={axis.key}>
                   <label className="sf-listing-card__field">
@@ -294,8 +375,10 @@ export function ListingProductCard({
                       {options.map((opt) => {
                         const partial = { ...selections, [axis.key]: opt };
                         const v = resolveVariationFromSelections(variations, partial);
-                        const isOos = v && availabilityForProduct(product, String(v._id), true).stockStatus === "OUT_OF_STOCK";
-                        
+                        const isOos =
+                          v &&
+                          availabilityForProduct(product, String(v._id), true).stockStatus ===
+                            "OUT_OF_STOCK";
                         return (
                           <option key={opt} value={opt} disabled={isOos}>
                             {opt} {isOos ? " (Out of stock)" : ""}
@@ -304,17 +387,6 @@ export function ListingProductCard({
                       })}
                     </select>
                   </label>
-                  {isColorAxis && selections[axis.key] === "Custom" && (
-                    <div className="mt-1">
-                      <input
-                        type="text"
-                        value={customColorText}
-                        onChange={(e) => setCustomColorText(e.target.value)}
-                        placeholder="Enter custom color"
-                        className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-sb-orange focus:ring-1 focus:ring-sb-orange"
-                      />
-                    </div>
-                  )}
                 </div>
               );
             })}

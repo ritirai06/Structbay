@@ -241,7 +241,7 @@ export function Cart() {
   value={item.qty}
   onChange={(e) => {
     const val = e.target.value.replace(/[^0-9]/g, "");
-    updateQty(item.id, val ? Number(val) : ("" as any));
+    updateQty(item.id, val ? Number(val) : "", true);
   }}
   onBlur={(e) => {
     const val = Number(e.target.value);

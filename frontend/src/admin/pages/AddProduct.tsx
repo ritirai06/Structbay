@@ -448,6 +448,17 @@ export function AddProduct() {
 
   const set = (field: string, value: any) => {
     setForm(f => ({ ...f, [field]: value }));
+    // When alwaysInStock is toggled, auto-fill inventory for all cities
+    if (field === "alwaysInStock") {
+      setCityConfigs(prev =>
+        prev.map(cfg => ({
+          ...cfg,
+          inventory: value
+            ? { ...cfg.inventory, quantity: 999999, reserved: 0, reorderLevel: 0, safetyStock: 0 }
+            : { ...cfg.inventory, quantity: "", reserved: "", reorderLevel: "", safetyStock: "" },
+        }))
+      );
+    }
     setDirty(true);
   };
 
@@ -470,7 +481,7 @@ export function AddProduct() {
     }
     const isVariantProduct = form.productStructure === "variant";
     if (!isVariantProduct) {
-      const validationError = validateCityConfigs(cityConfigs);
+      const validationError = validateCityConfigs(cityConfigs, form.alwaysInStock);
       if (validationError) return toast.warning(validationError);
     } else if (isEdit && variations.length === 0) {
       const proceed = window.confirm(
@@ -489,16 +500,16 @@ export function AddProduct() {
           );
         }
       } else if (isEdit && variations.length > 0) {
-        const missingCity = variations.some((v) => {
+        const anyHasPrice = variations.some((v) => {
           const configs = v.cityConfigs || [];
-          return !configs.some(
+          return configs.some(
             (c: { pricing?: { sellingPrice?: number } | null }) =>
               c.pricing?.sellingPrice != null && Number(c.pricing.sellingPrice) >= 0
           );
         });
-        if (missingCity) {
+        if (!anyHasPrice) {
           return toast.warning(
-            "To publish a variant product, each variant needs city pricing. Open Variations → expand each variant → set Bengaluru price & stock → Save."
+            "To publish, at least one variant needs city pricing. Open Variations → expand a variant → set price & stock → Save."
           );
         }
       }
@@ -525,7 +536,7 @@ export function AddProduct() {
       };
       const body: Record<string, unknown> = { product };
       if (!isVariantProduct) {
-        const { cityPricing, inventory } = cityConfigsToPayload(cityConfigs);
+        const { cityPricing, inventory } = cityConfigsToPayload(cityConfigs, form.alwaysInStock);
         body.cityPricing = cityPricing;
         body.inventory = inventory;
       }
@@ -1025,6 +1036,7 @@ export function AddProduct() {
                     variations={variations}
                     onVariationsChange={setVariations}
                     attributes={form.attributes}
+                    alwaysInStock={form.alwaysInStock}
                   />
                 </>
               )}

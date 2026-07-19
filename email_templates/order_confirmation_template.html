@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order Confirmation - StructBay</title>
+<style>
+  /* Reset styles */
+  body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+  table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+  img { -ms-interpolation-mode: bicubic; }
+  img { border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+  table { border-collapse: collapse !important; }
+  body { height: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; font-family: Arial, Helvetica, sans-serif; background-color: #f8f8f8; }
+  
+  /* Responsive styles */
+  @media screen and (max-width: 600px) {
+    .container { width: 100% !important; max-width: 100% !important; }
+    .mobile-hidden { display: none !important; }
+    .mobile-block { display: block !important; width: 100% !important; padding-bottom: 15px !important; }
+    .mobile-center { text-align: center !important; }
+    .p-15 { padding: 15px !important; }
+    .nav-links { font-size: 12px !important; }
+    .product-img { width: 60px !important; }
+  }
+</style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f8f8f8;">
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8f8f8; padding: 20px 0;">
+    <tr>
+      <td align="center">
+        <!-- MAIN CONTAINER -->
+        <table border="0" cellpadding="0" cellspacing="0" width="600" class="container" style="background-color: #ffffff; border: 1px solid #e5e5e5; border-radius: 8px; overflow: hidden;">
+          
+          <!-- HEADER -->
+          <tr>
+            <td style="padding: 20px 30px; border-bottom: 2px solid #ff6b35;">
+              <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td align="left" valign="middle" class="mobile-block mobile-center">
+                    <img src="{{logo_url}}" alt="StructBay" width="150" style="display: block; max-width: 150px; font-weight: bold; font-size: 20px; color: #ff6b35;" />
+                  </td>
+                  <td align="right" valign="middle" class="mobile-block mobile-center nav-links" style="font-size: 13px;">
+                    <a href="{{my_orders_url}}" style="color: #666666; text-decoration: none; margin-right: 15px;">My Orders</a>
+                    <a href="{{my_account_url}}" style="color: #666666; text-decoration: none; margin-right: 15px;">My Account</a>
+                    <a href="{{support_url}}" style="color: #666666; text-decoration: none;">Support</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- WELCOME SECTION -->
+          <tr>
+            <td style="padding: 30px;" class="p-15">
+              <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td align="left" valign="top" class="mobile-block">
+                    <h1 style="margin: 0 0 10px 0; font-size: 24px; color: #222222; font-weight: bold;">Hello {{customer_name}},</h1>
+                    <p style="margin: 0 0 10px 0; font-size: 16px; color: #666666;">Thank you for shopping with StructBay.</p>
+                    <p style="margin: 0 0 10px 0; font-size: 16px; color: #666666;">We've received your order and it is now being processed.</p>
+                    <p style="margin: 0; font-size: 16px; color: #666666;">You will receive another email once your order has been shipped.</p>
+                  </td>
+                  <td align="right" valign="top" width="120" class="mobile-hidden">
+                    <img src="{{shipping_box_img_url}}" alt="Shipping Box" width="100" style="display: block; max-width: 100px;" />
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- ORDER STATUS CARD -->
+          <tr>
+            <td style="padding: 0 30px 30px 30px;" class="p-15">
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border: 1px solid #e5e5e5; border-radius: 8px; background-color: #ffffff;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <!-- Left Side -->
+                        <td align="left" valign="top" class="mobile-block" style="border-right: 1px solid #e5e5e5; padding-right: 20px;">
+                          <table border="0" cellpadding="0" cellspacing="0">
+                            <tr>
+                              <td valign="middle" style="padding-right: 15px;">
+                                <!-- Orange Success Circle -->
+                                <div style="width: 40px; height: 40px; border-radius: 50%; background-color: #ff6b35; color: #ffffff; text-align: center; line-height: 40px; font-size: 20px;">✓</div>
+                              </td>
+                              <td valign="middle">
+                                <h2 style="margin: 0 0 5px 0; font-size: 20px; color: #222222;">Order Confirmed</h2>
+                                <p style="margin: 0; font-size: 13px; color: #666666;">We'll notify you once your order is dispatched.</p>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                        <!-- Right Side -->
+                        <td align="left" valign="top" class="mobile-block" style="padding-left: 20px;">
+                          <table border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #222222; line-height: 1.6;">
+                            <tr>
+                              <td style="color: #666666;">Order Number:</td>
+                              <td align="right" style="font-weight: bold;">{{order_number}}</td>
+                            </tr>
+                            <tr>
+                              <td style="color: #666666;">Order Date:</td>
+                              <td align="right" style="font-weight: bold;">{{order_date}}</td>
+                            </tr>
+                            <tr>
+                              <td style="color: #666666;">Payment Method:</td>
+                              <td align="right" style="font-weight: bold;">{{payment_method}}</td>
+                            </tr>
+                            <tr>
+                              <td style="color: #666666;">Payment Status:</td>
+                              <td align="right" style="font-weight: bold;">{{payment_status}}</td>
+                            </tr>
+                            <tr>
+                              <td style="color: #666666;">Order Status:</td>
+                              <td align="right" style="font-weight: bold; color: #28a745;">{{order_status}}</td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- ORDER ITEMS -->
+          <tr>
+            <td style="padding: 0 30px 20px 30px;" class="p-15">
+              <h3 style="margin: 0 0 15px 0; font-size: 18px; color: #222222; border-bottom: 1px solid #e5e5e5; padding-bottom: 10px;">Order Details</h3>
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse;">
+                <tr>
+                  <th align="left" style="padding: 10px; font-size: 12px; color: #666666; background-color: #f8f8f8; border-bottom: 1px solid #e5e5e5;">Item</th>
+                  <th align="center" style="padding: 10px; font-size: 12px; color: #666666; background-color: #f8f8f8; border-bottom: 1px solid #e5e5e5;">Qty</th>
+                  <th align="right" style="padding: 10px; font-size: 12px; color: #666666; background-color: #f8f8f8; border-bottom: 1px solid #e5e5e5;">Price</th>
+                  <th align="right" style="padding: 10px; font-size: 12px; color: #666666; background-color: #f8f8f8; border-bottom: 1px solid #e5e5e5;">Total</th>
+                </tr>
+                <!-- PLACEHOLDER LOOP BEGIN: {{#each order_items}} -->
+                <tr>
+                  <td align="left" style="padding: 15px 10px; border-bottom: 1px solid #e5e5e5;">
+                    <table border="0" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td valign="top" style="padding-right: 15px;">
+                          <img src="{{product_image_url}}" alt="{{product_title}}" width="70" class="product-img" style="display: block; max-width: 70px; border: 1px solid #e5e5e5; border-radius: 4px;" />
+                        </td>
+                        <td valign="top">
+                          <p style="margin: 0 0 4px 0; font-size: 14px; font-weight: bold; color: #222222;">{{product_title}}</p>
+                          <p style="margin: 0 0 2px 0; font-size: 12px; color: #666666;">Brand: {{brand_name}}</p>
+                          <p style="margin: 0 0 2px 0; font-size: 12px; color: #666666;">Variant: {{product_variant}}</p>
+                          <p style="margin: 0 0 2px 0; font-size: 12px; color: #666666;">Seller: {{seller_name}}</p>
+                          <p style="margin: 0; font-size: 11px; color: #999999;">SKU: {{product_sku}}</p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td align="center" valign="top" style="padding: 15px 10px; border-bottom: 1px solid #e5e5e5; font-size: 14px; color: #222222;">
+                    {{product_quantity}}
+                  </td>
+                  <td align="right" valign="top" style="padding: 15px 10px; border-bottom: 1px solid #e5e5e5; font-size: 14px; color: #222222;">
+                    {{unit_price}}
+                  </td>
+                  <td align="right" valign="top" style="padding: 15px 10px; border-bottom: 1px solid #e5e5e5; font-size: 14px; font-weight: bold; color: #222222;">
+                    {{subtotal_price}}
+                  </td>
+                </tr>
+                <!-- PLACEHOLDER LOOP END: {{/each}} -->
+              </table>
+            </td>
+          </tr>
+
+          <!-- ORDER SUMMARY -->
+          <tr>
+            <td style="padding: 0 30px 30px 30px;" class="p-15">
+              <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td align="right">
+                    <table border="0" cellpadding="0" cellspacing="0" width="300" style="font-size: 14px; color: #222222; line-height: 1.8;">
+                      <tr>
+                        <td align="left" style="padding-bottom: 5px;">Subtotal:</td>
+                        <td align="right" style="padding-bottom: 5px;">{{order_subtotal}}</td>
+                      </tr>
+                      <tr>
+                        <td align="left" style="padding-bottom: 5px;">Shipping:</td>
+                        <td align="right" style="padding-bottom: 5px;">{{shipping_cost}}</td>
+                      </tr>
+                      <tr>
+                        <td align="left" style="padding-bottom: 5px;">GST:</td>
+                        <td align="right" style="padding-bottom: 5px;">{{gst_total}}</td>
+                      </tr>
+                      <tr>
+                        <td align="left" style="padding-bottom: 10px; color: #28a745;">Discount:</td>
+                        <td align="right" style="padding-bottom: 10px; color: #28a745;">-{{discount_total}}</td>
+                      </tr>
+                      <tr>
+                        <td align="left" style="border-top: 2px solid #e5e5e5; padding-top: 10px; font-size: 18px; font-weight: bold;">Grand Total:</td>
+                        <td align="right" style="border-top: 2px solid #e5e5e5; padding-top: 10px; font-size: 18px; font-weight: bold; color: #ff6b35;">{{grand_total}}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- DELIVERY SECTION -->
+          <tr>
+            <td style="padding: 0 30px 30px 30px;" class="p-15">
+              <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <!-- Shipping Address -->
+                  <td align="left" valign="top" class="mobile-block" width="48%" style="background-color: #f8f8f8; padding: 20px; border-radius: 8px;">
+                    <h3 style="margin: 0 0 10px 0; font-size: 15px; color: #222222;">Shipping Address</h3>
+                    <p style="margin: 0 0 5px 0; font-size: 14px; font-weight: bold; color: #222222;">{{shipping_customer_name}}</p>
+                    <p style="margin: 0 0 5px 0; font-size: 13px; color: #666666;">Phone: {{shipping_phone}}</p>
+                    <p style="margin: 0 0 5px 0; font-size: 13px; color: #666666; line-height: 1.5;">{{shipping_complete_address}}</p>
+                    <p style="margin: 0; font-size: 13px; color: #666666;">GST: {{shipping_gst_number}}</p>
+                  </td>
+                  <td width="4%" class="mobile-hidden"></td>
+                  <!-- Estimated Delivery -->
+                  <td align="left" valign="top" class="mobile-block" width="48%" style="background-color: #f8f8f8; padding: 20px; border-radius: 8px;">
+                    <h3 style="margin: 0 0 10px 0; font-size: 15px; color: #222222;">Estimated Delivery</h3>
+                    <p style="margin: 0 0 15px 0; font-size: 16px; font-weight: bold; color: #ff6b35;">{{delivery_date_range}}</p>
+                    <table border="0" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td align="center" style="border-radius: 6px; background-color: #ff6b35;">
+                          <a href="{{track_order_url}}" target="_blank" style="font-size: 14px; font-weight: bold; color: #ffffff; text-decoration: none; padding: 10px 20px; display: inline-block;">Track Order</a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- BUTTON SECTION -->
+          <tr>
+            <td align="center" style="padding: 10px 30px 40px 30px;" class="p-15">
+              <table border="0" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center" style="border-radius: 8px; background-color: #ff6b35; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <a href="{{track_order_url}}" target="_blank" style="font-size: 18px; font-weight: bold; color: #ffffff; text-decoration: none; padding: 15px 40px; display: inline-block;">Track Your Order</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- HELP SECTION -->
+          <tr>
+            <td style="padding: 30px; background-color: #f8f8f8; border-top: 1px solid #e5e5e5;" class="p-15">
+              <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td align="center">
+                    <h3 style="margin: 0 0 15px 0; font-size: 18px; color: #222222;">Need Help with Your Order?</h3>
+                    <p style="margin: 0 0 10px 0; font-size: 14px; color: #666666;">
+                      📧 <a href="mailto:{{support_email}}" style="color: #ff6b35; text-decoration: none;">{{support_email}}</a> &nbsp;&nbsp;|&nbsp;&nbsp; 
+                      📞 <a href="tel:{{support_phone}}" style="color: #222222; text-decoration: none;">{{support_phone}}</a>
+                    </p>
+                    <p style="margin: 0; font-size: 13px; color: #999999;">Working Hours: {{working_hours}}</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- BOTTOM BENEFITS -->
+          <tr>
+            <td style="padding: 30px; border-top: 1px solid #e5e5e5;" class="p-15">
+              <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td align="center" valign="top" width="25%" class="mobile-block" style="padding: 10px;">
+                    <div style="font-size: 24px; color: #ff6b35; margin-bottom: 5px;">📦</div>
+                    <p style="margin: 0; font-size: 12px; color: #222222; font-weight: bold;">Wide Product<br>Range</p>
+                  </td>
+                  <td align="center" valign="top" width="25%" class="mobile-block" style="padding: 10px;">
+                    <div style="font-size: 24px; color: #ff6b35; margin-bottom: 5px;">⭐</div>
+                    <p style="margin: 0; font-size: 12px; color: #222222; font-weight: bold;">Trusted<br>Brands</p>
+                  </td>
+                  <td align="center" valign="top" width="25%" class="mobile-block" style="padding: 10px;">
+                    <div style="font-size: 24px; color: #ff6b35; margin-bottom: 5px;">🔒</div>
+                    <p style="margin: 0; font-size: 12px; color: #222222; font-weight: bold;">Secure<br>Payments</p>
+                  </td>
+                  <td align="center" valign="top" width="25%" class="mobile-block" style="padding: 10px;">
+                    <div style="font-size: 24px; color: #ff6b35; margin-bottom: 5px;">🔄</div>
+                    <p style="margin: 0; font-size: 12px; color: #222222; font-weight: bold;">Easy<br>Returns</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- FOOTER -->
+          <tr>
+            <td style="padding: 30px; background-color: #222222; color: #ffffff; text-align: center;" class="p-15">
+              <h2 style="margin: 0 0 10px 0; font-size: 20px; font-weight: bold;">Thank you for choosing StructBay.</h2>
+              <p style="margin: 0 0 20px 0; font-size: 16px; color: #ff6b35; font-style: italic;">Click • Buy • Build</p>
+              
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 20px;">
+                <tr>
+                  <td align="center">
+                    <a href="{{facebook_url}}" style="margin: 0 10px; color: #ffffff; text-decoration: none;">FB</a>
+                    <a href="{{twitter_url}}" style="margin: 0 10px; color: #ffffff; text-decoration: none;">TW</a>
+                    <a href="{{instagram_url}}" style="margin: 0 10px; color: #ffffff; text-decoration: none;">IG</a>
+                    <a href="{{linkedin_url}}" style="margin: 0 10px; color: #ffffff; text-decoration: none;">IN</a>
+                  </td>
+                </tr>
+              </table>
+              
+              <p style="margin: 0 0 10px 0; font-size: 12px; color: #999999;">&copy; {{current_year}} StructBay. All rights reserved.</p>
+              <p style="margin: 0; font-size: 12px;">
+                <a href="{{privacy_policy_url}}" style="color: #999999; text-decoration: underline; margin: 0 10px;">Privacy Policy</a> |
+                <a href="{{terms_url}}" style="color: #999999; text-decoration: underline; margin: 0 10px;">Terms</a> |
+                <a href="{{contact_us_url}}" style="color: #999999; text-decoration: underline; margin: 0 10px;">Contact Us</a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

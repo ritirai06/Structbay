@@ -46,6 +46,15 @@ const financeLeadSchema = new mongoose.Schema(
       },
     ],
 
+    activityLog: [
+      {
+        action:     String,
+        description: String,
+        performedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        performedAt: { type: Date, default: Date.now },
+      },
+    ],
+
     disbursedAmount: { type: Number, default: null },
     disbursedAt:     { type: Date, default: null },
 
@@ -61,5 +70,8 @@ financeLeadSchema.pre(/^find/, function (next) { this.where({ isDeleted: false }
 financeLeadSchema.index({ status: 1, createdAt: -1 });
 financeLeadSchema.index({ assignedTo: 1, status: 1 });
 financeLeadSchema.index({ mobile: 1 });
+financeLeadSchema.index({ financeNumber: 1 });
+
+financeLeadSchema.virtual('city').get(function() { return this.projectLocation; });
 
 module.exports = mongoose.model('FinanceLead', financeLeadSchema);

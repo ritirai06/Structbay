@@ -60,7 +60,8 @@ export function Checkout() {
             contactName: f.contactName || p.name || "",
             phone: f.phone || p.mobile || "",
             email: f.email || p.email || "",
-            address: f.address || p.billingAddress || "",
+            billingAddress: f.billingAddress || p.billingAddress || "",
+            address: f.address || "",
           }));
         } catch {
           /* ignore */
@@ -96,6 +97,7 @@ export function Checkout() {
     contactName: "",
     phone: "",
     email: "",
+    billingAddress: "",
     address: "",
     deliveryCity: city || "",
     pincode: "",
@@ -182,56 +184,75 @@ export function Checkout() {
     }
   };
 
-  const handlePlaceOrder = async () => {
+  const handleNextStep = async () => {
     setOrderError(null);
     if (!getCustomerAccessToken()) {
       setOrderError("Your session has expired. Please sign in again.");
       navigate("/login", { state: { from: { pathname: "/checkout" } } });
       return;
     }
-    if (form.deliveryCity && city && !deliveryCityMatchesSelected(city, form.deliveryCity)) {
-      setCityError(true);
-      return;
-    }
-    const digits = form.pincode.replace(/\D/g, "");
-    if (digits.length === 6) {
-      try {
-        const d = await api.validatePincode(digits, resolvedWarehouseCityId);
-        if (!d.serviceable) {
-          setPincodeCheck({
-            ok: false,
-            message: d.message || "This PIN code is not in our active service area.",
-          });
-          return;
-        }
-        setPincodeCheck({
-          ok: true,
-          message: d.city ? `Delivery available for ${d.city.name}.` : "This PIN is in our service area.",
-        });
-      } catch {
-        setPincodeCheck({
-          ok: false,
-          message: "We could not verify this PIN. Please try again.",
-        });
+
+    if (step === 1) {
+      if (!form.contactName.trim() || !form.phone.trim() || !form.email.trim() || !form.billingAddress.trim()) {
+        setOrderError("Please complete your contact name, phone, email, and billing address.");
         return;
       }
-    }
-
-    if (!form.contactName.trim() || !form.phone.trim() || !form.address.trim() || !form.deliveryCity.trim()) {
-      setOrderError("Please complete contact name, phone, full delivery address, and delivery city.");
-      return;
-    }
-    if (digits.length !== 6) {
-      setOrderError("Enter a valid 6-digit delivery PIN code.");
-      return;
-    }
-    if (!resolvedWarehouseCityId) {
-      setOrderError(
-        "Choose a delivery city from the list (or set your warehouse city in the header). Pricing and checkout need a serviceable city."
-      );
+      setStep(2);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
+    if (step === 2) {
+      if (form.deliveryCity && city && !deliveryCityMatchesSelected(city, form.deliveryCity)) {
+        setCityError(true);
+        return;
+      }
+      const digits = form.pincode.replace(/\D/g, "");
+      if (digits.length === 6) {
+        try {
+          const d = await api.validatePincode(digits, resolvedWarehouseCityId);
+          if (!d.serviceable) {
+            setPincodeCheck({
+              ok: false,
+              message: d.message || "This PIN code is not in our active service area.",
+            });
+            setOrderError("This PIN code is not in our active service area.");
+            return;
+          }
+          setPincodeCheck({
+            ok: true,
+            message: d.city ? `Delivery available for ${d.city.name}.` : "This PIN is in our service area.",
+          });
+        } catch {
+          setPincodeCheck({
+            ok: false,
+            message: "We could not verify this PIN. Please try again.",
+          });
+          setOrderError("We could not verify this PIN. Please try again.");
+          return;
+        }
+      }
+
+      if (!form.address.trim() || !form.deliveryCity.trim()) {
+        setOrderError("Please complete full delivery address and delivery city.");
+        return;
+      }
+      if (digits.length !== 6) {
+        setOrderError("Enter a valid 6-digit delivery PIN code.");
+        return;
+      }
+      if (!resolvedWarehouseCityId) {
+        setOrderError(
+          "Choose a delivery city from the list (or set your warehouse city in the header). Pricing and checkout need a serviceable city."
+        );
+        return;
+      }
+      setStep(3);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    // Step 3: Place Order
     setPlacingOrder(true);
     try {
       await api.clearCart();
@@ -241,6 +262,7 @@ export function Checkout() {
         cityId: resolvedWarehouseCityId,
         addressCity: form.deliveryCity,
       });
+      const digits = form.pincode.replace(/\D/g, "");
       const line2 = [form.companyName.trim(), form.gstNumber.trim() ? `GSTIN: ${form.gstNumber.trim()}` : ""]
         .filter(Boolean)
         .join(" · ");
@@ -259,7 +281,7 @@ export function Checkout() {
         paymentMethod: form.paymentMethod,
         appliedCoupon: appliedCoupon ? {
           code: appliedCoupon.code,
-          discountValue: summary.discount
+          discountAmount: summary.discount,
         } : undefined,
         ...(savedAddressId ? { addressId: savedAddressId } : {}),
       });
@@ -338,7 +360,7 @@ export function Checkout() {
         {/* Form */}
         <div className="lg:col-span-2 space-y-4">
           {/* Billing Info */}
-          {step >= 1 && (
+          {step === 1 && (
             <div className="bg-white rounded-2xl border border-border p-5">
               <h3 className="font-semibold flex items-center gap-2 mb-4">
                 <Building2 className="w-5 h-5" style={{ color: "var(--sb-orange)" }} /> Billing Information
@@ -363,15 +385,41 @@ export function Checkout() {
                   </div>
                 ))}
               </div>
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-foreground mb-1.5">Billing Address</label>
+                <textarea
+                  value={form.billingAddress}
+                  onChange={e => update("billingAddress", e.target.value)}
+                  placeholder="Billing address..."
+                  rows={2}
+                  className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-input-background focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                />
+              </div>
             </div>
           )}
 
           {/* Delivery Address */}
-          {step >= 1 && (
+          {step === 2 && (
             <div className="bg-white rounded-2xl border border-border p-5">
-              <h3 className="font-semibold flex items-center gap-2 mb-4">
-                <MapPin className="w-5 h-5" style={{ color: "var(--sb-orange)" }} /> Delivery Address
-              </h3>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <MapPin className="w-5 h-5" style={{ color: "var(--sb-orange)" }} /> Delivery Address
+                </h3>
+                <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-full hover:bg-gray-100 transition-colors">
+                  <input
+                    type="checkbox"
+                    className="accent-sb-orange w-4 h-4 cursor-pointer"
+                    onChange={(e) => {
+                      if (e.target.checked && form.billingAddress) {
+                        update("address", form.billingAddress);
+                        if (form.contactName && !form.deliveryContactName) update("deliveryContactName", form.contactName);
+                        if (form.phone && !form.deliveryPhone) update("deliveryPhone", form.phone);
+                      }
+                    }}
+                  />
+                  <span className="font-medium">Same as billing address</span>
+                </label>
+              </div>
               <div className="space-y-4">
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
@@ -396,7 +444,7 @@ export function Checkout() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1.5">Full Address</label>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">Full Address *</label>
                   <textarea
                     value={form.address}
                     onChange={e => update("address", e.target.value)}
@@ -407,7 +455,7 @@ export function Checkout() {
                 </div>
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-1.5">Delivery City</label>
+                    <label className="block text-sm font-medium text-foreground mb-1.5">Delivery City *</label>
                     <select
                       value={form.deliveryCity}
                       onChange={e => { update("deliveryCity", e.target.value); setCityError(false); }}
@@ -468,7 +516,7 @@ export function Checkout() {
           )}
 
           {/* Payment */}
-          {step >= 1 && (
+          {step === 3 && (
             <div className="bg-white rounded-2xl border border-border p-5">
               <h3 className="font-semibold flex items-center gap-2 mb-4">
                 <CreditCard className="w-5 h-5" style={{ color: "var(--sb-orange)" }} /> Payment Method
@@ -566,12 +614,12 @@ export function Checkout() {
                 )}
                 <button
                   type="button"
-                  onClick={() => void handlePlaceOrder()}
+                  onClick={() => void handleNextStep()}
                   disabled={placingOrder}
                   className="w-full text-white px-5 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2"
                   style={{ backgroundColor: "var(--sb-orange)" }}
                 >
-                  {placingOrder ? "Preparing Payment..." : "Proceed to Secure Payment"}
+                  {placingOrder ? "Preparing Payment..." : (step === 1 ? "Continue to Delivery" : (step === 2 ? "Continue to Payment" : "Proceed to Secure Payment"))}
                   <ChevronRight className="w-5 h-5" />
                 </button>
                 <p className="text-center text-xs text-muted-foreground mt-3">

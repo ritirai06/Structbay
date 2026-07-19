@@ -27,6 +27,7 @@ const vendorDispatchSchema = new mongoose.Schema({
   
   // Dispatch Information
   dispatchDate: Date,
+  dispatchTime: String,  // HH:MM format (e.g., "14:30")
   expectedDeliveryDate: Date,
   actualDeliveryDate: Date,
   

@@ -81,7 +81,9 @@ const getEmailBranding = async () => {
   const frontendUrl = trim(process.env.FRONTEND_URL) || 'https://structbay.com';
   const base = frontendUrl.replace(/\/$/, '');
   
-  const logoUrl = `${base}/shared/assets/logos/Structbay-Logo-F-1.png`;
+  const logoUrl = base.includes('localhost')
+    ? 'https://res.cloudinary.com/dr3bbkrv7/image/upload/v1784408107/structbay/assets/Structbay-Logo-F-1_n88bxz.png'
+    : `${base}/shared/assets/logos/Structbay-Logo-F-1.png`;
 
   const exactDesc = "Your Trusted Construction Materials Marketplace";
 
@@ -154,102 +156,64 @@ const masterTemplate = ({ title, greeting, bodyHtml, cta, branding }) => {
   if (social.twitter && social.twitter !== '#') socialIcons.push(`<a href="${esc(social.twitter)}" style="margin:0 6px;display:inline-block;"><img src="https://cdn-icons-png.flaticon.com/32/5968/5968830.png" width="20" height="20" alt="Twitter" style="border:0;display:block;" /></a>`);
   if (social.youtube && social.youtube !== '#') socialIcons.push(`<a href="${esc(social.youtube)}" style="margin:0 6px;display:inline-block;"><img src="https://cdn-icons-png.flaticon.com/32/1384/1384060.png" width="20" height="20" alt="YouTube" style="border:0;display:block;" /></a>`);
 
-  const contactLine = [
-    phone ? `📞 ${esc(phone)}` : null,
-    email ? `✉️ <a href="mailto:${esc(email)}" style="color:#FF6A00;text-decoration:none;">${esc(email)}</a>` : null,
-    address ? `📍 ${esc(address)}` : null,
-  ].filter(Boolean).join('&nbsp;&nbsp;|&nbsp;&nbsp;');
-
   return `<!DOCTYPE html>
-<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="format-detection" content="telephone=no,date=no,address=no,email=no,url=no" />
-  <!--[if mso]><xml><o:OfficeDocumentSettings><o:AllowPNG/><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
-  <title>${esc(title)}</title>
-  <style>
-    body,table,td,a{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}
-    table,td{mso-table-lspace:0pt;mso-table-rspace:0pt}
-    img{-ms-interpolation-mode:bicubic;border:0;outline:none;text-decoration:none}
-    body{margin:0;padding:0;background-color:#f2f4f8}
-    @media only screen and (max-width:620px){
-      .email-container{width:100%!important;margin:auto!important}
-      .content-cell{padding:28px 20px!important}
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${esc(title)}</title>
+<style>
+  body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+  table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+  img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+  table { border-collapse: collapse !important; }
+  body { height: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; font-family: Arial, Helvetica, sans-serif; background-color: #f8f8f8; }
+  
+  @media screen and (max-width: 600px) {
+    .container { width: 100% !important; max-width: 100% !important; }
+    .mobile-hidden { display: none !important; }
+    .mobile-block { display: block !important; width: 100% !important; padding-bottom: 15px !important; }
+    .mobile-center { text-align: center !important; }
+    .p-15 { padding: 15px !important; }
+    .nav-links { font-size: 12px !important; }
+  }
+</style>
 </head>
-<body style="margin:0;padding:0;background-color:#f2f4f8;font-family:Arial,Helvetica,sans-serif;">
-  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f2f4f8;">
-    <tr><td align="center" style="padding:32px 16px;">
-
-      <!-- Email Container -->
-      <table class="email-container" role="presentation" border="0" cellpadding="0" cellspacing="0" width="600" style="max-width:600px;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.09);">
-
+<body style="background-color:#f8f8f8; margin:0; padding:0;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f8f8f8;">
+    <tr><td align="center" style="padding: 20px 10px;">
+      
+      <!-- Main Card -->
+      <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.05); overflow:hidden;">
+        
         <!-- Header -->
-        <tr>
-          <td align="center" style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);padding:32px 40px;">
-            <a href="${esc(siteUrl)}" target="_blank" style="text-decoration:none;">
-              ${logoBlock}
-            </a>
-          </td>
-        </tr>
-
-        <!-- Orange accent bar -->
-        <tr><td height="4" style="background-color:#E85A00;font-size:0;line-height:0;">&nbsp;</td></tr>
-
-        <!-- Email Title -->
-        <tr>
-          <td align="center" style="background-color:#E85A00;padding:16px 40px;">
-            <h1 style="margin:0;font-family:Arial,sans-serif;font-size:18px;font-weight:700;color:#ffffff;letter-spacing:0.5px;">${esc(title)}</h1>
-          </td>
-        </tr>
+        <tr><td style="padding: 24px; text-align: center; border-bottom: 1px solid #f0f0f0;">
+          <a href="${esc(siteUrl)}" target="_blank" style="text-decoration:none;">
+            ${logoBlock}
+          </a>
+        </td></tr>
 
         <!-- Content -->
-        <tr>
-          <td class="content-cell" style="padding:36px 44px 20px;">
-            ${greeting ? `<p style="margin:0 0 20px;font-family:Arial,sans-serif;font-size:16px;color:#333333;font-weight:600;">${esc(greeting)}</p>` : ''}
-            <div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.7;color:#444444;">
-              ${bodyHtml}
-            </div>
-            ${ctaBlock}
-          </td>
-        </tr>
+        <tr><td style="padding: 32px;">
+          ${title ? `<h2 style="margin-top:0; margin-bottom: 20px; font-size: 20px; color: #333333; font-family: Arial, sans-serif;">${esc(title)}</h2>` : ''}
+          ${greeting ? `<p style="margin-top:0; margin-bottom: 16px; font-size: 15px; color: #444444; line-height: 1.5; font-family: Arial, sans-serif;">${esc(greeting)}</p>` : ''}
+          
+          <div style="font-size: 14px; color: #555555; line-height: 1.6; font-family: Arial, sans-serif;">
+            ${bodyHtml}
+          </div>
 
-        <!-- Divider -->
-        <tr><td style="padding:0 44px;"><hr style="border:0;border-top:1px solid #f0f0f0;margin:4px 0 0;" /></td></tr>
+          ${ctaBlock}
+        </td></tr>
 
         <!-- Footer -->
-        <tr>
-          <td style="background-color:#1a1a2e;padding:28px 40px 20px;" align="center">
-            <!-- Logo in footer -->
-            <div style="margin-bottom:14px;">
-              <a href="${esc(siteUrl)}" target="_blank" style="text-decoration:none;">
-                ${logoUrl
-      ? `<img src="${esc(logoUrl)}" alt="${esc(companyName)}" style="max-height:40px;max-width:160px;display:block;margin:0 auto;" />`
-      : `<span style="font-size:22px;font-weight:900;color:#FF6A00;font-family:Arial,sans-serif;letter-spacing:-1px;">Struct<span style="color:#ffffff;">Bay</span></span>`}
-              </a>
-            </div>
-            <!-- Description -->
-            <p style="margin:0 0 12px;font-family:Arial,sans-serif;font-size:12px;color:rgba(255,255,255,0.55);line-height:1.6;max-width:420px;text-align:center;">${esc(description)}</p>
-            <!-- Social Icons -->
-            ${socialIcons.length ? `<div style="margin:12px 0 14px;">${socialIcons.join('')}</div>` : ''}
-            <!-- Contact -->
-            ${contactLine ? `<p style="margin:0 0 10px;font-family:Arial,sans-serif;font-size:11px;color:rgba(255,255,255,0.45);line-height:1.8;">${contactLine}</p>` : ''}
-            <!-- Website -->
-            <p style="margin:0 0 14px;font-family:Arial,sans-serif;font-size:12px;">
-              <a href="${esc(siteUrl)}" style="color:#FF6A00;text-decoration:none;font-weight:600;">${esc(siteUrl)}</a>
-            </p>
-            <!-- Divider -->
-            <hr style="border:0;border-top:1px solid rgba(255,255,255,0.1);margin:10px 0 14px;" />
-            <!-- Copyright -->
-            <p style="margin:0;font-family:Arial,sans-serif;font-size:11px;color:rgba(255,255,255,0.35);line-height:1.5;">${esc(copyright)}</p>
-          </td>
-        </tr>
-
+        <tr><td style="background-color: #fafafa; padding: 24px; border-top: 1px solid #f0f0f0; text-align: center; font-family: Arial, sans-serif; font-size: 12px; color: #888888; line-height: 1.6;">
+          ${socialIcons.length ? `<div style="margin-bottom: 16px;">${socialIcons.join('')}</div>` : ''}
+          <p style="margin:0;"><strong>${esc(companyName)}</strong></p>
+          <p style="margin:4px 0 0 0;">${esc(address)}</p>
+          <p style="margin:4px 0 0 0;"><a href="mailto:${esc(email)}" style="color:#888888; text-decoration:underline;">${esc(email)}</a> &nbsp;|&nbsp; ${esc(phone)}</p>
+          <p style="margin:16px 0 0 0;">${esc(copyright)}</p>
+        </td></tr>
       </table>
-      <!-- End Container -->
 
       <!-- Anti-spam note -->
       <p style="margin:16px auto 0;max-width:600px;font-family:Arial,sans-serif;font-size:11px;color:#999999;text-align:center;line-height:1.5;">
@@ -714,11 +678,11 @@ const sendProjectUpdatedEmail = async ({ to, name, projectName }) => {
 const sendVendorApplicationEmail = async ({ to, name, companyName }) => {
   const branding = await getEmailBranding();
   return _buildAndSend({
-    to, subject: 'Vendor Application Received – StructBay',
+    to, subject: 'Vendor Application Received – Structbay',
     title: 'Vendor Application Received',
     greeting: `Hi ${name},`,
     bodyHtml: `
-      <p>Thank you for applying to become a vendor on StructBay!</p>
+      <p>Thank you for applying to become a vendor on Structbay!</p>
       <p>Your application for <strong>${esc(companyName)}</strong> has been received and is currently under review by our team.</p>
       <div style="background:#f8f8f8;border-radius:8px;padding:16px;margin:16px 0;">
         <p style="margin:0;font-size:13px;color:#666;">⏱ Our team typically reviews applications within <strong>2-3 business days</strong>. You'll receive an email notification once a decision is made.</p>
@@ -734,7 +698,7 @@ const sendVendorApprovedEmail = async ({ to, name, companyName }) => {
   const branding = await getEmailBranding();
   const loginUrl = `${trim(process.env.VENDOR_URL) || branding.siteUrl}/vendor/login`;
   return _buildAndSend({
-    to, subject: '🎉 Vendor Account Approved – StructBay',
+    to, subject: '🎉 Vendor Account Approved – Structbay',
     title: 'Vendor Account Approved! 🎉',
     greeting: `Hi ${name},`,
     bodyHtml: `
@@ -754,7 +718,7 @@ const sendVendorApprovedEmail = async ({ to, name, companyName }) => {
 const sendVendorRejectedEmail = async ({ to, name, companyName, reason }) => {
   const branding = await getEmailBranding();
   return _buildAndSend({
-    to, subject: 'Vendor Application Update – StructBay',
+    to, subject: 'Vendor Application Update – Structbay',
     title: 'Vendor Application Update',
     greeting: `Hi ${name},`,
     bodyHtml: `
@@ -806,10 +770,10 @@ const sendNewsletterSubscribeEmail = async ({ to }) => {
       <p>Thank you for subscribing to the <strong>StructBay Newsletter</strong>!</p>
       <p>You'll now be among the first to receive:</p>
       <ul style="padding-left:20px;line-height:2;font-size:14px;color:#555;">
-        <li>🎁 Exclusive offers and discounts</li>
-        <li>📦 New product announcements</li>
-        <li>💡 Construction industry insights</li>
-        <li>🚀 StructBay platform updates</li>
+        <li> 1.Exclusive offers and discounts</li>
+        <li> 2.New product announcements</li>
+        <li> 3.Construction industry insights</li>
+        <li> 4.StructBay platform updates</li>
       </ul>
       <p>Stay tuned for exciting content coming your way!</p>`,
     cta: { label: 'Explore StructBay', url: branding.siteUrl },

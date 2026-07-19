@@ -103,4 +103,14 @@ router.post(
   uploadCtrl.imageUploadResult
 );
 
+// Admin — variation image (product variant gallery)
+router.post(
+  '/variation-image',
+  protect,
+  requireRole('ADMIN'),
+  ...uploadImage(UPLOAD_FOLDERS.PRODUCT).single('image'),
+  handleUploadError,
+  uploadCtrl.imageUploadResult
+);
+
 module.exports = router;

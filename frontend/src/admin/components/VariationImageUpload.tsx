@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Upload, X, Loader2, Trash2 } from "lucide-react";
+import { Upload, Loader2, Trash2 } from "lucide-react";
 import { adminFetch } from "../../lib/adminApi";
 
 type ImageData = {
@@ -34,21 +34,19 @@ export function VariationImageUpload({
     setUploading(true);
 
     try {
-      const formData = new FormData();
       for (let i = 0; i < files.length; i++) {
-        formData.append("files", files[i]);
-      }
-
-      const res: any = await adminFetch(
-        `/products/${productId}/variations/${variationId}/images`,
-        {
-          method: "POST",
-          body: formData,
+        const fd = new FormData();
+        fd.append("image", files[i]);
+        const res: any = await adminFetch(
+          `/products/${productId}/variations/${variationId}/images`,
+          {
+            method: "POST",
+            body: fd,
+          }
+        );
+        if (res.data?.images) {
+          onImagesChange(res.data.images);
         }
-      );
-
-      if (res.data?.images) {
-        onImagesChange(res.data.images);
       }
     } catch (err: any) {
       setError(err.message || "Upload failed");

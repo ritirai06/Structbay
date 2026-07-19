@@ -1,7 +1,10 @@
 const router = require('express').Router();
 const { protect } = require('../middleware/auth.middleware');
 const { requireRole } = require('../middleware/role.middleware');
+const { uploadImage, handleUploadError } = require('../middleware/upload.middleware');
+const { UPLOAD_FOLDERS } = require('../config/constants');
 const ctrl = require('../controllers/product.controller');
+const colourCtrl = require('../controllers/colourSearch.controller');
 
 const adminOnly = [protect, requireRole('ADMIN')];
 
@@ -18,6 +21,11 @@ router.post('/:id/images',               ...adminOnly, ctrl.addImages);
 router.delete('/:id/images/:imageId',    ...adminOnly, ctrl.removeImage);
 router.delete('/:id',                    ...adminOnly, ctrl.remove);
 
+// Colour Search (must come before /:id/variations to avoid route conflicts)
+router.get('/:productId/colours/search', colourCtrl.searchColours);
+router.get('/:productId/colours',        colourCtrl.getProductColours);
+router.get('/:productId/colours/by-name', colourCtrl.findVariationsByColour);
+
 // Variations
 router.get('/:id/variations',             ctrl.getVariations);
 router.post('/:id/variations',            ...adminOnly, ctrl.createVariation);
@@ -25,7 +33,7 @@ router.post('/:id/variations/generate-matrix', ...adminOnly, ctrl.generateVariat
 router.get('/:id/variations/:varId/configuration', ...adminOnly, ctrl.getVariationConfiguration);
 router.patch('/:id/variations/:varId/configuration', ...adminOnly, ctrl.saveVariationConfiguration);
 router.patch('/:id/variations/:varId',    ...adminOnly, ctrl.updateVariation);
-router.post('/:id/variations/:varId/images', ...adminOnly, ctrl.addVariationImages);
+router.post('/:id/variations/:varId/images', ...adminOnly, ...uploadImage(UPLOAD_FOLDERS.PRODUCT).single('image'), handleUploadError, ctrl.addVariationImagesFromUpload);
 router.delete('/:id/variations/:varId/images/:imageId', ...adminOnly, ctrl.removeVariationImage);
 router.delete('/:id/variations/:varId',   ...adminOnly, ctrl.deleteVariation);
 

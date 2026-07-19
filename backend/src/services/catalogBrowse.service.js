@@ -70,7 +70,7 @@ function parseNumericFromAttributeValue(v) {
  * @param {import('mongoose').Types.ObjectId[]} productIds
  * @param {Array<{ key?: string }>} filterDefs
  */
-async function distinctAttributeValuesForProducts(productIds, filterDefs) {
+async function distinctAttributeValuesForProducts(productIds, filterDefs, cityOid = null) {
   const keys = new Set(
     (filterDefs || [])
       .filter((f) => f?.key && f.isActive !== false)
@@ -96,14 +96,30 @@ async function distinctAttributeValuesForProducts(productIds, filterDefs) {
     product: { $in: productIds },
     status: 'ACTIVE',
   })
-    .select('attributes weightKg')
+    .select('attributes weightKg _id')
     .lean();
+
+  let validVariations = variations;
+  if (cityOid && variations.length > 0) {
+    const CityPricing = mongoose.model('CityPricing');
+    const varIds = variations.map((v) => v._id);
+    const pricingRows = await CityPricing.find({
+      city: cityOid,
+      variation: { $in: varIds },
+      isDeleted: false,
+      isVisible: true,
+    })
+      .select('variation')
+      .lean();
+    const pricedSet = new Set(pricingRows.map((r) => String(r.variation)));
+    validVariations = variations.filter((v) => pricedSet.has(String(v._id)));
+  }
 
   /** @type {Record<string, Set<string>>} */
   const facets = {};
   for (const key of keys) facets[key] = new Set();
 
-  for (const v of variations) {
+  for (const v of validVariations) {
     for (const key of keys) {
       if (key === 'weight' && v.weightKg != null && Number.isFinite(Number(v.weightKg))) {
         facets[key].add(canonicalAttributeValue(String(v.weightKg), 'weight'));

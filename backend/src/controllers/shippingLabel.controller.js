@@ -54,6 +54,24 @@ const regenerateLabel = asyncHandler(async (req, res) => {
   return ApiResponse.success(res, 200, 'Shipping label regenerated.', label);
 });
 
+const uploadLabel = asyncHandler(async (req, res) => {
+  const vendorOrderId = resolveVendorOrderId(req);
+  await assertOrderAccess(req.params.id);
+
+  if (!req.file) throw new AppError('Shipping label file is required.', 400);
+
+  const { uploadShippingLabel } = require('../services/shippingLabel.service');
+  const { label } = await uploadShippingLabel({
+    orderId: req.params.id,
+    vendorOrderId,
+    userId: req.user._id,
+    file: req.file,
+    ipAddress: req.ip,
+  });
+
+  return ApiResponse.success(res, 200, 'Shipping label uploaded successfully.', label);
+});
+
 const getLabel = asyncHandler(async (req, res) => {
   const vendorOrderId = resolveVendorOrderId(req);
   await assertOrderAccess(req.params.id);
@@ -126,6 +144,7 @@ const revokeLabelFromVendor = asyncHandler(async (req, res) => {
 module.exports = {
   generateLabel,
   regenerateLabel,
+  uploadLabel,
   getLabel,
   downloadLabel,
   previewLabel,

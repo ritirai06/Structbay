@@ -96,6 +96,13 @@ export const adminRoutes: RouteObject[] = [
         },
       },
       {
+        path: "vendors/:id",
+        lazy: async () => {
+          const { VendorDetails } = await import("../admin/pages/VendorDetails");
+          return { Component: VendorDetails };
+        },
+      },
+      {
         path: "vendor-assignment",
         lazy: async () => {
           const { VendorManagement } = await import("../admin/pages/VendorManagement");

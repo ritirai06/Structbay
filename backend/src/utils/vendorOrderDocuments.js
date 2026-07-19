@@ -23,7 +23,9 @@ async function buildVendorOrderDocuments(vendorOrder) {
   const ewayUrl = out.ewayBillPdfUrl || '';
   const labelGenerated = Boolean(label?.labelUrl);
   const labelShared = Boolean(label?.sharedWithVendor);
-  const shippingLabelUrl = labelShared && label?.labelUrl ? label.labelUrl : '';
+  
+  // Prefer vendor's uploaded shipping label if present, else fallback to Structbay-shared label
+  const shippingLabelUrl = vo.shipmentDispatch?.vendorShippingLabelUrl || (labelShared && label?.labelUrl ? label.labelUrl : '');
 
   return {
     invoice_url: invoiceUrl,

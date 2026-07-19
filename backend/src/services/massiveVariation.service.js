@@ -234,3 +234,6 @@ module.exports = {
   BATCH_SIZE,
   DUPLICATE_CHECK_BATCH,
 };
+
+// Export as massiveVariationService for compatibility
+module.exports.massiveVariationService = module.exports;

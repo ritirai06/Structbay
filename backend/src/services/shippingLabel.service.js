@@ -290,6 +290,92 @@ async function generateShippingLabel({
   return { label: formatLabelResponse(label, generatedByUser), created: !existing || regenerate, pdfBuffer };
 }
 
+async function uploadShippingLabel({ orderId, vendorOrderId, userId, file, ipAddress }) {
+  const { order, vo } = await loadOrderContext(orderId, vendorOrderId);
+
+  const existing = await ShippingLabel.findOne({ order: orderId, vendorOrder: vendorOrderId });
+  
+  const shipmentId = existing?.shipmentId || await generateRefNumber('SHIPMENT');
+  let trackingNumber =
+    vo.shipmentDispatch?.trackingNumber ||
+    existing?.trackingNumber ||
+    null;
+  if (!trackingNumber) {
+    trackingNumber = await generateRefNumber('TRACKING');
+  }
+
+  if (existing?.labelCloudinaryId) {
+    await deleteFile(existing.labelCloudinaryId, 'raw').catch(() => {});
+  }
+
+  const uploaded = await uploadBuffer(
+    file.buffer,
+    UPLOAD_FOLDERS.SHIPPING_LABEL,
+    'raw',
+    file.originalname
+  );
+
+  const generatedByUser = await User.findById(userId).select('name email').lean();
+  let label;
+
+  if (existing) {
+    existing.shipmentId = shipmentId;
+    existing.trackingNumber = trackingNumber;
+    existing.generatedBy = userId;
+    existing.generatedAt = new Date();
+    existing.labelUrl = uploaded.url;
+    existing.labelCloudinaryId = uploaded.publicId;
+    existing.barcodeValue = null;
+    existing.qrValue = null;
+    existing.status = 'GENERATED'; // or REGENERATED
+    existing.deliveryType = vo.deliveryType;
+    existing.labelSnapshot = null;
+    existing.version = (existing.version || 1) + 1;
+    existing.sharedWithVendor = false;
+    existing.sharedAt = null;
+    existing.sharedBy = null;
+    await existing.save();
+    label = existing;
+  } else {
+    label = await ShippingLabel.create({
+      order: orderId,
+      vendorOrder: vendorOrderId,
+      shipmentId,
+      trackingNumber,
+      generatedBy: userId,
+      generatedAt: new Date(),
+      labelUrl: uploaded.url,
+      labelCloudinaryId: uploaded.publicId,
+      barcodeValue: null,
+      qrValue: null,
+      status: 'GENERATED',
+      deliveryType: vo.deliveryType,
+      labelSnapshot: null,
+      version: 1,
+    });
+  }
+
+  await VendorOrder.updateOne(
+    { _id: vendorOrderId },
+    {
+      $set: {
+        'shipmentDispatch.trackingNumber': trackingNumber,
+      },
+    }
+  );
+
+  await logAction({
+    adminId: userId,
+    action: existing ? 'UPDATE' : 'CREATE',
+    module: 'ShippingLabel',
+    targetId: label._id.toString(),
+    description: `Uploaded shipping label ${shipmentId} for order ${order.orderNumber}`,
+    ipAddress,
+  });
+
+  return { label: formatLabelResponse(label, generatedByUser), created: !existing };
+}
+
 async function getShippingLabel(orderId, vendorOrderId) {
   const label = await ShippingLabel.findOne({ order: orderId, vendorOrder: vendorOrderId })
     .populate('generatedBy', 'name email')
@@ -384,6 +470,7 @@ async function getShippingLabelPdfBuffer(orderId, vendorOrderId) {
 
 module.exports = {
   generateShippingLabel,
+  uploadShippingLabel,
   getShippingLabel,
   getShippingLabelPdfBuffer,
   shareShippingLabelWithVendor,

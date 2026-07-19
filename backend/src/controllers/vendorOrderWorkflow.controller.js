@@ -194,7 +194,8 @@ exports.markDispatched = asyncHandler(async (req, res) => {
     throw new AppError('Dispatch is only allowed after Structbay has approved dispatch and sent invoice & e-way bill.', 400);
   }
 
-  const proof = req.file;
+  const proof = req.files?.proof?.[0];
+  const shippingLabel = req.files?.shippingLabel?.[0];
   if (!proof) throw new AppError('Dispatch proof file is required.', 400);
   if (!transporterName || !lrNumber || !dispatchDate) {
     throw new AppError('transporter_name, lr_number, and dispatch_date are required.', 400);
@@ -208,6 +209,8 @@ exports.markDispatched = asyncHandler(async (req, res) => {
     dispatchDate: new Date(dispatchDate),
     proofUrl: proof.path,
     proofCloudinaryId: proof.filename,
+    vendorShippingLabelUrl: shippingLabel ? shippingLabel.path : undefined,
+    vendorShippingLabelCloudinaryId: shippingLabel ? shippingLabel.filename : undefined,
   };
   vo.actualDispatchDate = new Date(dispatchDate);
   vo.status = 'DISPATCHED';

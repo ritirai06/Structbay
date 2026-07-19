@@ -199,11 +199,13 @@ async function enrichListingProducts(products, cityOid = null) {
         };
       });
 
+      const activeVariations = enrichedVariations.filter((v) => v.pricing != null);
+
       let inStock = false;
       let availableStock = 0;
       if (isVariantProduct) {
-        inStock = enrichedVariations.some((v) => v.inStock);
-        availableStock = enrichedVariations.reduce((sum, v) => sum + (v.availableStock || 0), 0);
+        inStock = activeVariations.some((v) => v.inStock);
+        availableStock = activeVariations.reduce((sum, v) => sum + (v.availableStock || 0), 0);
       } else if (baseInventory) {
         availableStock = Math.max(0, baseInventory.quantity - (baseInventory.reserved || 0));
         inStock = availableStock > 0;
@@ -223,7 +225,7 @@ async function enrichListingProducts(products, cityOid = null) {
         ...json,
         productStructure: structure,
         pricing: simplePricing,
-        variations: isVariantProduct ? enrichedVariations : [],
+        variations: isVariantProduct ? activeVariations : [],
         variationPricing: variationPricingOut,
         inStock,
         availableStock,

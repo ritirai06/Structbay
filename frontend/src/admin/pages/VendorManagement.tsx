@@ -44,8 +44,8 @@ const emptyVendorForm = {
   password: "",
   companyName: "",
   contactPerson: "",
+  vendorCode: "",
   gstNumber: "",
-  businessRegNumber: "",
   companyAddress: "",
   warehouseAddress: "",
   contactPersonName: "",
@@ -121,18 +121,18 @@ export function VendorManagement() {
       password: addForm.password,
       companyName: addForm.companyName.trim(),
       contactPerson: addForm.contactPerson.trim() || addForm.name.trim(),
-      gstNumber: addForm.gstNumber.trim().toUpperCase() || undefined,
-      businessRegNumber: addForm.businessRegNumber.trim() || undefined,
-      companyAddress: addForm.companyAddress.trim() || undefined,
-      warehouseAddress: addForm.warehouseAddress.trim() || undefined,
+      vendorCode: addForm.vendorCode.trim(),
+      gstNumber: addForm.gstNumber.trim().toUpperCase(),
+      companyAddress: addForm.companyAddress.trim(),
+      warehouseAddress: addForm.warehouseAddress.trim(),
       contactPersonName: addForm.contactPersonName.trim() || addForm.contactPerson.trim() || addForm.name.trim(),
       contactPersonPhone: addForm.contactPersonPhone.replace(/\D/g, "").slice(0, 10) || addForm.phone.replace(/\D/g, "").slice(0, 10),
       bankDetails: {
-        accountHolderName: addForm.accountHolderName.trim() || undefined,
-        bankName: addForm.bankName.trim() || undefined,
-        accountNumber: addForm.accountNumber.trim() || undefined,
-        ifscCode: addForm.ifscCode.trim().toUpperCase() || undefined,
-        branchName: addForm.branchName.trim() || undefined,
+        accountHolderName: addForm.accountHolderName.trim(),
+        bankName: addForm.bankName.trim(),
+        accountNumber: addForm.accountNumber.trim(),
+        ifscCode: addForm.ifscCode.trim().toUpperCase(),
+        branchName: addForm.branchName.trim(),
       }
     };
 
@@ -167,8 +167,8 @@ export function VendorManagement() {
       password: "",
       companyName: v.companyName || "",
       contactPerson: v.contactPerson || "",
+      vendorCode: v.referenceNumber || "",
       gstNumber: v.gstNumber || "",
-      businessRegNumber: v.businessRegNumber || "",
       companyAddress: v.companyAddress || "",
       warehouseAddress: v.warehouseAddress || "",
       contactPersonName: v.contactPersonName || v.contactPerson || v.name || "",
@@ -193,10 +193,10 @@ export function VendorManagement() {
       phone: editForm.phone.replace(/\D/g, "").slice(0, 10),
       companyName: editForm.companyName.trim(),
       contactPerson: editForm.contactPerson.trim() || editForm.name.trim(),
-      gstNumber: editForm.gstNumber.trim().toUpperCase() || undefined,
-      businessRegNumber: editForm.businessRegNumber.trim() || undefined,
-      companyAddress: editForm.companyAddress.trim() || undefined,
-      warehouseAddress: editForm.warehouseAddress.trim() || undefined,
+      vendorCode: editForm.vendorCode.trim(),
+      gstNumber: editForm.gstNumber.trim().toUpperCase(),
+      companyAddress: editForm.companyAddress.trim(),
+      warehouseAddress: editForm.warehouseAddress.trim(),
       contactPersonName: editForm.contactPersonName.trim() || editForm.contactPerson.trim() || editForm.name.trim(),
       contactPersonPhone: editForm.contactPersonPhone.replace(/\D/g, "").slice(0, 10) || editForm.phone.replace(/\D/g, "").slice(0, 10),
       bankDetails: {
@@ -377,7 +377,7 @@ export function VendorManagement() {
                       <td className="py-3.5 px-4 text-xs text-sb-ink/50">{new Date(v.createdAt).toLocaleDateString()}</td>
                       <td className="py-3.5 px-4">
                         <div className="flex gap-1.5">
-                          <button onClick={() => navigate(`/vendors/${v._id}`)} title="View profile" className="p-1.5 border border-sb-ink/10 rounded-lg text-sb-ink/55 hover:text-sb-ink hover:border-sb-ink/20 transition-colors bg-sb-cream">
+                          <button onClick={() => navigate(`/admin/vendors/${v._id}`)} title="View profile" className="p-1.5 border border-sb-ink/10 rounded-lg text-sb-ink/55 hover:text-sb-ink hover:border-sb-ink/20 transition-colors bg-sb-cream">
                             <Eye className="w-3.5 h-3.5" />
                           </button>
                           <button onClick={() => startEdit(v)} title="Edit profile" className="p-1.5 border border-sb-ink/10 rounded-lg text-sb-ink/55 hover:text-sb-ink hover:border-sb-ink/20 transition-colors bg-sb-cream">
@@ -453,20 +453,20 @@ export function VendorManagement() {
                   <input className={inp} value={addForm.companyName} onChange={e => setAddForm(f => ({ ...f, companyName: e.target.value }))} required />
                 </div>
                 <div>
-                  <label className="text-xs text-sb-ink/55 mb-1 block">GST Number (optional)</label>
-                  <input className={inp} value={addForm.gstNumber} onChange={e => setAddForm(f => ({ ...f, gstNumber: e.target.value }))} placeholder="22AAAAA0000A1Z5" />
+                  <label className="text-xs text-sb-ink/55 mb-1 block">Vendor Code *</label>
+                  <input className={inp} value={addForm.vendorCode} onChange={e => setAddForm(f => ({ ...f, vendorCode: e.target.value }))} placeholder="e.g. VND001" required />
                 </div>
                 <div>
-                  <label className="text-xs text-sb-ink/55 mb-1 block">Business Registration Number</label>
-                  <input className={inp} value={addForm.businessRegNumber} onChange={e => setAddForm(f => ({ ...f, businessRegNumber: e.target.value }))} />
+                  <label className="text-xs text-sb-ink/55 mb-1 block">GST Number *</label>
+                  <input className={inp} value={addForm.gstNumber} onChange={e => setAddForm(f => ({ ...f, gstNumber: e.target.value }))} placeholder="22AAAAA0000A1Z5" required />
                 </div>
                 <div className="col-span-2">
-                  <label className="text-xs text-sb-ink/55 mb-1 block">Company Address</label>
-                  <textarea rows={2} className={inp} value={addForm.companyAddress} onChange={e => setAddForm(f => ({ ...f, companyAddress: e.target.value }))} />
+                  <label className="text-xs text-sb-ink/55 mb-1 block">Company Address *</label>
+                  <textarea rows={2} className={inp} value={addForm.companyAddress} onChange={e => setAddForm(f => ({ ...f, companyAddress: e.target.value }))} required />
                 </div>
                 <div className="col-span-2">
-                  <label className="text-xs text-sb-ink/55 mb-1 block">Warehouse Address</label>
-                  <textarea rows={2} className={inp} value={addForm.warehouseAddress} onChange={e => setAddForm(f => ({ ...f, warehouseAddress: e.target.value }))} />
+                  <label className="text-xs text-sb-ink/55 mb-1 block">Warehouse Address *</label>
+                  <textarea rows={2} className={inp} value={addForm.warehouseAddress} onChange={e => setAddForm(f => ({ ...f, warehouseAddress: e.target.value }))} required />
                 </div>
               </div>
             </div>
@@ -476,12 +476,12 @@ export function VendorManagement() {
               <h4 className="font-semibold text-xs text-sb-orange uppercase tracking-wider border-b border-sb-ink/10 pb-1">Section 3 – Contact Information</h4>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-sb-ink/55 mb-1 block">Contact Person Name</label>
-                  <input className={inp} value={addForm.contactPersonName} onChange={e => setAddForm(f => ({ ...f, contactPersonName: e.target.value }))} />
+                  <label className="text-xs text-sb-ink/55 mb-1 block">Contact Person Name *</label>
+                  <input className={inp} value={addForm.contactPersonName} onChange={e => setAddForm(f => ({ ...f, contactPersonName: e.target.value }))} required />
                 </div>
                 <div>
-                  <label className="text-xs text-sb-ink/55 mb-1 block">Contact Person Phone</label>
-                  <input className={inp} value={addForm.contactPersonPhone} onChange={e => setAddForm(f => ({ ...f, contactPersonPhone: e.target.value }))} placeholder="9876543210" />
+                  <label className="text-xs text-sb-ink/55 mb-1 block">Contact Person Phone *</label>
+                  <input className={inp} value={addForm.contactPersonPhone} onChange={e => setAddForm(f => ({ ...f, contactPersonPhone: e.target.value }))} placeholder="9876543210" required />
                 </div>
               </div>
             </div>
@@ -491,28 +491,28 @@ export function VendorManagement() {
               <h4 className="font-semibold text-xs text-sb-orange uppercase tracking-wider border-b border-sb-ink/10 pb-1">Section 4 – Banking Information</h4>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-sb-ink/55 mb-1 block">Account Holder Name</label>
-                  <input className={inp} value={addForm.accountHolderName} onChange={e => setAddForm(f => ({ ...f, accountHolderName: e.target.value }))} />
+                  <label className="text-xs text-sb-ink/55 mb-1 block">Account Holder Name *</label>
+                  <input className={inp} value={addForm.accountHolderName} onChange={e => setAddForm(f => ({ ...f, accountHolderName: e.target.value }))} required />
                 </div>
                 <div>
-                  <label className="text-xs text-sb-ink/55 mb-1 block">Bank Name</label>
-                  <input className={inp} value={addForm.bankName} onChange={e => setAddForm(f => ({ ...f, bankName: e.target.value }))} />
+                  <label className="text-xs text-sb-ink/55 mb-1 block">Bank Name *</label>
+                  <input className={inp} value={addForm.bankName} onChange={e => setAddForm(f => ({ ...f, bankName: e.target.value }))} required />
                 </div>
                 <div>
-                  <label className="text-xs text-sb-ink/55 mb-1 block">Account Number</label>
-                  <input className={inp} value={addForm.accountNumber} onChange={e => setAddForm(f => ({ ...f, accountNumber: e.target.value }))} />
+                  <label className="text-xs text-sb-ink/55 mb-1 block">Account Number *</label>
+                  <input className={inp} value={addForm.accountNumber} onChange={e => setAddForm(f => ({ ...f, accountNumber: e.target.value }))} required />
                 </div>
                 <div>
-                  <label className="text-xs text-sb-ink/55 mb-1 block">IFSC Code</label>
-                  <input className={inp} value={addForm.ifscCode} onChange={e => setAddForm(f => ({ ...f, ifscCode: e.target.value }))} placeholder="SBIN0001234" />
+                  <label className="text-xs text-sb-ink/55 mb-1 block">IFSC Code *</label>
+                  <input className={inp} value={addForm.ifscCode} onChange={e => setAddForm(f => ({ ...f, ifscCode: e.target.value }))} placeholder="SBIN0001234" required />
                 </div>
                 <div className="col-span-2">
-                  <label className="text-xs text-sb-ink/55 mb-1 block">Branch Name</label>
-                  <input className={inp} value={addForm.branchName} onChange={e => setAddForm(f => ({ ...f, branchName: e.target.value }))} />
+                  <label className="text-xs text-sb-ink/55 mb-1 block">Branch Name *</label>
+                  <input className={inp} value={addForm.branchName} onChange={e => setAddForm(f => ({ ...f, branchName: e.target.value }))} required />
                 </div>
                 <div className="col-span-2">
-                  <label className="text-xs text-sb-ink/55 mb-1 block">Cancelled Cheque Upload</label>
-                  <input type="file" accept="image/*,application/pdf" onChange={e => setAddFile(e.target.files?.[0] || null)} className="w-full text-xs text-sb-ink/60" />
+                  <label className="text-xs text-sb-ink/55 mb-1 block">Cancelled Cheque Upload *</label>
+                  <input type="file" accept="image/*,application/pdf" onChange={e => setAddFile(e.target.files?.[0] || null)} className="w-full text-xs text-sb-ink/60" required />
                 </div>
               </div>
             </div>
@@ -566,20 +566,20 @@ export function VendorManagement() {
                   <input className={inp} value={editForm.companyName} onChange={e => setEditForm(f => ({ ...f, companyName: e.target.value }))} required />
                 </div>
                 <div>
-                  <label className="text-xs text-sb-ink/55 mb-1 block">GST Number</label>
-                  <input className={inp} value={editForm.gstNumber} onChange={e => setEditForm(f => ({ ...f, gstNumber: e.target.value }))} />
+                  <label className="text-xs text-sb-ink/55 mb-1 block">Vendor Code *</label>
+                  <input className={inp} value={editForm.vendorCode} onChange={e => setEditForm(f => ({ ...f, vendorCode: e.target.value }))} required />
                 </div>
                 <div>
-                  <label className="text-xs text-sb-ink/55 mb-1 block">Business Registration Number</label>
-                  <input className={inp} value={editForm.businessRegNumber} onChange={e => setEditForm(f => ({ ...f, businessRegNumber: e.target.value }))} />
+                  <label className="text-xs text-sb-ink/55 mb-1 block">GST Number *</label>
+                  <input className={inp} value={editForm.gstNumber} onChange={e => setEditForm(f => ({ ...f, gstNumber: e.target.value }))} required />
                 </div>
                 <div className="col-span-2">
-                  <label className="text-xs text-sb-ink/55 mb-1 block">Company Address</label>
-                  <textarea rows={2} className={inp} value={editForm.companyAddress} onChange={e => setEditForm(f => ({ ...f, companyAddress: e.target.value }))} />
+                  <label className="text-xs text-sb-ink/55 mb-1 block">Company Address *</label>
+                  <textarea rows={2} className={inp} value={editForm.companyAddress} onChange={e => setEditForm(f => ({ ...f, companyAddress: e.target.value }))} required />
                 </div>
                 <div className="col-span-2">
-                  <label className="text-xs text-sb-ink/55 mb-1 block">Warehouse Address</label>
-                  <textarea rows={2} className={inp} value={editForm.warehouseAddress} onChange={e => setEditForm(f => ({ ...f, warehouseAddress: e.target.value }))} />
+                  <label className="text-xs text-sb-ink/55 mb-1 block">Warehouse Address *</label>
+                  <textarea rows={2} className={inp} value={editForm.warehouseAddress} onChange={e => setEditForm(f => ({ ...f, warehouseAddress: e.target.value }))} required />
                 </div>
               </div>
             </div>
@@ -589,12 +589,12 @@ export function VendorManagement() {
               <h4 className="font-semibold text-xs text-sb-orange uppercase tracking-wider border-b border-sb-ink/10 pb-1">Section 3 – Contact Information</h4>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-sb-ink/55 mb-1 block">Contact Person Name</label>
-                  <input className={inp} value={editForm.contactPersonName} onChange={e => setEditForm(f => ({ ...f, contactPersonName: e.target.value }))} />
+                  <label className="text-xs text-sb-ink/55 mb-1 block">Contact Person Name *</label>
+                  <input className={inp} value={editForm.contactPersonName} onChange={e => setEditForm(f => ({ ...f, contactPersonName: e.target.value }))} required />
                 </div>
                 <div>
-                  <label className="text-xs text-sb-ink/55 mb-1 block">Contact Person Phone</label>
-                  <input className={inp} value={editForm.contactPersonPhone} onChange={e => setEditForm(f => ({ ...f, contactPersonPhone: e.target.value }))} />
+                  <label className="text-xs text-sb-ink/55 mb-1 block">Contact Person Phone *</label>
+                  <input className={inp} value={editForm.contactPersonPhone} onChange={e => setEditForm(f => ({ ...f, contactPersonPhone: e.target.value }))} required />
                 </div>
               </div>
             </div>
@@ -604,24 +604,24 @@ export function VendorManagement() {
               <h4 className="font-semibold text-xs text-sb-orange uppercase tracking-wider border-b border-sb-ink/10 pb-1">Section 4 – Banking Information</h4>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-sb-ink/55 mb-1 block">Account Holder Name</label>
-                  <input className={inp} value={editForm.accountHolderName} onChange={e => setEditForm(f => ({ ...f, accountHolderName: e.target.value }))} />
+                  <label className="text-xs text-sb-ink/55 mb-1 block">Account Holder Name *</label>
+                  <input className={inp} value={editForm.accountHolderName} onChange={e => setEditForm(f => ({ ...f, accountHolderName: e.target.value }))} required />
                 </div>
                 <div>
-                  <label className="text-xs text-sb-ink/55 mb-1 block">Bank Name</label>
-                  <input className={inp} value={editForm.bankName} onChange={e => setEditForm(f => ({ ...f, bankName: e.target.value }))} />
+                  <label className="text-xs text-sb-ink/55 mb-1 block">Bank Name *</label>
+                  <input className={inp} value={editForm.bankName} onChange={e => setEditForm(f => ({ ...f, bankName: e.target.value }))} required />
                 </div>
                 <div>
-                  <label className="text-xs text-sb-ink/55 mb-1 block">Account Number</label>
-                  <input className={inp} value={editForm.accountNumber} onChange={e => setEditForm(f => ({ ...f, accountNumber: e.target.value }))} />
+                  <label className="text-xs text-sb-ink/55 mb-1 block">Account Number *</label>
+                  <input className={inp} value={editForm.accountNumber} onChange={e => setEditForm(f => ({ ...f, accountNumber: e.target.value }))} required />
                 </div>
                 <div>
-                  <label className="text-xs text-sb-ink/55 mb-1 block">IFSC Code</label>
-                  <input className={inp} value={editForm.ifscCode} onChange={e => setEditForm(f => ({ ...f, ifscCode: e.target.value }))} />
+                  <label className="text-xs text-sb-ink/55 mb-1 block">IFSC Code *</label>
+                  <input className={inp} value={editForm.ifscCode} onChange={e => setEditForm(f => ({ ...f, ifscCode: e.target.value }))} required />
                 </div>
                 <div className="col-span-2">
-                  <label className="text-xs text-sb-ink/55 mb-1 block">Branch Name</label>
-                  <input className={inp} value={editForm.branchName} onChange={e => setEditForm(f => ({ ...f, branchName: e.target.value }))} />
+                  <label className="text-xs text-sb-ink/55 mb-1 block">Branch Name *</label>
+                  <input className={inp} value={editForm.branchName} onChange={e => setEditForm(f => ({ ...f, branchName: e.target.value }))} required />
                 </div>
                 <div className="col-span-2">
                   <label className="text-xs text-sb-ink/55 mb-1 block">Update Cancelled Cheque</label>

@@ -4,6 +4,8 @@ const { requireRole } = require('../middleware/role.middleware');
 const ctrl = require('../controllers/order.controller');
 const labelCtrl = require('../controllers/shippingLabel.controller');
 
+const multer = require('multer');
+const uploadMem = multer({ storage: multer.memoryStorage() });
 const adminOnly = [protect, requireRole('ADMIN')];
 
 router.get('/invoices/summary',       ...adminOnly, ctrl.invoiceSummary);
@@ -21,6 +23,7 @@ router.patch('/:id/items/fulfillment', ...adminOnly, ctrl.bulkPatchItemFulfillme
 router.patch('/:id/items/:itemId/fulfillment', ...adminOnly, ctrl.patchItemFulfillment);
 router.get('/:id/delivery-type-overrides', ...adminOnly, ctrl.listDeliveryTypeOverrides);
 router.patch('/:id/documents',    ...adminOnly, ctrl.uploadDocs);
+router.post('/:id/shipping-label/upload', ...adminOnly, uploadMem.single('file'), labelCtrl.uploadLabel);
 router.post('/:id/generate-shipping-label', ...adminOnly, labelCtrl.generateLabel);
 router.post('/:id/regenerate-shipping-label', ...adminOnly, labelCtrl.regenerateLabel);
 router.post('/:id/shipping-label/share', ...adminOnly, labelCtrl.shareLabelWithVendor);

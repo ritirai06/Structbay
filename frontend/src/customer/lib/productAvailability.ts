@@ -88,6 +88,7 @@ export function availabilityForProduct(
     stockStatus?: string;
     availableStock?: number;
     productStructure?: string;
+    alwaysInStock?: boolean;
     variations?: Array<StockLine & { _id?: unknown; pricing?: unknown }>;
     variationPricing?: unknown[];
   } | null | undefined,
@@ -98,6 +99,7 @@ export function availabilityForProduct(
     return resolveAvailability(null, false);
   }
 
+  const isDropship = product.alwaysInStock === true;
   const isVariant =
     product.productStructure === "variant" ||
     (Array.isArray(product.variations) && product.variations.length > 0);
@@ -113,16 +115,26 @@ export function availabilityForProduct(
 
   if (isVariant && variationId) {
     const v = (product.variations || []).find((x) => String(x._id) === variationId);
+    if (isDropship && v) {
+      return resolveAvailability({ ...v, inStock: true, availableStock: 999999 }, hasPrice, unpricedLabel);
+    }
     return resolveAvailability(v, hasPrice, unpricedLabel);
   }
 
   if (isVariant && product.variations?.length) {
-    const anyInStock = product.variations.some((v) => v.inStock !== false);
     if (!hasPrice) return resolveAvailability(null, false, unpricedLabel);
+    if (isDropship) {
+      return resolveAvailability({ inStock: true, availableStock: 999999 }, true);
+    }
+    const anyInStock = product.variations.some((v) => v.inStock !== false);
     if (!anyInStock) {
       return resolveAvailability({ inStock: false, availableStock: 0 }, true);
     }
     return resolveAvailability(product.variations.find((v) => v.inStock) || product.variations[0], true);
+  }
+
+  if (isDropship && hasPrice) {
+    return resolveAvailability({ inStock: true, availableStock: 999999 }, true);
   }
 
   return resolveAvailability(

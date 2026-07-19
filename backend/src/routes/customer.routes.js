@@ -641,7 +641,8 @@ router.get(
 
     const facets = await catalogBrowse.distinctAttributeValuesForProducts(
       facetProductIds,
-      filterDefinitions
+      filterDefinitions,
+      cityOid
     );
     const enrichedFilters = catalogBrowse.appendDiscoveredAttributeFilters(
       catalogBrowse.enrichCategoryFilterDefinitions(filterDefinitions, facets),

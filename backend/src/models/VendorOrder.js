@@ -124,6 +124,8 @@ const vendorOrderSchema = new mongoose.Schema(
       dispatchDate: Date,
       proofUrl: String,
       proofCloudinaryId: String,
+      vendorShippingLabelUrl: String,
+      vendorShippingLabelCloudinaryId: String,
     },
 
     /** POD + admin confirmation */

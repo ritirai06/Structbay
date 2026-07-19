@@ -137,7 +137,7 @@ interface AppContextType {
   cart: CartItem[];
   addToCart: (item: CartItem) => void;
   removeFromCart: (id: string) => void;
-  updateQty: (id: string, qty: number) => void;
+  updateQty: (id: string, qty: number | string, isTyping?: boolean) => void;
   /** Clear in-memory cart (e.g. after a successful server checkout). */
   clearClientCart: () => void;
   /** Sum of line subtotals ex-GST (wholesale slabs applied per line by quantity). */
@@ -397,12 +397,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const removeFromCart = (id: string) => setCart((prev) => prev.filter((i) => i.id !== id));
 
-  const updateQty = (id: string, qty: number) => {
-    if (qty <= 0) {
+  const updateQty = (id: string, qty: number | string, isTyping?: boolean) => {
+    if ((qty === 0 || qty < 0 || qty === "") && !isTyping) {
       removeFromCart(id);
       return;
     }
-    setCart((prev) => prev.map((i) => (i.id === id ? { ...i, qty } : i)));
+    setCart((prev) => prev.map((i) => (i.id === id ? { ...i, qty: qty as number } : i)));
   };
 
   const clearClientCart = () => setCart([]);

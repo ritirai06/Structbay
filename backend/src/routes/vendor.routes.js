@@ -43,7 +43,10 @@ const wfReadyFields = uploadDocumentFields(UPLOAD_FOLDERS.VENDOR_DOCS, [
   { name: 'packing', maxCount: 5 },
   { name: 'invoice', maxCount: 1 },
 ]);
-const dispatchProofUpload = uploadDocument(UPLOAD_FOLDERS.VENDOR_DOCS).single('proof');
+const dispatchProofUpload = uploadDocumentFields(UPLOAD_FOLDERS.VENDOR_DOCS, [
+  { name: 'proof', maxCount: 1 },
+  { name: 'shippingLabel', maxCount: 1 },
+]);
 const podUpload = uploadDocument(UPLOAD_FOLDERS.VENDOR_DOCS).single('pod');
 
 // ─── ORDERS ─────────────────────────────────────────────────────────────────

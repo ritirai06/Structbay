@@ -50,6 +50,14 @@ function buildInvoicePayload({ orderId, vendorId, file, vendorRemarks, pickup })
 async function finalizeInvoiceUpload(order, invoice, req, structbayInvoiceNumber) {
   order.invoiceStatus = 'UPLOADED';
 
+  order.vendorInvoice = {
+    invoicePdfUrl: invoice.invoiceUrl,
+    invoicePdfCloudinaryId: invoice.cloudinaryId,
+    invoiceNumber: structbayInvoiceNumber,
+    uploadedAt: invoice.submittedAt,
+    uploadedBy: req.user._id,
+  };
+
   if (isWorkflowVendorOrder(order)) {
     order.status = 'VENDOR_INVOICE_SUBMITTED';
     pushEmbeddedHistory(order, 'VENDOR_INVOICE_SUBMITTED', req.user._id, 'User', 'Vendor submitted final tax invoice.');
@@ -182,7 +190,14 @@ exports.replaceInvoice = async (req, res) => {
   oldInvoice.replacedBy = newInvoice._id;
   await oldInvoice.save();
 
-  if (pickupResult) await order.save();
+  order.vendorInvoice = {
+    invoicePdfUrl: newInvoice.invoiceUrl,
+    invoicePdfCloudinaryId: newInvoice.cloudinaryId,
+    invoiceNumber: structbayInvoiceNumber,
+    uploadedAt: newInvoice.submittedAt,
+    uploadedBy: req.user._id,
+  };
+  await order.save();
 
   await VendorActivityLog.create({
     vendor: req.user._id,

@@ -153,6 +153,7 @@ async function enrichProductsSummary(products) {
       .filter(Boolean);
 
     const totalStock = json.alwaysInStock ? 999999 : inventory.reduce((sum, inv) => sum + (inv.quantity || 0), 0);
+    const inStock = json.alwaysInStock ? true : (totalStock > 0);
 
     return {
       ...json,
@@ -160,6 +161,7 @@ async function enrichProductsSummary(products) {
       lowestPrice: prices.length ? Math.min(...prices) : null,
       highestPrice: prices.length ? Math.max(...prices) : null,
       totalStock,
+      inStock,
       inventorySummary: {
         totalStock,
         cityCount: inventory.length,
@@ -169,12 +171,16 @@ async function enrichProductsSummary(products) {
 }
 
 async function getProductConfiguration(productId) {
+  const Product = require('../models/Product');
+  const product = await Product.findById(productId).select('alwaysInStock').lean();
+  const isDropship = product?.alwaysInStock === true;
+
   const [cityPricing, inventory, cities] = await Promise.all([
     CityPricing.find({ product: productId, variation: null })
       .populate('city', 'name slug state status isServiceable')
       .sort({ 'city.name': 1 })
       .lean(),
-    Inventory.find({ product: productId, variation: null })
+    isDropship ? [] : Inventory.find({ product: productId, variation: null })
       .populate('city', 'name slug state')
       .lean(),
     City.find({ status: 'ACTIVE', isServiceable: true }).select('name slug state').sort({ name: 1 }).lean(),
@@ -187,11 +193,11 @@ async function getProductConfiguration(productId) {
     const cid = String(city._id);
     const pricing = pricingByCity.get(cid);
     const inv = inventoryByCity.get(cid);
-    const qty = inv?.quantity ?? 0;
+    const qty = isDropship ? 999999 : (inv?.quantity ?? 0);
     const reorder = inv?.lowStockThreshold ?? 50;
     let stockStatus = 'IN_STOCK';
-    if (qty === 0) stockStatus = 'OUT_OF_STOCK';
-    else if (qty <= reorder) stockStatus = 'LOW_STOCK';
+    if (!isDropship && qty === 0) stockStatus = 'OUT_OF_STOCK';
+    else if (!isDropship && qty <= reorder) stockStatus = 'LOW_STOCK';
 
     return {
       city: city,
@@ -204,7 +210,14 @@ async function getProductConfiguration(productId) {
         isAvailable: pricing.isVisible !== false,
         wholesaleSlabs: pricing.wholesaleSlabs || [],
       } : null,
-      inventory: inv ? {
+      inventory: isDropship ? {
+        quantity: 999999,
+        reserved: 0,
+        reorderLevel: 0,
+        safetyStock: 0,
+        stockStatus: 'IN_STOCK',
+        available: 999999,
+      } : (inv ? {
         _id: inv._id,
         quantity: inv.quantity,
         reserved: inv.reserved,
@@ -212,14 +225,18 @@ async function getProductConfiguration(productId) {
         safetyStock: inv.safetyStock ?? 0,
         stockStatus,
         available: Math.max(0, (inv.quantity || 0) - (inv.reserved || 0)),
-      } : null,
+      } : null),
     };
   });
 
-  return { cityPricing, inventory, cityConfigs, activeCities: cities };
+  return { cityPricing, inventory, cityConfigs, activeCities: cities, isDropship };
 }
 
 async function getVariationConfiguration(productId, variationId) {
+  const Product = require('../models/Product');
+  const product = await Product.findById(productId).select('alwaysInStock').lean();
+  const isDropship = product?.alwaysInStock === true;
+
   const variationOid = new mongoose.Types.ObjectId(String(variationId));
   const productOid = new mongoose.Types.ObjectId(String(productId));
 
@@ -228,7 +245,7 @@ async function getVariationConfiguration(productId, variationId) {
       .populate('city', 'name slug state status isServiceable')
       .sort({ 'city.name': 1 })
       .lean(),
-    Inventory.find({ product: productOid, variation: variationOid })
+    isDropship ? [] : Inventory.find({ product: productOid, variation: variationOid })
       .populate('city', 'name slug state')
       .lean(),
     City.find({ status: 'ACTIVE', isServiceable: true }).select('name slug state').sort({ name: 1 }).lean(),
@@ -241,11 +258,11 @@ async function getVariationConfiguration(productId, variationId) {
     const cid = String(city._id);
     const pricing = pricingByCity.get(cid);
     const inv = inventoryByCity.get(cid);
-    const qty = inv?.quantity ?? 0;
+    const qty = isDropship ? 999999 : (inv?.quantity ?? 0);
     const reorder = inv?.lowStockThreshold ?? 50;
     let stockStatus = 'IN_STOCK';
-    if (qty === 0) stockStatus = 'OUT_OF_STOCK';
-    else if (qty <= reorder) stockStatus = 'LOW_STOCK';
+    if (!isDropship && qty === 0) stockStatus = 'OUT_OF_STOCK';
+    else if (!isDropship && qty <= reorder) stockStatus = 'LOW_STOCK';
 
     return {
       city,
@@ -258,7 +275,14 @@ async function getVariationConfiguration(productId, variationId) {
         isAvailable: pricing.isVisible !== false,
         wholesaleSlabs: pricing.wholesaleSlabs || [],
       } : null,
-      inventory: inv ? {
+      inventory: isDropship ? {
+        quantity: 999999,
+        reserved: 0,
+        reorderLevel: 0,
+        safetyStock: 0,
+        stockStatus: 'IN_STOCK',
+        available: 999999,
+      } : (inv ? {
         _id: inv._id,
         quantity: inv.quantity,
         reserved: inv.reserved,
@@ -266,11 +290,11 @@ async function getVariationConfiguration(productId, variationId) {
         safetyStock: inv.safetyStock ?? 0,
         stockStatus,
         available: Math.max(0, (inv.quantity || 0) - (inv.reserved || 0)),
-      } : null,
+      } : null),
     };
   });
 
-  return { cityPricing, inventory, cityConfigs, activeCities: cities };
+  return { cityPricing, inventory, cityConfigs, activeCities: cities, isDropship };
 }
 
 async function saveScopedConfiguration(

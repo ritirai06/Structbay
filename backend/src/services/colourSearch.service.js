@@ -1,236 +1,191 @@
 /**
  * Colour Search Service
- * Handles fast searching of colour names and codes
- * Optimized for products with 2500+ colour options
+ * Handles searching for colours across products with massive variations
+ * Supports partial matching on colour names and codes
  */
 
 const ProductVariation = require('../models/ProductVariation');
 const { normalizeVariationAttributes } = require('../utils/variationAttributes');
 
 /**
- * Search colours by name or code
- * Supports partial matching and case-insensitive search
+ * Search for colours matching a query
+ * Supports partial colour code and colour name matching
  */
-async function searchColours(productId, query, options = {}) {
+async function searchColours(query, options = {}) {
   const {
+    productId = null,
     limit = 50,
     skip = 0,
-    attributeName = 'colour',
-    codeAttributeName = 'colour_code',
+    caseSensitive = false,
   } = options;
 
-  if (!query || query.trim().length === 0) {
-    return { results: [], total: 0, query };
+  if (!query || String(query).trim().length === 0) {
+    return { colours: [], total: 0 };
   }
 
-  const searchQuery = query.trim().toLowerCase();
+  const q = String(query).trim();
+  const searchRegex = caseSensitive
+    ? new RegExp(q, 'g')
+    : new RegExp(q, 'gi');
 
-  // Build regex for partial matching
-  const regex = new RegExp(searchQuery, 'i');
+  // Build filter
+  const filter = { isDeleted: { $ne: true } };
+  if (productId) filter.product = productId;
 
-  // Find variations with matching colour attributes
-  const variations = await ProductVariation.find({
-    product: productId,
-    isDeleted: { $ne: true },
-    status: 'ACTIVE',
-  })
-    .select('attributes')
-    .lean();
+  // Get variations with searchText index
+  const variations = await ProductVariation.find(filter)
+    .select('attributes searchText')
+    .lean()
+    .limit(limit + skip)
+    .skip(skip);
 
-  // Extract unique colours from variations
-  const colourMap = new Map(); // key -> { name, code, count }
+  const colourSet = new Map(); // colourName → { name, code, count }
 
-  for (const variation of variations) {
-    const attrs = normalizeVariationAttributes({ attributes: variation.attributes });
+  for (const v of variations) {
+    const flat = normalizeVariationAttributes({ attributes: v.attributes });
 
-    // Get colour name
-    const colourKey = Object.keys(attrs).find(
-      (k) => k.toLowerCase() === attributeName.toLowerCase()
-    );
-    const colourName = colourKey ? attrs[colourKey] : null;
+    // Look for colour-related attributes
+    for (const [key, value] of Object.entries(flat)) {
+      const keyLower = String(key).toLowerCase();
+      const valueLower = String(value).toLowerCase();
 
-    // Get colour code
-    const codeKey = Object.keys(attrs).find(
-      (k) => k.toLowerCase() === codeAttributeName.toLowerCase()
-    );
-    const colourCode = codeKey ? attrs[codeKey] : null;
+      // Check if this is a colour attribute
+      if (
+        keyLower.includes('color') ||
+        keyLower.includes('colour') ||
+        keyLower.includes('shade') ||
+        keyLower.includes('hue')
+      ) {
+        // Skip colour code attributes (they end with _code)
+        if (keyLower.endsWith('_code')) continue;
 
-    if (colourName || colourCode) {
-      const key = `${colourName}|${colourCode}`;
+        // Check if value matches query
+        if (valueLower.includes(q.toLowerCase())) {
+          const colourName = String(value).trim();
+          const codeKey = `${key}_code`;
+          const colourCode = flat[codeKey] || null;
 
-      if (!colourMap.has(key)) {
-        colourMap.set(key, {
-          name: colourName || '',
-          code: colourCode || '',
-          count: 0,
-        });
+          if (!colourSet.has(colourName)) {
+            colourSet.set(colourName, {
+              name: colourName,
+              code: colourCode,
+              count: 0,
+            });
+          }
+
+          const entry = colourSet.get(colourName);
+          entry.count += 1;
+        }
       }
-
-      const entry = colourMap.get(key);
-      entry.count += 1;
     }
   }
 
-  // Filter by search query
-  const filtered = Array.from(colourMap.values()).filter((colour) => {
-    const nameMatch = colour.name && regex.test(colour.name);
-    const codeMatch = colour.code && regex.test(colour.code);
-    return nameMatch || codeMatch;
-  });
-
-  // Sort by relevance (exact match first, then by count)
-  filtered.sort((a, b) => {
-    const aExactName = a.name && a.name.toLowerCase() === searchQuery;
-    const bExactName = b.name && b.name.toLowerCase() === searchQuery;
-    const aExactCode = a.code && a.code.toLowerCase() === searchQuery;
-    const bExactCode = b.code && b.code.toLowerCase() === searchQuery;
-
-    if (aExactName && !bExactName) return -1;
-    if (!aExactName && bExactName) return 1;
-    if (aExactCode && !bExactCode) return -1;
-    if (!aExactCode && bExactCode) return 1;
-
-    return b.count - a.count;
-  });
-
-  const total = filtered.length;
-  const results = filtered.slice(skip, skip + limit);
+  // Convert to array and sort by count (most common first)
+  const colours = Array.from(colourSet.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit);
 
   return {
-    results,
-    total,
-    query: searchQuery,
-    skip,
-    limit,
-    hasMore: skip + limit < total,
+    colours,
+    total: colourSet.size,
+    query: q,
   };
 }
 
 /**
  * Get all unique colours for a product
- * Useful for building colour palettes
+ * Useful for building colour filters
  */
-async function getAllColours(productId, options = {}) {
-  const { attributeName = 'colour', codeAttributeName = 'colour_code' } = options;
+async function getProductColours(productId, options = {}) {
+  const { limit = 1000 } = options;
 
   const variations = await ProductVariation.find({
     product: productId,
     isDeleted: { $ne: true },
-    status: 'ACTIVE',
   })
     .select('attributes')
-    .lean();
+    .lean()
+    .limit(limit);
 
   const colourMap = new Map();
 
-  for (const variation of variations) {
-    const attrs = normalizeVariationAttributes({ attributes: variation.attributes });
+  for (const v of variations) {
+    const flat = normalizeVariationAttributes({ attributes: v.attributes });
 
-    const colourKey = Object.keys(attrs).find(
-      (k) => k.toLowerCase() === attributeName.toLowerCase()
-    );
-    const colourName = colourKey ? attrs[colourKey] : null;
+    for (const [key, value] of Object.entries(flat)) {
+      const keyLower = String(key).toLowerCase();
 
-    const codeKey = Object.keys(attrs).find(
-      (k) => k.toLowerCase() === codeAttributeName.toLowerCase()
-    );
-    const colourCode = codeKey ? attrs[codeKey] : null;
+      if (
+        (keyLower.includes('color') || keyLower.includes('colour')) &&
+        !keyLower.endsWith('_code')
+      ) {
+        const colourName = String(value).trim();
+        const codeKey = `${key}_code`;
+        const colourCode = flat[codeKey] || null;
 
-    if (colourName || colourCode) {
-      const key = `${colourName}|${colourCode}`;
-
-      if (!colourMap.has(key)) {
-        colourMap.set(key, {
-          name: colourName || '',
-          code: colourCode || '',
-          count: 0,
-        });
+        if (!colourMap.has(colourName)) {
+          colourMap.set(colourName, {
+            name: colourName,
+            code: colourCode,
+          });
+        }
       }
-
-      const entry = colourMap.get(key);
-      entry.count += 1;
     }
   }
 
-  return Array.from(colourMap.values()).sort((a, b) => b.count - a.count);
+  return Array.from(colourMap.values());
 }
 
 /**
  * Find variations matching a colour
+ * Returns variations that have the specified colour
  */
-async function findVariationsByColour(productId, colourName, colourCode, options = {}) {
-  const { attributeName = 'colour', codeAttributeName = 'colour_code' } = options;
+async function findVariationsByColour(productId, colourName, options = {}) {
+  const { limit = 100, skip = 0 } = options;
 
-  const query = {
-    product: productId,
-    isDeleted: { $ne: true },
-    status: 'ACTIVE',
-  };
-
-  // Build attribute search conditions
-  const conditions = [];
-
-  if (colourName) {
-    conditions.push({
-      attributes: {
-        $elemMatch: {
-          key: new RegExp(`^${attributeName}$`, 'i'),
-          value: new RegExp(`^${colourName}$`, 'i'),
-        },
-      },
-    });
-  }
-
-  if (colourCode) {
-    conditions.push({
-      attributes: {
-        $elemMatch: {
-          key: new RegExp(`^${codeAttributeName}$`, 'i'),
-          value: new RegExp(`^${colourCode}$`, 'i'),
-        },
-      },
-    });
-  }
-
-  if (conditions.length > 0) {
-    query.$or = conditions;
-  }
-
-  return ProductVariation.find(query).lean();
-}
-
-/**
- * Check if a product has many colours (threshold for showing search instead of dropdown)
- */
-async function hasManyColours(productId, threshold = 100, attributeName = 'colour') {
   const variations = await ProductVariation.find({
     product: productId,
     isDeleted: { $ne: true },
-    status: 'ACTIVE',
   })
-    .select('attributes')
-    .lean();
+    .select('_id attributes sku status')
+    .lean()
+    .skip(skip)
+    .limit(limit);
 
-  const colourSet = new Set();
+  const matching = [];
 
-  for (const variation of variations) {
-    const attrs = normalizeVariationAttributes({ attributes: variation.attributes });
+  for (const v of variations) {
+    const flat = normalizeVariationAttributes({ attributes: v.attributes });
 
-    const colourKey = Object.keys(attrs).find(
-      (k) => k.toLowerCase() === attributeName.toLowerCase()
-    );
+    for (const [key, value] of Object.entries(flat)) {
+      const keyLower = String(key).toLowerCase();
 
-    if (colourKey) {
-      colourSet.add(attrs[colourKey]);
+      if (
+        (keyLower.includes('color') || keyLower.includes('colour')) &&
+        !keyLower.endsWith('_code')
+      ) {
+        if (String(value).toLowerCase() === colourName.toLowerCase()) {
+          const codeKey = `${key}_code`;
+          const colourCode = flat[codeKey] || null;
+
+          matching.push({
+            variationId: v._id,
+            sku: v.sku,
+            status: v.status,
+            colourName: String(value),
+            colourCode,
+          });
+          break;
+        }
+      }
     }
   }
 
-  return colourSet.size >= threshold;
+  return matching;
 }
 
 module.exports = {
   searchColours,
-  getAllColours,
+  getProductColours,
   findVariationsByColour,
-  hasManyColours,
 };

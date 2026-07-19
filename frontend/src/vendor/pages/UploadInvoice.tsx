@@ -105,10 +105,16 @@ export function UploadInvoice() {
       setError(err.message ?? 'Upload failed. Please try again.');
     } finally { setSubmitting(false); }
   }
+  const fixPdfUrl = (url: string) => {
+    if (url.includes('res.cloudinary.com') && url.includes('/image/upload/') && !url.includes('/fl_attachment/') && /\.pdf(\?|$)/i.test(url)) {
+      return url.replace('/image/upload/', '/image/upload/fl_attachment/');
+    }
+    return url;
+  };
 
   const openExistingPdf = () => {
     if (existingInvoice?.invoiceUrl) {
-      window.open(existingInvoice.invoiceUrl, '_blank', 'noopener,noreferrer');
+      window.open(fixPdfUrl(existingInvoice.invoiceUrl), '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -117,9 +123,9 @@ export function UploadInvoice() {
     try {
       const res = await api.downloadInvoice(existingInvoice._id);
       const url = res.data?.downloadUrl || existingInvoice.invoiceUrl;
-      if (url) window.open(url, '_blank', 'noopener,noreferrer');
+      if (url) window.open(fixPdfUrl(url), '_blank', 'noopener,noreferrer');
     } catch {
-      if (existingInvoice?.invoiceUrl) window.open(existingInvoice.invoiceUrl, '_blank', 'noopener,noreferrer');
+      if (existingInvoice?.invoiceUrl) window.open(fixPdfUrl(existingInvoice.invoiceUrl), '_blank', 'noopener,noreferrer');
     }
   };
 

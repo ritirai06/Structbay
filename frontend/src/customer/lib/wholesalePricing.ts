@@ -108,6 +108,10 @@ export function pricingSnapshotFromProduct(product: any, variationId: string | n
     const v = vars.find((x: any) => String(x._id) === variationId);
     const inline = buildPricingSnapshotFromRow(v?.pricing);
     if (inline) return inline;
+    
+    // If a specific variation was requested but no pricing was found for it,
+    // do not fallback to the bounds of other variations.
+    return null;
   }
 
   if (isVariant) {

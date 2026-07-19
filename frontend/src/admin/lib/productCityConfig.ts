@@ -114,7 +114,10 @@ export function stockStatusLabel(status: string) {
   return "In Stock";
 }
 
-export function validateCityConfigs(configs: CityConfig[]): string | null {
+export function validateCityConfigs(configs: CityConfig[], alwaysInStock = false): string | null {
+  // Skip validation if dropship is enabled
+  if (alwaysInStock) return null;
+
   for (const cfg of configs) {
     const hasPricing =
       cfg.pricing.isAvailable &&
@@ -147,7 +150,7 @@ export function validateCityConfigs(configs: CityConfig[]): string | null {
   return null;
 }
 
-export function cityConfigsToPayload(configs: CityConfig[]) {
+export function cityConfigsToPayload(configs: CityConfig[], alwaysInStock = false) {
   const cityPricing = configs
     .filter((c) => c.pricing.sellingPrice !== "" && Number(c.pricing.sellingPrice) >= 0)
     .map((c) => ({
@@ -160,7 +163,7 @@ export function cityConfigsToPayload(configs: CityConfig[]) {
       wholesaleSlabs: c.pricing.wholesaleSlabs,
     }));
 
-  const inventory = configs
+  let inventory = configs
     .filter((c) => c.inventory.quantity !== "" && Number(c.inventory.quantity) >= 0)
     .map((c) => ({
       city: c.cityId,
@@ -169,6 +172,17 @@ export function cityConfigsToPayload(configs: CityConfig[]) {
       reorderLevel: c.inventory.reorderLevel !== "" ? Number(c.inventory.reorderLevel) : 50,
       safetyStock: c.inventory.safetyStock !== "" ? Number(c.inventory.safetyStock) : 0,
     }));
+
+  // If dropship is enabled, create inventory records with 999999 stock for all cities with pricing
+  if (alwaysInStock && cityPricing.length > 0) {
+    inventory = cityPricing.map((cp) => ({
+      city: cp.city,
+      quantity: 999999,
+      reserved: 0,
+      reorderLevel: 0,
+      safetyStock: 0,
+    }));
+  }
 
   return { cityPricing, inventory };
 }

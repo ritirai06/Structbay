@@ -142,17 +142,27 @@ export function WorkflowFilePreview({
       {files.map((f, i) => {
         const name = f.label || f.name || `File ${i + 1}`;
         const isImg = /\.(png|jpe?g|gif|webp|bmp)(\?|$)/i.test(f.url);
+        let finalUrl = f.url;
+        if (
+          finalUrl.includes('res.cloudinary.com') &&
+          finalUrl.includes('/image/upload/') &&
+          !finalUrl.includes('/fl_attachment/') &&
+          /\.pdf(\?|$)/i.test(finalUrl)
+        ) {
+          finalUrl = finalUrl.replace('/image/upload/', '/image/upload/fl_attachment/');
+        }
+
         return (
           <a
             key={`${f.url}-${i}`}
-            href={f.url}
+            href={finalUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="wf-file-preview__card"
           >
             <div className="wf-file-preview__thumb">
               {isImg ? (
-                <img src={f.url} alt="" className="h-full w-full object-cover" />
+                <img src={finalUrl} alt="" className="h-full w-full object-cover" />
               ) : (
                 <ImageIcon className="w-6 h-6 text-gray-400" />
               )}

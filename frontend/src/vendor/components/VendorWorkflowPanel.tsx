@@ -279,7 +279,8 @@ export function VendorWorkflowPanel({
                   return;
                 }
                 const fd = new FormData();
-                const combined = `${readyDate}T${readyTime}`;
+                const localDate = new Date(`${readyDate}T${readyTime}`);
+                const combined = localDate.toISOString();
                 fd.append('estimatedDispatchDate', combined);
                 if (readyRemark) fd.append('remarks', readyRemark);
                 const inp = (e.target as HTMLFormElement).elements.namedItem('packing') as HTMLInputElement;
@@ -375,6 +376,10 @@ export function VendorWorkflowPanel({
                   return;
                 }
                 fd.append('proof', proof.files[0]);
+                const shippingLabel = (e.target as HTMLFormElement).elements.namedItem('shippingLabel') as HTMLInputElement;
+                if (shippingLabel?.files?.[0]) {
+                  fd.append('shippingLabel', shippingLabel.files[0]);
+                }
                 void run(() => api.workflowMarkDispatched(orderId, fd));
               }}
             >
@@ -400,7 +405,10 @@ export function VendorWorkflowPanel({
                   <input required type="date" value={dispWhen} onChange={(e) => setDispWhen(e.target.value)} className="wf-field__input" />
                 </div>
               </div>
-              <WorkflowFileUpload name="proof" label="Dispatch proof *" hint="Photo of loaded vehicle, LR copy, or signed challan" accept=".pdf,image/*" required />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                <WorkflowFileUpload name="proof" label="Dispatch proof *" hint="Photo of loaded vehicle, LR copy, or signed challan" accept=".pdf,image/*" required />
+                <WorkflowFileUpload name="shippingLabel" label="Shipping Label (optional)" hint="Upload shipping label if you have one" accept=".pdf,image/*" />
+              </div>
               <div className="wf-form-footer">
                 <button type="submit" disabled={busy} className="wf-btn wf-btn--primary">
                   <PackageCheck className="w-4 h-4" /> Mark dispatched

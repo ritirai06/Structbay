@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import {
   Trash2,
   ChevronDown,
@@ -39,6 +39,7 @@ type Props = {
   variations: any[];
   onVariationsChange: (next: any[]) => void;
   attributes?: ProductAttribute[];
+  alwaysInStock?: boolean;
 };
 
 // ============================================================================
@@ -76,6 +77,7 @@ type SimpleVariantRowProps = {
   cityConfigs: CityConfig[];
   onCityConfigsChange: (configs: CityConfig[]) => void;
   onImagesChange: (images: any[]) => void;
+  alwaysInStock?: boolean;
 };
 
 function SimpleVariantRow({
@@ -89,6 +91,7 @@ function SimpleVariantRow({
   cityConfigs,
   onCityConfigsChange,
   onImagesChange,
+  alwaysInStock = false,
 }: SimpleVariantRowProps) {
   const [expanded, setExpanded] = useState(false);
   const [showCityPricing, setShowCityPricing] = useState(false);
@@ -225,6 +228,7 @@ function SimpleVariantRow({
                 configs={cityConfigs.length > 0 ? cityConfigs : buildCityConfigsFromApi(activeCities, variant.cityConfigs, gstPercentage)}
                 defaultTax={gstPercentage}
                 onChange={onCityConfigsChange}
+                alwaysInStock={alwaysInStock}
               />
             </div>
           )}
@@ -373,9 +377,29 @@ export function ProductVariantManager({
   variations,
   onVariationsChange,
   attributes = [],
+  alwaysInStock = false,
 }: Props) {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [draftConfigs, setDraftConfigs] = useState<Record<string, CityConfig[]>>({});
+
+  // Auto-fill all variant city configs when alwaysInStock is toggled
+  useEffect(() => {
+    if (!variations.length) return;
+    setDraftConfigs((prev) => {
+      const next: Record<string, CityConfig[]> = {};
+      for (const v of variations) {
+        const id = String(v._id);
+        const existing = prev[id] || buildCityConfigsFromApi(activeCities, v.cityConfigs, gstPercentage);
+        next[id] = existing.map((cfg) => ({
+          ...cfg,
+          inventory: alwaysInStock
+            ? { ...cfg.inventory, quantity: 999999, reserved: 0, reorderLevel: 0, safetyStock: 0 }
+            : { ...cfg.inventory, quantity: "", reserved: "", reorderLevel: "", safetyStock: "" },
+        }));
+      }
+      return next;
+    });
+  }, [alwaysInStock]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getCityConfigs = useCallback((v: any): CityConfig[] => {
     const id = String(v._id);
@@ -432,13 +456,31 @@ export function ProductVariantManager({
       {/* Existing Variants Section */}
       {variations.length > 0 && (
         <div className="space-y-4">
-          <div>
+          <div className="flex items-center justify-between">
             <h3 className="text-base font-semibold text-[#000000] tracking-tight flex items-center gap-2">
               Product Variants
               <span className="text-xs font-medium text-sb-ink/60 bg-sb-cream-secondary px-2.5 py-0.5 rounded-full border border-sb-ink/10">
                 {variations.length}
               </span>
             </h3>
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm(`Delete all ${variations.length} variations? This cannot be undone.`)) {
+                  Promise.all(
+                    variations.map((v) =>
+                      apiFetch(`/products/${productId}/variations/${String(v._id)}`, { method: "DELETE" })
+                    )
+                  )
+                    .then(() => onVariationsChange([]))
+                    .catch((e) => alert(e.message || "Bulk delete failed"));
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-red-300 text-red-600 hover:bg-red-50 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Delete All
+            </button>
           </div>
 
           {/* Variants List */}
@@ -456,6 +498,7 @@ export function ProductVariantManager({
                   onImagesChange={(images) => handleVariantImagesChange(String(v._id), images)}
                   onSave={() => saveVariationConfig(v)}
                   onDelete={() => deleteVariation(String(v._id))}
+                  alwaysInStock={alwaysInStock}
                 />
               </div>
             ))}

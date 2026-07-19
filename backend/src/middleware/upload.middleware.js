@@ -27,7 +27,7 @@ const trimEnv = (v) => (typeof v === 'string' ? v.trim() : v || '');
  * Custom Multer storage engine that streams files directly to Cloudinary v2.
  * Bypasses disk storage entirely — memory → stream → Cloudinary.
  */
-const buildCloudinaryStorage = (folder, resourceType = 'auto') => ({
+const buildCloudinaryStorage = (folder, defaultResourceType = 'auto') => ({
   _handleFile(req, file, cb) {
     const cn = trimEnv(process.env.CLOUDINARY_CLOUD_NAME);
     const ck = trimEnv(process.env.CLOUDINARY_API_KEY);
@@ -38,6 +38,14 @@ const buildCloudinaryStorage = (folder, resourceType = 'auto') => ({
           'Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.'
         )
       );
+    }
+
+    let resourceType = defaultResourceType;
+    if (defaultResourceType === 'auto') {
+      const ext = fileExtension(file.originalname).toLowerCase();
+      if (['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.csv', '.zip'].includes(ext)) {
+        resourceType = 'raw';
+      }
     }
 
     const uploadStream = cloudinary.uploader.upload_stream(

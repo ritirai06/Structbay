@@ -865,32 +865,27 @@ export function ProductDetails() {
                         <span className="sf-pdp-related-card__was">
                           ₹{relMrp.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                         </span>
-                        <div className="text-right">
-                          <span className="font-semibold text-sb-orange">₹{price.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-                          <div className="text-[10px] text-gray-500">
-                            {product?.priceIncludesGst ? `incl. ${gstPct}% GST` : "ex-GST"}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500 text-center py-4">No bulk pricing available for this selection.</p>
-              )}
+                      )}
+                      <span className="sf-pdp-related-card__price">
+                        ₹{unit.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
-          </div>
-        </div>
-      )}
+          </section>
+        )}
 
-      {/* Mobile sticky add */}
-      {effectiveUnit > 0 && inStock ? (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 lg:hidden z-40">
-          <button type="button" className="sf-pdp-add-cart w-full" onClick={handleAddToCart}>
-            Add to cart · ₹{(effectiveUnit * qty).toLocaleString("en-IN")}
-          </button>
-        </div>
-      ) : null}
+        {/* Mobile sticky add */}
+        {effectiveUnit > 0 && inStock ? (
+          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 lg:hidden z-40">
+            <button type="button" className="sf-pdp-add-cart w-full" onClick={handleAddToCart}>
+              Add to cart · ₹{(effectiveUnit * qty).toLocaleString("en-IN")}
+            </button>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

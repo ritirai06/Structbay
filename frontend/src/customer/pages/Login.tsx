@@ -488,7 +488,7 @@ export function Login() {
             {isUnverifiedCustomerError(loginError) && (
               <div className="rounded-lg border border-[#E85A00]/25 bg-[#FFF7ED] px-3 py-3 text-sm text-[#1A1A1A]/90 space-y-2">
                 <p className="leading-relaxed text-[#1A1A1A]/85">
-                  ईमेल में लिंक नहीं मिला? Spam देखें, या नीचे Resend दबाएँ।
+                  Didn't find the link in your email? Check Spam, or click Resend below.
                 </p>
                 {verifyResendMsg ? (
                   <p className="text-xs whitespace-pre-line text-[#1A1A1A]/80">{verifyResendMsg}</p>

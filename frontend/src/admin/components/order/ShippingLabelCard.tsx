@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Download, Eye, Loader2, Printer, RefreshCw, Send, ShieldOff } from "lucide-react";
+import { Download, Eye, Loader2, Printer, RefreshCw, Send, ShieldOff, Upload } from "lucide-react";
 import { adminFetch as apiFetch, adminDownloadBlob, adminFetchBlob } from "../../../lib/adminApi";
 import { adminToast } from "../../lib/adminToast";
 import { WorkflowCard } from "./orderDetailShared";
@@ -94,6 +94,28 @@ export function ShippingLabelCard({
       adminToast.success(regenerate ? "Label regenerated" : "Label generated");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Label generation failed.";
+      setError(msg);
+      adminToast.error(msg);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const uploadLabel = async (file: File) => {
+    setBusy("upload");
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append("vendorOrderId", vendorOrderId);
+      formData.append("file", file);
+      const d = await apiFetch(`/orders/${orderId}/shipping-label/upload`, {
+        method: "POST",
+        body: formData,
+      });
+      setLabel(d.data ?? null);
+      adminToast.success("Label uploaded successfully");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Label upload failed.";
       setError(msg);
       adminToast.error(msg);
     } finally {
@@ -251,15 +273,32 @@ export function ShippingLabelCard({
 
           <div className="wf-action-bar flex-wrap">
             {!hasLabel ? (
-              <button
-                type="button"
-                className="wf-btn wf-btn--primary"
-                disabled={disabled || busy !== null}
-                onClick={() => void generate(false)}
-              >
-                {busy === "generate" ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                Generate label
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="wf-btn wf-btn--primary"
+                  disabled={disabled || busy !== null}
+                  onClick={() => void generate(false)}
+                >
+                  {busy === "generate" ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  Generate label
+                </button>
+                <label className="wf-btn wf-btn--secondary cursor-pointer" aria-disabled={disabled || busy !== null}>
+                  {busy === "upload" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  Upload label
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept=".pdf,image/*"
+                    disabled={disabled || busy !== null}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) void uploadLabel(file);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+              </>
             ) : (
               <>
                 <button
@@ -271,6 +310,21 @@ export function ShippingLabelCard({
                   {busy === "regenerate" ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                   Regenerate
                 </button>
+                <label className="wf-btn wf-btn--secondary cursor-pointer" aria-disabled={disabled || busy !== null}>
+                  {busy === "upload" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  Upload new
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept=".pdf,image/*"
+                    disabled={disabled || busy !== null}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) void uploadLabel(file);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
                 <button
                   type="button"
                   className="wf-btn wf-btn--secondary"

@@ -51,10 +51,12 @@ export function OrderSuccess() {
   const orderId =
     queryOrderId ?? pickOrderId(stateOrder) ?? pickOrderId(stored) ?? null;
 
+  const validStored = pickOrderId(stored) === orderId ? stored : null;
+
   const orderNumber =
     stateOrder?.orderNumber ??
     state?.orderNumber ??
-    stored?.orderNumber ??
+    validStored?.orderNumber ??
     fetchedNumber ??
     null;
 
@@ -142,7 +144,6 @@ export function OrderSuccess() {
             Your Structbay order reference was sent to your registered email and phone.
           </p>
         )}
-        <p className="text-white/70 text-sm mt-2">Expected Delivery: 2–4 Business Days</p>
         {(paymentMethod || paymentStatus) && (
           <p className="text-white/80 text-sm mt-3 pt-3 border-t border-white/20">
             Payment: {formatPaymentMethod(paymentMethod)} · {formatPaymentStatus(paymentStatus)}

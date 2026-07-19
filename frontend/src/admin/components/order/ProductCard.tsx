@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ChevronDown, ChevronUp, CheckCircle2, Circle } from "lucide-react";
 import { WorkflowCard, DeliveryTypeSelector, VendorWorkflowSubmissions, lineDefaultDeliveryType } from "./orderDetailShared";
 import { ShippingLabelCard } from "./ShippingLabelCard";
-import { WorkflowFileUpload } from "@shared/components/workflow/WorkflowFileUpload";
+import { WorkflowFileUpload, WorkflowFilePreview } from "@shared/components/workflow/WorkflowFileUpload";
 
 type DeliveryType = "vendor_delivery" | "structbay_delivery";
 
@@ -266,6 +266,22 @@ export function ProductCard({
 
                   {vo.workflowVersion === 2 && (
                     <VendorWorkflowSubmissions detail={voDetail} />
+                  )}
+
+                  {vo.vendorInvoice?.invoicePdfUrl && (
+                    <WorkflowCard title="Uploaded vendor invoice">
+                      <div className="space-y-3">
+                        <div className="text-xs text-sb-ink/65 space-y-1">
+                          {vo.vendorInvoice.invoiceNumber && (
+                            <p>Invoice # · <strong>{vo.vendorInvoice.invoiceNumber}</strong></p>
+                          )}
+                          {vo.vendorInvoice.uploadedAt && (
+                            <p>Uploaded · <strong>{new Date(vo.vendorInvoice.uploadedAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong></p>
+                          )}
+                        </div>
+                        <WorkflowFilePreview files={[{ url: vo.vendorInvoice.invoicePdfUrl, label: 'Vendor invoice' }]} />
+                      </div>
+                    </WorkflowCard>
                   )}
 
                   {vo.workflowVersion === 2 && vo.status === "VENDOR_INVOICE_SUBMITTED" && (

@@ -490,74 +490,19 @@ const generateVariationMatrix = asyncHandler(async (req, res) => {
     }
   }
 
-  // Cartesian product
-  function cartesian(arrays) {
-    return arrays.reduce(
-      (acc, cur) => acc.flatMap((a) => cur.map((b) => [...a, b])),
-      [[]]
-    );
-  }
+  const { massiveVariationService } = require('../services/massiveVariation.service');
+  const result = await massiveVariationService.generateVariationMatrixMassive(product, axes, {
+    skipDuplicateCheck: req.body.skipDuplicateCheck === true,
+    onProgress: (progress) => {
+      console.log(`[Variation Generation] ${progress.message}`);
+    },
+  });
 
-  const axisArrays = axes.map((a) =>
-    a.values.map((v) => ({ axisKey: a.key, value: typeof v === 'object' ? v.value : String(v), colorCode: typeof v === 'object' ? v.colorCode || null : null }))
-  );
-  const combinations = cartesian(axisArrays);
-
-  if (combinations.length > 500) throw new AppError(`Matrix would generate ${combinations.length} variants (max 500). Reduce attribute values.`, 400);
-
-  const created = [];
-  const skipped = [];
-
-  for (const combo of combinations) {
-    const pairsForSave = combo.map((cell) => ({ name: cell.axisKey, value: cell.value }));
-    if (combo.some((c) => c.colorCode)) {
-      const colorCell = combo.find((c) => c.colorCode);
-      if (colorCell) pairsForSave.push({ name: `${colorCell.axisKey}_code`, value: colorCell.colorCode });
-    }
-
-    const flatAttributes = normalizeVariationAttributes({ attributePairs: pairsForSave });
-    if (!Object.keys(flatAttributes).length) continue;
-
-    const attributes = packageAttributesForSave(flatAttributes);
-
-    // Skip if combination already exists
-    const existing = await ProductVariation.findOne({ product: product._id, isDeleted: { $ne: true } }).lean().then(async () => {
-      const all = await ProductVariation.find({ product: product._id, isDeleted: { $ne: true } }).select('attributes').lean();
-      const { attributeValuesEquivalent } = require('../utils/attributeValueNormalize');
-      return all.find((v) => {
-        const existFlat = normalizeVariationAttributes({ attributes: v.attributes });
-        const newFlat = { ...flatAttributes };
-        const keys = new Set([...Object.keys(existFlat), ...Object.keys(newFlat)]);
-        // Only check axis keys
-        const axisKeys = combo.map((c) => c.axisKey.toLowerCase());
-        return axisKeys.every((ak) => {
-          const ev = existFlat[ak] || existFlat[Object.keys(existFlat).find((k) => k.toLowerCase() === ak) || ''];
-          const nv = newFlat[ak] || newFlat[Object.keys(newFlat).find((k) => k.toLowerCase() === ak) || ''];
-          return ev && nv && attributeValuesEquivalent(ev, nv, ak);
-        }) && keys.size > 0;
-      });
-    });
-
-    if (existing) {
-      skipped.push(combo.map((c) => `${c.axisKey}:${c.value}`).join(' + '));
-      continue;
-    }
-
-    const sku = await resolveVariantSku({ product, requestedSku: null, attributes });
-    const variation = await ProductVariation.create({
-      product: product._id,
-      attributes,
-      sku,
-      status: 'ACTIVE',
-      sortOrder: created.length,
-    });
-    created.push(variation);
-  }
-
-  return ApiResponse.created(res, `Generated ${created.length} variants (${skipped.length} already existed).`, {
-    created,
-    skipped,
-    total: combinations.length,
+  return ApiResponse.created(res, `Generated ${result.stats.createdCount} variants (${result.stats.skippedCount} already existed).`, {
+    created: result.created,
+    skipped: result.skipped,
+    total: result.stats.totalCombinations,
+    stats: result.stats,
   });
 });
 
@@ -588,7 +533,18 @@ const removeVariationImage = asyncHandler(async (req, res) => {
   if (img?.publicId) await deleteFile(img.publicId).catch(() => {});
   variation.images = variation.images.filter(i => i._id.toString() !== req.params.imageId);
   await variation.save();
-  return ApiResponse.success(res, 200, 'Image removed.', variation);
+  return ApiResponse.success(res, 200, 'Image removed.', { images: variation.images });
+});
+
+const addVariationImagesFromUpload = asyncHandler(async (req, res) => {
+  const variation = await ProductVariation.findOne({ _id: req.params.varId, product: req.params.id });
+  if (!variation) throw new AppError('Variation not found.', 404);
+  if (!req.file?.path) {
+    return ApiResponse.badRequest(res, 'Image file is required (form field name: image).');
+  }
+  variation.images.push({ url: req.file.path, publicId: req.file.filename });
+  await variation.save();
+  return ApiResponse.success(res, 200, 'Image added.', { images: variation.images });
 });
 
 const BULK_MAX_ROWS = 200;
@@ -1177,6 +1133,6 @@ const bulkImportVariants = asyncHandler(async (req, res) => {
 module.exports = {
   getAll, getById, getBySlug, create, update, addImages, removeImage, remove, bulkImport, bulkImportVariants,
   getBulkImportTemplate,
-  getVariations, createVariation, updateVariation, deleteVariation, addVariationImages, removeVariationImage,
+  getVariations, createVariation, updateVariation, deleteVariation, addVariationImages, removeVariationImage, addVariationImagesFromUpload,
   getVariationConfiguration, saveVariationConfiguration, generateVariationMatrix,
 };

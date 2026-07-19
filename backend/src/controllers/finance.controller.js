@@ -68,6 +68,7 @@ exports.submitApplication = asyncHandler(async (req, res) => {
     customer: customerId,
     status: 'NEW',
     statusHistory: [{ status: 'NEW', note: 'Application submitted.', changedAt: new Date() }],
+    activityLog: [{ action: 'SUBMITTED', description: 'Application submitted', performedAt: new Date() }],
   });
 
   // Notify applicant
@@ -117,13 +118,14 @@ exports.uploadDocuments = asyncHandler(async (req, res) => {
 
 // ─── Admin — List Leads ───────────────────────────────────────────────────────
 exports.getLeads = asyncHandler(async (req, res) => {
-  const { status, assignedTo, search } = req.query;
+  const { status, assignedTo, search, city } = req.query;
   const page = PAGE(req.query);
   const limit = LIMIT(req.query);
 
   const filter = {};
   if (status)     filter.status = status;
   if (assignedTo) filter.assignedTo = assignedTo;
+  if (city)       filter.projectLocation = city;
   if (search) {
     const rx = { $regex: search, $options: 'i' };
     filter.$or = [
@@ -131,6 +133,7 @@ exports.getLeads = asyncHandler(async (req, res) => {
       { name: rx },
       { companyName: rx },
       { mobile: rx },
+      { email: rx },
     ];
   }
 
@@ -154,7 +157,9 @@ exports.getLeadById = asyncHandler(async (req, res) => {
   const lead = await FinanceLead.findById(req.params.id)
     .populate('assignedTo', 'name email')
     .populate('customer',   'name email mobile')
-    .populate('documents');
+    .populate('documents')
+    .populate('statusHistory.changedBy', 'name email')
+    .populate('activityLog.performedBy', 'name email');
   if (!lead) throw new AppError('Finance lead not found.', 404);
   return ApiResponse.success(res, 200, 'Finance lead retrieved.', lead);
 });
@@ -182,10 +187,16 @@ exports.updateStatus = asyncHandler(async (req, res) => {
           note,
           changedAt: new Date(),
         },
+        activityLog: {
+          action: 'STATUS_CHANGED',
+          description: `Status changed to ${status}${note ? ': ' + note : ''}`,
+          performedBy: req.user._id,
+          performedAt: new Date(),
+        },
       },
     },
     { new: true }
-  );
+  ).populate('assignedTo', 'name email').populate('activityLog.performedBy', 'name email');
   await auditAction(req.user._id, 'FINANCE_STATUS_UPDATE', { leadId: lead._id, status });
 
   // Notify applicant of status update
@@ -210,9 +221,19 @@ exports.assignLead = asyncHandler(async (req, res) => {
   const { assignedTo } = req.body;
   const lead = await FinanceLead.findByIdAndUpdate(
     req.params.id,
-    { assignedTo },
+    {
+      assignedTo,
+      $push: {
+        activityLog: {
+          action: 'ASSIGNED',
+          description: `Lead assigned to staff member`,
+          performedBy: req.user._id,
+          performedAt: new Date(),
+        },
+      },
+    },
     { new: true }
-  ).populate('assignedTo', 'name email');
+  ).populate('assignedTo', 'name email').populate('activityLog.performedBy', 'name email');
   if (!lead) throw new AppError('Finance lead not found.', 404);
   await auditAction(req.user._id, 'FINANCE_ASSIGN', { leadId: lead._id, assignedTo });
   return ApiResponse.success(res, 200, 'Lead assigned.', lead);
@@ -223,11 +244,21 @@ exports.addNote = asyncHandler(async (req, res) => {
   const { note } = req.body;
   const lead = await FinanceLead.findByIdAndUpdate(
     req.params.id,
-    { internalNotes: note },
+    {
+      internalNotes: note,
+      $push: {
+        activityLog: {
+          action: 'NOTE_ADDED',
+          description: `Internal note added: ${note}`,
+          performedBy: req.user._id,
+          performedAt: new Date(),
+        },
+      },
+    },
     { new: true }
-  );
+  ).populate('activityLog.performedBy', 'name email');
   if (!lead) throw new AppError('Finance lead not found.', 404);
-  return ApiResponse.success(res, 200, 'Note updated.', { internalNotes: lead.internalNotes });
+  return ApiResponse.success(res, 200, 'Note updated.', { internalNotes: lead.internalNotes, activityLog: lead.activityLog });
 });
 
 // ─── Admin — Verify Document ──────────────────────────────────────────────────
