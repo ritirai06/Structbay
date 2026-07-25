@@ -197,6 +197,11 @@ export function Checkout() {
         setOrderError("Please complete your contact name, phone, email, and billing address.");
         return;
       }
+      const phoneDigits = form.phone.replace(/\D/g, "");
+      if (phoneDigits.length !== 10) {
+        setOrderError("Please enter a valid 10-digit phone number.");
+        return;
+      }
       setStep(2);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
@@ -233,8 +238,13 @@ export function Checkout() {
         }
       }
 
-      if (!form.address.trim() || !form.deliveryCity.trim()) {
-        setOrderError("Please complete full delivery address and delivery city.");
+      if (!form.deliveryContactName.trim() || !form.deliveryPhone.trim() || !form.address.trim() || !form.deliveryCity.trim()) {
+        setOrderError("Please complete all mandatory delivery details (name, phone, address, city).");
+        return;
+      }
+      const delPhoneDigits = form.deliveryPhone.replace(/\D/g, "");
+      if (delPhoneDigits.length !== 10) {
+        setOrderError("Please enter a valid 10-digit delivery phone number.");
         return;
       }
       if (digits.length !== 6) {
@@ -290,7 +300,6 @@ export function Checkout() {
       if (!placedId) {
         throw new Error("Order response was incomplete. Check My Orders or try again.");
       }
-      clearClientCart();
       navigate(`/payment-mock?orderId=${encodeURIComponent(String(placedId))}`, {
         state: { order: { ...order, _id: String(placedId) } }
       });
@@ -423,22 +432,22 @@ export function Checkout() {
               <div className="space-y-4">
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-1.5">Receiver's Name (Optional)</label>
+                    <label className="block text-sm font-medium text-foreground mb-1.5">Receiver's Name *</label>
                     <input
                       type="text"
                       value={form.deliveryContactName}
                       onChange={e => update("deliveryContactName", e.target.value)}
-                      placeholder="Same as billing if empty"
+                      placeholder="Receiver's Name"
                       className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-input-background focus:outline-none focus:ring-2 focus:ring-primary/30"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-1.5">Receiver's Phone (Optional)</label>
+                    <label className="block text-sm font-medium text-foreground mb-1.5">Receiver's Phone *</label>
                     <input
                       type="text"
                       value={form.deliveryPhone}
                       onChange={e => update("deliveryPhone", e.target.value)}
-                      placeholder="Same as billing if empty"
+                      placeholder="Receiver's Phone Number"
                       className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-input-background focus:outline-none focus:ring-2 focus:ring-primary/30"
                     />
                   </div>
@@ -616,11 +625,11 @@ export function Checkout() {
                   type="button"
                   onClick={() => void handleNextStep()}
                   disabled={placingOrder}
-                  className="w-full text-white px-5 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2"
+                  className="w-full text-white px-5 py-2.5 mt-4 rounded-xl font-bold flex items-center justify-center gap-2"
                   style={{ backgroundColor: "var(--sb-orange)" }}
                 >
-                  {placingOrder ? "Preparing Payment..." : (step === 1 ? "Continue to Delivery" : (step === 2 ? "Continue to Payment" : "Proceed to Secure Payment"))}
-                  <ChevronRight className="w-5 h-5" />
+                  {placingOrder ? "Preparing Payment..." : (step === 1 ? "Continue" : (step === 2 ? "Continue to Payment" : "Proceed to Secure Payment"))}
+                  {!placingOrder && <ChevronRight className="w-4 h-4 ml-1 inline-block relative -top-[1px]" />}
                 </button>
                 <p className="text-center text-xs text-muted-foreground mt-3">
                   By placing the order, you agree to our{" "}

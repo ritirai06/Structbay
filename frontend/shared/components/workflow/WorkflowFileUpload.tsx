@@ -37,6 +37,17 @@ export function WorkflowFileUpload({
     const next = multiple ? list : list.slice(0, 1);
     setFiles(next);
     onChange?.(next);
+    
+    // Sync to native DOM element for FormData and querySelector compatibility
+    if (inputRef.current) {
+      try {
+        const dt = new DataTransfer();
+        next.forEach((f) => dt.items.add(f));
+        inputRef.current.files = dt.files;
+      } catch (e) {
+        // Fallback for extremely old browsers where DataTransfer isn't supported
+      }
+    }
   };
 
   const onPick = (list: FileList | null) => {

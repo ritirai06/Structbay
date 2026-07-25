@@ -24,10 +24,16 @@ function decorateVendorOrderForPortal(doc) {
   if (!o.customer && o.customerInfo) {
     o.customer = { name: o.customerInfo.name, phone: o.customerInfo.phone };
   }
+  if (o.masterOrder && o.masterOrder.project) {
+    o.projectName = o.masterOrder.project.name || null;
+  }
+
   if (Number(o.workflowVersion) === 2) {
     o.pendingVendorAction = pendingVendorAction(o.status, o.deliveryType);
     o.workflowTimeline = WORKFLOW_TIMELINE_STEPS;
-    o.customerMilestone = customerMilestoneFromVendorStatus(o.status);
+    if (o.status) {
+      o.customerMilestone = customerMilestoneFromVendorStatus(o.status);
+    }
   }
   return o;
 }

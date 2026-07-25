@@ -113,6 +113,17 @@ export function ConcreteRFQModal({ open, onClose }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    
+    if (Number(form.qty) < 6) {
+      setError("Minimum concrete quantity is 6 cubic metres.");
+      return;
+    }
+    
+    if (!form.deliveryDate) {
+      setError("Required Delivery Date is mandatory.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -325,7 +336,7 @@ export function ConcreteRFQModal({ open, onClose }: Props) {
                   </span>
                   <input
                     type="number"
-                    min="1"
+                    min="6"
                     value={form.qty}
                     onChange={(e) => update("qty", e.target.value)}
                     placeholder="e.g. 50"
@@ -371,13 +382,14 @@ export function ConcreteRFQModal({ open, onClose }: Props) {
               {/* Delivery Date */}
               <label className="block">
                 <span className="mb-1.5 block text-sm font-medium text-gray-700">
-                  Required Delivery Date
+                  Required Delivery Date *
                 </span>
                 <input
                   type="date"
                   value={form.deliveryDate}
                   onChange={(e) => update("deliveryDate", e.target.value)}
                   min={new Date().toISOString().split("T")[0]}
+                  required
                   className={fieldClass}
                 />
               </label>

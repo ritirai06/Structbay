@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
-import { Check, Minus, Plus, Shield, Zap } from "lucide-react";
+import { toast } from "react-toastify";
+import { Check, Minus, Plus, Shield, Zap, X } from "lucide-react";
 import { productHref } from "../lib/productRoutes";
 import {
   formatVariationLabel,
@@ -79,6 +80,7 @@ export function ListingProductCard({
   );
   const [qty, setQty] = useState(1);
   const [bulkUnlocked, setBulkUnlocked] = useState(false);
+  const [showBulkPopover, setShowBulkPopover] = useState(false);
   const [customColorText, setCustomColorText] = useState("");
 
   const selectedVar = useMemo(() => {
@@ -169,16 +171,9 @@ export function ListingProductCard({
     setQty(1);
   };
 
-  const handleUnlockBulk = () => {
-    if (!bulkMinQty) return;
-    const target = Math.max(1, bulkMinQty);
-    if (cartLine) {
-      const delta = target - cartLine.qty;
-      if (delta !== 0) onUpdateQty(delta);
-    } else {
-      setQty(target);
-    }
-    setBulkUnlocked(true);
+  const handleUnlockBulk = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setShowBulkPopover(!showBulkPopover);
   };
 
   const handleAdd = () => {
@@ -201,12 +196,13 @@ export function ListingProductCard({
       qty: addQty,
       variationId: isVariant ? vid || undefined : undefined,
       variationLabel: isVariant && selectedVar 
-        ? formatVariationLabel(selectedVar) + ((selections["Color"] === "Custom" || selections["Colour"] === "Custom") && customColorText ? ` (Custom: ${customColorText})` : "") 
+        ? formatVariationLabel(selectedVar) + ((selections["Color"] === "Custom" || selections["Colour"] === "Custom" || selections["Colors"] === "Custom" || selections["Colours"] === "Custom") && customColorText ? ` (Custom: ${customColorText})` : "") 
         : undefined,
       unitPrice: priceAtQty,
       pricingSnapshot: snap,
       image: image || "",
     });
+    toast.success(`${addQty} item(s) added to cart`);
     if (!cartLine) setQty(1);
   };
 
@@ -431,10 +427,44 @@ export function ListingProductCard({
         )}
 
         {!simple && !bulkApplied && bulkFrom != null && bulkFrom < baseUnit && (
-          <button type="button" className="sf-listing-card__bulk-hint" onClick={handleUnlockBulk}>
-            Unlock bulk prices from ₹{displayBulkFrom?.toLocaleString("en-IN")}
-            {bulkMinQty && bulkMinQty > 1 ? ` (${bulkMinQty}+ ${product.unit || "units"})` : ""}
-          </button>
+          <div className="relative">
+            <button type="button" className="sf-listing-card__bulk-hint" onClick={handleUnlockBulk}>
+              Unlock bulk prices from ₹{displayBulkFrom?.toLocaleString("en-IN")}
+              {bulkMinQty && bulkMinQty > 1 ? ` (${bulkMinQty}+ ${product.unit || "units"})` : ""}
+            </button>
+            
+            {showBulkPopover && snap?.wholesaleSlabs && snap.wholesaleSlabs.length > 0 && (
+              <div className="absolute bottom-full left-0 mb-2 z-50 w-64 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden text-left animate-in fade-in zoom-in-95 duration-200">
+                <div className="bg-[#1DA1F2] text-white px-3 py-2 flex justify-between items-start">
+                  <div>
+                    <div className="font-semibold text-sm">Bulk Prices Launched</div>
+                    <div className="text-[10px] text-white/90 line-clamp-1">
+                      {product.name}{isVariant && selectedVar ? `, ${formatVariationLabel(selectedVar)}` : ""}
+                    </div>
+                  </div>
+                  <button onClick={() => setShowBulkPopover(false)} className="text-white hover:text-gray-200 mt-0.5">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <ul className="p-3 space-y-2 text-xs bg-white text-gray-700">
+                  {snap.wholesaleSlabs.map((tier: any, i: number) => {
+                    const isBest = i === snap.wholesaleSlabs.length - 1;
+                    return (
+                      <li key={i} className="flex items-center">
+                        <span className="w-1.5 h-1.5 rounded-full bg-gray-400 mr-2 shrink-0"></span>
+                        <span className="flex items-center">
+                          Buy {tier.minQty}+ at{" "}
+                          <span className={`ml-1 font-bold ${isBest ? "bg-[#1DA1F2] text-white px-1.5 py-0.5 rounded" : "text-gray-900"}`}>
+                            ₹{displayUnitFromExGst(tier.price, product).toLocaleString("en-IN")}/unit
+                          </span>
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </div>
         )}
 
         <div className="sf-listing-card__actions">
@@ -466,9 +496,16 @@ export function ListingProductCard({
                   <Plus className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <span className="sf-listing-card__add sf-listing-card__add--added" aria-live="polite">
-                Added
-              </span>
+              <button
+                type="button"
+                className="sf-listing-card__add"
+                onClick={() => {
+                  onUpdateQty(1);
+                  toast.success("1 item(s) added to cart");
+                }}
+              >
+                Add
+              </button>
             </>
           ) : (
             <>

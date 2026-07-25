@@ -338,8 +338,13 @@ const updateBlog = asyncHandler(async (req, res) => {
   const oldStatus = blog.status;
   const allowed = ['title', 'description', 'content', 'metaTitle', 'metaDescription', 'author', 'publishDate', 'status', 'isFeatured', 'tags', 'category'];
   allowed.forEach(f => { if (req.body[f] !== undefined) blog[f] = req.body[f]; });
-  if (req.body.imageUrl) {
+  if (req.body.clearImage === true) {
     if (blog.featuredImage?.publicId) await deleteFile(blog.featuredImage.publicId).catch(() => {});
+    blog.featuredImage = { url: null, publicId: null };
+  } else if (req.body.imageUrl) {
+    if (blog.featuredImage?.publicId && req.body.imageUrl !== blog.featuredImage.url) {
+      await deleteFile(blog.featuredImage.publicId).catch(() => {});
+    }
     blog.featuredImage = { url: req.body.imageUrl, publicId: req.body.imagePublicId || null };
   }
   // Preserve slug — only update if explicitly provided
@@ -613,11 +618,15 @@ const submitContactMessage = asyncHandler(async (req, res) => {
     return ApiResponse.error(
       res,
       503,
-      'We could not send your message right now. Please email us directly or try again shortly.'
+      'Failed to send message. Our email server might be experiencing issues.'
     );
   }
 
-  return ApiResponse.success(res, 200, 'Thank you! Your message has been sent. We will get back to you soon.');
+  // Send a confirmation email to the customer
+  const { sendContactUsConfirmationEmail } = require('../services/email.service');
+  await sendContactUsConfirmationEmail({ to: fromEmail, name });
+
+  ApiResponse.success(res, 200, 'Message sent successfully. We will get back to you soon.');
 });
 
 // ═══════════════════════════════════════════════════════════

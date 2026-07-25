@@ -248,43 +248,100 @@ exports.markDispatched = asyncHandler(async (req, res) => {
       vehicleDetails: vehicleNumber ? { vehicleNumber } : undefined,
     });
   } else {
-    dispatch.status = 'dispatched';
     dispatch.dispatchDate = vo.shipmentDispatch.dispatchDate;
     dispatch.trackingNumber = vo.shipmentDispatch.trackingNumber;
     dispatch.courierPartner = vo.shipmentDispatch.transporterName;
     dispatch.transporterName = vo.shipmentDispatch.transporterName;
     dispatch.lrNumber = vo.shipmentDispatch.lrNumber;
-    if (!dispatch.vehicleDetails) dispatch.vehicleDetails = {};
-    if (vehicleNumber) dispatch.vehicleDetails.vehicleNumber = vehicleNumber;
+    dispatch.status = 'dispatched';
+    dispatch.dispatchRemarks = `LR ${lrNumber}`;
+    if (vehicleNumber) dispatch.vehicleDetails = { vehicleNumber };
+    if (!dispatch.documents) dispatch.documents = [];
     dispatch.documents.push(proofDoc);
     await dispatch.save();
   }
 
   notifyAllAdmins({
-    type: 'ORDER_DISPATCHED',
-    title: 'Order dispatched',
-    message: `Vendor dispatched sub-order ${vo.orderNumber}.`,
+    type: 'DISPATCHED',
+    title: 'Vendor marked order dispatched',
+    message: `Vendor dispatched order ${vo.orderNumber} (LR: ${lrNumber}).`,
     relatedVendorOrder: vo._id,
   }).catch(() => {});
 
   await notifyCustomerMaster(vo.masterOrder, {
     title: 'Order shipped',
     message: `Your order ${vo.orderNumber} is on the way.`,
-    type: 'DISPATCH',
+    relatedOrder: vo.masterOrder,
   });
 
-  await logAction({
-    adminId: req.user._id,
-    action: 'UPDATE',
-    module: 'VendorOrder',
-    targetId: vo._id.toString(),
-    description: `Dispatched ${vo.orderNumber}`,
-    ipAddress: req.ip,
-    platform: (req.get('user-agent') || 'WEB').slice(0, 200),
-  });
-
-  return ApiResponse.success(res, 200, 'Marked dispatched.', decorateVendorOrderForPortal(vo));
+  return ApiResponse.success(res, 200, 'Order marked dispatched.', decorateVendorOrderForPortal(vo));
 });
+
+exports.markPickedUpTypeB = asyncHandler(async (req, res) => {
+  const match = await vendorOrderMatch(req.user);
+  const vo = await VendorOrder.findOne({ _id: req.params.id, ...match });
+  if (!vo) throw new AppError('Order not found or not assigned to you.', 404);
+
+  if (vo.status !== 'SB_INVOICE_SENT') {
+    throw new AppError('Order must be in SB_INVOICE_SENT status to mark as picked up.', 400);
+  }
+  if (vo.deliveryType !== 'structbay_delivery') {
+    throw new AppError('This action is only available for Structbay delivery (Type B) orders.', 400);
+  }
+
+  vo.status = 'DISPATCHED';
+  vo.dispatchStatus = 'DISPATCHED';
+  vo.actualDispatchDate = new Date();
+  
+  pushEmbeddedHistory(vo, 'DISPATCHED', req.user._id, 'User', 'Vendor marked order as picked up by Structbay logistics.');
+  await vo.save();
+  await appendAudit(vo._id, 'DISPATCHED', 'Order picked up by Structbay logistics', req.user._id, 'User');
+
+  await syncMasterOrderStatusFromVendorOrders(vo.masterOrder, {
+    changedBy: req.user._id,
+    note: `Sub-order ${vo.orderNumber} picked up by Structbay logistics (Type B).`,
+  });
+
+  notifyAllAdmins({
+    type: 'DISPATCHED',
+    title: 'Order Picked Up (Type B)',
+    message: `Vendor marked Type B order ${vo.orderNumber} as picked up by logistics.`,
+    relatedVendorOrder: vo._id,
+  }).catch(() => {});
+
+  await notifyCustomerMaster(vo.masterOrder, {
+    title: 'Order picked up',
+    message: `Your order ${vo.orderNumber} has been picked up and is on the way.`,
+    relatedOrder: vo.masterOrder,
+  });
+
+  return ApiResponse.success(res, 200, 'Order marked as picked up.', decorateVendorOrderForPortal(vo));
+});
+
+exports.requestDispatchDateChange = asyncHandler(async (req, res) => {
+  const { newDate, reason } = req.body;
+  if (!newDate || !reason) throw new AppError('newDate and reason are required.', 400);
+
+  const match = await vendorOrderMatch(req.user);
+  const vo = await VendorOrder.findOne({ _id: req.params.id, ...match });
+  if (!vo) throw new AppError('Order not found or not assigned to you.', 404);
+  
+  if (!vo.expectedDispatchDate) {
+    throw new AppError('Dispatch date has not been set yet.', 400);
+  }
+
+  await appendAudit(vo._id, 'DATE_CHANGE_REQUESTED', `Vendor requested to change dispatch date to ${new Date(newDate).toLocaleString('en-IN')} (Reason: ${reason})`, req.user._id, 'Vendor');
+
+  notifyAllAdmins({
+    type: 'DATE_CHANGE_REQUESTED',
+    title: 'Dispatch Date Change Requested',
+    message: `Vendor requested to change dispatch date for order ${vo.orderNumber} to ${new Date(newDate).toLocaleString('en-IN')}. Reason: ${reason}`,
+    relatedVendorOrder: vo._id,
+  }).catch(() => {});
+
+  return ApiResponse.success(res, 200, 'Date change request sent to admin.');
+});
+
 
 exports.markDelivered = asyncHandler(async (req, res) => {
   const { delivery_date: deliveryDate } = req.body;

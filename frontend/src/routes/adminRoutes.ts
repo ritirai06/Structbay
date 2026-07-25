@@ -124,6 +124,13 @@ export const adminRoutes: RouteObject[] = [
         },
       },
       {
+        path: "vendor-chat/:vendorOrderId",
+        lazy: async () => {
+          const { AdminVendorChatPage } = await import("../admin/pages/AdminVendorChatPage");
+          return { Component: AdminVendorChatPage };
+        },
+      },
+      {
         path: "orders/:orderId",
         lazy: async () => {
           const { OrderDetailPage } = await import("../admin/pages/OrderDetailPage");

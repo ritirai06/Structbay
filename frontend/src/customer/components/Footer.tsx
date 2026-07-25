@@ -112,7 +112,19 @@ export function Footer() {
 
         <hr className="border-white/10 my-5" />
 
-        <p className="text-center text-xs text-white/45">{cms.copyrightText}</p>
+        <p className="text-center text-xs text-white/45">
+          {cms.copyrightText ? (
+            cms.copyrightText.split(/(HSDA)/i).map((part, i) => 
+              part.toUpperCase() === 'HSDA' ? (
+                <a key={i} href="https://hsdadigital.com/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors font-medium">
+                  {part}
+                </a>
+              ) : (
+                part
+              )
+            )
+          ) : null}
+        </p>
       </div>
     </footer>
   );

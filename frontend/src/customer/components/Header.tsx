@@ -96,6 +96,16 @@ function TopMarquee({ segments }: { segments: string[] }) {
     return () => clearTimeout(fadeTimer);
   }, [fading, items.length]);
 
+  const handleNext = () => {
+    setIndex((i) => (i + 1) % items.length);
+    setFading(false);
+  };
+
+  const handlePrev = () => {
+    setIndex((i) => (i === 0 ? items.length - 1 : i - 1));
+    setFading(false);
+  };
+
   return (
     <>
       <style>
@@ -108,19 +118,37 @@ function TopMarquee({ segments }: { segments: string[] }) {
         }
       `}
       </style>
-      <div
-        className="relative w-full min-h-[2.0rem] flex items-center justify-center"
-        aria-live="polite"
-        aria-atomic="true"
-      >
-        <p
-          key={index}
-          className={`sb-top-marquee-message text-black text-[12px] sm:text-lg font-medium tracking-wide text-center px-1 ${
-            fading ? "opacity-0" : "opacity-100"
-          }`}
+      <div className="flex items-center justify-center gap-4 lg:gap-8 w-full max-w-4xl mx-auto px-4">
+        <button
+          type="button"
+          onClick={handlePrev}
+          className="p-1 cursor-pointer shrink-0 hover:bg-black/5 rounded-full transition-colors"
+          aria-label="Previous"
         >
-          {items[index]}
-        </p>
+          <ChevronLeft className="w-5 h-5 lg:w-6 lg:h-6 text-black" aria-hidden="true" />
+        </button>
+        <div
+          className="relative flex-1 min-w-0 min-h-[2.0rem] flex items-center justify-center overflow-hidden"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <p
+            key={index}
+            className={`sb-top-marquee-message text-black text-[12px] sm:text-lg font-medium tracking-wide text-center px-1 truncate ${
+              fading ? "opacity-0" : "opacity-100"
+            }`}
+          >
+            {items[index]}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleNext}
+          className="p-1 cursor-pointer shrink-0 hover:bg-black/5 rounded-full transition-colors"
+          aria-label="Next"
+        >
+          <ChevronRight className="w-5 h-5 lg:w-6 lg:h-6 text-black" aria-hidden="true" />
+        </button>
       </div>
     </>
   );
@@ -414,21 +442,9 @@ export function Header() {
             //   </div>
             //   <ChevronRight className="w-4.0 h-4.0 opacity-50 shrink-0"  aria-hidden />
             // </div>
-            <div className="sf-announce flex items-center justify-center gap-2 lg:gap-4">
-  <ChevronLeft
-    className="w-5 h-5 lg:w-7 lg:h-7 text-black shrink-0 lg:ml-30"
-    aria-hidden
-  />
-
-  <div className="flex-1 min-w-0 overflow-hidden px-2 lg:px-4">
-    <TopMarquee segments={marqueeFromCms} />
-  </div>
-
-  <ChevronRight
-    className="w-5 h-5 lg:w-7 lg:h-7 text-black shrink-0 lg:mr-30"
-    aria-hidden
-  />
-</div>
+            <div className="sf-announce flex items-center justify-center w-full">
+              <TopMarquee segments={marqueeFromCms} />
+            </div>
           )}
         </div>
 

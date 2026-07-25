@@ -143,19 +143,12 @@ export function buildCartSummaryFromLines(
     }
   }
 
-  // Calculate GST on discounted base price per line item
+  // Calculate GST on original base price per line item (coupon does not reduce GST)
   let gstAmount = 0;
   lines.forEach((l) => {
     const lineExGst = lineSubtotalExGst(l);
-    // Proportion of this line in the total subtotal
-    const proportion = subtotalExGst > 0 ? (lineExGst / subtotalExGst) : 0;
-    // Discount applied to this line
-    const lineDiscount = totalDiscount * proportion;
-    const discountedLineExGst = Math.max(0, lineExGst - lineDiscount);
-    
-    // Calculate GST on the discounted amount
     const gstPct = lineGstPct(l);
-    gstAmount += (discountedLineExGst * gstPct) / 100;
+    gstAmount += (lineExGst * gstPct) / 100;
   });
   gstAmount = Math.round(gstAmount);
 

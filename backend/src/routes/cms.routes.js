@@ -4,7 +4,7 @@ const { requireRole } = require('../middleware/role.middleware');
 const { validate } = require('../middleware/validate.middleware');
 const FooterSubscriber = require('../models/FooterSubscriber');
 const CMS = require('../models/CMS');
-const { sendNewsletterSubscribeEmail } = require('../services/email.service');
+const { sendNewsletterSubscribeEmail, sendNewsletterAdminNotificationEmail } = require('../services/email.service');
 const ApiResponse = require('../utils/apiResponse');
 const asyncHandler = require('../utils/asyncHandler');
 const {
@@ -374,11 +374,20 @@ router.post('/newsletter/subscribe', asyncHandler(async (req, res) => {
     if (existing.isActive) return ApiResponse.conflict(res, 'You are already subscribed.');
     existing.isActive = true;
     await existing.save();
+    sendNewsletterSubscribeEmail({ to: email }).catch((err) => console.error("Newsletter email failed", err));
+    sendNewsletterAdminNotificationEmail({
+      to: process.env.ADMIN_EMAIL || process.env.SMTP_FROM || 'admin@structbay.com',
+      subscriberEmail: email,
+    }).catch((err) => console.error("Newsletter admin email failed", err));
     return ApiResponse.success(res, 200, 'Welcome back! Re-subscribed.');
   }
   await FooterSubscriber.create({ email });
   // Send welcome email in background
   sendNewsletterSubscribeEmail({ to: email }).catch((err) => console.error("Newsletter email failed", err));
+  sendNewsletterAdminNotificationEmail({
+    to: process.env.ADMIN_EMAIL || process.env.SMTP_FROM || 'admin@structbay.com',
+    subscriberEmail: email,
+  }).catch((err) => console.error("Newsletter admin email failed", err));
   return ApiResponse.created(res, 'Subscribed successfully!');
 }));
 

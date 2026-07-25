@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getApiV1Base } from "../../lib/apiBase";
 import { AlertCircle, CheckCircle2, Plus, Trash2, X } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { api } from "../lib/api";
@@ -88,7 +89,7 @@ export function SandAggregatesQuoteModal({ open, onClose }: Props) {
     setLines([{ size: "", quantity: "" }]);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
 
@@ -110,26 +111,47 @@ export function SandAggregatesQuoteModal({ open, onClose }: Props) {
       const requirement = cleanLines
         .map((line, index) => `Product ${index + 1}: ${line.size} - ${line.quantity} MT`)
         .join("\n");
-      const res = await api.submitBulkEnquiry({
-        quoteType: "SAND_AGGREGATES",
+
+      const totalQuantity = cleanLines.reduce((acc, line) => acc + (Number(line.quantity) || 0), 0);
+
+      const payload = {
+        rfqType: "SAND_AGGREGATES",
         customerName: form.name,
         customerPhone: form.phone,
         customerEmail: form.email || undefined,
         companyName: form.company || undefined,
-        deliveryAddress: form.siteAddress,
+        location: form.siteAddress,
         city: form.siteAddress,
-        requirement: `M Sand & Aggregates quote request\n${requirement}`,
-        remarks: "Submitted from M Sand & Aggregates category popup.",
-        attachments: [],
+        grade: "M Sand & Aggregates",
+        quantity: totalQuantity,
+        quantityUnit: "MT",
+        notes: `M Sand & Aggregates quote request\n${requirement}\nRemarks: Submitted from M Sand & Aggregates category popup.`
+      };
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      const token = localStorage.getItem("sb_cust_t");
+      if (token) headers.Authorization = `Bearer ${token}`;
+
+
+      const res = await fetch(`${getApiV1Base()}/concrete-rfqs`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
       });
-      setRefNumber(res.data?.enquiryNumber || "");
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Submission failed");
+
+      setRefNumber(data.data?.rfqNumber || "");
       setSubmitted(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not submit quote request.");
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
     <div
@@ -156,114 +178,114 @@ export function SandAggregatesQuoteModal({ open, onClose }: Props) {
         </button>
 
         <div className="overflow-y-auto max-h-[92vh] w-full">
-        {submitted ? (
-          <div className="px-6 py-12 text-center sm:px-10">
-            <CheckCircle2 className="mx-auto mb-4 h-14 w-14 text-green-600" />
-            <h2 className="mb-2 text-2xl font-bold text-black">Quote request submitted</h2>
-            <p className="mb-5 text-sm text-gray-600">Our team will contact you with pricing for M Sand & Aggregates.</p>
-            {refNumber && (
-              <p className="mb-6 inline-block border border-gray-200 bg-gray-50 px-4 py-2 font-mono text-sm font-bold text-[#E85A00]">
-                {refNumber}
-              </p>
-            )}
-            <div className="flex justify-center gap-3">
-              <button type="button" onClick={onClose} className="rounded-lg bg-black px-6 py-3 text-sm font-bold text-white">
-                Close
-              </button>
-              <button type="button" onClick={reset} className="rounded-lg border border-gray-200 px-6 py-3 text-sm font-bold text-black">
-                New quote
-              </button>
-            </div>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="px-6 py-8 sm:px-10">
-            <h2 id="sand-aggregates-quote-title" className="mb-8 text-3xl font-black text-black">
-              M Sand & Aggregates
-            </h2>
-
-            <div className="mx-auto max-w-[560px] space-y-4 rounded-xl border border-gray-100 bg-white p-4 sm:p-6">
-              {error && (
-                <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                  {error}
-                </div>
+          {submitted ? (
+            <div className="px-6 py-12 text-center sm:px-10">
+              <CheckCircle2 className="mx-auto mb-4 h-14 w-14 text-green-600" />
+              <h2 className="mb-2 text-2xl font-bold text-black">Quote request submitted</h2>
+              <p className="mb-5 text-sm text-gray-600">Our team will contact you with pricing for M Sand & Aggregates.</p>
+              {refNumber && (
+                <p className="mb-6 inline-block border border-gray-200 bg-gray-50 px-4 py-2 font-mono text-sm font-bold text-[#E85A00]">
+                  {refNumber}
+                </p>
               )}
-
-              <label className="block">
-                <span className="mb-2 block text-sm font-bold text-gray-700">Name</span>
-                <input className={fieldClass} value={form.name} onChange={(e) => updateForm("name", e.target.value)} />
-              </label>
-
-              <label className="block">
-                <span className="mb-2 block text-sm font-bold text-gray-700">Company Name</span>
-                <input className={fieldClass} value={form.company} onChange={(e) => updateForm("company", e.target.value)} />
-              </label>
-
-              <label className="block">
-                <span className="mb-2 block text-sm font-bold text-gray-700">Phone Number</span>
-                <input className={fieldClass} value={form.phone} onChange={(e) => updateForm("phone", e.target.value)} />
-              </label>
-
-              <label className="block">
-                <span className="mb-2 block text-sm font-bold text-gray-700">Email Address</span>
-                <input type="email" className={fieldClass} value={form.email} onChange={(e) => updateForm("email", e.target.value)} />
-              </label>
-
-              <label className="block">
-                <span className="mb-2 block text-sm font-bold text-gray-700">Site Address</span>
-                <input className={fieldClass} value={form.siteAddress} onChange={(e) => updateForm("siteAddress", e.target.value)} />
-              </label>
-
-              <div className="pt-4">
-                {lines.map((line, index) => (
-                  <div key={index} className="mb-3 rounded-xl bg-gray-50 p-4">
-                    <div className="mb-3 flex items-center justify-between">
-                      <p className="text-xs font-black uppercase tracking-wide text-gray-600">Product {index + 1}</p>
-                      {lines.length > 1 && (
-                        <button type="button" onClick={() => removeLine(index)} className="text-gray-400 hover:text-red-500" aria-label="Remove product row">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-[1fr_0.9fr]">
-                      <select className={fieldClass} value={line.size} onChange={(e) => updateLine(index, "size", e.target.value)}>
-                        <option value="">Select Size</option>
-                        {SIZE_OPTIONS.map((size) => (
-                          <option key={size} value={size}>
-                            {size}
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        className={fieldClass}
-                        value={line.quantity}
-                        onChange={(e) => updateLine(index, "quantity", e.target.value)}
-                        placeholder="Qty (MT)"
-                        inputMode="decimal"
-                      />
-                    </div>
-                  </div>
-                ))}
-
-                <button
-                  type="button"
-                  onClick={addLine}
-                  className="mb-4 flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-pink-400 py-3 text-sm font-black uppercase tracking-wide text-pink-500 hover:bg-pink-50"
-                >
-                  <Plus className="h-4 w-4" /> Add more sizes
+              <div className="flex justify-center gap-3">
+                <button type="button" onClick={onClose} className="rounded-lg bg-black px-6 py-3 text-sm font-bold text-white">
+                  Close
                 </button>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full rounded-lg bg-black py-4 text-sm font-black uppercase tracking-wide text-white hover:opacity-90 disabled:opacity-60"
-                >
-                  {loading ? "Submitting..." : "Submit all quotes"}
+                <button type="button" onClick={reset} className="rounded-lg border border-gray-200 px-6 py-3 text-sm font-bold text-black">
+                  New quote
                 </button>
               </div>
             </div>
-          </form>
-        )}
+          ) : (
+            <form onSubmit={handleSubmit} className="px-6 py-8 sm:px-10">
+              <h2 id="sand-aggregates-quote-title" className="mb-8 text-3xl font-black text-black">
+                M Sand & Aggregates
+              </h2>
+
+              <div className="mx-auto max-w-[560px] space-y-4 rounded-xl border border-gray-100 bg-white p-4 sm:p-6">
+                {error && (
+                  <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                    {error}
+                  </div>
+                )}
+
+                <label className="block">
+                  <span className="mb-2 block text-sm font-bold text-gray-700">Name</span>
+                  <input className={fieldClass} value={form.name} onChange={(e) => updateForm("name", e.target.value)} />
+                </label>
+
+                <label className="block">
+                  <span className="mb-2 block text-sm font-bold text-gray-700">Company Name</span>
+                  <input className={fieldClass} value={form.company} onChange={(e) => updateForm("company", e.target.value)} />
+                </label>
+
+                <label className="block">
+                  <span className="mb-2 block text-sm font-bold text-gray-700">Phone Number</span>
+                  <input className={fieldClass} value={form.phone} onChange={(e) => updateForm("phone", e.target.value)} />
+                </label>
+
+                <label className="block">
+                  <span className="mb-2 block text-sm font-bold text-gray-700">Email Address</span>
+                  <input type="email" className={fieldClass} value={form.email} onChange={(e) => updateForm("email", e.target.value)} />
+                </label>
+
+                <label className="block">
+                  <span className="mb-2 block text-sm font-bold text-gray-700">Site Address</span>
+                  <input className={fieldClass} value={form.siteAddress} onChange={(e) => updateForm("siteAddress", e.target.value)} />
+                </label>
+
+                <div className="pt-4">
+                  {lines.map((line, index) => (
+                    <div key={index} className="mb-3 rounded-xl bg-gray-50 p-4">
+                      <div className="mb-3 flex items-center justify-between">
+                        <p className="text-xs font-black uppercase tracking-wide text-gray-600">Product {index + 1}</p>
+                        {lines.length > 1 && (
+                          <button type="button" onClick={() => removeLine(index)} className="text-gray-400 hover:text-red-500" aria-label="Remove product row">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-[1fr_0.9fr]">
+                        <select className={fieldClass} value={line.size} onChange={(e) => updateLine(index, "size", e.target.value)}>
+                          <option value="">Select Size</option>
+                          {SIZE_OPTIONS.map((size) => (
+                            <option key={size} value={size}>
+                              {size}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          className={fieldClass}
+                          value={line.quantity}
+                          onChange={(e) => updateLine(index, "quantity", e.target.value)}
+                          placeholder="Qty (MT)"
+                          inputMode="decimal"
+                        />
+                      </div>
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={addLine}
+                    className="mb-4 flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-pink-400 py-3 text-sm font-black uppercase tracking-wide text-pink-500 hover:bg-pink-50"
+                  >
+                    <Plus className="h-4 w-4" /> Add more sizes
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full rounded-lg bg-black py-4 text-sm font-black uppercase tracking-wide text-white hover:opacity-90 disabled:opacity-60"
+                  >
+                    {loading ? "Submitting..." : "Submit all quotes"}
+                  </button>
+                </div>
+              </div>
+            </form>
+          )}
         </div>
       </div>
     </div>

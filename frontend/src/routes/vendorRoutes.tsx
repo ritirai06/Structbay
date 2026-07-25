@@ -1,10 +1,11 @@
 import type { RouteObject } from "react-router";
 import { Outlet } from "react-router";
 
+import { AuthProvider } from "../vendor/context/AuthContext";
+
 async function loadVendorAuthRoot() {
   await import("@shared/styles/vendor.css");
   await import("@shared/styles/workflow.css");
-  const { AuthProvider } = await import("../vendor/context/AuthContext");
 
   function Shell() {
     return (
@@ -63,6 +64,13 @@ export const vendorRoutes: RouteObject[] = [
             lazy: async () => {
               const { OrderDetails } = await import("../vendor/pages/OrderDetails");
               return { Component: OrderDetails };
+            },
+          },
+          {
+            path: "orders/:orderId/chat",
+            lazy: async () => {
+              const { VendorChatPage } = await import("../vendor/pages/VendorChatPage");
+              return { Component: VendorChatPage };
             },
           },
           {

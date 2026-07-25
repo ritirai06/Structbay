@@ -6,6 +6,7 @@ interface HeroBannerProps {
   heightDesktop?: number; // px
   heightMobile?: number; // px
   overlayOpacity?: number; // 0–1
+  subtitle?: string;
 }
 
 export function HeroBanner({
@@ -14,6 +15,7 @@ export function HeroBanner({
   heightDesktop = 450,
   heightMobile = 300,
   overlayOpacity = 0.45,
+  subtitle,
 }: HeroBannerProps) {
   return (
     <section
@@ -68,9 +70,16 @@ export function HeroBanner({
           minHeight: 0,
         }}
       >
-        <h1 className="text-5xl md:text-6xl font-bold text-white tracking-tight uppercase text-center drop-shadow-lg">
-          {title}
-        </h1>
+        <div className="flex flex-col items-center text-center">
+          <h1 className="text-5xl md:text-6xl font-bold text-white tracking-tight uppercase drop-shadow-lg">
+            {title}
+          </h1>
+          {subtitle && (
+            <p className="mt-4 text-lg md:text-xl text-white/90 drop-shadow-md max-w-2xl">
+              {subtitle}
+            </p>
+          )}
+        </div>
       </div>
     </section>
   );

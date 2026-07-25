@@ -509,7 +509,7 @@ export function OrderDetailPage() {
                   <option value="">— Select vendor —</option>
                   {approvedVendors.map((v) => (
                     <option key={v._id} value={v._id}>
-                      {(v.companyName || v.name || "Vendor").trim()}
+                      {v.referenceNumber || (v.companyName || v.name || "Vendor").trim()}
                     </option>
                   ))}
                 </select>

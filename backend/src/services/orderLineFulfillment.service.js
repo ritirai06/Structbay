@@ -15,6 +15,7 @@ const EARLY_VO_STATUSES = new Set([
   'ACCEPTED',
   'READY_FOR_DISPATCH',
   'CHANGES_REQUESTED',
+  'REJECTED',
 ]);
 
 function buildVoItemFromOrderLine(line) {
@@ -217,22 +218,25 @@ async function assignOrderLineFulfillment({
             vendorOrder.items.push(buildVoItemFromOrderLine(item));
           }
           vendorOrder.totalAmount = vendorOrder.items.reduce((sum, i) => sum + (Number(i.lineTotal) || 0), 0);
+          vendorOrder.markModified('items');
           await vendorOrder.save();
         }
       }
     }
 
     if (!vendorOrder) {
-      // Check if there is an existing vendor order for this vendor that we can append to
-      vendorOrder = await VendorOrder.findOne({
-        masterOrder: order._id,
-        vendor: vendor._id,
-        status: { $in: Array.from(EARLY_VO_STATUSES) }
-      });
+      // Intentionally NOT appending to existing vendor orders so each product gets its own distinct row
+      vendorOrder = null;
 
-      if (vendorOrder) {
-        vendorOrder.items.push(buildVoItemFromOrderLine(item));
+      if (false) {
+        const idx = vendorOrder.items.findIndex(i => String(i.masterItemId) === String(item._id));
+        if (idx !== -1) {
+          vendorOrder.items[idx] = buildVoItemFromOrderLine(item);
+        } else {
+          vendorOrder.items.push(buildVoItemFromOrderLine(item));
+        }
         vendorOrder.totalAmount = vendorOrder.items.reduce((sum, i) => sum + (Number(i.lineTotal) || 0), 0);
+        vendorOrder.markModified('items');
         await vendorOrder.save();
         item.vendorOrderId = vendorOrder._id;
       } else {

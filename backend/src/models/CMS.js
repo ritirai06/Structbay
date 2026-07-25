@@ -193,6 +193,8 @@ const cmsSchema = new mongoose.Schema(
       aboutUsPublicId: { type: String, default: null },
       contactUsUrl: { type: String, default: null },
       contactUsPublicId: { type: String, default: null },
+      blogsUrl: { type: String, default: null },
+      blogsPublicId: { type: String, default: null },
     },
 
     // ─── Footer CMS ────────────────────────────────────

@@ -3,8 +3,8 @@
  */
 const STATUS_TO_CUSTOMER = {
   PENDING: { step: 'order_placed', label: 'Order placed' },
-  PAID: { step: 'order_confirmed', label: 'Order confirmed' },
-  VENDOR_ASSIGNMENT_PENDING: { step: 'order_confirmed', label: 'Order confirmed' },
+  PAID: { step: 'order_placed', label: 'Order placed' },
+  VENDOR_ASSIGNMENT_PENDING: { step: 'order_placed', label: 'Order placed' },
   PROCESSING: { step: 'order_processing', label: 'Processing' },
   READY_FOR_DISPATCH: { step: 'order_processing', label: 'Processing' },
   PARTIALLY_DISPATCHED: { step: 'out_for_delivery', label: 'Out for delivery' },
@@ -29,3 +29,4 @@ function customerOrderProgress(order) {
 }
 
 module.exports = { customerOrderProgress, STATUS_TO_CUSTOMER };
+// Trigger nodemon restart

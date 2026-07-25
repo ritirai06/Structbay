@@ -55,6 +55,7 @@ exports.getAssignedOrders = async (req, res) => {
     VendorOrder.find(query)
       .populate('items.product', 'name brand images sku')
       .populate('items.variation', 'attributes sku')
+      .populate({ path: 'masterOrder', select: 'project', populate: { path: 'project', select: 'name' } })
       .sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit, 10)),
     VendorOrder.countDocuments(query),
   ]);

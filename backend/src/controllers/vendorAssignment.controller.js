@@ -39,80 +39,80 @@ exports.assignVendors = asyncHandler(async (req, res) => {
     const assignedItems = order.items.filter((i) => itemIds.includes(i._id.toString()));
     if (!assignedItems.length) throw new AppError('No matching items found for assignment.', 400);
 
-    const totalAmount = assignedItems.reduce((s, i) => s + i.lineTotal, 0);
-    const subOrderNumber = generateSubOrderNumber(order.orderNumber, subIndex++);
-
-    const subOrderItems = assignedItems.map((i) => ({
-      product:       i.product,
-      variation:     i.variation,
-      masterItemId:  i._id,
-      productName:   i.name,
-      sku:           i.sku,
-      variationLabel: i.variationLabel || undefined,
-      quantity:      i.quantity,
-      unitPrice:     i.unitPrice,
-      gstPercentage: i.gstPercentage,
-      lineTotal:     i.lineTotal,
-    }));
-
-    const vendorOrder = await VendorOrder.create({
-      masterOrder:  order._id,
-      orderNumber:  subOrderNumber,
-      subOrderIndex: subIndex - 1,
-      vendor:       vendorId,
-      assignedBy:   req.user._id,
-      assignmentNotes: notes,
-      items:        subOrderItems,
-      customerInfo: { name: null, phone: null }, // will be populated below safely
-      deliveryAddress: order.shippingAddress,
-      deliveryType:  deliveryType || 'vendor_delivery',
-      totalAmount:   Math.round(totalAmount),
-      priority:      priority || 'normal',
-      expectedDispatchDate,
-      expectedDeliveryDate,
-      status: 'ASSIGNED',
-      statusHistory: [{ status: 'ASSIGNED', updatedBy: req.user._id, model: 'User', note: 'Assigned by admin.' }],
-    });
-
-    // Populate limited customer info (name, phone) after creation
-    const customer = await Order.findById(order._id).populate('customer', 'name phone').lean();
-    if (customer?.customer) {
-      await VendorOrder.findByIdAndUpdate(vendorOrder._id, {
-        customerInfo: { name: customer.customer.name, phone: customer.customer.phone },
-      });
-    }
-
-    // Track assignment
-    await VendorAssignment.create({
-      masterOrder:  order._id,
-      vendorOrder:  vendorOrder._id,
-      vendor:       vendorId,
-      assignedBy:   req.user._id,
-      assignedItems: assignedItems.map((i) => ({
-        orderItemId: i._id, product: i.product, quantity: i.quantity, unitPrice: i.unitPrice,
-      })),
-      deliveryType: deliveryType || 'vendor_delivery',
-      city:  order.city,
-      notes,
-      history: [{ action: 'assigned', vendor: vendorId, byAdmin: req.user._id, note: notes }],
-    });
-
-    // Update items on master order with vendor ref
     for (const item of assignedItems) {
+      const totalAmount = item.lineTotal;
+      const subOrderNumber = generateSubOrderNumber(order.orderNumber, subIndex++);
+
+      const subOrderItem = {
+        product:       item.product,
+        variation:     item.variation,
+        masterItemId:  item._id,
+        productName:   item.name,
+        sku:           item.sku,
+        variationLabel: item.variationLabel || undefined,
+        quantity:      item.quantity,
+        unitPrice:     item.unitPrice,
+        gstPercentage: item.gstPercentage,
+        lineTotal:     item.lineTotal,
+      };
+
+      const vendorOrder = await VendorOrder.create({
+        masterOrder:  order._id,
+        orderNumber:  subOrderNumber,
+        subOrderIndex: subIndex - 1,
+        vendor:       vendorId,
+        assignedBy:   req.user._id,
+        assignmentNotes: notes,
+        items:        [subOrderItem],
+        customerInfo: { name: null, phone: null }, 
+        deliveryAddress: order.shippingAddress,
+        deliveryType:  deliveryType || 'vendor_delivery',
+        totalAmount:   Math.round(totalAmount),
+        priority:      priority || 'normal',
+        expectedDispatchDate,
+        expectedDeliveryDate,
+        status: 'ASSIGNED',
+        statusHistory: [{ status: 'ASSIGNED', updatedBy: req.user._id, model: 'User', note: 'Assigned by admin.' }],
+      });
+
+      // Populate limited customer info (name, phone) after creation
+      const customer = await Order.findById(order._id).populate('customer', 'name phone').lean();
+      if (customer?.customer) {
+        await VendorOrder.findByIdAndUpdate(vendorOrder._id, {
+          customerInfo: { name: customer.customer.name, phone: customer.customer.phone },
+        });
+      }
+
+      // Track assignment
+      await VendorAssignment.create({
+        masterOrder:  order._id,
+        vendorOrder:  vendorOrder._id,
+        vendor:       vendorId,
+        assignedBy:   req.user._id,
+        assignedItems: [{
+          orderItemId: item._id, product: item.product, quantity: item.quantity, unitPrice: item.unitPrice,
+        }],
+        deliveryType: deliveryType || 'vendor_delivery',
+        city:  order.city,
+        notes,
+        history: [{ action: 'assigned', vendor: vendorId, byAdmin: req.user._id, note: notes }],
+      });
+
+      // Update items on master order with vendor ref
       item.assignedVendor  = vendorId;
       item.vendorOrderId   = vendorOrder._id;
+
+      // Vendor notification
+      await VendorNotification.create({
+        vendor: vendorId,
+        type: 'new_order',
+        title: 'New Order Assigned',
+        message: `Sub-order ${subOrderNumber} has been assigned to you.`,
+        orderId: vendorOrder._id,
+      }).catch(() => {});
+
+      createdVendorOrders.push(vendorOrder);
     }
-
-    // Vendor notification
-    await VendorNotification.create({
-      vendor: vendorId,
-      type: 'new_order',
-      title: 'New Order Assigned',
-      message: `Sub-order ${subOrderNumber} has been assigned to you.`,
-      orderId: vendorOrder._id,
-    }).catch(() => {});
-
-    createdVendorOrders.push(vendorOrder);
   }
 
   // Update master order

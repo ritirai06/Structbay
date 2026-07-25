@@ -12,6 +12,7 @@
 
 const nodemailer = require('nodemailer');
 const logger = require('../config/logger');
+const EmailQueue = require('../models/EmailQueue');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -231,34 +232,30 @@ const masterTemplate = ({ title, greeting, bodyHtml, cta, branding }) => {
 /**
  * Base email sender — uses configured SMTP, never hardcodes addresses.
  */
-const sendEmail = async ({ to, subject, html, text, replyTo }) => {
-  const transporter = getTransporter();
-  if (!transporter) {
-    logger.warn(`Email skipped (not configured): would send to ${to} — ${subject}`);
-    return null;
-  }
+const sendEmail = async ({ to, subject, html, text, replyTo, priority = 0 }) => {
   try {
     const fromAddr = defaultFrom();
     if (!fromAddr) {
       logger.warn(`Email skipped (SMTP_FROM not set): would send to ${to} — ${subject}`);
       return null;
     }
-    const mail = {
-      from: `"Structbay" <${fromAddr}>`,
+    const job = await EmailQueue.create({
       to,
       subject,
       html,
-    };
-    if (text) mail.text = text;
-    if (replyTo) mail.replyTo = replyTo;
-    else mail.replyTo = fromAddr;
-
-    const info = await transporter.sendMail(mail);
-    logger.info(`Email sent to ${to}: ${info.messageId}`);
-    return info;
+      text,
+      replyTo: replyTo || fromAddr,
+      priority
+    });
+    logger.info(`Email queued to ${to}: ${subject}`);
+    
+    // Optionally trigger queue processing immediately (non-blocking)
+    const { processEmailQueue } = require('../workers/emailWorker');
+    processEmailQueue().catch(err => logger.error(`Error triggering queue: ${err.message}`));
+    
+    return job;
   } catch (err) {
-    const extra = err.responseCode ? ` SMTP ${err.responseCode}` : '';
-    logger.error(`Email send failed to ${to}: ${err.message}${extra}`);
+    logger.error(`Failed to queue email to ${to}: ${err.message}`);
     return null;
   }
 };
@@ -781,14 +778,502 @@ const sendNewsletterSubscribeEmail = async ({ to }) => {
   });
 };
 
+// --- EXTENDED CUSTOMER EMAILS ---
+const sendRefundInitiatedEmail = async ({ to, name, orderNumber, amount, reason }) => {
+  return _buildAndSend({
+    to, subject: `Refund Initiated for Order #${orderNumber}`,
+    title: 'Refund Initiated',
+    greeting: `Hi ${name},`,
+    bodyHtml: `
+      <p>We have initiated a refund of <strong>₹${amount}</strong> for your order <strong>#${orderNumber}</strong>.</p>
+      ${reason ? `<p>Reason: ${reason}</p>` : ''}
+      <p>It may take 5-7 business days for the amount to reflect in your original payment method.</p>`,
+    vars: { name, orderNumber, amount, reason },
+  });
+};
+
+const sendRefundCompletedEmail = async ({ to, name, orderNumber, amount, transactionId }) => {
+  return _buildAndSend({
+    to, subject: `Refund Completed for Order #${orderNumber}`,
+    title: 'Refund Completed 🎉',
+    greeting: `Hi ${name},`,
+    bodyHtml: `
+      <p>Your refund of <strong>₹${amount}</strong> for order <strong>#${orderNumber}</strong> has been successfully processed.</p>
+      ${transactionId ? `<p>Transaction ID: <strong>${transactionId}</strong></p>` : ''}
+      <p>If you don't see the credit in your account, please contact your bank.</p>`,
+    vars: { name, orderNumber, amount, transactionId },
+  });
+};
+
+const sendPaymentPendingEmail = async ({ to, name, orderNumber, amount, paymentLink }) => {
+  return _buildAndSend({
+    to, subject: `Action Required: Complete Payment for Order #${orderNumber}`,
+    title: 'Payment Pending ⚠️',
+    greeting: `Hi ${name},`,
+    bodyHtml: `
+      <p>Your order <strong>#${orderNumber}</strong> is currently pending payment.</p>
+      <p>Amount Due: <strong>₹${amount}</strong></p>
+      <p>Please complete your payment to proceed with the order processing.</p>`,
+    cta: paymentLink ? { label: 'Pay Now', url: paymentLink } : null,
+    vars: { name, orderNumber, amount },
+  });
+};
+
+const sendInvoiceGeneratedEmail = async ({ to, name, orderNumber, invoiceNumber, invoiceLink }) => {
+  return _buildAndSend({
+    to, subject: `Invoice ${invoiceNumber} for Order #${orderNumber}`,
+    title: 'Invoice Generated 📄',
+    greeting: `Hi ${name},`,
+    bodyHtml: `
+      <p>Your invoice <strong>${invoiceNumber}</strong> for order <strong>#${orderNumber}</strong> has been generated.</p>
+      <p>You can download or view it using the link below.</p>`,
+    cta: invoiceLink ? { label: 'View Invoice', url: invoiceLink } : null,
+    vars: { name, orderNumber, invoiceNumber },
+  });
+};
+
+const sendQuoteExpiredEmail = async ({ to, name, quoteNumber, rfqNumber }) => {
+  return _buildAndSend({
+    to, subject: `Quotation ${quoteNumber} has Expired`,
+    title: 'Quotation Expired ⏰',
+    greeting: `Hi ${name},`,
+    bodyHtml: `
+      <p>The quotation <strong>${quoteNumber}</strong> provided for your RFQ <strong>${rfqNumber}</strong> has expired.</p>
+      <p>If you still wish to proceed, please request a new quotation.</p>`,
+    vars: { name, quoteNumber, rfqNumber },
+  });
+};
+
+const sendOrderPackedEmail = async ({ to, name, orderNumber }) => {
+  return _buildAndSend({
+    to, subject: `Your Order #${orderNumber} is Packed and Ready to Ship`,
+    title: 'Order Packed 📦',
+    greeting: `Hi ${name},`,
+    bodyHtml: `
+      <p>Great news! Your order <strong>#${orderNumber}</strong> has been packed and is awaiting pickup from our courier partner.</p>
+      <p>We will notify you once it's dispatched.</p>`,
+    vars: { name, orderNumber },
+  });
+};
+
+const sendContactUsConfirmationEmail = async ({ to, name }) => {
+  return _buildAndSend({
+    to, subject: `We've Received Your Message, ${name}!`,
+    title: 'Thank You for Contacting Us 💬',
+    greeting: `Hi ${name},`,
+    bodyHtml: `
+      <p>This is a confirmation that we have received your message.</p>
+      <p>Our team will review your inquiry and get back to you as soon as possible, usually within 24-48 business hours.</p>
+      <p>We appreciate you reaching out to us!</p>`,
+    vars: { name },
+  });
+};
+
+const sendLoginAlertEmail = async ({ to, name }) => {
+  return _buildAndSend({
+    to, subject: 'New Login to your StructBay Account',
+    title: 'New Login Detected 🔐',
+    greeting: `Hi ${name},`,
+    bodyHtml: `
+      <p>We detected a new login to your StructBay account.</p>
+      <p>If this was you, you can safely ignore this email. If you did not log in, please reset your password immediately.</p>`,
+    vars: { name },
+  });
+};
+
+const sendAccountLockedEmail = async ({ to, name, reason }) => {
+  return _buildAndSend({
+    to, subject: 'Action Required: Your StructBay Account is Locked',
+    title: 'Account Locked 🔒',
+    greeting: `Hi ${name},`,
+    bodyHtml: `
+      <p>Your StructBay account has been temporarily locked.</p>
+      ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
+      <p>Please contact our support team to resolve this issue and restore your access.</p>`,
+    vars: { name },
+  });
+};
+
+const sendAccountReactivatedEmail = async ({ to, name }) => {
+  return _buildAndSend({
+    to, subject: 'Your StructBay Account has been Reactivated',
+    title: 'Account Reactivated ✅',
+    greeting: `Hi ${name},`,
+    bodyHtml: `
+      <p>Good news! Your StructBay account has been reactivated and is now ready to use.</p>
+      <p>You can now log in and access all features as usual.</p>`,
+    vars: { name },
+  });
+};
+
+const sendEmailAlreadyVerifiedEmail = async ({ to, name }) => {
+  return _buildAndSend({
+    to, subject: 'Your StructBay Email is Already Verified',
+    title: 'Email Already Verified',
+    greeting: `Hi ${name},`,
+    bodyHtml: `
+      <p>We noticed you tried to verify your email, but your email address is already verified.</p>
+      <p>You can continue to use your account without any further verification steps.</p>`,
+    vars: { name },
+  });
+};
+
+const sendProfileUpdatedEmail = async ({ to, name, role }) => {
+  return _buildAndSend({
+    to, subject: 'Your StructBay Profile was Updated',
+    title: 'Profile Updated 👤',
+    greeting: `Hi ${name},`,
+    bodyHtml: `
+      <p>Your ${role ? role + ' ' : ''}profile information was successfully updated.</p>
+      <p>If you did not make this change, please contact our support team immediately.</p>`,
+    vars: { name },
+  });
+};
+
+const sendEmailChangedEmail = async ({ to, name, newEmail }) => {
+  return _buildAndSend({
+    to, subject: 'Your StructBay Email Address has Changed',
+    title: 'Email Address Changed',
+    greeting: `Hi ${name},`,
+    bodyHtml: `
+      <p>Your account email address has been changed to <strong>${newEmail}</strong>.</p>
+      <p>If you did not authorize this change, please contact us immediately to secure your account.</p>`,
+    vars: { name },
+  });
+};
+
+const sendPhoneChangedEmail = async ({ to, name, newPhone }) => {
+  return _buildAndSend({
+    to, subject: 'Your StructBay Phone Number has Changed',
+    title: 'Phone Number Changed',
+    greeting: `Hi ${name},`,
+    bodyHtml: `
+      <p>Your account phone number has been updated to <strong>${newPhone}</strong>.</p>
+      <p>If you did not make this change, please let us know immediately.</p>`,
+    vars: { name },
+  });
+};
+
+const sendAddressAddedEmail = async ({ to, name, addressType }) => {
+  return _buildAndSend({
+    to, subject: 'New Address Added to your StructBay Account',
+    title: 'New Address Added 📍',
+    greeting: `Hi ${name},`,
+    bodyHtml: `
+      <p>A new ${addressType || 'delivery'} address has been added to your profile.</p>
+      <p>You can manage all your addresses from your account dashboard.</p>`,
+    vars: { name },
+  });
+};
+
+const sendAddressUpdatedEmail = async ({ to, name, addressType }) => {
+  return _buildAndSend({
+    to, subject: 'Address Updated in your StructBay Account',
+    title: 'Address Updated 📍',
+    greeting: `Hi ${name},`,
+    bodyHtml: `
+      <p>Your ${addressType || 'delivery'} address has been successfully updated.</p>
+      <p>You can manage all your addresses from your account dashboard.</p>`,
+    vars: { name },
+  });
+};
+
+const sendGSTVerificationEmail = async ({ to, name, status, reason }) => {
+  return _buildAndSend({
+    to, subject: `GST Verification ${status} - StructBay`,
+    title: `GST Verification ${status}`,
+    greeting: `Hi ${name},`,
+    bodyHtml: `
+      <p>Your GST verification is now <strong>${status}</strong>.</p>
+      ${reason ? `<p><strong>Details:</strong> ${reason}</p>` : ''}
+      <p>If you have any questions, please contact our support team.</p>`,
+    vars: { name },
+  });
+};
+
+const sendKYCVerificationEmail = async ({ to, name, status, reason }) => {
+  return _buildAndSend({
+    to, subject: `KYC Verification ${status} - StructBay`,
+    title: `KYC Verification ${status}`,
+    greeting: `Hi ${name},`,
+    bodyHtml: `
+      <p>Your KYC verification is now <strong>${status}</strong>.</p>
+      ${reason ? `<p><strong>Details:</strong> ${reason}</p>` : ''}
+      <p>If you have any questions, please contact our support team.</p>`,
+    vars: { name },
+  });
+};
+
+// --- VENDOR & PRODUCT EMAILS ---
+const sendVendorPendingApprovalEmail = async ({ to, name, companyName }) => {
+  return _buildAndSend({
+    to, subject: 'Your Vendor Application is Pending Approval',
+    title: 'Vendor Application Pending ⏳',
+    greeting: `Hi ${name},`,
+    bodyHtml: `
+      <p>Thank you for submitting your vendor application for <strong>${companyName}</strong>.</p>
+      <p>Our team is currently reviewing your details. This process usually takes 2-3 business days.</p>
+      <p>We will notify you once your application has been processed.</p>`,
+    vars: { name },
+  });
+};
+
+const sendVendorDocumentsExpiringEmail = async ({ to, name, documents }) => {
+  return _buildAndSend({
+    to, subject: 'Action Required: Your Vendor Documents are Expiring Soon',
+    title: 'Documents Expiring ⚠️',
+    greeting: `Hi ${name},`,
+    bodyHtml: `
+      <p>This is a friendly reminder that some of your vendor documents are expiring soon:</p>
+      <ul>
+        ${documents.map(d => `<li><strong>${d.name}</strong> - Expires on: ${d.expiryDate}</li>`).join('')}
+      </ul>
+      <p>Please log in to your vendor dashboard and update these documents to avoid any interruptions in your service.</p>`,
+    vars: { name },
+  });
+};
+
+const sendProductSubmittedEmail = async ({ to, name, productName }) => {
+  return _buildAndSend({
+    to, subject: `Product Submitted for Review: ${productName}`,
+    title: 'Product Submitted 🛒',
+    greeting: `Hi ${name},`,
+    bodyHtml: `
+      <p>Your product <strong>${productName}</strong> has been successfully submitted and is currently under review by our catalog team.</p>
+      <p>You will be notified once the product is approved and live on the marketplace.</p>`,
+    vars: { name },
+  });
+};
+
+const sendProductApprovedEmail = async ({ to, name, productName, productUrl }) => {
+  return _buildAndSend({
+    to, subject: `Your Product is Live: ${productName}`,
+    title: 'Product Approved ✅',
+    greeting: `Hi ${name},`,
+    bodyHtml: `
+      <p>Great news! Your product <strong>${productName}</strong> has been approved and is now live on StructBay.</p>
+      <p>Customers can now view and purchase your product.</p>`,
+    cta: productUrl ? { label: 'View Product', url: productUrl } : null,
+    vars: { name },
+  });
+};
+
+const sendProductRejectedEmail = async ({ to, name, productName, reason }) => {
+  return _buildAndSend({
+    to, subject: `Product Review Update: ${productName}`,
+    title: 'Product Rejected ❌',
+    greeting: `Hi ${name},`,
+    bodyHtml: `
+      <p>Your product submission for <strong>${productName}</strong> could not be approved at this time.</p>
+      ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
+      <p>Please review the feedback and update your product details from your vendor dashboard.</p>`,
+    vars: { name },
+  });
+};
+
+const sendProductBackInStockEmail = async ({ to, name, productName, productUrl }) => {
+  return _buildAndSend({
+    to, subject: `Back in Stock: ${productName}`,
+    title: 'Back In Stock! 🎉',
+    greeting: `Hi ${name},`,
+    bodyHtml: `
+      <p>Good news! The product you've been waiting for is now back in stock:</p>
+      <p><strong>${productName}</strong></p>
+      <p>Hurry up and grab it before it runs out again!</p>`,
+    cta: productUrl ? { label: 'Shop Now', url: productUrl } : null,
+    vars: { name },
+  });
+};
+
+const sendPriceDropEmail = async ({ to, name, productName, oldPrice, newPrice, productUrl }) => {
+  return _buildAndSend({
+    to, subject: `Price Drop Alert: ${productName}`,
+    title: 'Price Drop Alert 📉',
+    greeting: `Hi ${name},`,
+    bodyHtml: `
+      <p>The price for a product you have your eye on has just dropped!</p>
+      <p><strong>${productName}</strong></p>
+      <p>Old Price: <strike>₹${oldPrice}</strike><br/>
+      <strong>New Price: ₹${newPrice}</strong></p>`,
+    cta: productUrl ? { label: 'Shop Now', url: productUrl } : null,
+    vars: { name },
+  });
+};
+
+const sendInventoryLowEmail = async ({ to, name, productName, remainingQuantity }) => {
+  return _buildAndSend({
+    to, subject: `Low Inventory Alert: ${productName}`,
+    title: 'Inventory Low ⚠️',
+    greeting: `Hi ${name},`,
+    bodyHtml: `
+      <p>This is an automated alert that your inventory for the following product is running low:</p>
+      <p><strong>${productName}</strong></p>
+      <p>Remaining Quantity: <strong>${remainingQuantity}</strong></p>
+      <p>Please restock soon to avoid missing out on potential sales.</p>`,
+    vars: { name },
+  });
+};
+
+// --- OTHER EMAILS ---
+const sendOrderShippedEmail = async ({ to, name, orderNumber, trackingUrl, courierName }) => {
+  return _buildAndSend({
+    to, subject: `Your Order #${orderNumber} has been Shipped!`,
+    title: 'Order Shipped 🚚',
+    greeting: `Hi ${name},`,
+    bodyHtml: `
+      <p>Your order <strong>#${orderNumber}</strong> has been shipped via ${courierName || 'our courier partner'}.</p>
+      <p>It is now on its way to your delivery address.</p>`,
+    cta: trackingUrl ? { label: 'Track Shipment', url: trackingUrl } : null,
+    vars: { name, orderNumber },
+  });
+};
+
+const sendRFQAdminNotificationEmail = async ({ to, rfqNumber, customerName }) => {
+  return _buildAndSend({
+    to, subject: `New RFQ Submitted: ${rfqNumber}`,
+    title: 'New RFQ Received 📄',
+    greeting: `Hello Admin,`,
+    bodyHtml: `
+      <p>A new Request for Quotation (<strong>${rfqNumber}</strong>) has been submitted by <strong>${customerName}</strong>.</p>
+      <p>Please review and assign a vendor or provide a quotation.</p>`,
+    vars: { rfqNumber, customerName },
+  });
+};
+
+const sendRFQVendorAssignmentEmail = async ({ to, vendorName, rfqNumber, productDetails }) => {
+  return _buildAndSend({
+    to, subject: `New RFQ Assigned to You: ${rfqNumber}`,
+    title: 'RFQ Assigned 📝',
+    greeting: `Hi ${vendorName},`,
+    bodyHtml: `
+      <p>You have been assigned a new Request for Quotation (<strong>${rfqNumber}</strong>).</p>
+      <p><strong>Product Details:</strong> ${productDetails}</p>
+      <p>Please review the requirements and submit your best quotation.</p>`,
+    vars: { vendorName, rfqNumber },
+  });
+};
+
+const sendRFQVendorQuoteSubmittedEmail = async ({ to, adminName, vendorName, rfqNumber }) => {
+  return _buildAndSend({
+    to, subject: `Vendor Quote Submitted for RFQ: ${rfqNumber}`,
+    title: 'Vendor Quote Received 📥',
+    greeting: `Hi ${adminName},`,
+    bodyHtml: `
+      <p>Vendor <strong>${vendorName}</strong> has submitted a quotation for RFQ <strong>${rfqNumber}</strong>.</p>
+      <p>Please review the quote and forward it to the customer for approval.</p>`,
+    vars: { adminName, vendorName, rfqNumber },
+  });
+};
+
+const sendRFQQuoteAcceptedEmail = async ({ to, vendorName, rfqNumber }) => {
+  return _buildAndSend({
+    to, subject: `Your Quote for RFQ ${rfqNumber} was Accepted!`,
+    title: 'Quote Accepted 🎉',
+    greeting: `Hi ${vendorName},`,
+    bodyHtml: `
+      <p>Great news! The customer has accepted your quotation for RFQ <strong>${rfqNumber}</strong>.</p>
+      <p>An official order will be generated shortly.</p>`,
+    vars: { vendorName, rfqNumber },
+  });
+};
+
+const sendBulkEnquiryAdminNotificationEmail = async ({ to, enquiryId, customerName, details }) => {
+  return _buildAndSend({
+    to, subject: `New Bulk Enquiry Received: ${enquiryId}`,
+    title: 'New Bulk Enquiry 🏢',
+    greeting: `Hello Admin,`,
+    bodyHtml: `
+      <p>A new bulk enquiry (<strong>${enquiryId}</strong>) has been submitted by <strong>${customerName}</strong>.</p>
+      <p><strong>Details:</strong> ${details}</p>
+      <p>Please assign this to the sales team for follow-up.</p>`,
+    vars: { enquiryId, customerName },
+  });
+};
+
+const sendBulkEnquirySalesNotificationEmail = async ({ to, salesRepName, enquiryId, customerName }) => {
+  return _buildAndSend({
+    to, subject: `Action Required: Follow up on Bulk Enquiry ${enquiryId}`,
+    title: 'Bulk Enquiry Assigned 📞',
+    greeting: `Hi ${salesRepName},`,
+    bodyHtml: `
+      <p>You have been assigned a new bulk enquiry (<strong>${enquiryId}</strong>) from <strong>${customerName}</strong>.</p>
+      <p>Please follow up with the customer within the next 4 business hours.</p>`,
+    vars: { salesRepName, enquiryId, customerName },
+  });
+};
+
+const sendBulkEnquiryFollowUpReminderEmail = async ({ to, salesRepName, enquiryId }) => {
+  return _buildAndSend({
+    to, subject: `Reminder: Pending Follow-up for Bulk Enquiry ${enquiryId}`,
+    title: 'Follow-Up Reminder ⏰',
+    greeting: `Hi ${salesRepName},`,
+    bodyHtml: `
+      <p>This is a reminder to follow up on bulk enquiry <strong>${enquiryId}</strong>.</p>
+      <p>If you have already contacted the customer, please update the status in the CRM.</p>`,
+    vars: { salesRepName, enquiryId },
+  });
+};
+
+const sendNewsletterAdminNotificationEmail = async ({ to, subscriberEmail }) => {
+  return _buildAndSend({
+    to, subject: `New Newsletter Subscriber: ${subscriberEmail}`,
+    title: 'New Subscriber 📬',
+    greeting: `Hello Admin,`,
+    bodyHtml: `
+      <p>You have a new newsletter subscriber: <strong>${subscriberEmail}</strong>.</p>`,
+    vars: { subscriberEmail },
+  });
+};
+
+const sendWelcomeNewsletterEmail = async ({ to, name }) => {
+  return _buildAndSend({
+    to, subject: 'Welcome to the StructBay Newsletter!',
+    title: 'Welcome! 🗞️',
+    greeting: `Hi ${name || 'there'},`,
+    bodyHtml: `
+      <p>Thank you for confirming your subscription to the StructBay Newsletter.</p>
+      <p>You can look forward to industry insights, exclusive deals, and platform updates delivered right to your inbox.</p>`,
+    vars: { name },
+  });
+};
+
+const sendNewsletterUnsubscribeEmail = async ({ to, name }) => {
+  return _buildAndSend({
+    to, subject: 'You have been unsubscribed from StructBay Newsletter',
+    title: 'Unsubscribed successfully',
+    greeting: `Hi ${name || 'there'},`,
+    bodyHtml: `
+      <p>You have been successfully unsubscribed from our newsletter.</p>
+      <p>We are sorry to see you go! If you ever change your mind, you can resubscribe at any time from our website.</p>`,
+    vars: { name },
+  });
+};
+
+const sendNewsletterResubscribeEmail = async ({ to, name }) => {
+  return _buildAndSend({
+    to, subject: 'Welcome back to the StructBay Newsletter!',
+    title: 'Resubscribed! 🎉',
+    greeting: `Hi ${name || 'there'},`,
+    bodyHtml: `
+      <p>Welcome back! We are thrilled to have you back on our newsletter list.</p>
+      <p>Get ready for more exciting updates and offers.</p>`,
+    vars: { name },
+  });
+};
+
 // ─── Exports ──────────────────────────────────────────────────────────────────
 module.exports = {
   sendEmail,
+  _buildAndSend,
   // Auth
   sendVerificationEmail,
   sendPasswordResetEmail,
   sendPasswordChangedEmail,
   sendWelcomeEmail,
+  sendLoginAlertEmail,
+  sendAccountLockedEmail,
+  sendAccountReactivatedEmail,
+  sendEmailAlreadyVerifiedEmail,
   // Orders
   sendOrderPlacedEmail,
   sendOrderConfirmedEmail,
@@ -796,6 +1281,12 @@ module.exports = {
   sendOutForDeliveryEmail,
   sendOrderDeliveredEmail,
   sendOrderCancelledEmail,
+  sendOrderShippedEmail,
+  sendOrderPackedEmail,
+  sendPaymentPendingEmail,
+  sendRefundInitiatedEmail,
+  sendRefundCompletedEmail,
+  sendInvoiceGeneratedEmail,
   // Payments
   sendPaymentSuccessEmail,
   sendPaymentFailedEmail,
@@ -804,6 +1295,14 @@ module.exports = {
   sendRFQApprovedEmail,
   sendRFQRejectedEmail,
   sendBulkEnquiryEmail,
+  sendRFQAdminNotificationEmail,
+  sendRFQVendorAssignmentEmail,
+  sendRFQVendorQuoteSubmittedEmail,
+  sendRFQQuoteAcceptedEmail,
+  sendQuoteExpiredEmail,
+  sendBulkEnquiryAdminNotificationEmail,
+  sendBulkEnquirySalesNotificationEmail,
+  sendBulkEnquiryFollowUpReminderEmail,
   // Projects
   sendProjectCreatedEmail,
   sendProjectUpdatedEmail,
@@ -811,7 +1310,29 @@ module.exports = {
   sendVendorApplicationEmail,
   sendVendorApprovedEmail,
   sendVendorRejectedEmail,
+  sendVendorPendingApprovalEmail,
+  sendVendorDocumentsExpiringEmail,
+  // Profile
+  sendProfileUpdatedEmail,
+  sendEmailChangedEmail,
+  sendPhoneChangedEmail,
+  sendAddressAddedEmail,
+  sendAddressUpdatedEmail,
+  sendGSTVerificationEmail,
+  sendKYCVerificationEmail,
+  // Products
+  sendProductSubmittedEmail,
+  sendProductApprovedEmail,
+  sendProductRejectedEmail,
+  sendProductBackInStockEmail,
+  sendPriceDropEmail,
+  sendInventoryLowEmail,
   // Others
   sendContactFormEmail,
   sendNewsletterSubscribeEmail,
+  sendContactUsConfirmationEmail,
+  sendNewsletterAdminNotificationEmail,
+  sendWelcomeNewsletterEmail,
+  sendNewsletterUnsubscribeEmail,
+  sendNewsletterResubscribeEmail,
 };

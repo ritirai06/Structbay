@@ -1,6 +1,6 @@
 const asyncHandler = require('../utils/asyncHandler');
 const ApiResponse = require('../utils/apiResponse');
-const { sendContactFormEmail } = require('../services/email.service');
+const { sendContactFormEmail, sendContactUsConfirmationEmail } = require('../services/email.service');
 const logger = require('../config/logger');
 
 /**
@@ -33,6 +33,12 @@ const submitContactForm = asyncHandler(async (req, res) => {
       fromEmail: email.trim(),
       subject: subject.trim(),
       message: message.trim(),
+    });
+
+    // Send confirmation to customer
+    await sendContactUsConfirmationEmail({
+      to: email.trim(),
+      name: name.trim(),
     });
 
     logger.info(`Contact form submitted by ${name} (${email})`);

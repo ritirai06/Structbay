@@ -93,11 +93,7 @@ export function BrandLanding() {
                 : <div className="w-16 h-16 rounded-2xl bg-[#E85A00] flex items-center justify-center text-sb-on-orange font-black text-2xl">{brand.name[0]}</div>
               }
               <div>
-                <h1 className="text-sb-ink text-3xl font-black">{brand.name}</h1>
-                <div className="flex items-center gap-2 mt-1">
-                  <Shield className="w-4 h-4 text-[#E85A00]" />
-                  <span className="text-[#E85A00] text-sm font-semibold">Authorized Structbay Partner</span>
-                </div>
+                <h1 className="text-white text-3xl font-black">{brand.name}</h1>
               </div>
             </div>
           </div>

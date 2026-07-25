@@ -58,6 +58,7 @@ router.put ('/orders/:id/status',...vendorGuard,asyncHandler(vendorOrderCtrl.upd
 
 router.post('/orders/:id/workflow/accept', ...vendorGuard, asyncHandler(vendorOrderWfCtrl.acceptOrder));
 router.post('/orders/:id/workflow/reject', ...vendorGuard, asyncHandler(vendorOrderWfCtrl.rejectOrder));
+router.post('/orders/:id/workflow/request-date-change', ...vendorGuard, asyncHandler(vendorOrderWfCtrl.requestDispatchDateChange));
 router.post(
   '/orders/:id/workflow/ready-dispatch',
   ...vendorGuard,
@@ -72,6 +73,7 @@ router.post(
   handleUploadError,
   asyncHandler(vendorOrderWfCtrl.markDispatched)
 );
+router.post('/orders/:id/workflow/mark-picked-up-type-b', ...vendorGuard, asyncHandler(vendorOrderWfCtrl.markPickedUpTypeB));
 router.post(
   '/orders/:id/workflow/mark-delivered',
   ...vendorGuard,

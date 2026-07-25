@@ -22,6 +22,9 @@ process.on('uncaughtException', (err) => {
 // ─── Start Server ─────────────────────────────────────────────────────────────
 const startServer = async () => {
   await connectDB();
+  
+  const { startEmailWorker } = require('./src/workers/emailWorker');
+  startEmailWorker();
 
   const server = app.listen(PORT, () => {
     logger.info(`🚀 Structbay API started`);
