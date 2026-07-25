@@ -10,9 +10,11 @@ const concreteRFQSchema = new mongoose.Schema(
     customerPhone: { type: String, required: true },
     customerEmail: { type: String, default: null },
 
-    grade: { type: String, required: true },      // M20, M25, M30, M35, M40
+    rfqType: { type: String, enum: ['CONCRETE', 'SAND_AGGREGATES'], default: 'CONCRETE' },
+    grade: { type: String, default: null },      // M20, M25, etc., or category name
     floorLevel: { type: String, default: null },  // Ground Floor, 1st Floor etc.
-    quantity: { type: Number, required: true },   // cubic meters
+    quantity: { type: Number, default: null },   // cubic meters or MT
+    quantityUnit: { type: String, default: 'm³' }, // m³ or MT
     deliveryDate: { type: Date, default: null },
     pumpRequired: { type: Boolean, default: false },
     location: { type: String, required: true },

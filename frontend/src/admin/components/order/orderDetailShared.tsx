@@ -30,7 +30,7 @@ export const ALL_ORDER_STATUSES = [
   "CANCELLED", "RETURNED",
 ];
 
-export type VendorRow = { _id: string; companyName?: string; name?: string; email?: string };
+export type VendorRow = { _id: string; companyName?: string; name?: string; email?: string; referenceNumber?: string };
 
 export function vendorUserId(v: unknown): string {
   if (!v) return "";
@@ -41,7 +41,13 @@ export function vendorUserId(v: unknown): string {
 export function fmtDate(d: unknown) {
   if (!d) return "—";
   try {
-    return new Date(String(d)).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+    const dt = new Date(String(d));
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const hh = dt.getHours();
+    const mm = dt.getMinutes();
+    const ampm = hh >= 12 ? 'PM' : 'AM';
+    const h = hh % 12 || 12;
+    return `${pad(dt.getDate())}/${pad(dt.getMonth() + 1)}/${dt.getFullYear()} ${pad(h)}:${pad(mm)} ${ampm}`;
   } catch {
     return String(d);
   }

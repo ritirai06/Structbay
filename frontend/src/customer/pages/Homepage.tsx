@@ -99,23 +99,24 @@ const INTRO_BODY_DEFAULT =
 
 /** Desktop reference: line break before â€œthe ease ofâ€¦â€ */
 function IntroBodyText({ text }: { text: string }) {
+  const formattedText = text.replace(/StructBay/g, 'Structbay');
   const marker = "the ease of single-window";
-  const idx = text.indexOf(marker);
+  const idx = formattedText.indexOf(marker);
   if (idx <= 0) {
-    return <p className="sf-intro-body">{text}</p>;
+    return <p className="sf-intro-body">{formattedText}</p>;
   }
   return (
     <p className="sf-intro-body">
-      {text.slice(0, idx).trimEnd()}
+      {formattedText.slice(0, idx).trimEnd()}
       <br className="sf-intro-body__br" aria-hidden />
       {" "}
-      {text.slice(idx)}
+      {formattedText.slice(idx)}
     </p>
   );
 }
 
 const CATEGORIES_SUB =
-  "From trusted materials to seamless procurement â€” Structbay simplifies your construction journey. Explore our wide range of products.";
+  "From trusted materials to seamless procurement, Structbay simplifies your construction journey. Explore our wide range of products.";
 
 /** Homepage shows up to 14 categories. */
 const HOMEPAGE_CATEGORY_LIMIT = 14;
@@ -382,11 +383,10 @@ function HomeContactForm({ fallbackEmail }: { fallbackEmail: string }) {
     <form className="sf-contact-form" onSubmit={(e) => void handleSubmit(e)}>
       {status && (
         <p
-          className={`text-sm rounded-lg px-3 py-2 mb-1 ${
-            status.type === "ok"
+          className={`text-sm rounded-lg px-3 py-2 mb-1 ${status.type === "ok"
               ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
               : "bg-red-50 text-red-700 border border-red-200"
-          }`}
+            }`}
           role="status"
         >
           {status.text}
@@ -923,7 +923,7 @@ function ProductCard({ product, compact = false }: { product: any; compact?: boo
                   gstPercentage: Number.isFinite(Number(product.gstPercentage))
                     ? Number(product.gstPercentage)
                     : 18,
-                        gstType: product.priceIncludesGst ? "inclusive" : "exclusive",
+                  gstType: product.priceIncludesGst ? "inclusive" : "exclusive",
                 });
               }}
               className={`btn-primary w-full justify-center${compact ? " mt-2 py-1.5 text-xs" : " mt-3 py-2.5 text-sm"}`}
@@ -944,13 +944,13 @@ export function Homepage() {
   const { openBulkEnquiry } = useBulkEnquiryModal();
   const [varChoice, setVarChoice] = useState<Record<string, string>>({});
 
-  const [banners, setBanners]           = useState<any[]>([]);
+  const [banners, setBanners] = useState<any[]>([]);
   const [bannersLoading, setBannersLoading] = useState(true);
-  const [categories, setCategories]     = useState<any[]>([]);
-  const [brands, setBrands]             = useState<any[]>([]);
-  const [topProducts, setTopProducts]   = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [brands, setBrands] = useState<any[]>([]);
+  const [topProducts, setTopProducts] = useState<any[]>([]);
   const [testimonials, setTestimonials] = useState<any[]>([]);
-  const [blogs, setBlogs]               = useState<any[]>([]);
+  const [blogs, setBlogs] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [announcementsReady, setAnnouncementsReady] = useState(false);
   const [cmsHome, setCmsHome] = useState<Record<string, unknown>>({});
@@ -1006,11 +1006,11 @@ export function Homepage() {
 
     api.getTestimonials()
       .then((d) => setTestimonials(d.data || []))
-      .catch(() => {});
+      .catch(() => { });
 
     api.getBlogs(3)
       .then((d) => setBlogs(d.data || []))
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   // Announcements for all visitors (including before city is chosen).
@@ -1187,31 +1187,31 @@ export function Homepage() {
           {catalogLoading && categoriesForHome.length === 0 ? (
             <p className="text-center text-sm text-sb-ink-muted/70 py-8">Loading categoriesâ€¦</p>
           ) : (
-          <div className="sf-cat-grid">
-            {categoriesForHome.map((cat) => {
-              const Icon = categoryAccentIcon(cat);
-              return (
-                <Link key={cat.slug} to={`/category/${cat.slug}`} className="sf-cat-tile group">
-                  <div className="sf-cat-tile__img-wrap">
-                    {cat.image?.url ? (
-                      <img src={cat.image.url} alt={cat.name} loading="lazy" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                        <Icon className="w-9 h-9 text-sb-orange/80" aria-hidden />
-                      </div>
-                    )}
-                  </div>
-                  <span className="sf-cat-tile__label">{cat.name}</span>
-                </Link>
-              );
-            })}
-          </div>
+            <div className="sf-cat-grid">
+              {categoriesForHome.map((cat) => {
+                const Icon = categoryAccentIcon(cat);
+                return (
+                  <Link key={cat.slug} to={`/category/${cat.slug}`} className="sf-cat-tile group">
+                    <div className="sf-cat-tile__img-wrap">
+                      {cat.image?.url ? (
+                        <img src={cat.image.url} alt={cat.name} loading="lazy" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                          <Icon className="w-9 h-9 text-sb-orange/80" aria-hidden />
+                        </div>
+                      )}
+                    </div>
+                    <span className="sf-cat-tile__label">{cat.name}</span>
+                  </Link>
+                );
+              })}
+            </div>
           )}
         </section>
       )}
 
 
- {/* â”€â”€ Featured brands (logo carousel) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* â”€â”€ Featured brands (logo carousel) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {(catalogLoading || brands.length > 0) && (
         <section className="sf-brands-section py-20 border-y border-white/5" aria-label="Featured brands">
           <div className="max-w-7xl mx-auto px-5 lg:px-6 w-full">
@@ -1229,7 +1229,7 @@ export function Homepage() {
           </div>
         </section>
       )}
-      
+
       {/* â”€â”€ Why Structbay? â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <section className="sf-dot-grid border-y border-black/8 py-14 px-5 lg:px-6">
         <div className="max-w-5xl mx-auto text-center mb-10">
@@ -1322,7 +1322,7 @@ export function Homepage() {
         </section>
       )}
 
-     
+
 
       {/* ── CTA Banners Row ──────────────────────────────────────────────────────────────── */}
       <section
@@ -1437,7 +1437,7 @@ export function Homepage() {
           <h2>Contact Us</h2>
           <p className="sf-sub">Keep In Touch</p>
         </div>
-        
+
         <div className="max-w-7xl mx-auto mb-10">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-white rounded-2xl p-8 text-center shadow-[0_4px_20px_rgb(0,0,0,0.05)] border border-gray-100">

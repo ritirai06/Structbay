@@ -144,11 +144,15 @@ exports.validate = asyncHandler(async (req, res) => {
 
 // POST /customer/checkout/place-order
 exports.placeOrder = asyncHandler(async (req, res) => {
-  const { cityId, addressId, shippingAddress, paymentMethod, gstRate: gstRateRaw } = req.body;
+  const { cityId, addressId, shippingAddress, paymentMethod, gstRate: gstRateRaw, appliedCoupon } = req.body;
   const gstRateOverride = [0, 12, 18].includes(Number(gstRateRaw)) ? Number(gstRateRaw) : null;
 
   if (!cityId || !shippingAddress) {
     throw new AppError('cityId and shippingAddress are required.', 400);
+  }
+
+  if (!shippingAddress.name || !shippingAddress.phone || !shippingAddress.line1) {
+    throw new AppError('Delivery name, phone, and address are required.', 400);
   }
 
   const city = await City.findById(cityId);
@@ -256,7 +260,38 @@ exports.placeOrder = asyncHandler(async (req, res) => {
     }
   }
 
-  const grandTotal = Math.round(subtotal + gstTotal);
+  // Process coupon if applied
+  let totalDiscount = 0;
+  let couponDoc = null;
+  if (appliedCoupon && appliedCoupon.code) {
+    const Coupon = require('../models/Coupon');
+    couponDoc = await Coupon.findOne({ code: appliedCoupon.code.toUpperCase(), isActive: true });
+    
+    if (couponDoc) {
+      // Basic validation
+      const now = new Date();
+      if ((!couponDoc.validFrom || now >= couponDoc.validFrom) && 
+          (!couponDoc.expiryDate || now <= couponDoc.expiryDate) &&
+          (!couponDoc.usageLimit || couponDoc.usageCount < couponDoc.usageLimit) &&
+          (subtotal >= couponDoc.minCartValue)) {
+            
+        if (couponDoc.type === 'PERCENTAGE') {
+          totalDiscount = subtotal * (couponDoc.discountValue / 100);
+          if (couponDoc.maxDiscount && totalDiscount > couponDoc.maxDiscount) {
+            totalDiscount = couponDoc.maxDiscount;
+          }
+        } else {
+          totalDiscount = couponDoc.discountValue;
+        }
+        
+        if (totalDiscount > subtotal) {
+          totalDiscount = subtotal;
+        }
+      }
+    }
+  }
+
+  const grandTotal = Math.round(subtotal + gstTotal - totalDiscount);
   const orderNumber = await genOrderNumber();
 
   const order = await Order.create({
@@ -267,6 +302,7 @@ exports.placeOrder = asyncHandler(async (req, res) => {
     shippingAddress,
     subtotal: Math.round(subtotal),
     gstTotal: Math.round(gstTotal),
+    discount: Math.round(totalDiscount),
     grandTotal,
     paymentMethod: paymentMethod || null,
     paymentStatus: 'PENDING',
@@ -278,6 +314,10 @@ exports.placeOrder = asyncHandler(async (req, res) => {
     masterOrder: order._id, actorType: 'CUSTOMER', actor: req.user._id,
     action: 'ORDER_PLACED', description: `Order ${orderNumber} placed by customer.`
   });
+
+  if (couponDoc && totalDiscount > 0) {
+    await couponDoc.updateOne({ $inc: { usageCount: 1 } });
+  }
 
   // Clear cart active items
   await Cart.findOneAndUpdate(

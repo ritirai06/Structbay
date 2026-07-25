@@ -142,7 +142,7 @@ export function Dashboard() {
       <div className="mb-5 grid gap-4 sm:grid-cols-3">
         <StatCard title="Low Stock" value={d.inventory?.lowStock ?? 0} icon={AlertCircle} sub="Products needing restock" subColor="text-sb-orange" to={adminPath("inventory")} />
         <StatCard title="Bulk Enquiries" value={d.enquiries?.bulkEnquiries ?? 0} icon={Briefcase} sub="New enquiries" subColor="text-sb-orange" to={adminPath("bulk-enquiries")} />
-        <StatCard title="Concrete RFQs" value={d.enquiries?.rfqs ?? 0} icon={ClipboardList} sub="Pending quotations" subColor="text-sb-orange" to={adminPath("rfqs")} />
+        <StatCard title="Concrete & Sand RFQs" value={d.enquiries?.rfqs ?? 0} icon={ClipboardList} sub="Pending quotations" subColor="text-sb-orange" to={adminPath("rfqs")} />
       </div>
 
       {/* Charts */}

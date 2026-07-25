@@ -899,8 +899,15 @@ export function CategoryListing() {
       {/* ── Simple category header (no banner image) ───────────────────────── */}
       <div className="sf-category-head">
         <div className="max-w-7xl mx-auto px-4">
-          <nav className="sf-category-head__crumbs" aria-label="Breadcrumb">
-            <Link to="/">Home</Link>
+          <nav className="sf-category-head__crumbs flex items-center gap-2 flex-wrap" aria-label="Breadcrumb">
+            <button 
+              onClick={() => navigate(-1)} 
+              className="inline-flex items-center gap-1 text-sm text-[#E85A00] hover:underline mr-2"
+            >
+              <ChevronLeft className="w-4 h-4 -ml-1" /> Back
+            </button>
+            <span className="text-gray-300">|</span>
+            <Link to="/" className="ml-1">Home</Link>
             <span className="text-gray-300">/</span>
             <Link to="/shop">Shop</Link>
             {!isShopAll && catData?.name && (

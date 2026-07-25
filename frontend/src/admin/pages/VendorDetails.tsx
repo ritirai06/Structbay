@@ -30,7 +30,7 @@ export function VendorDetails() {
       setVendor(res.data);
     } catch (err) {
       adminToast.error(err instanceof Error ? err.message : "Failed to load vendor details");
-      navigate("/vendors");
+      navigate("/admin/vendors");
     } finally {
       setLoading(false);
     }
@@ -122,7 +122,7 @@ export function VendorDetails() {
       {/* Back & Breadcrumb */}
       <div className="mb-6 flex items-center gap-3">
         <button
-          onClick={() => navigate("/vendors")}
+          onClick={() => navigate("/admin/vendors")}
           className="p-2 border border-sb-ink/10 rounded-lg text-sb-ink/55 hover:text-sb-ink hover:border-sb-ink/20 transition-colors bg-sb-cream-secondary"
         >
           <ArrowLeft className="w-4 h-4" />

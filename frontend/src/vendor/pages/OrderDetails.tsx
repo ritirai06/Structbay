@@ -1,6 +1,6 @@
 import { useParams, Link } from 'react-router';
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Package, MapPin, Upload, Truck, CheckCircle, Circle, AlertCircle, Phone, User, Clock } from 'lucide-react';
+import { ArrowLeft, Package, MapPin, Upload, Truck, CheckCircle, Circle, AlertCircle, Phone, User, Clock, MessageCircle } from 'lucide-react';
 import { StatusBadge } from '../components/StatusBadge';
 import { VendorWorkflowPanel } from '../components/VendorWorkflowPanel';
 import { VendorOrderDocuments } from '../components/VendorOrderDocuments';
@@ -387,31 +387,40 @@ export function OrderDetails() {
         </div>
       )}
 
-      {/* Status History */}
-      {order.statusHistory?.length > 0 && (
-        <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
-          <div className="flex items-center gap-2 mb-4">
-            <Clock className="w-4 h-4" style={{ color: SB.orange }} />
-            <h2 className="vendor-section-title" style={{ color: SB.muted }}>Status History</h2>
-          </div>
-          <div className="space-y-3">
-            {[...order.statusHistory].reverse().map((h: any, i: number) => (
-              <div key={i} className="flex items-start gap-3">
-                <div className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ background: i === 0 ? 'var(--sb-orange)' : SB.border }} />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <StatusBadge status={h.status} />
-                    <span className="text-xs" style={{ color: SB.faint }}>
-                      {h.timestamp ? new Date(h.timestamp).toLocaleString('en-IN') : '—'}
-                    </span>
-                  </div>
-                  {(h.note || h.remarks) && <p className="text-xs mt-1" style={{ color: SB.muted }}>{h.note || h.remarks}</p>}
-                </div>
-              </div>
-            ))}
+
+      {/* Tracking Notes */}
+      <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
+        <div className="flex items-center gap-2 mb-4">
+          <Truck className="w-4 h-4" style={{ color: SB.orange }} />
+          <h2 className="vendor-section-title" style={{ color: SB.muted }}>Tracking Notes</h2>
+        </div>
+        <div className="space-y-4">
+          <div className="wf-field">
+            <label className="wf-field__label">Internal (Visible to Admin only)</label>
+            <textarea
+              className="wf-field__input min-h-[100px] resize-y"
+              placeholder="Pickup window, driver contact…"
+              value={order.masterOrder?.deliveryDetails ?? order.deliveryDetails ?? ""}
+              readOnly
+            />
+            <p className="text-xs mt-1" style={{ color: SB.faint }}>Notes added by admin. Contact admin to update.</p>
           </div>
         </div>
-      )}
+      </div>
+
+      {/* Internal Chat */}
+      <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
+        <div className="flex items-center gap-2 mb-3">
+          <MessageCircle className="w-4 h-4" style={{ color: SB.orange }} />
+          <h2 className="vendor-section-title" style={{ color: SB.muted }}>Internal Chat</h2>
+        </div>
+        <p className="text-xs mb-4" style={{ color: SB.muted }}>
+          Private chat with Admin. This is <strong style={{ color: '#EF4444' }}>NOT</strong> visible to the customer.
+        </p>
+        <Link to={vendorPath("orders", orderId!, "chat")} className="wf-btn wf-btn--secondary no-underline w-full justify-center">
+          <MessageCircle className="w-4 h-4" /> Open Chat with Admin
+        </Link>
+      </div>
 
       {/* Admin Notes */}
       {order.adminNotes && (

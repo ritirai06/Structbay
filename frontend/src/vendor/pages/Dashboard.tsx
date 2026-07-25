@@ -119,9 +119,9 @@ export function Dashboard() {
               <div className="mt-4 pt-4 grid grid-cols-2 gap-3 text-center" style={{ borderTop: `1px solid ${SB.border}` }}>
                 <div className="rounded-xl p-3" style={{ background: SB.bg }}>
                   <p className="vendor-metric" style={{ color: SB.color }}>
-                    ₹{monthly.totalAmount ? (monthly.totalAmount / 100000).toFixed(1) + 'L' : '0'}
+                    {monthly.newOrders ?? 0}
                   </p>
-                  <p className="text-[11px] mt-0.5 font-normal" style={{ color: SB.faint }}>This Month</p>
+                  <p className="text-[11px] mt-0.5 font-normal" style={{ color: SB.faint }}>New Orders</p>
                 </div>
                 <div className="rounded-xl p-3" style={{ background: SB.bg }}>
                   <p className="vendor-metric" style={{ color: '#22C55E' }}>{monthly.completedOrders ?? 0}</p>
@@ -185,12 +185,22 @@ export function Dashboard() {
                   <tr key={o._id} className="transition-colors hover:bg-white/[0.02]" style={{ borderBottom: '1px solid rgba(55,65,81,0.3)' }}>
                     <td className="py-3 px-4 font-semibold" style={{ color: 'var(--sb-orange)' }}>{o.orderNumber}</td>
                     <td className="py-3.5 px-4 max-w-[160px]">
-                      <p className="truncate font-medium" style={{ color: SB.color }}>
-                        {o.assignedProducts?.[0]?.productName ?? '—'}
-                      </p>
+                      <div className="space-y-1">
+                        {o.assignedProducts?.map((p: any, i: number) => (
+                          <p key={i} className={`truncate ${i === 0 ? 'font-medium' : 'text-xs'}`} style={{ color: i === 0 ? SB.color : SB.muted }}>
+                            {p.productName ?? '—'}
+                          </p>
+                        ))}
+                      </div>
                     </td>
                     <td className="py-3.5 px-4 whitespace-nowrap" style={{ color: SB.muted }}>
-                      {o.assignedProducts?.[0]?.quantity ?? '—'} {o.assignedProducts?.[0]?.unit ?? ''}
+                      <div className="space-y-1">
+                        {o.assignedProducts?.map((p: any, i: number) => (
+                          <p key={i} className={`${i > 0 ? 'text-xs' : ''}`}>
+                            {p.quantity ?? '—'} {p.unit ?? ''}
+                          </p>
+                        ))}
+                      </div>
                     </td>
                     <td className="py-3.5 px-4 whitespace-nowrap" style={{ color: SB.muted }}>{o.deliveryAddress?.city ?? '—'}</td>
                     <td className="py-3.5 px-4">

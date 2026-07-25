@@ -1220,9 +1220,9 @@ function BlogsTab() {
   const [blogs, setBlogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<{ open: boolean; data: any }>({ open: false, data: null });
-  const [form, setForm] = useState({ title: "", description: "", content: "", author: "Structbay Team", status: "DRAFT", isFeatured: false, tags: "" });
+  const [form, setForm] = useState({ title: "", description: "", content: "", author: "Structbay Team", status: "DRAFT", isFeatured: false, featuredImageUrl: "", featuredImagePublicId: "" });
   const [saving, setSaving] = useState(false);
-
+  const [uploadingImage, setUploadingImage] = useState(false);
   const load = useCallback(() => {
     setLoading(true);
     apiFetch("/cms/blogs?limit=50").then(d => setBlogs(d.data || [])).finally(() => setLoading(false));
@@ -1231,12 +1231,66 @@ function BlogsTab() {
 
   const blogDelete = useAdminResourceDelete("/cms/blogs", load);
 
-  const openCreate = () => { setForm({ title: "", description: "", content: "", author: "Structbay Team", status: "DRAFT", isFeatured: false, tags: "" }); setModal({ open: true, data: null }); };
-  const openEdit = (b: any) => { setForm({ title: b.title, description: b.description || "", content: b.content || "", author: b.author, status: b.status, isFeatured: b.isFeatured, tags: (b.tags || []).join(", ") }); setModal({ open: true, data: b }); };
+  const onBlogImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploadingImage(true);
+    try {
+      const up = await adminUploadImage("/upload/blog", file);
+      setForm(f => ({ ...f, featuredImageUrl: up.url, featuredImagePublicId: up.publicId || "" }));
+      if (modal.data?._id) {
+        await apiFetch(`/cms/blogs/${modal.data._id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ 
+            featuredImage: { url: up.url, publicId: up.publicId || "" },
+            imageUrl: up.url,
+            imagePublicId: up.publicId || ""
+          }),
+        });
+        setModal(m => ({ ...m, data: m.data ? { ...m.data, featuredImage: { url: up.url, publicId: up.publicId || null } } : m.data }));
+        setBlogs(prev => prev.map(b => b._id === modal.data._id ? { ...b, featuredImage: { url: up.url, publicId: up.publicId || null } } : b));
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const onBlogImageRemove = async () => {
+    setForm(f => ({ ...f, featuredImageUrl: "", featuredImagePublicId: "" }));
+    if (modal.data?._id) {
+      setSaving(true);
+      try {
+        await apiFetch(`/cms/blogs/${modal.data._id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ clearImage: true }),
+        });
+        setModal(m => ({ ...m, data: m.data ? { ...m.data, featuredImage: { url: null, publicId: null } } : m.data }));
+        setBlogs(prev => prev.map(b => b._id === modal.data._id ? { ...b, featuredImage: { url: null, publicId: null } } : b));
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Failed to remove image");
+      } finally {
+        setSaving(false);
+      }
+    }
+  };
+
+  const openCreate = () => { setForm({ title: "", description: "", content: "", author: "Structbay Team", status: "DRAFT", isFeatured: false, featuredImageUrl: "", featuredImagePublicId: "" }); setModal({ open: true, data: null }); };
+  const openEdit = (b: any) => { setForm({ title: b.title, description: b.description || "", content: b.content || "", author: b.author, status: b.status, isFeatured: b.isFeatured, featuredImageUrl: b.featuredImage?.url || "", featuredImagePublicId: b.featuredImage?.publicId || "" }); setModal({ open: true, data: b }); };
 
   const save = async () => {
     setSaving(true);
-    const payload = { ...form, tags: form.tags.split(",").map((t: string) => t.trim()).filter(Boolean) };
+    const payload: any = { 
+      ...form, 
+      featuredImage: form.featuredImageUrl ? { url: form.featuredImageUrl, publicId: form.featuredImagePublicId } : { url: null, publicId: null },
+      imageUrl: form.featuredImageUrl,
+      imagePublicId: form.featuredImagePublicId,
+      clearImage: !form.featuredImageUrl
+    };
+    delete payload.featuredImageUrl;
+    delete payload.featuredImagePublicId;
     try {
       if (modal.data) await apiFetch(`/cms/blogs/${modal.data._id}`, { method: "PATCH", body: JSON.stringify(payload) });
       else await apiFetch("/cms/blogs", { method: "POST", body: JSON.stringify(payload) });
@@ -1296,8 +1350,32 @@ function BlogsTab() {
                   {["DRAFT", "PUBLISHED", "SCHEDULED", "ARCHIVED"].map(s => <option key={s} value={s}>{s}</option>)}
                 </select></div>
             </div>
-            <div><label className="text-xs text-sb-ink/55 mb-1 block">Tags (comma-separated)</label>
-              <Input value={form.tags} onChange={e => setForm(f => ({ ...f, tags: e.target.value }))} placeholder="cement, construction, tips" /></div>
+            <div>
+              <label className="text-xs text-sb-ink/55 mb-1 block">Featured Image</label>
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <label className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-sb-ink/15 bg-sb-cream text-sm text-sb-ink cursor-pointer hover:border-sb-orange/50 transition-colors">
+                  <Upload className="h-4 w-4 text-sb-orange" />
+                  {uploadingImage ? "Uploading…" : "Upload image"}
+                  <input type="file" accept="image/*" className="hidden" disabled={uploadingImage} onChange={onBlogImagePick} />
+                </label>
+                {form.featuredImageUrl && (
+                  <button
+                    type="button"
+                    className="text-[10px] text-sb-ink/55 hover:text-red-600 underline"
+                    onClick={onBlogImageRemove}
+                  >
+                    Remove image
+                  </button>
+                )}
+              </div>
+              {form.featuredImageUrl && (
+                <img src={form.featuredImageUrl} alt="" className="w-full max-h-36 object-cover rounded-lg mb-2 border border-sb-ink/10" />
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <Input value={form.featuredImageUrl} onChange={e => setForm(f => ({ ...f, featuredImageUrl: e.target.value }))} placeholder="Or paste image URL (https://…)" />
+                <Input value={form.featuredImagePublicId} onChange={e => setForm(f => ({ ...f, featuredImagePublicId: e.target.value }))} placeholder="Image Public ID (Optional)" />
+              </div>
+            </div>
             <div className="flex items-center gap-2">
               <input type="checkbox" checked={form.isFeatured} onChange={e => setForm(f => ({ ...f, isFeatured: e.target.checked }))} id="featured" />
               <label htmlFor="featured" className="text-sm text-sb-ink/60">Featured Post</label>
@@ -2691,11 +2769,13 @@ function PageBannersTab() {
     aboutUsPublicId: "",
     contactUsUrl: "",
     contactUsPublicId: "",
+    blogsUrl: "",
+    blogsPublicId: "",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
-  const [uploading, setUploading] = useState<null | "about" | "contact">(null);
+  const [uploading, setUploading] = useState<null | "about" | "contact" | "blogs">(null);
 
   useEffect(() => {
     apiFetch("/cms/homepage").then((d: any) => {
@@ -2705,6 +2785,8 @@ function PageBannersTab() {
         aboutUsPublicId: pb.aboutUsPublicId || "",
         contactUsUrl: pb.contactUsUrl || "",
         contactUsPublicId: pb.contactUsPublicId || "",
+        blogsUrl: pb.blogsUrl || "",
+        blogsPublicId: pb.blogsPublicId || "",
       });
     }).finally(() => setLoading(false));
   }, []);
@@ -2723,14 +2805,16 @@ function PageBannersTab() {
     setSaving(false);
   };
 
-  const doUpload = async (kind: "about" | "contact", file: File) => {
+  const doUpload = async (kind: "about" | "contact" | "blogs", file: File) => {
     setUploading(kind);
     try {
       const res = await adminUploadImage("/upload/banner", file);
+      const urlKey = kind === "blogs" ? "blogsUrl" : `${kind}UsUrl`;
+      const publicIdKey = kind === "blogs" ? "blogsPublicId" : `${kind}UsPublicId`;
       setForm(f => ({
         ...f,
-        [`${kind}UsUrl`]: res.url,
-        [`${kind}UsPublicId`]: res.public_id || "",
+        [urlKey]: res.url,
+        [publicIdKey]: res.public_id || "",
       }));
     } catch (e: any) {
       alert("Upload failed: " + e.message);
@@ -2742,7 +2826,7 @@ function PageBannersTab() {
 
   return (
     <div className="max-w-2xl space-y-8">
-      <SectionHeader title="Page Banners" subtitle="Manage header background images for About Us and Contact Us pages" />
+      <SectionHeader title="Page Banners" subtitle="Manage header background images for About Us, Contact Us, and Blogs pages" />
       
       <div className="space-y-6">
         <div>
@@ -2816,6 +2900,43 @@ function PageBannersTab() {
             </div>
           </div>
         </div>
+
+        <div>
+          <label className="text-sm font-semibold mb-2 block">Blogs Banner</label>
+          <div className="p-4 border rounded-xl bg-gray-50 flex items-start gap-4">
+            {form.blogsUrl ? (
+              <div className="w-48 h-24 border rounded overflow-hidden relative bg-black shrink-0">
+                <img src={form.blogsUrl} alt="Blogs" className="w-full h-full object-cover opacity-60" />
+                <button
+                  onClick={() => setForm(f => ({ ...f, blogsUrl: "", blogsPublicId: "" }))}
+                  className="absolute top-1 right-1 bg-white p-1 rounded-full text-red-500 shadow hover:bg-red-50"
+                  title="Remove image"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+            ) : (
+              <div className="w-48 h-24 border border-dashed rounded flex flex-col items-center justify-center text-gray-400 bg-white shrink-0">
+                <Image className="w-6 h-6 mb-1" />
+                <span className="text-xs">No Image</span>
+              </div>
+            )}
+            <div className="flex-1">
+              <label className="inline-block px-4 py-2 bg-white border border-gray-300 rounded text-sm cursor-pointer hover:bg-gray-50">
+                {uploading === "blogs" ? "Uploading..." : "Upload New Image"}
+                <input
+                  type="file"
+                  className="hidden"
+                  accept="image/*"
+                  onChange={e => e.target.files?.[0] && doUpload("blogs", e.target.files[0])}
+                  disabled={uploading !== null}
+                />
+              </label>
+              <p className="text-xs text-gray-500 mt-2">Used on the /blogs page hero section.</p>
+            </div>
+          </div>
+        </div>
+
 
         <div className="flex items-center gap-3 pt-4 border-t">
           <Button onClick={save} disabled={saving} className="bg-sb-orange hover:bg-sb-orange-hover text-black">

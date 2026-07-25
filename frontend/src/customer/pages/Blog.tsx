@@ -2,6 +2,10 @@ import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router";
 import { Search, ChevronRight, Calendar, User, Tag } from "lucide-react";
 import { useCmsPageSeo } from "../hooks/useCmsPageSeo";
+import { useCmsHomepage } from "../hooks/useCmsHomepage";
+import { HeroBanner } from "../components/HeroBanner";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
 // ── Blog Listing ─────────────────────────────────────────────────────────────
 export function BlogListing() {
@@ -11,6 +15,12 @@ export function BlogListing() {
   const [search, setSearch]           = useState("");
   const [selectedTag, setSelectedTag] = useState("");
   const [tags, setTags]               = useState<string[]>([]);
+  const { cms } = useCmsHomepage();
+
+  // Get banner URL from CMS
+  let bannerUrl = cms?.pageBanners?.blogsUrl;
+  if (bannerUrl && bannerUrl.startsWith("/")) bannerUrl = `${API_BASE_URL}${bannerUrl}`;
+
 
   useEffect(() => {
     const params: Record<string, string> = { status: "PUBLISHED", limit: "20" };
@@ -34,20 +44,24 @@ export function BlogListing() {
   const rest     = blogs.filter(b => !b.isFeatured);
 
   return (
-    <div className="min-h-screen">
-      <div className="sb-card mx-4 mt-6 max-w-7xl lg:mx-auto border-0 bg-sb-surface/80">
-        <div className="px-4 py-10 sm:px-8">
-          <nav className="flex items-center gap-2 text-sm text-sb-text-secondary mb-4">
-            <Link to="/" className="hover:text-sb-orange transition-colors">Home</Link>
-            <ChevronRight className="w-3 h-3" />
-            <span className="text-sb-ink font-semibold">Blog</span>
-          </nav>
-          <div className="text-center max-w-2xl mx-auto">
-            <h1 className="text-sb-ink font-bold text-3xl sm:text-4xl mb-3">Construction Guides & Insights</h1>
-            <p className="text-sb-text-secondary">Expert knowledge to help you make smarter procurement decisions</p>
+    <div className="min-h-screen bg-sb-page">
+      {bannerUrl ? (
+        <HeroBanner imageUrl={bannerUrl} title="Blog" subtitle="Construction Guides & Insights" overlayOpacity={0.4} />
+      ) : (
+        <div className="sb-card mx-4 mt-6 max-w-7xl lg:mx-auto border-0 bg-sb-surface/80">
+          <div className="px-4 py-10 sm:px-8">
+            <nav className="flex items-center gap-2 text-sm text-sb-text-secondary mb-4">
+              <Link to="/" className="hover:text-sb-orange transition-colors">Home</Link>
+              <ChevronRight className="w-3 h-3" />
+              <span className="text-sb-ink font-semibold">Blog</span>
+            </nav>
+            <div className="text-center max-w-2xl mx-auto">
+              <h1 className="text-sb-ink font-bold text-3xl sm:text-4xl mb-3">Construction Guides & Insights</h1>
+              <p className="text-sb-text-secondary">Expert knowledge to help you make smarter procurement decisions</p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Search */}
@@ -213,7 +227,7 @@ export function BlogDetails() {
         {blog.category && <span className="text-sm font-bold uppercase text-[#E85A00]">{blog.category}</span>}
         <h1 className="text-sb-ink font-black text-3xl mt-2 mb-4 leading-tight">{blog.title}</h1>
 
-        <div className="flex items-center gap-4 text-sm text-sb-ink-muted/50 mb-6">
+        <div className="flex flex-wrap items-center gap-4 text-sm text-sb-ink-muted/50 mb-6">
           {blog.author && <span className="flex items-center gap-1.5"><User className="w-4 h-4" />{blog.author}</span>}
           {date && <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" />{date}</span>}
           {(blog.tags || []).map((t: string) => (
@@ -221,14 +235,19 @@ export function BlogDetails() {
           ))}
         </div>
 
-        {blog.featuredImage?.url && (
+        {blog.featuredImage?.url ? (
           <div className="aspect-video rounded-2xl overflow-hidden mb-8">
             <img src={blog.featuredImage.url} alt={blog.title} className="w-full h-full object-cover" />
+          </div>
+        ) : (
+          <div className="aspect-video rounded-2xl overflow-hidden mb-8 bg-sb-surface border border-sb-ink/5 flex flex-col items-center justify-center text-sb-ink/40">
+            <span className="font-semibold text-lg">{blog.title}</span>
+            <span className="text-xs mt-2">No Image Available</span>
           </div>
         )}
 
         <div
-          className="prose prose-sm max-w-none text-sb-ink-muted/80 space-y-4"
+          className="prose prose-sm max-w-none text-sb-ink space-y-4"
           style={{ lineHeight: 1.8 }}
           dangerouslySetInnerHTML={{ __html: blog.content || blog.description || "" }}
         />
@@ -242,7 +261,7 @@ export function BlogDetails() {
                   <div className="aspect-video overflow-hidden">
                     {b.featuredImage?.url
                       ? <img src={b.featuredImage.url} alt={b.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                      : <div className="w-full h-full bg-sb-surface-2" />
+                      : <div className="w-full h-full bg-sb-surface border-b border-sb-ink/5 flex items-center justify-center"><span className="text-[10px] text-sb-ink/30 font-medium px-2 text-center">{b.title}</span></div>
                     }
                   </div>
                   <div className="p-3">

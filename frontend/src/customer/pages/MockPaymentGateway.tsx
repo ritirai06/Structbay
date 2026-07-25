@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router";
-import { CheckCircle2, XCircle, Shield, AlertCircle, ArrowLeft } from "lucide-react";
+import { CheckCircle2, XCircle, Shield, AlertCircle, ArrowLeft, ShoppingCart } from "lucide-react";
 import { api } from "../lib/api";
+import { useApp } from "../context/AppContext";
 
 export function MockPaymentGateway() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { clearClientCart } = useApp();
   const orderId = searchParams.get("orderId");
 
   const [orderData, setOrderData] = useState<any>(null);
@@ -43,6 +45,7 @@ export function MockPaymentGateway() {
       setPaymentStatus(status);
       
       if (status === "SUCCESS") {
+        clearClientCart();
         setTimeout(() => {
           navigate(`/order-success?orderId=${encodeURIComponent(orderId as string)}`);
         }, 1500);
@@ -159,11 +162,11 @@ export function MockPaymentGateway() {
                   Retry Payment
                 </button>
                 <button
-                  onClick={() => navigate("/account/orders")}
+                  onClick={() => navigate("/cart")}
                   className="w-full bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 py-3 rounded-xl font-semibold flex items-center justify-center gap-2"
                 >
-                  <ArrowLeft className="w-4 h-4" />
-                  Back to Orders
+                  <ShoppingCart className="w-4 h-4" />
+                  Return to Cart
                 </button>
               </div>
             </div>

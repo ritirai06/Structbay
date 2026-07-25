@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useParams, useNavigate } from "react-router";
-import { Zap, Plus, Minus, Download, ChevronDown, Package, X } from "lucide-react";
+import { toast } from "react-toastify";
+import { Zap, Plus, Minus, Download, ChevronDown, ChevronLeft, Package, X } from "lucide-react";
 import { api } from "../lib/api";
 import { useApp } from "../context/AppContext";
 import {
@@ -427,7 +428,7 @@ export function ProductDetails() {
       productSlug: pslug,
       variationId: vid,
       variationLabel: isVariant && selectedVar 
-        ? formatVariationLabel(selectedVar) + ((attrSelections["Color"] === "Custom" || attrSelections["Colour"] === "Custom") && customColorText ? ` (Custom: ${customColorText})` : "") 
+        ? formatVariationLabel(selectedVar) + ((attrSelections["Color"] === "Custom" || attrSelections["Colour"] === "Custom" || attrSelections["Colors"] === "Custom" || attrSelections["Colours"] === "Custom") && customColorText ? ` (Custom: ${customColorText})` : "") 
         : undefined,
       name: product.name,
       brand: brandName,
@@ -440,22 +441,32 @@ export function ProductDetails() {
       gstType: product.priceIncludesGst ? "inclusive" : "exclusive",
       productId: product._id || product.id || undefined,
     });
+    toast.success(`${qty} item(s) added to cart`);
   };
 
   return (
     <div className="bg-white min-h-screen pb-24 lg:pb-12">
       <div className="max-w-7xl mx-auto px-4 py-5">
         {/* Breadcrumbs */}
-        <nav className="sf-pdp-crumbs mb-5" aria-label="Breadcrumb">
-          <Link to="/">Home</Link>
-          {categorySlug && (
-            <>
-              <span>/</span>
-              <Link to={`/category/${categorySlug}`}>{categoryName}</Link>
-            </>
-          )}
-          <span>/</span>
-          <span className="text-gray-700 line-clamp-1">{product.name}</span>
+        <nav className="flex items-center gap-2 mb-5 text-sm font-medium" aria-label="Breadcrumb">
+          <button 
+            onClick={() => navigate(-1)} 
+            className="flex items-center gap-0.5 text-[#E85A00] hover:underline"
+          >
+            <ChevronLeft className="w-4 h-4" /> Back
+          </button>
+          <span className="text-gray-300 mx-0.5">|</span>
+          <div className="flex items-center gap-2 text-gray-500">
+            <Link to="/" className="hover:text-gray-800 transition-colors">Home</Link>
+            <span className="text-gray-300">/</span>
+            <Link to="/shop" className="hover:text-gray-800 transition-colors">Shop</Link>
+            {categorySlug && (
+              <>
+                <span className="text-gray-300">/</span>
+                <Link to={`/category/${categorySlug}`} className="hover:text-gray-800 transition-colors">{categoryName}</Link>
+              </>
+            )}
+          </div>
         </nav>
 
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-start">
@@ -499,7 +510,14 @@ export function ProductDetails() {
               </p>
             )}
 
-            <h1 className="sf-pdp-title">{product.name}</h1>
+            <h1 className="sf-pdp-title">
+              {product.name}
+            </h1>
+            {product.shortDescription && (
+              <p className="text-gray-600 text-sm mt-2 mb-4 leading-relaxed">
+                {product.shortDescription}
+              </p>
+            )}
 
             <ProductAvailabilityBadge info={availability} variant="pdp" />
 
@@ -526,10 +544,43 @@ export function ProductDetails() {
                   </span>
                 </div>
                 {bulkFrom != null && bulkFrom < effectiveUnit && (
-                  <button type="button" className="sf-pdp-bulk-hint text-left hover:underline w-full" onClick={() => setShowBulkPricingModal(true)}>
-                    Unlock bulk prices from ₹{displayBulkFrom?.toLocaleString("en-IN")}
-                    {product?.priceIncludesGst ? ` incl. ${gstPct}% GST` : " ex-GST"}
-                  </button>
+                  <div className="relative">
+                    <button type="button" className="sf-pdp-bulk-hint text-left hover:underline w-full" onClick={() => setShowBulkPricingModal(!showBulkPricingModal)}>
+                      Unlock bulk prices from ₹{displayBulkFrom?.toLocaleString("en-IN")}
+                      {product?.priceIncludesGst ? ` incl. ${gstPct}% GST` : " ex-GST"}
+                    </button>
+                    {showBulkPricingModal && pricingSnap?.wholesaleSlabs && pricingSnap.wholesaleSlabs.length > 0 && (
+                      <div className="absolute top-full left-0 mt-2 z-50 w-72 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden text-left animate-in fade-in zoom-in-95 duration-200">
+                        <div className="bg-[#1DA1F2] text-white px-3 py-2 flex justify-between items-start">
+                          <div>
+                            <div className="font-semibold text-sm">Bulk Prices Launched</div>
+                            <div className="text-[10px] text-white/90 line-clamp-1">
+                              {product.name}{isVariant && selectedVar ? `, ${formatVariationLabel(selectedVar)}` : ""}
+                            </div>
+                          </div>
+                          <button onClick={() => setShowBulkPricingModal(false)} className="text-white hover:text-gray-200 mt-0.5">
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <ul className="p-3 space-y-2 text-xs bg-white text-gray-700">
+                          {pricingSnap.wholesaleSlabs.map((tier: any, i: number) => {
+                            const isBest = i === pricingSnap.wholesaleSlabs.length - 1;
+                            return (
+                              <li key={i} className="flex items-center">
+                                <span className="w-1.5 h-1.5 rounded-full bg-gray-400 mr-2 shrink-0"></span>
+                                <span className="flex items-center">
+                                  Buy {tier.minQty}+ at{" "}
+                                  <span className={`ml-1 font-bold ${isBest ? "bg-[#1DA1F2] text-white px-1.5 py-0.5 rounded" : "text-gray-900"}`}>
+                                    ₹{displayUnitFromExGst(tier.price, product).toLocaleString("en-IN")}/unit
+                                  </span>
+                                </span>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             ) : (
@@ -543,19 +594,72 @@ export function ProductDetails() {
               axes.map((axis) => {
                 const options = uniqueValuesForAxis(variations, axis.key, attrSelections);
                 if (!options.length) return null;
-                const isColorAxis = axis.key.toLowerCase() === "color" || axis.key.toLowerCase() === "colour";
+                const isColorAxis = axis.key.toLowerCase().startsWith("color") || axis.key.toLowerCase().startsWith("colour");
 
-                // Build color code map for color axis: colorName → colorCode
-                const colorCodeMap: Record<string, string> = {};
                 if (isColorAxis) {
-                  for (const v of variations) {
-                    const rows = flattenVariationAttributes(v?.attributes);
-                    const colorRow = rows.find((r) => r.key.toLowerCase() === "color");
-                    if (!colorRow) continue;
-                    const custom: any[] = v?.attributes?.custom || [];
-                    const codeEntry = custom.find((c: any) => c?.key === `${axis.key}_code` || c?.key === "color_code");
-                    if (codeEntry?.value) colorCodeMap[colorRow.value] = codeEntry.value;
-                  }
+                  const inputVal = customColorText;
+                  const currentSelected = attrSelections[axis.key] || "";
+                  const filtered = inputVal.trim()
+                    ? options.filter((o) => o.toLowerCase().includes(inputVal.trim().toLowerCase()))
+                    : [];
+
+                  return (
+                    <div key={axis.key} className="sf-pdp-variant-group">
+                      <p className="sf-pdp-variant-label">{axis.label}</p>
+                      {currentSelected && !inputVal.trim() && (
+                        <p className="text-sm text-gray-500 mt-1 mb-2">
+                          Selected: <span className="font-semibold text-sb-ink">{currentSelected}</span>
+                        </p>
+                      )}
+                      <div className="relative mt-1 max-w-sm">
+                        <input
+                          type="text"
+                          value={customColorText}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setCustomColorText(val);
+                            const exact = options.find((o) => o.toLowerCase() === val.trim().toLowerCase());
+                            if (exact) setAxis(axis.key, exact);
+                          }}
+                          placeholder={currentSelected ? currentSelected : "Type color name…"}
+                          className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-sb-orange focus:ring-1 focus:ring-sb-orange"
+                        />
+                      </div>
+                      {inputVal.trim() && filtered.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {filtered.map((opt) => {
+                            const partial = { ...attrSelections, [axis.key]: opt };
+                            const v = resolveVariationFromSelections(variations, partial);
+                            const isOos = v && availabilityForProduct(product, String(v._id), true).stockStatus === "OUT_OF_STOCK";
+                            const isActive = currentSelected === opt;
+                            return (
+                              <button
+                                key={opt}
+                                type="button"
+                                disabled={!!isOos}
+                                onClick={() => {
+                                  setCustomColorText(opt);
+                                  setAxis(axis.key, opt);
+                                }}
+                                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                                  isActive
+                                    ? "bg-[#E85A00] text-white border-[#E85A00]"
+                                    : isOos
+                                    ? "border-gray-200 text-gray-400 line-through cursor-not-allowed"
+                                    : "border-gray-300 text-gray-700 hover:border-[#E85A00] hover:text-[#E85A00]"
+                                }`}
+                              >
+                                {opt}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {inputVal.trim() && filtered.length === 0 && (
+                        <p className="text-xs text-gray-400 mt-2">No matching color found.</p>
+                      )}
+                    </div>
+                  );
                 }
 
                 return (
@@ -572,36 +676,6 @@ export function ProductDetails() {
                           ? resolveUnitPriceFromSnapshot(snapOpt, 1)
                           : listingUnitPrice(product, vidOpt || null);
                         const infoOpt = availabilityForProduct(product, vidOpt || null, unitOpt > 0);
-                        const colorCode = isColorAxis ? colorCodeMap[opt] : undefined;
-
-                        if (isColorAxis) {
-                          return (
-                            <button
-                              key={opt}
-                              type="button"
-                              title={opt}
-                              onClick={() => setAxis(axis.key, opt)}
-                              className={`relative flex flex-col items-center gap-1 p-1 rounded-lg border-2 transition-colors ${
-                                active
-                                  ? "border-sb-orange"
-                                  : "border-transparent hover:border-gray-300"
-                              } ${infoOpt.stockStatus === "OUT_OF_STOCK" ? "opacity-45" : ""}`}
-                            >
-                              <span
-                                className="w-8 h-8 rounded-full border border-black/10"
-                                style={{ background: colorCode || opt }}
-                              />
-                              <span className="text-[10px] text-gray-600 leading-none max-w-[48px] truncate">
-                                {opt}
-                              </span>
-                              {infoOpt.stockStatus === "OUT_OF_STOCK" && (
-                                <span className="absolute inset-0 flex items-center justify-center">
-                                  <span className="w-full h-px bg-gray-400 rotate-45 absolute" />
-                                </span>
-                              )}
-                            </button>
-                          );
-                        }
 
                         return (
                           <button
@@ -618,20 +692,6 @@ export function ProductDetails() {
                         );
                       })}
                     </div>
-                    {isColorAxis && attrSelections[axis.key] === "Custom" && (
-                      <div className="mt-3">
-                        <label className="text-sm font-medium text-gray-700 block mb-1">
-                          Enter your custom color
-                        </label>
-                        <input
-                          type="text"
-                          value={customColorText}
-                          onChange={(e) => setCustomColorText(e.target.value)}
-                          placeholder="e.g. Cobalt Blue, #0047AB"
-                          className="w-full sm:w-64 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-sb-orange focus:ring-1 focus:ring-sb-orange"
-                        />
-                      </div>
-                    )}
                   </div>
                 );
               })}

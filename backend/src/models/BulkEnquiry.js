@@ -8,7 +8,7 @@ const bulkEnquirySchema = new mongoose.Schema(
     customerPhone: { type: String, required: true },
     customerEmail: { type: String, default: null },
     companyName: { type: String, default: null },
-    deliveryAddress: { type: String, default: null },
+    deliveryAddress: { type: String, required: true },
     city: { type: String, default: null },
     requirement: { type: String, required: true },
     remarks: { type: String, default: null },

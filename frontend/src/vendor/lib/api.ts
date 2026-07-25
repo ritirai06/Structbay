@@ -39,7 +39,7 @@ async function req<T>(method: string, path: string, body?: unknown, isForm = fal
   };
 
   const doFetch = () =>
-    fetch(`${BASE}${path}`, {
+    fetch(path.startsWith('/api/v1/') ? path : `${BASE}${path}`, {
       method,
       headers: buildHeaders(),
       body: isForm ? (body as FormData) : body ? JSON.stringify(body) : undefined,
@@ -107,6 +107,12 @@ export const api = {
     req<any>('POST', `/orders/${id}/workflow/mark-dispatched`, form, true),
   workflowMarkDelivered: (id: string, form: FormData) =>
     req<any>('POST', `/orders/${id}/workflow/mark-delivered`, form, true),
+  workflowMarkPickedUpTypeB: (id: string) =>
+    req<any>('POST', `/orders/${id}/workflow/mark-picked-up-type-b`),
+  workflowRequestDateChange: (id: string, newDate: string, reason: string) =>
+    req<any>('POST', `/orders/${id}/workflow/request-date-change`, { newDate, reason }),
+  getVendorChat: (vendorOrderId: string) => req<any>('GET', `/api/v1/vendor-chat/${vendorOrderId}`),
+  postVendorChatMessage: (vendorOrderId: string, text: string) => req<any>('POST', `/api/v1/vendor-chat/${vendorOrderId}/messages`, { text }),
   searchOrders: (body: Record<string, unknown>) => req<any>('POST', '/orders/search', body),
   getOrderHistory: (page = 1) =>
     req<any>('GET', `/orders/history?page=${page}&limit=20`),

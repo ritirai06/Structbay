@@ -8,6 +8,18 @@ import { VENDOR_ORDER_STATUS_FILTERS, vendorStatusFilterToApi } from '../lib/ord
 
 const SB = { color: 'var(--sb-text-primary)', muted: 'var(--sb-text-muted)', faint: 'var(--sb-text-faint)', orange: 'var(--sb-orange)', card: 'var(--sb-card)', border: 'var(--sb-border)', bg: 'var(--sb-bg-section)' };
 
+const deduplicateProducts = (products: any[] = []) => {
+  return products.reduce((acc: any[], current: any) => {
+    const existing = acc.find(item => item.productName === current.productName);
+    if (existing) {
+      existing.quantity += current.quantity;
+    } else {
+      acc.push({ ...current });
+    }
+    return acc;
+  }, []);
+};
+
 export function OrdersList() {
   const [searchParams] = useSearchParams();
   const [orders, setOrders] = useState<any[]>([]);
@@ -109,51 +121,65 @@ export function OrdersList() {
                 <tr><td colSpan={9} className="py-12 text-center">
                   <div className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin mx-auto" style={{ borderColor: 'var(--sb-orange)', borderTopColor: 'transparent' }} />
                 </td></tr>
-              ) : orders.map(o => (
-                <tr key={o._id} className="transition-colors hover:bg-white/[0.02]" style={{ borderBottom: '1px solid rgba(55,65,81,0.3)' }}>
-                  <td className="py-3.5 px-4 font-bold whitespace-nowrap" style={{ color: SB.orange }}>{o.orderNumber}</td>
-                  <td className="py-3.5 px-4 max-w-[160px]">
-                    <p className="font-medium truncate" style={{ color: SB.color }}>{o.assignedProducts?.[0]?.productName ?? '—'}</p>
-                  </td>
-                  <td className="py-3.5 px-4 whitespace-nowrap" style={{ color: SB.muted }}>
-                    {o.assignedProducts?.[0]?.quantity ?? '—'} {o.assignedProducts?.[0]?.unit ?? ''}
-                  </td>
-                  <td className="py-3.5 px-4 whitespace-nowrap" style={{ color: SB.color }}>{o.customer?.name ?? '—'}</td>
-                  <td className="py-3.5 px-4 whitespace-nowrap" style={{ color: SB.muted }}>{o.deliveryAddress?.city ?? '—'}</td>
-                  <td className="py-3.5 px-4 whitespace-nowrap" style={{ color: SB.muted }}>
-                    {new Date(o.createdAt).toLocaleDateString('en-IN')}
-                  </td>
-                  <td className="py-3.5 px-4">
-                    {String(o.invoiceStatus || '').toUpperCase() === 'PENDING'
-                      ? <span className="text-xs font-semibold px-2 py-0.5 rounded-full border border-sb-ink/15 bg-sb-cream-secondary text-sb-ink/70">Pending</span>
-                      : (
-                        <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border border-sb-orange/22 bg-sb-orange/10 text-sb-orange">
-                          <CheckCircle2 className="w-3 h-3 shrink-0" aria-hidden />
-                          <span className="capitalize">{String(o.invoiceStatus || '').toLowerCase()}</span>
-                        </span>
-                      )
-                    }
-                  </td>
-                  <td className="py-3.5 px-4"><StatusBadge status={o.status} /></td>
-                  <td className="py-3.5 px-4">
-                    <div className="flex items-center gap-2">
-                      <Link to={vendorPath('orders', String(o._id))} className="p-1.5 rounded-lg" title="View Details" style={{ color: SB.orange }}>
-                        <FileText className="w-4 h-4" />
-                      </Link>
-                      {String(o.invoiceStatus || '').toUpperCase() === 'PENDING' && (
-                        <Link to={vendorPath('orders', String(o._id), 'invoice')} className="p-1.5 rounded-lg" title="Upload Invoice" style={{ color: SB.muted }}>
-                          <Upload className="w-4 h-4" />
+              ) : orders.flatMap((o) => {
+                const products = deduplicateProducts(o.assignedProducts);
+                return products.map((p: any, i: number) => (
+                  <tr key={`${o._id}-${i}`} className="transition-colors hover:bg-white/[0.02]" style={{ borderBottom: '1px solid rgba(55,65,81,0.3)' }}>
+                    <td className="py-3.5 px-4 font-bold whitespace-nowrap" style={{ color: SB.orange }}>{o.orderNumber}</td>
+                    <td className="py-3.5 px-4 max-w-[160px]">
+                      <p className="truncate text-xs font-medium" style={{ color: SB.color }}>
+                        {p.productName ?? '—'}
+                      </p>
+                    </td>
+                    <td className="py-3.5 px-4 whitespace-nowrap" style={{ color: SB.muted }}>
+                      <p className="text-xs">
+                        {p.quantity ?? '—'} {p.unit ?? ''}
+                      </p>
+                    </td>
+                    <td className="py-3.5 px-4 whitespace-nowrap">
+                      <p style={{ color: SB.color }}>{o.customer?.name ?? '—'}</p>
+                      {o.projectName && (
+                        <p className="text-[10px] mt-0.5 max-w-[120px] truncate font-medium" style={{ color: SB.orange }} title={o.projectName}>
+                          {o.projectName}
+                        </p>
+                      )}
+                    </td>
+                    <td className="py-3.5 px-4 whitespace-nowrap" style={{ color: SB.muted }}>{o.deliveryAddress?.city ?? '—'}</td>
+                    <td className="py-3.5 px-4 whitespace-nowrap" style={{ color: SB.muted }}>
+                      {new Date(o.createdAt).toLocaleDateString('en-IN')}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      {String(o.invoiceStatus || '').toUpperCase() === 'PENDING'
+                        ? <span className="text-xs font-semibold px-2 py-0.5 rounded-full border border-sb-ink/15 bg-sb-cream-secondary text-sb-ink/70">Pending</span>
+                        : (
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border border-sb-orange/22 bg-sb-orange/10 text-sb-orange">
+                            <CheckCircle2 className="w-3 h-3 shrink-0" aria-hidden />
+                            <span className="capitalize">{String(o.invoiceStatus || '').toLowerCase()}</span>
+                          </span>
+                        )
+                      }
+                    </td>
+                    <td className="py-3.5 px-4"><StatusBadge status={o.status} /></td>
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-2">
+                        <Link to={vendorPath('orders', String(o._id))} className="p-1.5 rounded-lg" title="View Details" style={{ color: SB.orange }}>
+                          <FileText className="w-4 h-4" />
                         </Link>
-                      )}
-                      {String(o.invoiceStatus || '').toUpperCase() !== 'PENDING' && (
-                        <button type="button" onClick={() => handleDownloadInvoice(String(o._id))} className="p-1.5 rounded-lg" title="Download Invoice" style={{ color: SB.muted, background: SB.bg, border: `1px solid ${SB.border}` }}>
-                          <Download className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                        {String(o.invoiceStatus || '').toUpperCase() === 'PENDING' && (
+                          <Link to={vendorPath('orders', String(o._id), 'invoice')} className="p-1.5 rounded-lg" title="Upload Invoice" style={{ color: SB.muted }}>
+                            <Upload className="w-4 h-4" />
+                          </Link>
+                        )}
+                        {String(o.invoiceStatus || '').toUpperCase() !== 'PENDING' && (
+                          <button type="button" onClick={() => handleDownloadInvoice(String(o._id))} className="p-1.5 rounded-lg" title="Download Invoice" style={{ color: SB.muted, background: SB.bg, border: `1px solid ${SB.border}` }}>
+                            <Download className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ));
+              })}
               {!loading && orders.length === 0 && (
                 <tr><td colSpan={9}>
                   <div className="flex flex-col items-center py-16">

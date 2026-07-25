@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router";
-import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, ChevronRight, AlertCircle, CheckCircle2, ShoppingCart } from "lucide-react";
+import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, ArrowLeft, ChevronRight, AlertCircle, CheckCircle2, ShoppingCart } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { useMemo, useState, useEffect } from "react";
 import { DeliveryChargesNotice } from "@shared/components/DeliveryChargesNotice";
@@ -152,11 +152,20 @@ export function Cart() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
-      <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-        <Link to="/" className="hover:text-foreground">Home</Link>
-        <ChevronRight className="w-3 h-3" />
-        <span className="text-foreground font-medium">Cart ({cart.length} items)</span>
-      </nav>
+      <div className="flex items-center gap-4 mb-6">
+        <button 
+          onClick={() => navigate(-1)} 
+          className="flex items-center gap-1 text-sm font-medium text-gray-500 hover:text-sb-ink transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back
+        </button>
+        <div className="w-px h-4 bg-gray-300"></div>
+        <nav className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Link to="/" className="hover:text-foreground">Home</Link>
+          <ChevronRight className="w-3 h-3" />
+          <span className="text-foreground font-medium">Cart ({cart.length} items)</span>
+        </nav>
+      </div>
 
       {/* Minimum Order Value Banner */}
       <div className={`mb-6 rounded-2xl border p-4 ${

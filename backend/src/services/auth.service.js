@@ -147,12 +147,9 @@ const registerVendor = async ({ name, email, phone, password, companyName, conta
  * Does not send vendor application email (account is trusted).
  */
 const createVendorByAdmin = async (
-  { name, email, phone, password, companyName, contactPerson, gstNumber, vendorCode },
+  { name, email, phone, password, companyName, contactPerson, gstNumber, vendorCode, businessRegNumber },
   adminUser
 ) => {
-  if (!gstNumber || !String(gstNumber).trim()) {
-    throw new AppError('GST Number is mandatory for vendors.', 400);
-  }
   if (!vendorCode || !String(vendorCode).trim()) {
     throw new AppError('Vendor Code is mandatory.', 400);
   }

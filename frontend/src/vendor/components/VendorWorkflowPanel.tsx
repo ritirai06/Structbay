@@ -34,13 +34,19 @@ function stepIndex(status: string): number {
 function fmtWhen(d: unknown) {
   if (!d) return '—';
   try {
-    return new Date(String(d)).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+    const dt = new Date(String(d));
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const hh = dt.getHours();
+    const mm = dt.getMinutes();
+    const ampm = hh >= 12 ? 'PM' : 'AM';
+    const h = hh % 12 || 12;
+    return `${pad(dt.getDate())}/${pad(dt.getMonth() + 1)}/${dt.getFullYear()} ${pad(h)}:${pad(mm)} ${ampm}`;
   } catch {
     return String(d);
   }
 }
 
-function SubmittedDocuments({ order }: { order: any }) {
+function SubmittedDocuments({ order, onRequestDateChange }: { order: any; onRequestDateChange?: () => void }) {
   const pre = order?.preDispatch;
   const ship = order?.shipmentDispatch;
   const pod = order?.deliveryProof;
@@ -54,11 +60,10 @@ function SubmittedDocuments({ order }: { order: any }) {
 
   if (pre?.remarks || pre?.invoiceFileUrl || pre?.packingFiles?.length || order?.expectedDispatchDate) {
     const dispatchDt = order?.expectedDispatchDate ? new Date(order.expectedDispatchDate) : null;
-    const dispatchStr = dispatchDt
-      ? dispatchDt.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
-      : '';
+    const dispatchStr = dispatchDt ? fmtWhen(dispatchDt) : '';
     blocks.push({
       title: 'Ready for dispatch',
+      action: onRequestDateChange ? { label: 'Request Date Change', onClick: onRequestDateChange } : undefined,
       meta: [
         dispatchStr ? `Est. dispatch: ${dispatchStr}` : '',
         pre?.remarks ? `Remarks: ${pre.remarks}` : '',
@@ -117,7 +122,18 @@ function SubmittedDocuments({ order }: { order: any }) {
       <div className="space-y-3">
         {blocks.map((b) => (
           <div key={b.title} className="rounded-lg border border-black/8 bg-white p-3 space-y-2">
-            <p className="text-sm font-semibold" style={{ color: 'var(--sb-text-primary)' }}>{b.title}</p>
+            <div className="flex justify-between items-center">
+              <p className="text-sm font-semibold" style={{ color: 'var(--sb-text-primary)' }}>{b.title}</p>
+              {b.action && (
+                <button
+                  type="button"
+                  onClick={b.action.onClick}
+                  className="text-xs text-blue-600 hover:text-blue-800 font-medium underline"
+                >
+                  {b.action.label}
+                </button>
+              )}
+            </div>
             {b.meta.map((line) => (
               <p key={line} className="text-xs" style={{ color: 'var(--sb-text-muted)' }}>{line}</p>
             ))}
@@ -143,6 +159,11 @@ export function VendorWorkflowPanel({
   const [readyDate, setReadyDate] = useState('');
   const [readyTime, setReadyTime] = useState('');
   const [readyRemark, setReadyRemark] = useState('');
+  
+  const [showDateChange, setShowDateChange] = useState(false);
+  const [changeDate, setChangeDate] = useState('');
+  const [changeTime, setChangeTime] = useState('');
+  const [changeReason, setChangeReason] = useState('');
   const [dispTransporter, setDispTransporter] = useState('');
   const [dispVehicle, setDispVehicle] = useState('');
   const [dispLr, setDispLr] = useState('');
@@ -223,7 +244,48 @@ export function VendorWorkflowPanel({
           </div>
         )}
 
-        <SubmittedDocuments order={order} />
+        <SubmittedDocuments 
+          order={order} 
+          onRequestDateChange={st !== 'COMPLETED' && st !== 'REJECTED' && st !== 'ASSIGNED' && st !== 'ACCEPTED' && st !== 'CHANGES_REQUESTED' ? () => setShowDateChange(true) : undefined} 
+        />
+        
+        {showDateChange && (
+          <div className="wf-subsection bg-blue-50/50 border border-blue-100 p-4 rounded-lg mt-4">
+            <h3 className="text-sm font-bold text-sb-ink mb-2">Request Dispatch Date Change</h3>
+            <p className="text-xs text-sb-ink/60 mb-4">Select a new date and provide a reason. This requires admin approval.</p>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (!changeDate || !changeTime || !changeReason) {
+                alert('All fields are required.'); return;
+              }
+              const localDate = new Date(`${changeDate}T${changeTime}`);
+              void run(() => api.workflowRequestDateChange(orderId, localDate.toISOString(), changeReason)).then(() => {
+                setShowDateChange(false);
+                setChangeDate(''); setChangeTime(''); setChangeReason('');
+                alert('Date change request sent to admin successfully.');
+              });
+            }} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="wf-field">
+                  <label className="wf-field__label">New Date *</label>
+                  <input type="date" required value={changeDate} onChange={e => setChangeDate(e.target.value)} className="wf-field__input" />
+                </div>
+                <div className="wf-field">
+                  <label className="wf-field__label">New Time *</label>
+                  <input type="time" required value={changeTime} onChange={e => setChangeTime(e.target.value)} className="wf-field__input" />
+                </div>
+              </div>
+              <div className="wf-field">
+                <label className="wf-field__label">Reason for change *</label>
+                <input required value={changeReason} onChange={e => setChangeReason(e.target.value)} className="wf-field__input" placeholder="e.g. Delayed material delivery" />
+              </div>
+              <div className="flex gap-2">
+                <button type="button" disabled={busy} onClick={() => setShowDateChange(false)} className="wf-btn wf-btn--secondary">Cancel</button>
+                <button type="submit" disabled={busy} className="wf-btn wf-btn--primary bg-blue-600 hover:bg-blue-700 text-white border-blue-600">Submit Request</button>
+              </div>
+            </form>
+          </div>
+        )}
 
         {st === 'REJECTED' && (
           <p className="text-sm rounded-lg px-3 py-2 border border-red-200 bg-red-50 text-red-700">
@@ -421,9 +483,19 @@ export function VendorWorkflowPanel({
         {st === 'SB_INVOICE_SENT' && typeB && (
           <div className="wf-subsection">
             <p className="wf-subsection__title">Structbay handling delivery</p>
-            <p className="text-sm" style={{ color: 'var(--sb-text-muted)' }}>
-              Structbay has sent invoice &amp; e-way bill. Porter/Delhivery pickup and customer delivery will be handled by Structbay — no further action needed from you. Download your documents in the Documents section below.
+            <p className="text-sm mb-3" style={{ color: 'var(--sb-text-muted)' }}>
+              Structbay has sent invoice &amp; e-way bill. Porter/Delhivery pickup and customer delivery will be handled by Structbay. Once the driver picks up the material from your warehouse, mark it as picked up below.
             </p>
+            <button
+              disabled={busy}
+              onClick={() => {
+                if (!window.confirm("Confirm the material has been handed over to Structbay logistics?")) return;
+                void run(() => api.workflowMarkPickedUpTypeB(orderId));
+              }}
+              className="wf-btn wf-btn--primary"
+            >
+              <PackageCheck className="w-4 h-4" /> Order picked up
+            </button>
           </div>
         )}
 

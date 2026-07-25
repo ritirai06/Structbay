@@ -9,6 +9,8 @@ function getStructbayLogoPath() {
   const fromEnv = process.env.INVOICE_LOGO_PATH && String(process.env.INVOICE_LOGO_PATH).trim();
   const candidates = [
     fromEnv && path.resolve(fromEnv),
+    path.resolve(__dirname, '../../public/logo.jpg'),
+    path.resolve(__dirname, '../../public/logo.png'),
     path.resolve(__dirname, '../../../frontend/shared/assets/logos/Structbay-Logo-F-1.png'),
   ].filter(Boolean);
   for (const filePath of candidates) {

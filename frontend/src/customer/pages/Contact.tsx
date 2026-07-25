@@ -88,7 +88,7 @@ export function Contact() {
               <Phone className="w-8 h-8" strokeWidth={1.5} />
             </div>
             <h3 className="text-sb-orange text-lg font-medium uppercase tracking-widest mb-4">CALL US</h3>
-            <p className="text-gray-500 font-medium text-sm tracking-wider">+91 73488 44465</p>
+            <p className="text-gray-500 font-medium text-sm tracking-wider">+91 70905 70505</p>
           </div>
 
           {/* Card 2 */}

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router";
-import { CheckCircle2, Download, Package, ArrowRight, AlertTriangle } from "lucide-react";
+import { CheckCircle2, Download, Package, ArrowRight, AlertTriangle, MessageCircle } from "lucide-react";
 import { openOrderInvoices } from "../lib/orderInvoices";
 import { api } from "../lib/api";
 import { formatPaymentMethod, formatPaymentStatus } from "../../lib/paymentLabels";
@@ -133,7 +133,7 @@ export function OrderSuccess() {
 
       <h1 className="text-foreground mb-2">Order Placed Successfully!</h1>
       <p className="text-muted-foreground mb-6">
-        Your order has been confirmed. You will receive updates on your registered email and phone number.
+        Your order has been placed. Our team will contact regarding delivery charges.
       </p>
 
       <div className="bg-black rounded-2xl p-6 text-white mb-4 border border-gray-200">
@@ -162,10 +162,11 @@ export function OrderSuccess() {
         <h3 className="font-semibold mb-4 text-foreground">What&apos;s Next?</h3>
         <div className="space-y-3">
           {[
-            { step: "1", title: "Order Confirmed", desc: "Your order is being processed by our team.", done: true },
-            { step: "2", title: "Quality Check", desc: "Products are inspected at our warehouse.", done: false },
-            { step: "3", title: "Dispatch", desc: "Your order will be dispatched within 24 hours.", done: false },
-            { step: "4", title: "Delivery", desc: "Delivered to your site address.", done: false },
+            { step: "1", title: "Order Placed", desc: "Your order has been placed successfully.", done: true },
+            { step: "2", title: "Order Confirmed", desc: "Your order is confirmed by the vendor.", done: false },
+            { step: "3", title: "Quality Check", desc: "Products are inspected at our warehouse.", done: false },
+            { step: "4", title: "Dispatch", desc: "Your order will be dispatched within 24 hours.", done: false },
+            { step: "5", title: "Delivery", desc: "Delivered to your site address.", done: false },
           ].map((item) => (
             <div key={item.step} className="flex items-start gap-3">
               <div
@@ -195,21 +196,21 @@ export function OrderSuccess() {
           type="button"
           disabled={invBusy}
           onClick={() => void handleDownloadInvoice()}
-          className="flex-1 flex items-center justify-center gap-2 border-2 border-[#E85A00] text-[#E85A00] bg-white rounded-2xl py-3 text-sm font-semibold hover:bg-[#E85A00]/5 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+          className="flex-1 flex items-center justify-center gap-2 border-2 border-[#E85A00] text-[#E85A00] bg-white rounded-2xl py-3 px-2 text-sm font-semibold hover:bg-[#E85A00]/5 transition-colors disabled:opacity-50 disabled:pointer-events-none"
         >
-          <Download className="w-4 h-4" /> {invBusy ? "Preparing…" : "Download PDF Invoice"}
+          <Download className="w-4 h-4 shrink-0" /> <span>{invBusy ? "Preparing…" : "Download Order Acknowledgement"}</span>
         </button>
         <Link
-          to={orderId ? `/orders/${encodeURIComponent(orderId)}` : "/track"}
-          className="flex-1 flex items-center justify-center gap-2 bg-[#E85A00] hover:bg-[#CC4E00] text-white rounded-2xl py-3 text-sm font-semibold transition-colors"
+          to={orderId ? `/orders/${encodeURIComponent(orderId)}#chat` : "/account/orders"}
+          className="flex-1 flex items-center justify-center gap-2 bg-[#E85A00] hover:bg-[#CC4E00] text-white rounded-2xl py-3 px-2 text-sm font-semibold transition-colors"
         >
-          <Package className="w-4 h-4" /> Track Order
+          <MessageCircle className="w-4 h-4 shrink-0" /> <span>Track Order</span>
         </Link>
         <Link
           to="/"
-          className="flex-1 flex items-center justify-center gap-2 bg-black hover:bg-gray-900 text-white rounded-2xl py-3 text-sm font-semibold transition-colors"
+          className="flex-1 flex items-center justify-center gap-2 bg-black hover:bg-gray-900 text-white rounded-2xl py-3 px-2 text-sm font-semibold transition-colors"
         >
-          Continue Shopping <ArrowRight className="w-4 h-4" />
+          <span>Continue Shopping</span> <ArrowRight className="w-4 h-4 shrink-0" />
         </Link>
       </div>
     </div>

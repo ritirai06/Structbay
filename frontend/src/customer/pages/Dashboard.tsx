@@ -71,12 +71,15 @@ const NAV_ITEMS = [
 ];
 
 function mapApiStatus(status: string): { label: string; cls: string } {
-  if (["DELIVERED", "COMPLETED"].includes(status)) return { label: "Delivered", cls: "text-[#E85A00]" };
-  if (status === "CANCELLED") return { label: "Cancelled", cls: "text-red-400" };
-  if (status === "OUT_FOR_DELIVERY") return { label: "Out for Delivery", cls: "text-[#E85A00]" };
-  if (["READY_FOR_DISPATCH", "PROCESSING", "VENDOR_ASSIGNMENT_PENDING", "DISPATCHED"].includes(status)) {
-    return { label: "Processing", cls: "text-blue-500" };
-  }
+  if (status === "PENDING") return { label: "Order placed", cls: "text-gray-500" };
+  if (["PAID", "VENDOR_ASSIGNMENT_PENDING"].includes(status)) return { label: "Order confirmed", cls: "text-green-600 font-semibold" };
+  if (["PROCESSING", "READY_FOR_DISPATCH"].includes(status)) return { label: "Processing", cls: "text-blue-500 font-semibold" };
+  if (["PARTIALLY_DISPATCHED", "DISPATCHED"].includes(status)) return { label: "Out for delivery", cls: "text-[#E85A00] font-semibold" };
+  if (status === "PARTIALLY_DELIVERED") return { label: "Partial delivered", cls: "text-[#E85A00] font-semibold" };
+  if (["DELIVERED", "COMPLETED"].includes(status)) return { label: "Delivered", cls: "text-[#E85A00] font-semibold" };
+  if (status === "CANCELLED") return { label: "Cancelled", cls: "text-red-400 font-semibold" };
+  if (status === "RETURNED") return { label: "Returned", cls: "text-red-400 font-semibold" };
+
   return { label: (status || "—").replace(/_/g, " "), cls: "text-gray-500/70" };
 }
 
@@ -144,8 +147,8 @@ function Sidebar({ user, active, setActive, close, logout }: {
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
         {NAV_ITEMS.map(({ icon: Icon, label, key, path }) => {
           const cls = `w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 ${active === key
-              ? "bg-[#E85A00]/12 text-[#E85A00] font-semibold border-l-2 border-[#E85A00] pl-[10px]"
-              : "text-gray-600 hover:text-black hover:bg-gray-50"
+            ? "bg-[#E85A00]/12 text-[#E85A00] font-semibold border-l-2 border-[#E85A00] pl-[10px]"
+            : "text-gray-600 hover:text-black hover:bg-gray-50"
             }`;
           return path ? (
             <Link key={key} to={path} className={cls}>
@@ -417,18 +420,13 @@ function OrdersSection({ orders, onReload }: { orders: CustomerUiOrder[]; onRelo
                 >
                   <Truck className="w-3.5 h-3.5" /> Track
                 </Link>
-                <Link
-                  to={`/orders/${order.dbId}#chat`}
-                  className="flex-1 min-w-[120px] flex items-center justify-center gap-1.5 border border-gray-200 hover:border-[#E85A00]/40 rounded-xl py-2 text-xs text-gray-500 hover:text-black transition-all"
-                >
-                  <MessageCircle className="w-3.5 h-3.5" /> Message StructBay
-                </Link>
+
                 <button
                   type="button"
                   onClick={() => openInvoices(order)}
                   className="flex-1 flex items-center justify-center gap-1.5 border border-gray-200 hover:border-[#E85A00]/40 rounded-xl py-2 text-xs text-gray-500 hover:text-black transition-all"
                 >
-                  <Download className="w-3.5 h-3.5" /> Invoice PDF
+                  <Download className="w-3.5 h-3.5" /> Order Acknowledged
                 </button>
                 {!canCustomerCancelOrder(order.apiStatus) ? null : (
                   <button

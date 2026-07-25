@@ -23,7 +23,7 @@ import {
   canCustomerRequestReplacement,
 } from "../lib/orderEligibility";
 
-const STEP_KEYS = ["order_placed", "order_processing", "out_for_delivery", "partial_delivered", "full_delivery"] as const;
+const STEP_KEYS = ["order_placed", "order_confirmed", "order_processing", "out_for_delivery", "partial_delivered", "full_delivery"] as const;
 
 type StepKey = (typeof STEP_KEYS)[number] | "cancelled" | "returned";
 
@@ -130,7 +130,7 @@ export function OrderTracking() {
   const currentStep = (progress?.customerStep || "order_placed") as StepKey;
   const currentLabel = progress?.customerStatusLabel || "Order placed";
 
-  const deliveryNote = tracking?.order?.deliveryDetails?.trim() || "";
+  const deliveryNote = ""; // Removed from customer view as per vendor/admin internal requirement
   const logisticsSnippets = useMemo(() => {
     const lines = tracking?.deliveryLines as
       | {
@@ -312,7 +312,7 @@ export function OrderTracking() {
                 }
                 className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold border border-white/30 hover:border-[#E85A00] hover:text-[#E85A00] px-3 py-1.5 transition-colors"
               >
-                <Download className="w-3.5 h-3.5" /> Invoice
+                <Download className="w-3.5 h-3.5" /> Order Acknowledged
               </button>
             )}
           </div>
@@ -464,70 +464,6 @@ export function OrderTracking() {
             </div>
           )}
 
-          {/* Chat — collapsed by default */}
-          <div className="border border-gray-200 bg-white">
-            <button
-              type="button"
-              onClick={() => setShowChat((v) => !v)}
-              className="w-full flex items-center justify-between gap-2 p-4 text-left text-sm font-semibold text-black hover:bg-gray-50"
-            >
-              <span className="flex items-center gap-2">
-                <MessageCircle className="w-4 h-4 text-[#E85A00]" />
-                Message Structbay
-              </span>
-              <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${showChat ? "rotate-90" : ""}`} />
-            </button>
-            {showChat && (
-              <div className="border-t border-gray-100 p-4 pt-0">
-                <div className="max-h-56 overflow-y-auto space-y-2 mb-3 py-3">
-                  {chatLoading ? (
-                    <div className="flex justify-center py-6">
-                      <Loader2 className="w-5 h-5 animate-spin text-[#E85A00]" />
-                    </div>
-                  ) : messages.length === 0 ? (
-                    <p className="text-sm text-gray-500 text-center py-4">No messages yet.</p>
-                  ) : (
-                    messages.map((m: any, i: number) => {
-                      const mine = m.senderType === "CUSTOMER";
-                      return (
-                        <div key={i} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                          <div
-                            className={`max-w-[85%] px-3 py-2 text-sm ${
-                              mine ? "bg-[#E85A00] text-white" : "bg-gray-100 text-black"
-                            }`}
-                          >
-                            <p className="whitespace-pre-wrap">{m.text}</p>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    value={msgDraft}
-                    onChange={(e) => setMsgDraft(e.target.value)}
-                    placeholder="Type a message…"
-                    className="flex-1 border border-gray-200 bg-gray-50 px-3 py-2 text-sm"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        void sendChat();
-                      }
-                    }}
-                  />
-                  <button
-                    type="button"
-                    disabled={sending || !msgDraft.trim()}
-                    onClick={() => void sendChat()}
-                    className="px-4 py-2 bg-[#E85A00] text-white font-bold text-sm disabled:opacity-50"
-                  >
-                    Send
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
         </div>
       )}
     </div>

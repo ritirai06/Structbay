@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { ChevronDown, ChevronUp, CheckCircle2, Circle } from "lucide-react";
+import { Link, useLocation } from "react-router";
 import { WorkflowCard, DeliveryTypeSelector, VendorWorkflowSubmissions, lineDefaultDeliveryType } from "./orderDetailShared";
 import { ShippingLabelCard } from "./ShippingLabelCard";
+import { adminPath } from "../../../lib/portalRoutes";
 import { WorkflowFileUpload, WorkflowFilePreview } from "@shared/components/workflow/WorkflowFileUpload";
 
 type DeliveryType = "vendor_delivery" | "structbay_delivery";
@@ -48,6 +50,7 @@ export function ProductCard({
   setInputModal: React.Dispatch<React.SetStateAction<any>>;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const location = useLocation();
   const hasAdminActions = vo && ["READY_FOR_DISPATCH", "DISPATCHED", "DELIVERED", "SB_INVOICE_SENT"].includes(vo.status);
 
   const assignedVendor = item.assignedVendorUser?.companyName || item.assignedVendorUser?.name;
@@ -72,6 +75,16 @@ export function ProductCard({
   const formatStatusText = (s: string) => {
     if (!s) return '—';
     return s.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  };
+
+  const resendEmail = async () => {
+    if (!order?._id || !vo?._id) return;
+    try {
+      await apiFetch(`/orders/${order._id}/vendor-orders/${vo._id}/resend-email`, { method: "POST" });
+      adminToast.success("Email sent successfully!");
+    } catch (e) {
+      adminToast.error(e instanceof Error ? e.message : "Failed to send email");
+    }
   };
 
   return (
@@ -109,12 +122,17 @@ export function ProductCard({
               </div>
 
               {vo && (
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] uppercase tracking-wider font-bold text-sb-ink/40">Status</span>
-                  <span className="text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
-                    {formatStatusText(vo.status)}
-                  </span>
-                </div>
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] uppercase tracking-wider font-bold text-sb-ink/40">Status</span>
+                    <span className="text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
+                      {formatStatusText(vo.status)}
+                    </span>
+                  </div>
+                  <Link to={adminPath("vendor-chat", vo._id) + `?back=${encodeURIComponent(location.pathname + location.search)}`} className="flex items-center gap-1 text-[11px] text-sb-orange hover:underline font-bold uppercase tracking-wider">
+                    Vendor Chat
+                  </Link>
+                </>
               )}
             </div>
           </div>
@@ -159,7 +177,7 @@ export function ProductCard({
                     <option value="">— Select —</option>
                     {approvedVendors.map((v) => (
                       <option key={v._id} value={v._id}>
-                        {(v.companyName || v.name || "Vendor").trim()}
+                        {v.referenceNumber || (v.companyName || v.name || "Vendor").trim()}
                       </option>
                     ))}
                   </select>
@@ -196,10 +214,15 @@ export function ProductCard({
             {/* Fulfillment UI (Only if VendorOrder exists) */}
             {hasFulfillment && vo && (
               <div className="mt-8 space-y-6">
-                <h4 className="text-sm font-bold text-sb-ink border-b border-sb-ink/10 pb-2 flex items-center gap-2">
-                  <span className="bg-blue-600 text-white w-5 h-5 flex items-center justify-center rounded-full text-[10px]">2</span>
-                  Fulfillment Workflow
-                </h4>
+                <div className="flex items-center justify-between border-b border-sb-ink/10 pb-2">
+                  <h4 className="text-sm font-bold text-sb-ink flex items-center gap-2">
+                    <span className="bg-blue-600 text-white w-5 h-5 flex items-center justify-center rounded-full text-[10px]">2</span>
+                    Fulfillment Workflow
+                  </h4>
+                  <button onClick={resendEmail} className="wf-btn wf-btn--secondary !py-1 !px-3 text-xs">
+                    Resend Email
+                  </button>
+                </div>
 
                 <div className="wf-auto-grid">
                   <WorkflowCard title="Delivery type override (Post-assignment)">

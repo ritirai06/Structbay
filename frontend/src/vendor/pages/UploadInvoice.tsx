@@ -284,7 +284,6 @@ export function UploadInvoice() {
                 ['Quantity', `${order?.assignedProducts?.[0]?.quantity ?? '—'} ${order?.assignedProducts?.[0]?.unit ?? ''}`],
                 ['Customer', order?.customer?.name],
                 ['City', order?.deliveryAddress?.city],
-                ['Order Total', order?.totalAmount ? `₹${order.totalAmount.toLocaleString('en-IN')}` : '—'],
               ].map(([label, value]) => (
                 <div key={label} className="flex justify-between items-center">
                   <span className="text-xs" style={{ color: SB.faint }}>{label}</span>

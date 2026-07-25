@@ -291,8 +291,8 @@ export function RFQManagement() {
   return (
     <div className="admin-page">
       <div className="mb-6">
-        <h1 className="admin-page-title">Concrete RFQs</h1>
-        <p className="admin-page-desc">Ready-mix concrete quotation requests</p>
+        <h2 className="text-xl font-bold text-sb-ink">Concrete and M Sands and Aggregates RFQs</h2>
+        <p className="text-sm text-sb-ink/55">Ready-mix concrete and aggregates quotation requests</p>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
@@ -312,7 +312,7 @@ export function RFQManagement() {
 
       {loadError && (
         <div className="mb-5 rounded-xl border border-sb-ink/18 bg-sb-cream-secondary px-4 py-3 text-sm text-sb-ink">
-          <p className="font-semibold text-sb-ink">Could not load concrete RFQs</p>
+          <p className="font-semibold text-sb-ink">Could not load RFQs</p>
           <p className="mt-1 text-sb-ink/85 whitespace-pre-wrap">{loadError}</p>
           <p className="mt-2 text-xs text-sb-ink/65">
             Common causes: <strong className="font-semibold text-sb-ink/80">API not running</strong> (Vite proxy
@@ -362,7 +362,7 @@ export function RFQManagement() {
               setPendingDelete({
                 kind: "bulk",
                 ids: selectedIds,
-                summary: `${selectedIds.length} concrete RFQ(s)`,
+                summary: `${selectedIds.length} RFQ(s)`,
               })
             }
             className="inline-flex items-center gap-1.5 rounded-lg border border-red-600/40 bg-red-600/10 px-3 py-1.5 text-xs font-bold text-red-800 hover:bg-red-600/15"
@@ -434,7 +434,7 @@ export function RFQManagement() {
                     <p className="text-xs text-gray-500">{item.customerPhone}</p>
                   </td>
                   <td className="py-3 px-3 text-black">{item.grade}</td>
-                  <td className="py-3 px-3 text-gray-600">{item.quantity} m³</td>
+                  <td className="py-3 px-3 text-gray-600">{item.quantity} {item.quantityUnit || "m³"}</td>
                   <td className="py-3 px-3 max-w-[200px]">
                     <p className="text-gray-600 truncate" title={item.location}>{item.location}</p>
                     <p className="text-xs text-gray-400">{item.city}{item.pumpRequired ? " · Pump" : ""}</p>

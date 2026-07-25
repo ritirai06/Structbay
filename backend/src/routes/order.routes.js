@@ -21,6 +21,7 @@ router.patch('/:id/status',       ...adminOnly, ctrl.updateStatus);
 router.patch('/:id/assign-vendor',...adminOnly, ctrl.assignVendor);
 router.patch('/:id/items/fulfillment', ...adminOnly, ctrl.bulkPatchItemFulfillment);
 router.patch('/:id/items/:itemId/fulfillment', ...adminOnly, ctrl.patchItemFulfillment);
+router.post('/:id/vendor-orders/:voId/resend-email', ...adminOnly, ctrl.resendVendorEmail);
 router.get('/:id/delivery-type-overrides', ...adminOnly, ctrl.listDeliveryTypeOverrides);
 router.patch('/:id/documents',    ...adminOnly, ctrl.uploadDocs);
 router.post('/:id/shipping-label/upload', ...adminOnly, uploadMem.single('file'), labelCtrl.uploadLabel);

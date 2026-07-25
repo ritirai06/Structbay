@@ -77,9 +77,19 @@ export function OrderHistory() {
                       <td className="py-3.5 px-4 font-bold whitespace-nowrap" style={{ color: SB.orange }}>
                         <Link to={vendorPath('orders', String(o._id))} className="hover:underline">{o.orderNumber}</Link>
                       </td>
-                      <td className="py-3.5 px-4 max-w-[160px]">
-                        <p className="font-medium truncate" style={{ color: SB.color }}>{o.assignedProducts?.[0]?.productName ?? '—'}</p>
-                        <p className="text-xs mt-0.5" style={{ color: SB.faint }}>{o.assignedProducts?.[0]?.quantity} {o.assignedProducts?.[0]?.unit}</p>
+                      <td className="py-3.5 px-4 min-w-[200px]">
+                        <div className="space-y-1">
+                          {o.assignedProducts?.map((p: any, idx: number) => (
+                            <div key={idx}>
+                              <p className={`truncate ${idx === 0 ? 'font-medium' : 'text-xs'}`} style={{ color: idx === 0 ? SB.color : SB.muted }}>
+                                {p.productName ?? '—'}
+                              </p>
+                              <p className="text-[10px] mt-0.5" style={{ color: SB.faint }}>
+                                {p.quantity} {p.unit}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
                       </td>
                       <td className="py-3.5 px-4 whitespace-nowrap" style={{ color: SB.muted }}>{o.customer?.name ?? '—'}</td>
                       <td className="py-3.5 px-4 whitespace-nowrap" style={{ color: SB.muted }}>{o.deliveryAddress?.city ?? '—'}</td>

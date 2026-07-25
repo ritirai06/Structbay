@@ -193,60 +193,71 @@ const assignVendor = asyncHandler(async (req, res) => {
       const full = await Order.findById(order._id).populate('customer', 'name phone email').lean();
       const cust = full.customer || {};
       const ship = full.shippingAddress || {};
-      const subOrderIndex = await getNextSubOrderIndex(order._id);
-      const subOrderNumber = generateSubOrderNumber(full.orderNumber, subOrderIndex);
-      const items = full.items.map((line) => ({
-        product: line.product,
-        variation: line.variation || undefined,
-        masterItemId: line._id,
-        productName: line.name,
-        sku: line.sku || undefined,
-        quantity: line.quantity,
-        unitPrice: line.unitPrice,
-        gstPercentage: line.gstPercentage ?? 18,
-        lineTotal: line.lineTotal,
-      }));
-      const lineSum = items.reduce((s, i) => s + (Number(i.lineTotal) || 0), 0);
-      const totalAmount = Number(full.grandTotal) > 0 ? full.grandTotal : lineSum;
-      const sub = await VendorOrder.create({
-        masterOrder: order._id,
-        orderNumber: subOrderNumber,
-        subOrderIndex,
-        vendor: vendor._id,
-        assignedBy: req.user._id,
-        assignedAt: new Date(),
-        items,
-        customerInfo: {
-          name: ship.name || cust.name || 'Customer',
-          phone: ship.phone || cust.phone || '',
-        },
-        deliveryAddress: {
-          line1: ship.line1 || '',
-          line2: ship.line2 || '',
-          city: ship.city || '',
-          state: ship.state || '',
-          pincode: ship.pincode || '',
-          contactPerson: ship.name || cust.name || '',
-          contactPhone: ship.phone || cust.phone || '',
-        },
-        deliveryType,
-        status: 'NEW_ASSIGNED',
-        statusHistory: [{
+      
+      const createdSubOrderIds = [];
+      
+      for (const line of full.items) {
+        const subOrderIndex = await getNextSubOrderIndex(order._id);
+        const subOrderNumber = generateSubOrderNumber(full.orderNumber, subOrderIndex);
+        
+        const subOrderItem = {
+          product: line.product,
+          variation: line.variation || undefined,
+          masterItemId: line._id,
+          productName: line.name,
+          sku: line.sku || undefined,
+          quantity: line.quantity,
+          unitPrice: line.unitPrice,
+          gstPercentage: line.gstPercentage ?? 18,
+          lineTotal: line.lineTotal,
+        };
+        
+        const sub = await VendorOrder.create({
+          masterOrder: order._id,
+          orderNumber: subOrderNumber,
+          subOrderIndex,
+          vendor: vendor._id,
+          assignedBy: req.user._id,
+          assignedAt: new Date(),
+          items: [subOrderItem],
+          customerInfo: {
+            name: ship.name || cust.name || 'Customer',
+            phone: ship.phone || cust.phone || '',
+          },
+          deliveryAddress: {
+            line1: ship.line1 || '',
+            line2: ship.line2 || '',
+            city: ship.city || '',
+            state: ship.state || '',
+            pincode: ship.pincode || '',
+            contactPerson: ship.name || cust.name || '',
+            contactPhone: ship.phone || cust.phone || '',
+          },
+          deliveryType,
           status: 'NEW_ASSIGNED',
-          updatedBy: req.user._id,
-          model: 'User',
-          note: 'Vendor assigned from master order by admin.',
-          timestamp: new Date(),
-        }],
-        invoiceStatus: 'PENDING',
-        dispatchStatus: 'PENDING',
-        totalAmount,
-        workflowVersion: 2,
-      });
-      await Order.findByIdAndUpdate(order._id, { $addToSet: { vendorOrders: sub._id } });
-      for (const line of order.items) {
-        line.vendorOrderId = sub._id;
+          statusHistory: [{
+            status: 'NEW_ASSIGNED',
+            updatedBy: req.user._id,
+            model: 'User',
+            note: 'Vendor assigned from master order by admin.',
+            timestamp: new Date(),
+          }],
+          invoiceStatus: 'PENDING',
+          dispatchStatus: 'PENDING',
+          totalAmount: Number(line.lineTotal) || 0,
+          workflowVersion: 2,
+        });
+        
+        createdSubOrderIds.push(sub._id);
+        
+        // Update the item on the order with the vendor order id
+        const originalLine = order.items.id(line._id);
+        if (originalLine) {
+          originalLine.vendorOrderId = sub._id;
+        }
       }
+      
+      await Order.findByIdAndUpdate(order._id, { $addToSet: { vendorOrders: { $each: createdSubOrderIds } } });
       await order.save();
       notifyVendor({
         vendorId: vendor._id,
@@ -588,6 +599,33 @@ const bulkRemove = asyncHandler(async (req, res) => {
   });
 });
 
+const resendVendorEmail = asyncHandler(async (req, res) => {
+  const { id, voId } = req.params;
+  const VendorOrder = require('../models/VendorOrder');
+  const vendorOrder = await VendorOrder.findOne({ _id: voId, masterOrder: id });
+  if (!vendorOrder) throw new AppError('Vendor order not found.', 404);
+
+  const vendorId = vendorOrder.vendor;
+  
+  let productsList = vendorOrder.items.map(i => `- ${i.productName} (Qty: ${i.quantity})`).join('<br>');
+  const message = `Order ${vendorOrder.orderNumber} has been assigned to you. <br><br><strong>Products Assigned:</strong><br>${productsList}`;
+
+  const { notifyVendor } = require('../services/vendorNotification.service');
+  
+  await notifyVendor({
+    vendorId,
+    type: 'order_assigned',
+    title: 'Order Assignment Updated',
+    message,
+    relatedOrder: vendorOrder._id,
+    actionUrl: `/orders/${vendorOrder._id}`,
+    actionLabel: 'View order',
+    createdBy: req.user._id,
+  });
+
+  return ApiResponse.success(res, 200, 'Assignment email sent.', {});
+});
+
 module.exports = {
   getAll,
   getById,
@@ -605,4 +643,5 @@ module.exports = {
   invoiceSummary,
   remove,
   bulkRemove,
+  resendVendorEmail,
 };
