@@ -93,7 +93,7 @@ function buildLogistics(vo) {
     partner: lg.companyName || sd.transporterName || null,
     pickupWindow: lg.pickupScheduledText || null,
     estimatedDelivery: vo.expectedDeliveryDate
-      ? new Date(vo.expectedDeliveryDate).toLocaleDateString('en-IN')
+      ? `${String(new Date(vo.expectedDeliveryDate).getDate()).padStart(2, '0')}-${String(new Date(vo.expectedDeliveryDate).getMonth() + 1).padStart(2, '0')}-${new Date(vo.expectedDeliveryDate).getFullYear()}`
       : null,
     driver: lg.driverContactDetails || null,
     driverContact: pickupPhone || sd.trackingNumber || null,

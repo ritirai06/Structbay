@@ -1,7 +1,9 @@
+import { formatDate } from "../../lib/formatDate";
 import { useState, useEffect, useCallback } from "react";
 import { Search, RefreshCw, Eye, FileText, Loader2, Briefcase } from "lucide-react";
 import { adminFetch as apiFetch } from "../../lib/adminApi";
 import { adminToast } from "../lib/adminToast";
+
 
 const STATUS_COLORS: Record<string, string> = {
   NEW: "bg-sb-orange/15 text-sb-orange border-sb-orange/25",
@@ -188,7 +190,7 @@ export function BulkEnquiryManagement() {
                       {item.status}
                     </span>
                   </td>
-                  <td className="py-3.5 px-4 text-xs text-sb-ink/50">{new Date(item.createdAt).toLocaleDateString()}</td>
+                  <td className="py-3.5 px-4 text-xs text-sb-ink/50">{formatDate(item.createdAt)}</td>
                   <td className="py-3.5 px-4">
                     <button onClick={() => setSelected(item)} className="p-1.5 border border-sb-ink/10 rounded-lg text-sb-ink/55 hover:text-sb-ink hover:border-sb-ink/20 transition-colors">
                       <Eye className="w-3.5 h-3.5" />

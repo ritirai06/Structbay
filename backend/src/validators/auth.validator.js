@@ -2,8 +2,7 @@ const { body } = require('express-validator');
 
 // ─── Custom email validator (RFC 5322 compliant) ────────────────────────────
 const isValidEmail = (email) => {
-  // RFC 5322 simplified regex that accepts: . _ - + in local part
-  const emailRegex = /^[a-zA-Z0-9._+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(String(email).trim());
 };
 

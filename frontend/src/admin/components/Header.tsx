@@ -1,9 +1,11 @@
+import { formatDate } from "../../lib/formatDate";
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { Bell, Search } from "lucide-react";
 import { adminFetch, clearAdminSession, getAdminToken } from "../../lib/adminApi";
 import { adminPath } from "../../lib/portalRoutes";
 import {
+
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@shared/components/ui/dropdown-menu";
@@ -25,7 +27,7 @@ function timeAgo(iso: string): string {
   if (sec < 60) return "Just now";
   if (sec < 3600) return `${Math.floor(sec / 60)}m ago`;
   if (sec < 86400) return `${Math.floor(sec / 3600)}h ago`;
-  return new Date(iso).toLocaleDateString();
+  return formatDate(iso);
 }
 
 function notificationPath(n: StaffNotification): string {

@@ -1,6 +1,8 @@
+import { formatDate } from "../../lib/formatDate";
 import { useState, useEffect } from "react";
 import { Plus, Edit2, Trash2, Ticket, Check, X } from "lucide-react";
 import { adminFetch as apiFetch } from "../../lib/adminApi";
+
 
 type Coupon = {
   _id: string;
@@ -12,30 +14,44 @@ type Coupon = {
   usageLimit: number | null;
   usageCount: number;
   validFrom: string;
+  validFrom: string;
   expiryDate: string | null;
   isActive: boolean;
+  applicableCategories?: string[];
 };
+
+type Category = { _id: string; name: string };
 
 export function CouponManagement() {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const [form, setForm] = useState<Partial<Coupon>>({
     code: "",
     type: "PERCENTAGE",
     discountValue: 0,
+    discountValue: 0,
     minCartValue: 0,
     isActive: true,
+    applicableCategories: [],
   });
 
   const fetchCoupons = async () => {
     try {
       setLoading(true);
-      const data = await apiFetch<any>("/admin/coupons");
+      const [data, catData] = await Promise.all([
+        apiFetch<any>("/admin/coupons"),
+        apiFetch<any>("/categories?limit=200&status=ACTIVE")
+      ]);
       if (data?.success) {
         setCoupons(data.data);
+      }
+      if (catData?.success) {
+        setCategories(catData.data);
       }
     } catch (err) {
       console.error(err);
@@ -64,6 +80,7 @@ export function CouponManagement() {
         discountValue: 0,
         minCartValue: 0,
         isActive: true,
+        applicableCategories: [],
       });
     }
     setIsModalOpen(true);
@@ -150,6 +167,7 @@ export function CouponManagement() {
                 <th className="px-6 py-4">Discount</th>
                 <th className="px-6 py-4">Usage</th>
                 <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4">Categories</th>
                 <th className="px-6 py-4">Expiry</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
@@ -179,7 +197,12 @@ export function CouponManagement() {
                     </button>
                   </td>
                   <td className="px-6 py-4 text-sb-ink-muted">
-                    {coupon.expiryDate ? new Date(coupon.expiryDate).toLocaleDateString() : "Never"}
+                    {coupon.applicableCategories && coupon.applicableCategories.length > 0 
+                      ? `${coupon.applicableCategories.length} Category(s)`
+                      : "Global"}
+                  </td>
+                  <td className="px-6 py-4 text-sb-ink-muted">
+                    {coupon.expiryDate ? formatDate(coupon.expiryDate) : "Never"}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <button
@@ -224,6 +247,50 @@ export function CouponManagement() {
                     className="w-full border rounded-lg p-2 uppercase"
                     placeholder="e.g. WELCOME10"
                   />
+                </div>
+
+                <div className="col-span-2 relative">
+                  <label className="block text-sm font-medium mb-1">Applicable Categories</label>
+                  <div
+                    className="w-full border rounded-lg p-2 bg-white cursor-pointer flex justify-between items-center"
+                    onClick={() => setDropdownOpen(!dropdownOpen)}
+                  >
+                    <span className="text-sm text-gray-700 truncate">
+                      {form.applicableCategories && form.applicableCategories.length > 0
+                        ? `${form.applicableCategories.length} Category(s) Selected`
+                        : "Select Categories (Global Coupon)"}
+                    </span>
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+
+                  {dropdownOpen && (
+                    <div className="absolute z-10 w-full mt-1 border rounded-lg p-3 max-h-[200px] overflow-y-auto space-y-2 bg-white shadow-lg">
+                      {categories.map((cat) => {
+                        const isSelected = form.applicableCategories?.includes(cat._id) || false;
+                        return (
+                          <label key={cat._id} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                const current = form.applicableCategories || [];
+                                if (e.target.checked) {
+                                  setForm({ ...form, applicableCategories: [...current, cat._id] });
+                                } else {
+                                  setForm({ ...form, applicableCategories: current.filter(id => id !== cat._id) });
+                                }
+                              }}
+                              className="rounded border-gray-300 text-primary focus:ring-primary"
+                            />
+                            <span className="text-sm">{cat.name}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">Leave all unchecked to apply to all categories.</p>
                 </div>
                 
                 <div>

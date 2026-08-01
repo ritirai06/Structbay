@@ -14,6 +14,7 @@ export type AppliedCoupon = {
   discountValue: number;
   maxDiscount: number | null;
   minCartValue: number;
+  applicableCategories?: string[];
 };
 
 const STORAGE_KEY = "sb_cart_gst_display";
@@ -123,21 +124,41 @@ export type CartSummary = {
 export function buildCartSummaryFromLines(
   lines: CartItem[],
   mode: GstDisplayMode,
-  coupon?: AppliedCoupon | null
+  coupons?: AppliedCoupon[] | null
 ): CartSummary {
   const subtotalExGst = lines.reduce((s, l) => s + lineSubtotalExGst(l), 0);
   
   let totalDiscount = 0;
-  if (coupon) {
-    if (coupon.type === 'PERCENTAGE') {
-      totalDiscount = subtotalExGst * (coupon.discountValue / 100);
-      if (coupon.maxDiscount && totalDiscount > coupon.maxDiscount) {
-        totalDiscount = coupon.maxDiscount;
+  if (coupons && coupons.length > 0) {
+    for (const coupon of coupons) {
+      let applicableSubtotal = 0;
+      for (const line of lines) {
+        const catId = typeof line.product.category === 'object' ? (line.product.category as any)?._id : line.product.category;
+        if (!coupon.applicableCategories || coupon.applicableCategories.length === 0 || (catId && coupon.applicableCategories.includes(catId))) {
+          applicableSubtotal += lineSubtotalExGst(line);
+        }
       }
-    } else {
-      totalDiscount = coupon.discountValue;
+
+      if (applicableSubtotal >= (coupon.minCartValue || 0)) {
+        let discountForThisCoupon = 0;
+        if (coupon.type === 'PERCENTAGE') {
+          discountForThisCoupon = applicableSubtotal * (coupon.discountValue / 100);
+          if (coupon.maxDiscount && discountForThisCoupon > coupon.maxDiscount) {
+            discountForThisCoupon = coupon.maxDiscount;
+          }
+        } else {
+          discountForThisCoupon = coupon.discountValue;
+        }
+        
+        if (discountForThisCoupon > applicableSubtotal) {
+          discountForThisCoupon = applicableSubtotal;
+        }
+        
+        totalDiscount += discountForThisCoupon;
+      }
     }
-    // Cap discount to subtotal
+
+    // Cap total discount to overall subtotal
     if (totalDiscount > subtotalExGst) {
       totalDiscount = subtotalExGst;
     }

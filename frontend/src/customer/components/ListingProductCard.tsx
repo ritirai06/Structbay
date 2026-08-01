@@ -30,6 +30,18 @@ import { isVariantProduct, validateCartLine } from "../lib/productStructure";
 import { availabilityForProduct } from "../lib/productAvailability";
 import { ProductAvailabilityBadge } from "./ProductAvailabilityBadge";
 
+// Helper to reliably parse user color inputs into valid CSS background colors
+function parseUserColor(val: string): string {
+  if (!val) return "transparent";
+  const trimmed = val.trim();
+  // If it's a 3 or 6 digit hex code without the '#', prepend it
+  if (/^([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(trimmed)) {
+    return `#${trimmed}`;
+  }
+  // Otherwise trust the browser to handle it (e.g. "red", "#FF0000", "rgb(...)")
+  return trimmed;
+}
+
 type Props = {
   product: any;
   categoryFilters: Array<{ key?: string; sortOrder?: number }>;
@@ -64,8 +76,17 @@ export function ListingProductCard({
   const isVariant = isVariantProduct(product);
   const variations = isVariant ? (product.variations || []) : [];
   const axes = useMemo(
-    () => (isVariant ? axesForVariations(variations, categoryFilters, product?.attributes || []) : []),
-    [isVariant, variations, categoryFilters, product?.attributes]
+    () => {
+      let baseAxes = isVariant ? axesForVariations(variations, categoryFilters, product?.attributes || []) : [];
+      if (product?.allowCustomColor) {
+        baseAxes = baseAxes.filter(a => {
+          const k = a.key.toLowerCase();
+          return !k.startsWith("color") && !k.startsWith("colour");
+        });
+      }
+      return baseAxes;
+    },
+    [isVariant, variations, categoryFilters, product?.attributes, product?.allowCustomColor]
   );
 
   const seedVar = useMemo(() => {
@@ -386,6 +407,25 @@ export function ListingProductCard({
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {!simple && product?.allowCustomColor && (
+          <div className="mt-2 mb-3">
+            <span className="sf-listing-card__field-label block mb-1">Color (Any code or name)</span>
+            <div className="flex gap-2 items-center">
+              <div 
+                className="w-8 h-8 rounded-full flex-shrink-0 border border-gray-300 shadow-inner"
+                style={{ backgroundColor: parseUserColor(customColorText) }}
+              />
+              <input
+                type="text"
+                value={customColorText}
+                onChange={(e) => setCustomColorText(e.target.value)}
+                placeholder="e.g. F54927 or Red"
+                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-sb-orange focus:ring-1 focus:ring-sb-orange"
+              />
+            </div>
           </div>
         )}
 

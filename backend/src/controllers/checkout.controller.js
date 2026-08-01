@@ -111,6 +111,7 @@ exports.validate = asyncHandler(async (req, res) => {
     lines.push({
       product: item.product._id,
       variation: item.variation?._id || null,
+      customColor: item.customColor || null,
       name: item.product.name,
       sku: item.variation?.sku || item.product.sku,
       variationLabel: item.variation ? formatVariationLabel(item.variation.attributes) : null,
@@ -144,7 +145,7 @@ exports.validate = asyncHandler(async (req, res) => {
 
 // POST /customer/checkout/place-order
 exports.placeOrder = asyncHandler(async (req, res) => {
-  const { cityId, addressId, shippingAddress, paymentMethod, gstRate: gstRateRaw, appliedCoupon } = req.body;
+  const { cityId, addressId, shippingAddress, paymentMethod, gstRate: gstRateRaw, appliedCoupon, appliedCoupons } = req.body;
   const gstRateOverride = [0, 12, 18].includes(Number(gstRateRaw)) ? Number(gstRateRaw) : null;
 
   if (!cityId || !shippingAddress) {
@@ -166,7 +167,7 @@ exports.placeOrder = asyncHandler(async (req, res) => {
   }
 
   const cart = await Cart.findOne({ customer: req.user._id })
-    .populate('items.product', 'name sku status gstPercentage deliveryType isStructbayDelivery isExpress structbayDeliverySupported productStructure priceIncludesGst alwaysInStock')
+    .populate('items.product', 'name sku status gstPercentage deliveryType isStructbayDelivery isExpress structbayDeliverySupported productStructure priceIncludesGst alwaysInStock category')
     .populate('items.variation', 'attributes sku')
     .populate('items.vendorUser', 'name companyName');
 
@@ -240,6 +241,7 @@ exports.placeOrder = asyncHandler(async (req, res) => {
     orderItems.push({
       product: item.product._id,
       variation: item.variation?._id || null,
+      customColor: item.customColor || null,
       name: item.product.name,
       sku: item.variation?.sku || item.product.sku,
       variationLabel: item.variation ? formatVariationLabel(item.variation.attributes) : null,
@@ -260,34 +262,72 @@ exports.placeOrder = asyncHandler(async (req, res) => {
     }
   }
 
-  // Process coupon if applied
+  // Process coupons if applied
   let totalDiscount = 0;
-  let couponDoc = null;
-  if (appliedCoupon && appliedCoupon.code) {
+  const couponsToProcess = appliedCoupons || (appliedCoupon ? [appliedCoupon] : []);
+  const appliedCouponDocs = [];
+  
+  if (couponsToProcess.length > 0) {
     const Coupon = require('../models/Coupon');
-    couponDoc = await Coupon.findOne({ code: appliedCoupon.code.toUpperCase(), isActive: true });
-    
-    if (couponDoc) {
-      // Basic validation
-      const now = new Date();
-      if ((!couponDoc.validFrom || now >= couponDoc.validFrom) && 
-          (!couponDoc.expiryDate || now <= couponDoc.expiryDate) &&
-          (!couponDoc.usageLimit || couponDoc.usageCount < couponDoc.usageLimit) &&
-          (subtotal >= couponDoc.minCartValue)) {
-            
-        if (couponDoc.type === 'PERCENTAGE') {
-          totalDiscount = subtotal * (couponDoc.discountValue / 100);
-          if (couponDoc.maxDiscount && totalDiscount > couponDoc.maxDiscount) {
-            totalDiscount = couponDoc.maxDiscount;
+    for (const couponData of couponsToProcess) {
+      if (!couponData || !couponData.code) continue;
+      const couponDoc = await Coupon.findOne({ code: couponData.code.toUpperCase(), isActive: true });
+      if (couponDoc) {
+        // Basic validation
+        const now = new Date();
+        if ((!couponDoc.validFrom || now >= couponDoc.validFrom) && 
+            (!couponDoc.expiryDate || now <= couponDoc.expiryDate) &&
+            (!couponDoc.usageLimit || couponDoc.usageCount < couponDoc.usageLimit)) {
+              
+          // Calculate applicable subtotal for this coupon
+          let applicableSubtotal = 0;
+          for (const item of activeItems) {
+             const catId = item.product.category?.toString();
+             if (!couponDoc.applicableCategories || couponDoc.applicableCategories.length === 0 || (catId && couponDoc.applicableCategories.some(c => c.toString() === catId))) {
+               // Calculate base line total (without GST)
+               const pq = { product: item.product._id, city: cityId, isDeleted: false };
+               if (item.variation) pq.variation = item.variation._id;
+               const pricing = await CityPricing.findOne(pq).lean();
+               if (pricing) {
+                 const rawUnitPrice = resolveUnitPriceFromCityPricing(pricing, item.quantity);
+                 const rawLineTotal = rawUnitPrice * item.quantity;
+                 const gstPct = resolveGstPct(item.product.gstPercentage, gstRateOverride);
+                 let baseLineTotal;
+                 if (item.product.priceIncludesGst) {
+                   baseLineTotal = rawLineTotal / (1 + (gstPct / 100));
+                 } else {
+                   baseLineTotal = rawLineTotal;
+                 }
+                 applicableSubtotal += baseLineTotal;
+               }
+             }
           }
-        } else {
-          totalDiscount = couponDoc.discountValue;
-        }
-        
-        if (totalDiscount > subtotal) {
-          totalDiscount = subtotal;
+
+          if (applicableSubtotal >= (couponDoc.minCartValue || 0)) {
+            let discountForThisCoupon = 0;
+            if (couponDoc.type === 'PERCENTAGE') {
+              discountForThisCoupon = applicableSubtotal * (couponDoc.discountValue / 100);
+              if (couponDoc.maxDiscount && discountForThisCoupon > couponDoc.maxDiscount) {
+                discountForThisCoupon = couponDoc.maxDiscount;
+              }
+            } else {
+              discountForThisCoupon = couponDoc.discountValue;
+            }
+            
+            if (discountForThisCoupon > applicableSubtotal) {
+              discountForThisCoupon = applicableSubtotal;
+            }
+            
+            totalDiscount += discountForThisCoupon;
+            appliedCouponDocs.push(couponDoc);
+          }
         }
       }
+    }
+    
+    // Cap total discount to overall subtotal
+    if (totalDiscount > subtotal) {
+      totalDiscount = subtotal;
     }
   }
 
@@ -315,8 +355,10 @@ exports.placeOrder = asyncHandler(async (req, res) => {
     action: 'ORDER_PLACED', description: `Order ${orderNumber} placed by customer.`
   });
 
-  if (couponDoc && totalDiscount > 0) {
-    await couponDoc.updateOne({ $inc: { usageCount: 1 } });
+  if (appliedCouponDocs.length > 0 && totalDiscount > 0) {
+    for (const doc of appliedCouponDocs) {
+      await doc.updateOne({ $inc: { usageCount: 1 } });
+    }
   }
 
   // Clear cart active items

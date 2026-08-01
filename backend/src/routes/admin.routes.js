@@ -22,6 +22,7 @@ const {
 } = require('../validators/catalogJob.validator');
 const { getDashboard } = require('../controllers/dashboard.controller');
 const { getLogs } = require('../services/auditLog.service');
+const adminOrderController = require('../controllers/adminOrder.controller');
 const ApiResponse = require('../utils/apiResponse');
 const asyncHandler = require('../utils/asyncHandler');
 
@@ -32,6 +33,11 @@ router.get('/reference-search', ...adminOnly, asyncHandler(referenceSearchCtrl.s
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 router.get('/dashboard', ...adminOnly, getDashboard);
+
+// ─── Admin Add Order ──────────────────────────────────────────────────────────
+router.get('/customers/search', ...adminOnly, adminOrderController.searchCustomers);
+router.get('/customers/:id/orders', ...adminOnly, adminOrderController.getCustomerOrders);
+router.post('/orders/create-wizard', ...adminOnly, adminOrderController.createOrder);
 
 // ─── Catalog export (CSV / printable HTML) ────────────────────────────────────
 router.post(
@@ -165,6 +171,7 @@ router.delete('/vendor-orders/:id',              ...adminOnly, asyncHandler(admi
 router.post('/vendor-orders/:id/request-invoice',...adminOnly, asyncHandler(adminVendorOrderCtrl.requestInvoice));
 router.post('/vendor-orders/:id/request-dispatch',...adminOnly, asyncHandler(adminVendorOrderCtrl.requestDispatch));
 
+router.post('/vendor-orders/:id/workflow/confirm-dispatch', ...adminOnly, asyncHandler(adminVendorWorkflowCtrl.confirmDispatch));
 router.post('/vendor-orders/:id/workflow/approve-dispatch', ...adminOnly, asyncHandler(adminVendorWorkflowCtrl.approveDispatch));
 router.post('/vendor-orders/:id/workflow/request-changes', ...adminOnly, asyncHandler(adminVendorWorkflowCtrl.requestDispatchChanges));
 router.post(

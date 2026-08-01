@@ -1,3 +1,4 @@
+import { formatDate } from "../../lib/formatDate";
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { vendorPath } from '../../lib/portalRoutes';
@@ -5,6 +6,7 @@ import { Search, Filter, FileText, Upload, Package, ChevronLeft, ChevronRight, C
 import { StatusBadge } from '../components/StatusBadge';
 import { api } from '../lib/api';
 import { VENDOR_ORDER_STATUS_FILTERS, vendorStatusFilterToApi } from '../lib/orderStatusFilters';
+
 
 const SB = { color: 'var(--sb-text-primary)', muted: 'var(--sb-text-muted)', faint: 'var(--sb-text-faint)', orange: 'var(--sb-orange)', card: 'var(--sb-card)', border: 'var(--sb-border)', bg: 'var(--sb-bg-section)' };
 
@@ -111,7 +113,7 @@ export function OrdersList() {
           <table className="w-full text-sm min-w-[1000px]">
             <thead>
               <tr style={{ borderBottom: `1px solid ${SB.border}` }}>
-                {['Order #', 'Product', 'Qty', 'Customer', 'City', 'Assigned', 'Invoice', 'Status', 'Actions'].map(h => (
+                {['Order #', 'Product', 'Qty', 'City', 'Assigned', 'Invoice', 'Status', 'Actions'].map(h => (
                   <th key={h} className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: SB.faint }}>{h}</th>
                 ))}
               </tr>
@@ -136,17 +138,9 @@ export function OrdersList() {
                         {p.quantity ?? '—'} {p.unit ?? ''}
                       </p>
                     </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <p style={{ color: SB.color }}>{o.customer?.name ?? '—'}</p>
-                      {o.projectName && (
-                        <p className="text-[10px] mt-0.5 max-w-[120px] truncate font-medium" style={{ color: SB.orange }} title={o.projectName}>
-                          {o.projectName}
-                        </p>
-                      )}
-                    </td>
                     <td className="py-3.5 px-4 whitespace-nowrap" style={{ color: SB.muted }}>{o.deliveryAddress?.city ?? '—'}</td>
                     <td className="py-3.5 px-4 whitespace-nowrap" style={{ color: SB.muted }}>
-                      {new Date(o.createdAt).toLocaleDateString('en-IN')}
+                      {formatDate(o.createdAt)}
                     </td>
                     <td className="py-3.5 px-4">
                       {String(o.invoiceStatus || '').toUpperCase() === 'PENDING'

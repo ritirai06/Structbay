@@ -1,5 +1,5 @@
 import { useId, useRef, useState } from "react";
-import { FileText, ImageIcon, Upload, X } from "lucide-react";
+import { FileText, ImageIcon, Upload, X, Eye, Download } from "lucide-react";
 
 type Props = {
   label: string;
@@ -149,40 +149,59 @@ export function WorkflowFilePreview({
   if (!files.length) return null;
 
   return (
-    <div className="wf-file-preview">
+    <div className="wf-file-preview space-y-2">
       {files.map((f, i) => {
         const name = f.label || f.name || `File ${i + 1}`;
-        const isImg = /\.(png|jpe?g|gif|webp|bmp)(\?|$)/i.test(f.url);
         let finalUrl = f.url;
+        let ext = "";
+        const m = finalUrl.match(/\.([a-zA-Z0-9]+)(?:[\?#]|$)/);
+        if (m) ext = m[1].toLowerCase();
+
         if (
           finalUrl.includes('res.cloudinary.com') &&
           finalUrl.includes('/image/upload/') &&
-          !finalUrl.includes('/fl_attachment/') &&
-          /\.pdf(\?|$)/i.test(finalUrl)
+          !ext
         ) {
-          finalUrl = finalUrl.replace('/image/upload/', '/image/upload/fl_attachment/');
+          const qIdx = finalUrl.indexOf('?');
+          if (qIdx !== -1) {
+            finalUrl = finalUrl.slice(0, qIdx) + ".pdf" + finalUrl.slice(qIdx);
+          } else {
+            finalUrl += ".pdf";
+          }
+          ext = "pdf";
+        }
+
+        const isImg = ["png", "jpg", "jpeg", "gif", "webp", "bmp"].includes(ext);
+
+        let downloadUrl = finalUrl;
+        if (downloadUrl.includes('res.cloudinary.com') && downloadUrl.includes('/image/upload/')) {
+           downloadUrl = downloadUrl.replace('/image/upload/', '/image/upload/fl_attachment/');
         }
 
         return (
-          <a
+          <div
             key={`${f.url}-${i}`}
-            href={finalUrl}
-            target="_blank"
-            rel="noopener noreferrer"
             className="wf-file-preview__card"
           >
             <div className="wf-file-preview__thumb">
               {isImg ? (
                 <img src={finalUrl} alt="" className="h-full w-full object-cover" />
               ) : (
-                <ImageIcon className="w-6 h-6 text-gray-400" />
+                <ImageIcon className="w-6 h-6 text-gray-400 m-auto mt-2" />
               )}
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-gray-900">{name}</p>
-              <p className="text-xs font-semibold text-[#E85A00]">View / download</p>
+              <div className="flex gap-4 mt-1.5">
+                <a href={finalUrl} target="_blank" rel="noopener noreferrer" className="flex items-center text-[11px] font-semibold text-blue-600 hover:underline">
+                  <Eye className="w-3.5 h-3.5 mr-1" /> Preview
+                </a>
+                <a href={downloadUrl} download target="_blank" rel="noopener noreferrer" className="flex items-center text-[11px] font-semibold text-[#E85A00] hover:underline">
+                  <Download className="w-3.5 h-3.5 mr-1" /> Download
+                </a>
+              </div>
             </div>
-          </a>
+          </div>
         );
       })}
     </div>

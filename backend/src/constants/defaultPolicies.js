@@ -1,6 +1,23 @@
 /** Default storefront policies — seeded into CMS when missing. */
 const DEFAULT_POLICIES = [
   {
+    slug: 'disclaimer',
+    title: 'Disclaimer',
+    subtitle: 'Important legal notices and disclaimers for using Structbay.',
+    lastUpdated: '25 July 2026',
+    sortOrder: -1, // Ensures it appears at the top if sorted by order
+    isActive: true,
+    sections: [
+      {
+        title: '1. General Disclaimer',
+        body: [
+          'The information provided by Structbay on this website is for general informational purposes only.',
+          'All information on the site is provided in good faith, however we make no representation or warranty of any kind, express or implied, regarding the accuracy, adequacy, validity, reliability, availability, or completeness of any information on the site.'
+        ],
+      },
+    ],
+  },
+  {
     slug: 'privacy',
     title: 'Privacy Policy',
     subtitle: 'How Structbay collects, uses, and protects your business information.',

@@ -117,7 +117,7 @@ const create = asyncHandler(async (req, res) => {
     gstPercentage, priceIncludesGst, status, alwaysInStock, isFeatured, isTopSelling, isAssured, isExpress,
     isStructbayAssured, isStructbayDelivery, deliveryType, assuredVerifiedAt, assuredVerifiedBy,
     structbayDeliverySupported, structbayDeliveryZones, structbayDeliveryLeadTimeDays,
-    displayOrder, seo, faqs, videos, documents, returnExchangePolicy, replacementPolicy, productStructure, attributes,
+    displayOrder, seo, faqs, videos, documents, returnExchangePolicy, replacementPolicy, productStructure, attributes, allowCustomColor,
   } = productFields;
 
   const structureRaw = String(productStructure || 'simple').toLowerCase();
@@ -133,7 +133,7 @@ const create = asyncHandler(async (req, res) => {
     gstPercentage, priceIncludesGst, status, alwaysInStock, isFeatured, isTopSelling, isAssured, isExpress,
     isStructbayAssured, isStructbayDelivery, deliveryType, assuredVerifiedAt, assuredVerifiedBy,
     structbayDeliverySupported, structbayDeliveryZones, structbayDeliveryLeadTimeDays,
-    displayOrder, seo, faqs, videos, documents, returnExchangePolicy, replacementPolicy, attributes,
+    displayOrder, seo, faqs, videos, documents, returnExchangePolicy, replacementPolicy, attributes, allowCustomColor,
     productStructure: resolvedStructure,
     referenceNumber,
     createdBy: req.user._id,
@@ -184,7 +184,7 @@ const update = asyncHandler(async (req, res) => {
     'isStructbayAssured', 'isStructbayDelivery', 'deliveryType', 'assuredVerifiedAt', 'assuredVerifiedBy',
     'structbayDeliverySupported', 'structbayDeliveryZones', 'structbayDeliveryLeadTimeDays',
     'displayOrder', 'seo', 'faqs', 'videos', 'documents', 'returnExchangePolicy', 'replacementPolicy', 'productStructure',
-    'upsellProducts', 'crossSellProducts', 'attributes',
+    'upsellProducts', 'crossSellProducts', 'attributes', 'allowCustomColor',
   ];
   allowed.forEach(f => { if (productFields[f] !== undefined) product[f] = productFields[f]; });
 

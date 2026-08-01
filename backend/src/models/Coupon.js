@@ -47,7 +47,11 @@ const couponSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true,
-  }
+  },
+  applicableCategories: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category',
+  }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('Coupon', couponSchema);

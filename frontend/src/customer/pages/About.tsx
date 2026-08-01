@@ -64,6 +64,82 @@ export function About() {
         </div>
       </section>
 
+      {/* 2.5 MISSION & VISION */}
+      <section className="py-16 md:py-24 px-6 max-w-7xl mx-auto bg-gray-50 mb-16 rounded-3xl">
+        <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
+          <div className="bg-white p-8 md:p-10 rounded-2xl shadow-sm border border-gray-100 transition-shadow hover:shadow-md">
+            <h3 className="text-2xl font-bold text-gray-900 mb-5 flex items-center gap-3">
+              <span className="w-8 h-1 bg-sb-orange inline-block rounded-full"></span>
+              Our Vision
+            </h3>
+            <p className="text-gray-600 leading-relaxed text-lg italic text-justify">
+              "To digitalize the construction industry by creating a seamless, transparent, and efficient marketplace for construction materials—empowering contractors with high-quality authentic products at the best prices, delivered swiftly and reliably."
+            </p>
+          </div>
+          
+          <div className="bg-white p-8 md:p-10 rounded-2xl shadow-sm border border-gray-100 transition-shadow hover:shadow-md">
+            <h3 className="text-2xl font-bold text-gray-900 mb-5 flex items-center gap-3">
+              <span className="w-8 h-1 bg-sb-orange inline-block rounded-full"></span>
+              Our Mission
+            </h3>
+            <p className="text-gray-600 leading-relaxed text-lg italic text-justify">
+              "At StructBay, our mission is to revolutionize the construction industry by empowering contractors with a one-stop solution for construction. StructBay is where quality meets convenience — Click-Buy-Build."
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-20 md:mt-28">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4 uppercase tracking-wide">Why choose StructBay?</h2>
+            <div className="w-20 h-1.5 bg-sb-orange mx-auto rounded-full"></div>
+          </div>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+            <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:border-sb-orange/30 transition-colors">
+              <h4 className="text-lg font-bold text-gray-900 mb-3 flex items-start gap-2">
+                <span className="text-sb-orange mt-1">✦</span> One-stop shop
+              </h4>
+              <p className="text-gray-600 text-sm leading-relaxed text-justify">For all construction needs of your dream project, we provide everything you need for building your dream project.</p>
+            </div>
+            
+            <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:border-sb-orange/30 transition-colors">
+              <h4 className="text-lg font-bold text-gray-900 mb-3 flex items-start gap-2">
+                <span className="text-sb-orange mt-1">✦</span> Fast & reliable delivery
+              </h4>
+              <p className="text-gray-600 text-sm leading-relaxed text-justify">No more delays! Get your materials delivered quickly and efficiently to keep your project on track.</p>
+            </div>
+            
+            <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:border-sb-orange/30 transition-colors">
+              <h4 className="text-lg font-bold text-gray-900 mb-3 flex items-start gap-2">
+                <span className="text-sb-orange mt-1">✦</span> Direct from manufacturers
+              </h4>
+              <p className="text-gray-600 text-sm leading-relaxed text-justify">Best prices guaranteed – We eliminate middlemen, ensuring unbeatable prices on high-quality products.</p>
+            </div>
+            
+            <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:border-sb-orange/30 transition-colors">
+              <h4 className="text-lg font-bold text-gray-900 mb-3 flex items-start gap-2">
+                <span className="text-sb-orange mt-1">✦</span> 24×7 Customer Support
+              </h4>
+              <p className="text-gray-600 text-sm leading-relaxed text-justify">Our expert team is available round-the-clock to assist with orders, inquiries, and after-sales support.</p>
+            </div>
+            
+            <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:border-sb-orange/30 transition-colors">
+              <h4 className="text-lg font-bold text-gray-900 mb-3 flex items-start gap-2">
+                <span className="text-sb-orange mt-1">✦</span> Tailored for contractors
+              </h4>
+              <p className="text-gray-600 text-sm leading-relaxed text-justify">Whether you're constructing your own home or managing a project, we make sourcing materials simple, affordable, and hassle-free.</p>
+            </div>
+            
+            <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:border-sb-orange/30 transition-colors">
+              <h4 className="text-lg font-bold text-gray-900 mb-3 flex items-start gap-2">
+                <span className="text-sb-orange mt-1">✦</span> Seamless online shopping
+              </h4>
+              <p className="text-gray-600 text-sm leading-relaxed text-justify">A user-friendly platform for easy browsing, ordering, and tracking—all at your fingertips!</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* 3. TESTIMONIALS */}
       <section className="py-20 md:py-28 px-4 bg-[#e2e2e2]">
         <div className="max-w-5xl mx-auto">

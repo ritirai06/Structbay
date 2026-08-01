@@ -7,8 +7,9 @@ type Props = {
   summary: CartSummary;
   coupon?: string;
   onCouponChange?: (v: string) => void;
-  couponApplied?: boolean;
+  appliedCoupons?: any[];
   onApplyCoupon?: () => void;
+  onRemoveCoupon?: (code: string) => void;
   showCoupon?: boolean;
   header?: React.ReactNode;
   footer?: React.ReactNode;
@@ -20,8 +21,9 @@ export function CartOrderSummary({
   summary,
   coupon = "",
   onCouponChange,
-  couponApplied = false,
+  appliedCoupons = [],
   onApplyCoupon,
+  onRemoveCoupon,
   showCoupon = true,
   header,
   footer,
@@ -52,7 +54,9 @@ export function CartOrderSummary({
         </div>
         {summary.discount > 0 && (
           <div className="flex justify-between text-green-600">
-            <span>Coupon {couponApplied ? `(${coupon})` : ""}</span>
+            <span>
+              Coupons {appliedCoupons.length > 0 ? `(${appliedCoupons.map(c => c.code).join(', ')})` : ""}
+            </span>
             <span className="tabular-nums">-₹{summary.discount.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>
           </div>
         )}
@@ -67,6 +71,20 @@ export function CartOrderSummary({
 
       {showCoupon && onCouponChange && onApplyCoupon && (
         <div className="mt-4">
+          {appliedCoupons.length > 0 && (
+            <div className="mb-3 space-y-2">
+              {appliedCoupons.map(c => (
+                <div key={c.code} className="flex justify-between items-center bg-green-50 border border-green-200 text-green-800 px-3 py-1.5 rounded-lg text-sm">
+                  <span className="font-semibold">{c.code}</span>
+                  {onRemoveCoupon && (
+                    <button onClick={() => onRemoveCoupon(c.code)} className="text-red-500 hover:text-red-700 text-xs font-semibold">
+                      Remove
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -74,18 +92,17 @@ export function CartOrderSummary({
                 type="text"
                 value={coupon}
                 onChange={(e) => onCouponChange(e.target.value.toUpperCase())}
-                placeholder="Enter coupon (try SB5)"
+                placeholder="Enter coupon"
                 className="w-full pl-9 pr-3 py-2.5 border border-border rounded-xl text-sm bg-input-background focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
             <button
               type="button"
               onClick={onApplyCoupon}
-              style={{ backgroundColor: couponApplied ? "var(--sb-green, #16a34a)" : "var(--sb-orange)" }}
-              className="px-3 py-2.5 rounded-xl text-white text-sm font-medium"
-              disabled={couponApplied}
+              style={{ backgroundColor: "var(--sb-orange)" }}
+              className="px-3 py-2.5 rounded-xl text-white text-sm font-medium hover:opacity-90 transition-opacity"
             >
-              {couponApplied ? "Applied" : "Apply"}
+              Apply
             </button>
           </div>
         </div>

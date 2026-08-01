@@ -51,7 +51,7 @@ export function ProductCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const location = useLocation();
-  const hasAdminActions = vo && ["READY_FOR_DISPATCH", "DISPATCHED", "DELIVERED", "SB_INVOICE_SENT"].includes(vo.status);
+  const hasAdminActions = vo && ["ACCEPTED", "READY_FOR_DISPATCH", "DISPATCHED", "DELIVERED", "SB_INVOICE_SENT"].includes(vo.status);
 
   const assignedVendor = item.assignedVendorUser?.companyName || item.assignedVendorUser?.name;
   const lineDefaultType = lineDefaultDeliveryType(item);
@@ -60,7 +60,7 @@ export function ProductCard({
 
   // Calculate progress steps
   const isAssigned = !!assignedVendor;
-  const isAccepted = vo && ["ACCEPTED", "READY_FOR_DISPATCH", "PARTIALLY_DISPATCHED", "DISPATCHED", "DELIVERED", "COMPLETED"].includes(vo.status);
+  const isAccepted = vo && !["NEW_ASSIGNED", "ASSIGNED", "REJECTED", "CANCELLED"].includes(vo.status);
   const isInvoiceUploaded = vo && ["UPLOADED", "APPROVED"].includes(vo.invoiceStatus);
   const isDispatch = vo && ["DISPATCHED", "DELIVERED", "COMPLETED"].includes(vo.status);
   const isDelivered = vo && ["DELIVERED", "COMPLETED"].includes(vo.status);
@@ -102,6 +102,13 @@ export function ProductCard({
             </h3>
             <div className="flex flex-col lg:flex-row lg:flex-wrap lg:items-center gap-x-4 gap-y-1 text-xs text-sb-ink/60">
               {(item.variationLabel || item.sku) && <span><span className="lg:hidden font-semibold text-sb-ink/40 mr-2 uppercase">SKU</span>{item.variationLabel || item.sku}</span>}
+              {item.customColor && (
+                <span className="flex items-center gap-1">
+                  <span className="lg:hidden font-semibold text-sb-ink/40 mr-2 uppercase">Color</span>
+                  <div className="w-2.5 h-2.5 rounded-full border border-sb-ink/20" style={{ backgroundColor: /^#[0-9A-Fa-f]{6}$/.test(item.customColor) ? item.customColor : "transparent" }}></div>
+                  <span>{item.customColor}</span>
+                </span>
+              )}
               <span><span className="lg:hidden font-semibold text-sb-ink/40 mr-2 uppercase">Qty</span>{item.quantity}</span>
               <span><span className="lg:hidden font-semibold text-sb-ink/40 mr-2 uppercase">Price</span>₹{Number(item.lineTotal).toLocaleString("en-IN")}</span>
               <span><span className="lg:hidden font-semibold text-sb-ink/40 mr-2 uppercase">Default</span>{defaultTypeLabel}</span>
@@ -360,9 +367,31 @@ export function ProductCard({
                   {vo.workflowVersion === 2 && hasAdminActions && (
                     <WorkflowCard title="Actions" variant="accent">
                           <div className="flex flex-col gap-3 items-stretch">
-                            {vo.status === "READY_FOR_DISPATCH" && (
-                              <>
-                                <button
+                        {vo.status === "ACCEPTED" && (
+                          <button
+                            type="button"
+                            className="wf-btn wf-btn--primary w-full justify-center bg-sb-orange hover:bg-orange-600 border-none text-white"
+                            onClick={async () => {
+                              const ok = await adminToast.confirm("Confirm dispatch authorization?", {
+                                description: "This allows the vendor to submit their dispatch readiness details.",
+                                confirmLabel: "Confirm Dispatch",
+                              });
+                              if (!ok) return;
+                              try {
+                                await apiFetch(`/admin/vendor-orders/${vo._id}/workflow/confirm-dispatch`, { method: "POST" });
+                                await loadOrder();
+                                adminToast.success("Dispatch confirmed");
+                              } catch (e) {
+                                adminToast.error(e instanceof Error ? e.message : "Confirm dispatch failed");
+                              }
+                            }}
+                          >
+                            Confirm dispatch
+                          </button>
+                        )}
+                        {vo.status === "READY_FOR_DISPATCH" && (
+                          <>
+                            <button
                                   type="button"
                                   className="wf-btn wf-btn--primary w-full justify-center"
                                   onClick={async () => {

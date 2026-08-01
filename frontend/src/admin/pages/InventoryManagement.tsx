@@ -1,9 +1,11 @@
+import { formatDate } from "../../lib/formatDate";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router";
 import { Plus, Warehouse, AlertCircle, Loader2, RefreshCw, Search, History, TrendingUp, TrendingDown, RotateCcw, Upload, Download, Trash2 } from "lucide-react";
 import { adminFetch as apiFetch } from "../../lib/adminApi";
 import { AdminBulkToolbar } from "../components/AdminBulkToolbar";
 import { AdminDeleteConfirmModal } from "../components/AdminDeleteConfirmModal";
+
 
 type AdjustType = "ADD" | "DEDUCT" | "ADJUST";
 
@@ -699,7 +701,7 @@ export function InventoryManagement() {
                       <td className="py-3 px-4 text-sb-ink">{log.quantityAfter}</td>
                       <td className="py-3 px-4 text-sb-ink/55 max-w-xs truncate">{log.reason || "—"}</td>
                       <td className="py-3 px-4 text-sb-ink/55">{log.performedBy?.name}</td>
-                      <td className="py-3 px-4 text-sb-ink/50 text-xs">{new Date(log.createdAt).toLocaleDateString()}</td>
+                      <td className="py-3 px-4 text-sb-ink/50 text-xs">{formatDate(log.createdAt)}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -1,9 +1,11 @@
+import { formatDate } from "../../lib/formatDate";
 import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router";
 import { Search, ChevronRight, Calendar, User, Tag } from "lucide-react";
 import { useCmsPageSeo } from "../hooks/useCmsPageSeo";
 import { useCmsHomepage } from "../hooks/useCmsHomepage";
 import { HeroBanner } from "../components/HeroBanner";
+
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
@@ -137,7 +139,7 @@ export function BlogListing() {
 
 function BlogCard({ blog, large = false }: { blog: any; large?: boolean }) {
   const date = blog.publishDate
-    ? new Date(blog.publishDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+    ? formatDate(blog.publishDate)
     : "";
   return (
     <Link
@@ -210,7 +212,7 @@ export function BlogDetails() {
   if (!blog) return null;
 
   const date = blog.publishDate
-    ? new Date(blog.publishDate).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })
+    ? formatDate(blog.publishDate)
     : "";
 
   return (

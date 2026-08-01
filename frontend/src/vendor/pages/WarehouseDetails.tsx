@@ -191,7 +191,7 @@ export function WarehouseDetails() {
                 ['Order #', order.orderNumber],
                 ['Product', order.assignedProducts?.[0]?.productName ?? '—'],
                 ['Quantity', `${order.assignedProducts?.[0]?.quantity ?? '—'} ${order.assignedProducts?.[0]?.unit ?? ''}`],
-                ['Customer City', order.deliveryAddress?.city ?? '—'],
+
                 ['Invoice', order.invoiceStatus],
               ].map(([l, v]) => (
                 <div key={l} className="flex justify-between text-xs">

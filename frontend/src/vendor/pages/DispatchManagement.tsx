@@ -360,7 +360,7 @@ export function DispatchManagement() {
                   {[
                     ['Order #', selectedOrder.orderNumber],
                     ['Product', selectedOrder.assignedProducts?.[0]?.productName ?? '—'],
-                    ['Customer', selectedOrder.customer?.name ?? '—'],
+
                     ['City', selectedOrder.deliveryAddress?.city ?? '—'],
                   ].map(([l, v]) => (
                     <div key={l}>

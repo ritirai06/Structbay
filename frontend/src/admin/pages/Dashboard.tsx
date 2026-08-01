@@ -1,3 +1,4 @@
+import { formatDate } from "../../lib/formatDate";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import {
@@ -11,6 +12,7 @@ import {
 } from "recharts";
 import { adminPath } from "../../lib/portalRoutes";
 import { adminFetch as apiFetch } from "../../lib/adminApi";
+
 
 /** Brand-only chart fills */
 const CHART_COLORS = ["#E85A00", "#111111", "#E5E5E5", "#CC4E00", "#F5F5F5", "#E85A00", "#666666", "#FFFFFF"];
@@ -211,7 +213,7 @@ export function Dashboard() {
                   <div className="min-w-0">
                     <p className="text-xs font-medium text-sb-ink truncate">{log.description}</p>
                     <p className="text-[10px] text-sb-ink/50 mt-0.5">
-                      {log.module} · {log.action} · {new Date(log.createdAt).toLocaleDateString()}
+                      {log.module} · {log.action} · {formatDate(log.createdAt)}
                     </p>
                   </div>
                 </div>

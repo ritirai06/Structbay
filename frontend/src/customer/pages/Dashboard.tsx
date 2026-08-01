@@ -1,3 +1,4 @@
+import { formatDate } from "../../lib/formatDate";
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import type { LucideIcon } from "lucide-react";
@@ -15,6 +16,7 @@ import { openOrderInvoices } from "../lib/orderInvoices";
 import { canCustomerCancelOrder } from "../lib/orderEligibility";
 import { clearCustomerSession } from "../lib/authStorage";
 import logoImg from "/shared/assets/logos/Structbay-Logo-F-1.png";
+
 
 const ADDR_STORAGE = "sb_customer_addresses_v1";
 
@@ -89,7 +91,7 @@ function mapApiOrder(o: any): CustomerUiOrder {
     id: o.orderNumber || String(o._id),
     dbId: String(o._id),
     date: o.createdAt
-      ? new Date(o.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+      ? formatDate(o.createdAt)
       : "—",
     items: Array.isArray(o.items) ? o.items.map((i: any) => `${i.name} ×${i.quantity}`).join(", ") : "—",
     total: `₹${Number(o.grandTotal || 0).toLocaleString("en-IN")}`,

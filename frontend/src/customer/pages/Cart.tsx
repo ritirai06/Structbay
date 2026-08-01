@@ -21,7 +21,7 @@ export function Cart() {
   const { cart, removeFromCart, updateQty, isLoggedIn, addToCart, cityId } = useApp();
   const navigate = useNavigate();
   const [coupon, setCoupon] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [appliedCoupons, setAppliedCoupons] = useState<any[]>([]);
   const [minimumOrderValue, setMinimumOrderValue] = useState<number>(DEFAULT_MINIMUM_ORDER_VALUE);
   const [upsells, setUpsells] = useState<any[]>([]);
 
@@ -92,8 +92,8 @@ export function Cart() {
   }, [cart, cityId]);
 
   const summary = useMemo(
-    () => buildCartSummaryFromLines(cart, "exclusive", appliedCoupon),
-    [cart, appliedCoupon]
+    () => buildCartSummaryFromLines(cart, "exclusive", appliedCoupons),
+    [cart, appliedCoupons]
   );
 
   const cartSubtotal = summary.displaySubtotal;
@@ -103,24 +103,56 @@ export function Cart() {
 
   const applyCoupon = async () => {
     if (!coupon.trim()) return;
+    if (appliedCoupons.find(c => c.code === coupon.toUpperCase())) {
+      alert("This coupon is already applied.");
+      setCoupon("");
+      return;
+    }
     try {
       const base = import.meta.env.VITE_API_URL || '/api/v1';
       const res = await fetch(`${base}/coupons/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: coupon, cartValue: summary.subtotalExGst })
+        body: JSON.stringify({ code: coupon }) // Removed cartValue since it validates on frontend
       });
       const data = await res.json();
       if (data.success) {
-        setAppliedCoupon(data.data);
+        const couponData = data.data;
+        
+        // Validate against cart items
+        let applicableSubtotal = 0;
+        let hasApplicableItems = false;
+        
+        for (const line of cart) {
+          const catId = typeof line.product.category === 'object' ? (line.product.category as any)?._id : line.product.category;
+          if (!couponData.applicableCategories || couponData.applicableCategories.length === 0 || (catId && couponData.applicableCategories.includes(catId))) {
+            hasApplicableItems = true;
+            applicableSubtotal += lineSubtotalExGst(line);
+          }
+        }
+
+        if (!hasApplicableItems) {
+          alert('This coupon is not applicable to any products in your cart.');
+          return;
+        }
+
+        if (applicableSubtotal < (couponData.minCartValue || 0)) {
+          alert(`Minimum cart value for this coupon is ₹${couponData.minCartValue} for the applicable products.`);
+          return;
+        }
+
+        setAppliedCoupons([...appliedCoupons, couponData]);
+        setCoupon("");
       } else {
         alert(data.message || 'Invalid Coupon Code');
-        setAppliedCoupon(null);
       }
     } catch (err) {
       alert('Error validating coupon. Please try again.');
-      setAppliedCoupon(null);
     }
+  };
+
+  const removeCoupon = (code: string) => {
+    setAppliedCoupons(appliedCoupons.filter(c => c.code !== code));
   };
 
   if (cart.length === 0) {
@@ -144,10 +176,10 @@ export function Cart() {
       return;
     }
     if (!isLoggedIn) {
-      navigate("/login", { state: { from: { pathname: "/checkout" }, coupon: appliedCoupon } });
+      navigate("/login", { state: { from: { pathname: "/checkout" }, coupons: appliedCoupons } });
       return;
     }
-    navigate("/checkout", { state: { coupon: appliedCoupon } });
+    navigate("/checkout", { state: { coupons: appliedCoupons } });
   };
 
   return (
@@ -239,6 +271,13 @@ export function Cart() {
                   {item.variationLabel && (
                     <p className="text-xs text-muted-foreground mt-0.5">{item.variationLabel}</p>
                   )}
+                  {item.customColor && (
+                    <div className="flex items-center gap-1 mt-1">
+                      <span className="text-xs text-muted-foreground">Color:</span>
+                      <div className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: /^#[0-9A-Fa-f]{6}$/.test(item.customColor) ? item.customColor : "transparent" }}></div>
+                      <span className="text-xs text-gray-700 font-medium">{item.customColor}</span>
+                    </div>
+                  )}
                   <p className="text-xs text-muted-foreground mt-0.5">per {item.unit}</p>
                   <div className="flex items-center gap-3 mt-3 flex-wrap">
                     <div className="flex items-center border border-border rounded-xl overflow-hidden">
@@ -293,8 +332,9 @@ export function Cart() {
           summary={summary}
           coupon={coupon}
           onCouponChange={setCoupon}
-          couponApplied={!!appliedCoupon}
+          appliedCoupons={appliedCoupons}
           onApplyCoupon={applyCoupon}
+          onRemoveCoupon={removeCoupon}
           footer={
             <>
               <button

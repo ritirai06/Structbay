@@ -13,7 +13,7 @@ const { getMinimumOrderValue, validateMinimumOrder } = require('../services/mini
 
 const populateCart = (query) =>
   query
-    .populate({ path: 'items.product', select: 'name sku images isAssured isExpress isStructbayAssured isStructbayDelivery gstPercentage status' })
+    .populate({ path: 'items.product', select: 'name sku images isAssured isExpress isStructbayAssured isStructbayDelivery gstPercentage status category' })
     .populate({ path: 'items.variation', select: 'attributes sku images mrp moq leadTimeDays vendorSku weightKg' })
     .populate({ path: 'items.vendorUser', select: 'name email companyName' })
     .populate('city', 'name slug');
@@ -82,7 +82,7 @@ exports.getCart = asyncHandler(async (req, res) => {
 
 // POST /customer/cart/items  { productId, variationId?, quantity, cityId?, vendorUserId? }
 exports.addItem = asyncHandler(async (req, res) => {
-  const { productId, variationId, quantity = 1, cityId, vendorUserId } = req.body;
+  const { productId, variationId, quantity = 1, cityId, vendorUserId, customColor } = req.body;
   if (!productId) throw new AppError('productId is required.', 400);
 
   const product = await Product.findById(productId);
@@ -122,6 +122,7 @@ exports.addItem = asyncHandler(async (req, res) => {
       i.product.toString() === productId &&
       (variationId ? i.variation?.toString() === variationId : !i.variation) &&
       (vendorUserId ? (i.vendorUser && i.vendorUser.toString() === vUserId) : !i.vendorUser) &&
+      (customColor ? i.customColor === customColor : !i.customColor) &&
       !i.savedForLater
   );
 
@@ -132,6 +133,7 @@ exports.addItem = asyncHandler(async (req, res) => {
       product: productId,
       variation: variationId || null,
       vendorUser: vendorUser ? vendorUser._id : null,
+      customColor: customColor || null,
       quantity: Number(quantity),
     });
   }

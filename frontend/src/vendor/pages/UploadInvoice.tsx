@@ -282,7 +282,7 @@ export function UploadInvoice() {
                 ['Order #', order?.orderNumber],
                 ['Product', order?.assignedProducts?.[0]?.productName],
                 ['Quantity', `${order?.assignedProducts?.[0]?.quantity ?? '—'} ${order?.assignedProducts?.[0]?.unit ?? ''}`],
-                ['Customer', order?.customer?.name],
+
                 ['City', order?.deliveryAddress?.city],
               ].map(([label, value]) => (
                 <div key={label} className="flex justify-between items-center">

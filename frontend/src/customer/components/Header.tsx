@@ -1,3 +1,4 @@
+import { formatDate } from "../../lib/formatDate";
 import { useState, useEffect, useRef, useCallback, useMemo, type FormEvent } from "react";
 import { NavLink, Link, useNavigate, useLocation } from "react-router";
 import {
@@ -27,6 +28,7 @@ import {
 import { ShopMegaMenu } from "./ShopMegaMenu";
 import logoImg from "/shared/assets/logos/Structbay-Logo-F-1.png";
 
+
 type CustomerNotification = {
   _id: string;
   title: string;
@@ -42,7 +44,7 @@ function timeAgo(iso: string): string {
   if (sec < 60) return "Just now";
   if (sec < 3600) return `${Math.floor(sec / 60)}m ago`;
   if (sec < 86400) return `${Math.floor(sec / 3600)}h ago`;
-  return new Date(iso).toLocaleDateString();
+  return formatDate(iso);
 }
 
 function notificationPath(n: CustomerNotification): string {
@@ -134,9 +136,8 @@ function TopMarquee({ segments }: { segments: string[] }) {
         >
           <p
             key={index}
-            className={`sb-top-marquee-message text-black text-[12px] sm:text-lg font-medium tracking-wide text-center px-1 truncate ${
-              fading ? "opacity-0" : "opacity-100"
-            }`}
+            className={`sb-top-marquee-message text-black text-[12px] sm:text-lg font-medium tracking-wide text-center px-1 truncate ${fading ? "opacity-0" : "opacity-100"
+              }`}
           >
             {items[index]}
           </p>
@@ -158,32 +159,32 @@ export function Header() {
   const { city, cityId, cartCount, isLoggedIn, user, setIsLoggedIn, setUser, addRecentSearch } = useApp();
   const location = useLocation();
   const isHome = location.pathname === "/" || location.pathname === "";
-  const [searchQuery, setSearchQuery]     = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
-  const [menuOpen, setMenuOpen]           = useState(false);
-  const [catOpen, setCatOpen]             = useState(false);
-  const [userOpen, setUserOpen]           = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [catOpen, setCatOpen] = useState(false);
+  const [userOpen, setUserOpen] = useState(false);
   const [cityModalOpen, setCityModalOpen] = useState(false);
   const [announcementsGatePassed, setAnnouncementsGatePassed] = useState(
     () => typeof window !== "undefined" && hasOnboardingGatePassed()
   );
-  const [categories, setCategories]       = useState<any[]>([]);
-  const [storefront, setStorefront]       = useState<Record<string, unknown> | null>(null);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [storefront, setStorefront] = useState<Record<string, unknown> | null>(null);
   const [promoModalOpen, setPromoModalOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifications, setNotifications] = useState<CustomerNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loadingNotifs, setLoadingNotifs] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
-  const navigate  = useNavigate();
+  const navigate = useNavigate();
   const { openBulkEnquiry } = useBulkEnquiryModal();
   const searchRef = useRef<HTMLDivElement>(null);
-  const userRef   = useRef<HTMLDivElement>(null);
+  const userRef = useRef<HTMLDivElement>(null);
 
   const headerRef = useRef<HTMLElement>(null);
   const marqueeRef = useRef<HTMLDivElement>(null);
   const [headerVisible, setHeaderVisible] = useState(true);
-  
+
   const marqueeHeightRef = useRef(0);
   const totalHeightRef = useRef(0);
   const prevScrollY = useRef(0);
@@ -322,7 +323,7 @@ export function Header() {
 
   useEffect(() => {
     function handler(e: MouseEvent) {
-      if (userRef.current && !userRef.current.contains(e.target as Node))  setUserOpen(false);
+      if (userRef.current && !userRef.current.contains(e.target as Node)) setUserOpen(false);
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchFocused(false);
     }
     document.addEventListener("mousedown", handler);
@@ -427,7 +428,7 @@ export function Header() {
         onClose={() => setPromoModalOpen(false)}
       />
 
-      {/* â”€â”€ Reference storefront header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* --------------- Reference storefront header ---------------*/}
       <header ref={headerRef} className="sf-header">
         <div ref={marqueeRef} className="sf-marquee-wrapper">
           {promoEnabled && topBarText ? (
@@ -466,8 +467,8 @@ export function Header() {
 
               <nav className="sf-nav" aria-label="Main">
                 <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>Home</NavLink>
-                <ShopMegaMenu 
-                  categories={categories} 
+                <ShopMegaMenu
+                  categories={categories}
                   onCategoryClick={(cat) => signalSandAggregatesQuoteOpen(cat)}
                 />
                 <Link to="/blogs">Blog</Link>
@@ -485,7 +486,7 @@ export function Header() {
                   Bulk Order
                 </button>
                 <NavLink to="/finance" className="sf-btn-outline hidden md:inline-flex !px-2.5 !py-1.5 !text-[0.65rem]">
-                Structbay Finance
+                  Structbay Finance
                 </NavLink>
 
                 {/* Search */}
@@ -702,7 +703,7 @@ export function Header() {
                   Bulk Order
                 </button>
                 <NavLink to="/finance" className="sf-btn-outline-mobile">
-                 Structbay Finance
+                  Structbay Finance
                 </NavLink>
               </div>
 
@@ -742,28 +743,28 @@ export function Header() {
                 </button>
               </div>
             </div>
-        </div>
-
-        {(searchOpen || searchFocused) && (
-          <div className="sf-search-row">
-            <form onSubmit={handleSearch} className="max-w-3xl mx-auto relative" ref={searchRef}>
-              <input
-                type="search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => setSearchFocused(true)}
-                placeholder="Search cement, steel, paints, tools..."
-                className="w-full pl-4 pr-12 py-3 rounded-full text-sm bg-white border border-gray-200 text-gray-900 min-h-0"
-              />
-              <button type="submit" className="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-sb-orange text-white flex items-center justify-center">
-                <Search className="w-4 h-4" />
-              </button>
-              {searchFocused && (
-                <SearchDropdown query={searchQuery} onSelect={() => { setSearchFocused(false); setSearchOpen(false); }} onClose={() => setSearchFocused(false)} />
-              )}
-            </form>
           </div>
-        )}
+
+          {(searchOpen || searchFocused) && (
+            <div className="sf-search-row">
+              <form onSubmit={handleSearch} className="max-w-3xl mx-auto relative" ref={searchRef}>
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setSearchFocused(true)}
+                  placeholder="Search cement, steel, paints, tools..."
+                  className="w-full pl-4 pr-12 py-3 rounded-full text-sm bg-white border border-gray-200 text-gray-900 min-h-0"
+                />
+                <button type="submit" className="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-sb-orange text-white flex items-center justify-center">
+                  <Search className="w-4 h-4" />
+                </button>
+                {searchFocused && (
+                  <SearchDropdown query={searchQuery} onSelect={() => { setSearchFocused(false); setSearchOpen(false); }} onClose={() => setSearchFocused(false)} />
+                )}
+              </form>
+            </div>
+          )}
         </div>
       </header>
 
@@ -806,9 +807,9 @@ export function Header() {
 
             <div className="px-4 py-3 flex-1">
               <p className="text-xs font-bold uppercase tracking-wider mb-2 text-white/50">Categories</p>
-              <ShopMegaMenu 
-                categories={categories} 
-                isMobile 
+              <ShopMegaMenu
+                categories={categories}
+                isMobile
                 onNavigate={() => setMenuOpen(false)}
                 onCategoryClick={(cat) => signalSandAggregatesQuoteOpen(cat)}
               />

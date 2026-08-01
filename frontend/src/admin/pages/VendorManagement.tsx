@@ -1,3 +1,4 @@
+import { formatDate } from "../../lib/formatDate";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Search, RefreshCw, Eye, CheckCircle, XCircle, Loader2, Users, Plus, Edit, ToggleLeft, ToggleRight } from "lucide-react";
 import { useNavigate } from "react-router";
@@ -6,6 +7,7 @@ import { adminToast } from "../lib/adminToast";
 import { AdminInputModal } from "../components/AdminInputModal";
 import { useAdminListDelete } from "../hooks/useAdminListDelete";
 import {
+
   AdminListDeleteControls,
   AdminRowDeleteButton,
   AdminTableSelectCell,
@@ -374,7 +376,7 @@ export function VendorManagement() {
                       <td className="py-3.5 px-4">
                         <span className={`text-xs font-medium ${v.status === "ACTIVE" ? "text-sb-orange" : "text-sb-ink/45"}`}>{v.status}</span>
                       </td>
-                      <td className="py-3.5 px-4 text-xs text-sb-ink/50">{new Date(v.createdAt).toLocaleDateString()}</td>
+                      <td className="py-3.5 px-4 text-xs text-sb-ink/50">{formatDate(v.createdAt)}</td>
                       <td className="py-3.5 px-4">
                         <div className="flex gap-1.5">
                           <button onClick={() => navigate(`/admin/vendors/${v._id}`)} title="View profile" className="p-1.5 border border-sb-ink/10 rounded-lg text-sb-ink/55 hover:text-sb-ink hover:border-sb-ink/20 transition-colors bg-sb-cream">

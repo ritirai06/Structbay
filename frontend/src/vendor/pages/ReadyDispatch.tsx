@@ -218,7 +218,7 @@ export function ReadyDispatch() {
                 ['Order #', order.orderNumber],
                 ['Product', order.assignedProducts?.[0]?.productName ?? '—'],
                 ['Quantity', `${order.assignedProducts?.[0]?.quantity ?? '—'} ${order.assignedProducts?.[0]?.unit ?? ''}`],
-                ['Customer', order.customer?.name ?? '—'],
+
                 ['Delivery City', order.deliveryAddress?.city ?? '—'],
                 ['Delivery Type', order.deliveryType === 'structbay_delivery' ? 'Structbay Delivery' : 'Vendor Delivery'],
                 ['Invoice Status', order.invoiceStatus],

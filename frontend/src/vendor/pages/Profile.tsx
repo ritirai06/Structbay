@@ -1,7 +1,9 @@
+import { formatDate } from "../../lib/formatDate";
 import { useState, useEffect, useRef } from 'react';
 import { Building, Phone, Mail, MapPin, Save, Edit, Camera, Lock, Bell, CreditCard, CheckCircle, AlertCircle, X } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
+
 
 const SB = { color: 'var(--sb-text-primary)', muted: 'var(--sb-text-muted)', faint: 'var(--sb-text-faint)', orange: 'var(--sb-orange)', card: 'var(--sb-card)', border: 'var(--sb-border)', bg: 'var(--sb-bg-section)' };
 const inputCls = 'w-full px-3 py-2.5 rounded-xl text-sm transition-all disabled:opacity-50';
@@ -182,8 +184,8 @@ export function Profile() {
             <p className="vendor-section-title" style={{ color: SB.muted }}>Account Info</p>
             {[
               ['Role', profile?.role ?? '—'],
-              ['Joined', profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) : '—'],
-              ['Last Login', profile?.lastLogin ? new Date(profile.lastLogin).toLocaleDateString('en-IN') : '—'],
+              ['Joined', profile?.createdAt ? formatDate(profile.createdAt) : '—'],
+              ['Last Login', profile?.lastLogin ? formatDate(profile.lastLogin) : '—'],
             ].map(([l, v]) => (
               <div key={l} className="flex justify-between text-xs">
                 <span style={{ color: SB.faint }}>{l}</span>

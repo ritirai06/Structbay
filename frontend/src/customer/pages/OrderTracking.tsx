@@ -1,3 +1,4 @@
+import { formatDate } from "../../lib/formatDate";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import {
@@ -19,6 +20,7 @@ import { formatPaymentMethod, formatPaymentStatus } from "../../lib/paymentLabel
 import { getCustomerAccessToken, getCustomerRefreshToken, refreshCustomerAccessToken } from "../lib/authStorage";
 import { CUSTOMER_MILESTONE_LABELS } from "../../lib/deliveryWorkflowReference";
 import {
+
   canCustomerCancelOrder,
   canCustomerRequestReplacement,
 } from "../lib/orderEligibility";
@@ -281,11 +283,7 @@ export function OrderTracking() {
                 </p>
                 {tracking?.order?.createdAt && (
                   <p className="text-white/60 text-sm mt-1">
-                    {new Date(tracking.order.createdAt).toLocaleDateString("en-IN", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
+                    {formatDate(tracking.order.createdAt)}
                   </p>
                 )}
               </div>
@@ -401,7 +399,16 @@ export function OrderTracking() {
               <ul className="space-y-2 text-sm">
                 {order.items.map((it: any, ix: number) => (
                   <li key={ix} className="flex justify-between gap-3 py-1.5 border-b border-gray-100 last:border-0">
-                    <span className="text-black">{it.name}</span>
+                    <div>
+                      <span className="text-black">{it.name}</span>
+                      {it.customColor && (
+                        <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                          Color: 
+                          <span className="w-2.5 h-2.5 inline-block rounded-full border border-gray-300" style={{ backgroundColor: /^#[0-9A-Fa-f]{6}$/.test(it.customColor) ? it.customColor : "transparent" }}></span>
+                          {it.customColor}
+                        </p>
+                      )}
+                    </div>
                     <span className="text-gray-500 shrink-0">×{it.quantity}</span>
                   </li>
                 ))}

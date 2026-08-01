@@ -50,6 +50,12 @@ export function Footer() {
           <div>
             <h4>Quick Links</h4>
             <ul className="space-y-2">
+              <li>
+                <Link to="/policy/disclaimer" className="sf-footer-link">
+                  <CheckCircle className="w-4 h-4 shrink-0 text-white/70" />
+                  Disclaimer
+                </Link>
+              </li>
               {cms.quickLinks.map((link) => (
                 <li key={link._id}>
                   <Link to={link.href} className="sf-footer-link">

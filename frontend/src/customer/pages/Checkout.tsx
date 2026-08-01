@@ -18,7 +18,7 @@ export function Checkout() {
   const { cart, city, cityId, isLoggedIn, clearClientCart, updateQty } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
-  const appliedCoupon = location.state?.coupon || null;
+  const appliedCoupons = location.state?.coupons || [];
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -115,8 +115,8 @@ export function Checkout() {
   const [orderError, setOrderError] = useState<string | null>(null);
 
   const summary = useMemo(
-    () => buildCartSummaryFromLines(cart, "exclusive", appliedCoupon),
-    [cart, appliedCoupon]
+    () => buildCartSummaryFromLines(cart, "exclusive", appliedCoupons),
+    [cart, appliedCoupons]
   );
   const total = summary.total;
 
@@ -289,10 +289,7 @@ export function Checkout() {
         },
         notes: form.deliveryInstructions.trim() || undefined,
         paymentMethod: form.paymentMethod,
-        appliedCoupon: appliedCoupon ? {
-          code: appliedCoupon.code,
-          discountAmount: summary.discount,
-        } : undefined,
+        appliedCoupons: appliedCoupons.length > 0 ? appliedCoupons.map((c: any) => ({ code: c.code })) : undefined,
         ...(savedAddressId ? { addressId: savedAddressId } : {}),
       });
       const order = res?.data as { _id?: string; id?: string; orderNumber?: string } | undefined;
@@ -562,6 +559,7 @@ export function Checkout() {
             itemCount={cart.length}
             summary={summary}
             showCoupon={false}
+            appliedCoupons={appliedCoupons}
             header={
               <>
                 <div className="space-y-3">
@@ -574,6 +572,13 @@ export function Checkout() {
                           <p className="text-xs font-medium line-clamp-2 text-foreground">{item.name}</p>
                           {item.variationLabel && (
                             <p className="text-[10px] text-muted-foreground mt-0.5">{item.variationLabel}</p>
+                          )}
+                          {item.customColor && (
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <span className="text-[10px] text-muted-foreground">Color:</span>
+                              <div className="w-2.5 h-2.5 rounded-full border border-gray-300" style={{ backgroundColor: /^#[0-9A-Fa-f]{6}$/.test(item.customColor) ? item.customColor : "transparent" }}></div>
+                              <span className="text-[10px] text-gray-700 font-medium">{item.customColor}</span>
+                            </div>
                           )}
                           <p className="text-[10px] text-muted-foreground mt-0.5">{item.unit}</p>
                           <div className="mt-1.5 flex items-center gap-2">

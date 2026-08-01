@@ -1,6 +1,7 @@
+import { formatDate } from "../../lib/formatDate";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { Search, RefreshCw, Eye, UserPlus, Loader2 } from "lucide-react";
+import { Search, RefreshCw, Eye, UserPlus, Loader2, Plus } from "lucide-react";
 import { adminFetch as apiFetch } from "../../lib/adminApi";
 import { adminPath } from "../../lib/portalRoutes";
 import { formatPaymentMethod, formatPaymentStatus } from "../../lib/paymentLabels";
@@ -13,6 +14,8 @@ import {
   AdminTableSelectCell,
   AdminTableSelectHeader,
 } from "../components/AdminListDeleteControls";
+import { AdminAddOrderWizard } from "../components/order/AdminAddOrderWizard";
+
 
 const ALL_STATUSES = [
   "PENDING", "PAID", "VENDOR_ASSIGNMENT_PENDING", "PROCESSING", "READY_FOR_DISPATCH",
@@ -42,6 +45,7 @@ export function OrderManagement() {
   const [stats, setStats] = useState({ total: 0, pending: 0, processing: 0, dispatched: 0, delivered: 0, cancelled: 0 });
   const [pagination, setPagination] = useState({ total: 0, pages: 1, page: 1 });
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   const openOrderDetail = (order: { _id: string }, hash?: string) => {
     navigate(`${adminPath("orders", order._id)}${hash ? `#${hash}` : ""}`);
@@ -187,7 +191,17 @@ export function OrderManagement() {
         >
           <RefreshCw className="h-4 w-4" />
         </button>
+        <div className="flex-1 flex justify-end">
+          <button
+            onClick={() => setWizardOpen(true)}
+            className="rounded-lg bg-sb-orange px-4 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-orange-600 flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" /> Add Order
+          </button>
+        </div>
       </div>
+
+      {wizardOpen && <AdminAddOrderWizard onClose={() => { setWizardOpen(false); load(); }} />}
 
       <AdminListDeleteControls
         deleteHook={deleteHook}
@@ -268,7 +282,7 @@ export function OrderManagement() {
                         {order.status}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 text-xs text-sb-ink/50">{new Date(order.createdAt).toLocaleDateString()}</td>
+                    <td className="py-3.5 px-4 text-xs text-sb-ink/50">{formatDate(order.createdAt)}</td>
                     <td className="py-3.5 px-4">
                       <div className="flex gap-1.5">
                         <button onClick={() => openOrderDetail(order)}

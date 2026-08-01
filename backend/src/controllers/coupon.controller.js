@@ -137,7 +137,8 @@ exports.validateCoupon = async (req, res) => {
         type: coupon.type,
         discountValue: coupon.discountValue,
         maxDiscount: coupon.maxDiscount,
-        minCartValue: coupon.minCartValue
+        minCartValue: coupon.minCartValue,
+        applicableCategories: coupon.applicableCategories
       }
     });
   } catch (error) {

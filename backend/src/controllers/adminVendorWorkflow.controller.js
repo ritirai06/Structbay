@@ -22,6 +22,46 @@ function vendorUserId(vo) {
   return v;
 }
 
+exports.confirmDispatch = asyncHandler(async (req, res) => {
+  const vo = await VendorOrder.findById(req.params.id);
+  if (!vo) throw new AppError('Vendor order not found.', 404);
+  if (!isWorkflowVendorOrder(vo)) throw new AppError('Workflow not active for this vendor order.', 400);
+  if (vo.status !== 'ACCEPTED') {
+    throw new AppError('Only ACCEPTED orders can be confirmed for dispatch.', 400);
+  }
+  if (!canTransition(vo.status, 'DISPATCH_CONFIRMED')) throw new AppError('Invalid transition.', 400);
+
+  vo.status = 'DISPATCH_CONFIRMED';
+  pushEmbeddedHistory(vo, 'DISPATCH_CONFIRMED', req.user._id, 'User', 'Admin confirmed dispatch authorization.');
+  await vo.save();
+  await appendAudit(vo._id, 'DISPATCH_CONFIRMED', 'Admin confirmed dispatch authorization', req.user._id, 'User');
+
+  const vendorId = vendorUserId(vo);
+  if (vendorId) {
+    notifyVendor({
+      vendorId,
+      type: 'wf_dispatch_confirmed',
+      title: 'Dispatch authorized',
+      message: `Structbay confirmed dispatch for ${vo.orderNumber}. You may now submit your dispatch readiness details.`,
+      relatedOrder: vo._id,
+      actionUrl: `/orders/${vo._id}`,
+      actionLabel: 'Submit ready dispatch',
+      createdBy: req.user._id,
+    }).catch(() => {});
+  }
+
+  await logAction({
+    adminId: req.user._id,
+    action: 'UPDATE',
+    module: 'VendorOrder',
+    targetId: vo._id.toString(),
+    description: `Dispatch confirmed for ${vo.orderNumber}`,
+    ipAddress: req.ip,
+  });
+
+  return ApiResponse.success(res, 200, 'Dispatch confirmed.', vo);
+});
+
 exports.approveDispatch = asyncHandler(async (req, res) => {
   const vo = await VendorOrder.findById(req.params.id);
   if (!vo) throw new AppError('Vendor order not found.', 404);

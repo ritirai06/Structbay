@@ -29,6 +29,18 @@ import { productHref } from "../lib/productRoutes";
 import { availabilityForProduct } from "../lib/productAvailability";
 import { ProductAvailabilityBadge } from "../components/ProductAvailabilityBadge";
 
+// Helper to reliably parse user color inputs into valid CSS background colors
+function parseUserColor(val: string): string {
+  if (!val) return "transparent";
+  const trimmed = val.trim();
+  // If it's a 3 or 6 digit hex code without the '#', prepend it
+  if (/^([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(trimmed)) {
+    return `#${trimmed}`;
+  }
+  // Otherwise trust the browser to handle it (e.g. "red", "#FF0000", "rgb(...)")
+  return trimmed;
+}
+
 function PdpAccordion({
   title,
   open,
@@ -254,8 +266,17 @@ export function ProductDetails() {
   const isVariant = isVariantProduct(product);
   const variations: any[] = isVariant ? (product?.variations || []) : [];
   const axes = useMemo(
-    () => (isVariant ? axesForVariations(variations, product?.categoryFilters || [], product?.attributes || []) : []),
-    [isVariant, variations, product?.categoryFilters, product?.attributes]
+    () => {
+      let baseAxes = axesForVariations(variations, product?.categoryFilters, product?.attributes);
+      if (product?.allowCustomColor) {
+        baseAxes = baseAxes.filter(a => {
+          const k = a.key.toLowerCase();
+          return !k.startsWith("color") && !k.startsWith("colour");
+        });
+      }
+      return baseAxes;
+    },
+    [variations, product]
   );
 
   const selectedVar = variations.find((v: any) => String(v._id) === selectedVid);
@@ -428,8 +449,9 @@ export function ProductDetails() {
       productSlug: pslug,
       variationId: vid,
       variationLabel: isVariant && selectedVar 
-        ? formatVariationLabel(selectedVar) + ((attrSelections["Color"] === "Custom" || attrSelections["Colour"] === "Custom" || attrSelections["Colors"] === "Custom" || attrSelections["Colours"] === "Custom") && customColorText ? ` (Custom: ${customColorText})` : "") 
+        ? formatVariationLabel(selectedVar)
         : undefined,
+      customColor: product.allowCustomColor && customColorText ? customColorText.trim() : undefined,
       name: product.name,
       brand: brandName,
       price: effectiveUnit,
@@ -597,67 +619,37 @@ export function ProductDetails() {
                 const isColorAxis = axis.key.toLowerCase().startsWith("color") || axis.key.toLowerCase().startsWith("colour");
 
                 if (isColorAxis) {
-                  const inputVal = customColorText;
                   const currentSelected = attrSelections[axis.key] || "";
-                  const filtered = inputVal.trim()
-                    ? options.filter((o) => o.toLowerCase().includes(inputVal.trim().toLowerCase()))
-                    : [];
-
                   return (
                     <div key={axis.key} className="sf-pdp-variant-group">
                       <p className="sf-pdp-variant-label">{axis.label}</p>
-                      {currentSelected && !inputVal.trim() && (
-                        <p className="text-sm text-gray-500 mt-1 mb-2">
-                          Selected: <span className="font-semibold text-sb-ink">{currentSelected}</span>
-                        </p>
-                      )}
-                      <div className="relative mt-1 max-w-sm">
-                        <input
-                          type="text"
-                          value={customColorText}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setCustomColorText(val);
-                            const exact = options.find((o) => o.toLowerCase() === val.trim().toLowerCase());
-                            if (exact) setAxis(axis.key, exact);
-                          }}
-                          placeholder={currentSelected ? currentSelected : "Type color name…"}
-                          className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-sb-orange focus:ring-1 focus:ring-sb-orange"
-                        />
+                      <div className="sf-pdp-pills">
+                        {options.map((opt) => {
+                          const active = attrSelections[axis.key] === opt;
+                          const partial = { ...attrSelections, [axis.key]: opt };
+                          const v = resolveVariationFromSelections(variations, partial);
+                          const vidOpt = v?._id ? String(v._id) : "";
+                          const snapOpt = vidOpt ? pricingSnapshotFromProduct(product, vidOpt) : null;
+                          const unitOpt = snapOpt
+                            ? resolveUnitPriceFromSnapshot(snapOpt, 1)
+                            : listingUnitPrice(product, vidOpt || null);
+                          const infoOpt = availabilityForProduct(product, vidOpt || null, unitOpt > 0);
+
+                          return (
+                            <button
+                              key={opt}
+                              type="button"
+                              className={`sf-pdp-pill ${active ? "sf-pdp-pill--active" : ""} ${infoOpt.stockStatus === "OUT_OF_STOCK" ? "sf-pdp-pill--oos" : ""}`}
+                              onClick={() => setAxis(axis.key, opt)}
+                            >
+                              <span>{opt}</span>
+                              {unitOpt > 0 && (
+                                <span className="sf-pdp-pill__price">₹{displayUnitFromExGst(unitOpt, product).toLocaleString("en-IN")}</span>
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
-                      {inputVal.trim() && filtered.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {filtered.map((opt) => {
-                            const partial = { ...attrSelections, [axis.key]: opt };
-                            const v = resolveVariationFromSelections(variations, partial);
-                            const isOos = v && availabilityForProduct(product, String(v._id), true).stockStatus === "OUT_OF_STOCK";
-                            const isActive = currentSelected === opt;
-                            return (
-                              <button
-                                key={opt}
-                                type="button"
-                                disabled={!!isOos}
-                                onClick={() => {
-                                  setCustomColorText(opt);
-                                  setAxis(axis.key, opt);
-                                }}
-                                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                                  isActive
-                                    ? "bg-[#E85A00] text-white border-[#E85A00]"
-                                    : isOos
-                                    ? "border-gray-200 text-gray-400 line-through cursor-not-allowed"
-                                    : "border-gray-300 text-gray-700 hover:border-[#E85A00] hover:text-[#E85A00]"
-                                }`}
-                              >
-                                {opt}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                      {inputVal.trim() && filtered.length === 0 && (
-                        <p className="text-xs text-gray-400 mt-2">No matching color found.</p>
-                      )}
                     </div>
                   );
                 }
@@ -755,6 +747,25 @@ export function ProductDetails() {
 
             {moq > 1 && (
               <p className="text-xs text-gray-500 mb-2">Minimum order quantity: {moq} units</p>
+            )}
+
+            {product.allowCustomColor && (
+              <div className="sf-pdp-variant-group">
+                <p className="sf-pdp-variant-label">Custom Color</p>
+                <div className="relative mt-1 max-w-sm flex gap-3 items-center">
+                  <div 
+                    className="w-10 h-10 rounded-full flex-shrink-0 border border-gray-300 shadow-inner"
+                    style={{ backgroundColor: parseUserColor(customColorText) }}
+                  />
+                  <input
+                    type="text"
+                    value={customColorText}
+                    onChange={(e) => setCustomColorText(e.target.value)}
+                    placeholder="Enter hex code or color name (e.g. F54927 or Red)"
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-sb-orange focus:ring-1 focus:ring-sb-orange"
+                  />
+                </div>
+              </div>
             )}
 
             {effectiveUnit > 0 && inStock ? (

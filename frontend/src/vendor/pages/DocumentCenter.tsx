@@ -1,6 +1,8 @@
+import { formatDate } from "../../lib/formatDate";
 import { useState, useEffect } from 'react';
 import { Upload, Download, Trash2, FileText, FolderOpen, AlertCircle, CheckCircle, RefreshCw, X } from 'lucide-react';
 import { api } from '../lib/api';
+
 
 const SB = { color: 'var(--sb-text-primary)', muted: 'var(--sb-text-muted)', faint: 'var(--sb-text-faint)', orange: 'var(--sb-orange)', card: 'var(--sb-card)', border: 'var(--sb-border)', bg: 'var(--sb-bg-section)' };
 const inputCls = 'w-full px-3 py-2.5 rounded-xl text-sm transition-all';
@@ -240,7 +242,7 @@ export function DocumentCenter() {
                           <div>
                             <p className="font-medium" style={{ color: SB.color }}>{doc.documentName}</p>
                             <p className="text-xs mt-0.5" style={{ color: SB.faint }}>
-                              {new Date(doc.createdAt).toLocaleDateString('en-IN')}
+                              {formatDate(doc.createdAt)}
                             </p>
                           </div>
                         </div>
@@ -250,7 +252,7 @@ export function DocumentCenter() {
                       </td>
                       <td className="py-3.5 px-4 whitespace-nowrap" style={{ color: SB.muted }}>{doc.documentNumber || '—'}</td>
                       <td className="py-3.5 px-4 whitespace-nowrap" style={{ color: SB.muted }}>
-                        {doc.expiryDate ? new Date(doc.expiryDate).toLocaleDateString('en-IN') : '—'}
+                        {doc.expiryDate ? formatDate(doc.expiryDate) : '—'}
                       </td>
                       <td className="py-3.5 px-4">
                         <span className="text-xs font-semibold px-2 py-0.5 rounded-full capitalize"

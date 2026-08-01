@@ -357,7 +357,7 @@ const updateVendor = asyncHandler(async (req, res) => {
   const {
     name, email, phone, companyName, contactPerson, gstNumber, businessRegNumber,
     companyAddress, warehouseAddress, contactPersonName, contactPersonPhone, bankDetails,
-    vendorStatus, status
+    vendorStatus, status, vendorCode
   } = req.body;
 
   // 1. Email check
@@ -393,6 +393,17 @@ const updateVendor = asyncHandler(async (req, res) => {
   if (companyName !== undefined) vendor.companyName = companyName;
   if (contactPerson !== undefined) vendor.contactPerson = contactPerson;
   if (businessRegNumber !== undefined) vendor.businessRegNumber = businessRegNumber || null;
+  if (vendorCode !== undefined && String(vendorCode).trim() !== '') {
+    const codeNorm = String(vendorCode).trim().toUpperCase();
+    if (codeNorm !== (vendor.referenceNumber || '').toUpperCase()) {
+      const existingRef = await User.findOne({
+        referenceNumber: codeNorm,
+        _id: { $ne: vendor._id },
+      });
+      if (existingRef) throw new AppError('This Vendor Code is already in use.', 409);
+      vendor.referenceNumber = codeNorm;
+    }
+  }
 
   // 4. Update new extended fields
   if (companyAddress !== undefined) vendor.companyAddress = companyAddress || null;
@@ -441,6 +452,9 @@ const updateVendor = asyncHandler(async (req, res) => {
       if (phone) legacyVendor.phone = phone;
       if (companyName) legacyVendor.companyName = companyName;
       if (gstNumber) legacyVendor.gstNumber = gstNumber.toUpperCase();
+      if (vendorCode !== undefined && String(vendorCode).trim() !== '') {
+        legacyVendor.referenceNumber = String(vendorCode).trim().toUpperCase();
+      }
       if (companyAddress !== undefined) legacyVendor.companyAddress = companyAddress || null;
       if (warehouseAddress !== undefined) legacyVendor.warehouseAddress = warehouseAddress || null;
       if (contactPersonName !== undefined) legacyVendor.contactPersonName = contactPersonName || null;

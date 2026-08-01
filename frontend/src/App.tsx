@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { createBrowserRouter, RouterProvider, Outlet, useLocation, Navigate, useParams, useNavigate } from "react-router";
+import { createBrowserRouter, RouterProvider, Outlet, useLocation, Navigate, useParams, useNavigate, useRouteError, ScrollRestoration } from "react-router";
 import { Toaster } from "sonner";
 import { AppProvider } from "./customer/context/AppContext";
 import { BulkEnquiryModalProvider } from "./customer/context/BulkEnquiryModalContext";
@@ -53,6 +53,46 @@ function RouteFallback() {
   return (
     <div className="min-h-[40vh] flex items-center justify-center bg-white" role="status" aria-label="Loading">
       <div className="h-9 w-9 animate-spin rounded-full border-2 border-sb-orange border-t-transparent" />
+    </div>
+  );
+}
+
+function GlobalError() {
+  const error = useRouteError();
+  console.error("Router Error:", error);
+  
+  // If it's a dynamic import failure, a quick reload often fixes it
+  const isChunkLoadError = error && typeof error === 'object' && 'message' in error && String(error.message).includes('Failed to fetch dynamically imported module');
+  
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
+      <div className="max-w-md w-full bg-white rounded-xl border border-gray-200 shadow-xl p-8 text-center">
+        <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-5 border border-red-100">
+          <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Oops! Something went wrong</h2>
+        <p className="text-sm text-gray-500 mb-6">
+          {isChunkLoadError 
+            ? "A new version of the app is available, or there was a network interruption." 
+            : "We encountered an unexpected error while trying to load this page."}
+        </p>
+        <div className="flex gap-3 justify-center">
+          <button 
+            onClick={() => window.location.reload()}
+            className="flex-1 bg-[#E85A00] text-white rounded-lg px-4 py-2.5 font-medium hover:bg-[#CC4F00] transition-colors shadow-sm"
+          >
+            Reload Page
+          </button>
+          <button 
+            onClick={() => window.location.href = '/'}
+            className="flex-1 bg-white text-gray-700 border border-gray-300 rounded-lg px-4 py-2.5 font-medium hover:bg-gray-50 transition-colors shadow-sm"
+          >
+            Go Home
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -174,14 +214,17 @@ function MarketplaceLayout() {
 function RootLayout() {
   const location = useLocation();
   useEffect(() => {
-    if (!location.hash) {
-      window.scrollTo(0, 0);
+    if (location.hash) {
+      const id = location.hash.replace("#", "");
+      const element = document.getElementById(id);
+      if (element) element.scrollIntoView();
     }
   }, [location.pathname, location.hash]);
 
   return (
     <AppProvider>
       <BulkEnquiryModalProvider>
+        <ScrollRestoration />
         <Outlet />
       </BulkEnquiryModalProvider>
     </AppProvider>
@@ -192,6 +235,7 @@ const router = createBrowserRouter([
   {
     id: "root",
     Component: RootLayout,
+    errorElement: <GlobalError />,
     children: [
       { path: "/splash", Component: SplashScreen },
       ...adminRoutes,

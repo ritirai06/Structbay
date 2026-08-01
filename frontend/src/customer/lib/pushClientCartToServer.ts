@@ -39,6 +39,7 @@ export async function pushClientCartToServer(cart: CartItem[], cityId: string) {
     await api.addToCart({
       productId: product._id,
       variationId,
+      customColor: item.customColor,
       quantity: item.qty,
       cityId,
     });

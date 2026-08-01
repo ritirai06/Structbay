@@ -1,3 +1,4 @@
+import { formatDate } from "../../lib/formatDate";
 import { useState, useEffect, useCallback, useRef, useMemo, type CSSProperties, type FormEvent } from "react";
 import { Link } from "react-router";
 import type { LucideIcon } from "lucide-react";
@@ -32,6 +33,7 @@ import { signalOnboardingGatePassed } from "../lib/locationOnboarding";
 import iconStatProducts from "/shared/assets/homepage-stats/icon-07.png";
 import iconStatContractors from "/shared/assets/homepage-stats/icon-09.png";
 import iconStatCities from "/shared/assets/homepage-stats/icon-06.png";
+
 
 const ANNOUNCEMENT_DISMISS_DAY_KEY = "structbay_announcement_dismiss_day_map";
 
@@ -384,8 +386,8 @@ function HomeContactForm({ fallbackEmail }: { fallbackEmail: string }) {
       {status && (
         <p
           className={`text-sm rounded-lg px-3 py-2 mb-1 ${status.type === "ok"
-              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-              : "bg-red-50 text-red-700 border border-red-200"
+            ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+            : "bg-red-50 text-red-700 border border-red-200"
             }`}
           role="status"
         >
@@ -840,7 +842,7 @@ function categoryAccentIcon(cat: { name?: string; slug?: string }): LucideIcon {
   return LayoutGrid;
 }
 
-// â”€â”€ Product Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --------------- Product Card ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------â”€
 function ProductCard({ product, compact = false }: { product: any; compact?: boolean }) {
   const { addToCart, city } = useApp();
   const isVariant = isVariantProduct(product);
@@ -937,7 +939,7 @@ function ProductCard({ product, compact = false }: { product: any; compact?: boo
   );
 }
 
-// â”€â”€ Main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --------------- Main ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------â”€
 export function Homepage() {
   useCmsPageSeo("home");
   const { city, cityId, cart, addToCart, updateQty } = useApp();
@@ -1165,21 +1167,10 @@ export function Homepage() {
         </div>
       )}
 
-      {/* â”€â”€ Hero Carousel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/*  Hero Carousel ------------------------------------------------------------------------------------------------------------------------â”€---------------*/}
       <StructbayHero rawBanners={banners} cms={cmsHome} city={city} cityId={cityId} isLoading={bannersLoading} />
 
-      {/* â”€â”€ Intro + feature cards (reference layout) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-      <section className="sf-dot-grid sf-intro" id="about">
-        <div className="sf-intro__inner">
-          <h2>{introContent.title}</h2>
-          <p className="sf-intro-tagline">{introContent.tagline}</p>
-          <IntroBodyText text={introContent.body} />
-        </div>
-        {/* sf-features-slider-wrap clips overflow on mobile so only 1 card is visible */}
-        <FeatureCardSlider featureCards={featureCards} />
-      </section>
-
-      {/* â”€â”€ Our Categories (reference layout â€” API data) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* --------------- Our Categories (reference layout â€” API data) ---------------------------------------------------------------------------------------------------------------------------------------â”€ */}
       {(catalogLoading || categoriesForHome.length > 0) && (
         <section className="sf-categories-section" id="categories">
           <h2 className="sf-categories-title">Our Categories</h2>
@@ -1210,8 +1201,19 @@ export function Homepage() {
         </section>
       )}
 
+      {/* --------------- Intro + feature cards (reference layout)  */}
+      <section className="sf-dot-grid sf-intro" id="about">
+        <div className="sf-intro__inner">
+          <h2>{introContent.title}</h2>
+          <p className="sf-intro-tagline">{introContent.tagline}</p>
+          <IntroBodyText text={introContent.body} />
+        </div>
+        {/* sf-features-slider-wrap clips overflow on mobile so only 1 card is visible */}
+        <FeatureCardSlider featureCards={featureCards} />
+      </section>
 
-      {/* â”€â”€ Featured brands (logo carousel) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+
+      {/* --------------- Featured brands (logo carousel) ---------------*/}
       {(catalogLoading || brands.length > 0) && (
         <section className="sf-brands-section py-20 border-y border-white/5" aria-label="Featured brands">
           <div className="max-w-7xl mx-auto px-5 lg:px-6 w-full">
@@ -1230,7 +1232,7 @@ export function Homepage() {
         </section>
       )}
 
-      {/* â”€â”€ Why Structbay? â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* --------------- Why Structbay? ---------------------------------------------------------------------------------------------------------------------------------------*/}
       <section className="sf-dot-grid border-y border-black/8 py-14 px-5 lg:px-6">
         <div className="max-w-5xl mx-auto text-center mb-10">
           <h2 className="text-sb-ink text-3xl font-black mb-3">Why Choose Structbay?</h2>
@@ -1260,7 +1262,7 @@ export function Homepage() {
         </div>
       </section>
 
-      {/* â”€â”€ Top Selling Products â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* --------------- Top Selling Products ------------------------------------------------------------------------------------------*/}
       {(catalogLoading || topProducts.length > 0) && (
         <section className="sf-dot-grid py-16 px-5 lg:px-6" aria-label="Top selling products">
           <div className="max-w-7xl mx-auto w-full">
@@ -1365,7 +1367,7 @@ export function Homepage() {
         </div>
       </section>
 
-      {/* â”€â”€ Blog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* --------------- Blog ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/}
       {blogs.length > 0 && (
         <section className="sf-dot-grid max-w-7xl mx-auto px-5 lg:px-6 py-12">
           <div className="flex items-center justify-between mb-7">
@@ -1394,7 +1396,7 @@ export function Homepage() {
                   {blog.category && <span className="text-xs font-bold uppercase tracking-wide text-[#E85A00]">{blog.category}</span>}
                   <h3 className="text-sm font-semibold mt-1.5 mb-2 line-clamp-2 text-sb-ink leading-snug">{blog.title}</h3>
                   <p className="text-xs text-sb-ink-muted/50">
-                    {blog.publishDate ? new Date(blog.publishDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : ""}
+                    {blog.publishDate ? formatDate(blog.publishDate) : ""}
                   </p>
                 </div>
               </Link>
@@ -1403,7 +1405,7 @@ export function Homepage() {
         </section>
       )}
 
-      {/* â”€â”€ Testimonials â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* --------------- Testimonials ------------------------------------------------------------------------------------------------------------------------------------------------------*/}
       {testimonials.length > 0 && (
         <section className="sf-dot-grid border-y border-black/8 py-14 px-5 lg:px-6">
           <div className="max-w-7xl mx-auto">
@@ -1431,7 +1433,7 @@ export function Homepage() {
         </section>
       )}
 
-      {/* â”€â”€ Contact Us (footer CMS) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* --------------- Contact Us (footer CMS) ---------------------------------------------â”€---------------*/}
       <section className="sf-dot-grid py-20 px-5 lg:px-6" id="contact">
         <div className="sf-section-heading">
           <h2>Contact Us</h2>

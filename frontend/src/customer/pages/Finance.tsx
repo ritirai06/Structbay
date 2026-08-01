@@ -9,8 +9,11 @@ export function Finance() {
     phone: "",
     email: "",
     city: "",
-    employmentType: "Salaried",
+    employmentType: "Self Employed",
     currentSalary: "",
+    companyName: "",
+    yearsInBusiness: "<1",
+    annualTurnover: "<1 crore",
     loanAmount: "0-50 lakh",
   });
   const [loading, setLoading] = useState(false);
@@ -38,7 +41,9 @@ export function Finance() {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers.Authorization = `Bearer ${token}`;
 
-      const remarksText = `Structbay finance — submitted via storefront.\nEmployment Type: ${form.employmentType}${form.employmentType === "Salaried" ? `\nCurrent Salary: ${form.currentSalary}` : ""}\nTyped Loan Amount: ${form.loanAmount}`;
+      const selfEmployedDetails = form.employmentType === "Self Employed" ? `\nCompany Name: ${form.companyName}\nYears in Business: ${form.yearsInBusiness}\nAnnual Turnover: ${form.annualTurnover}` : "";
+      const salariedDetails = form.employmentType === "Salaried" ? `\nCurrent Salary: ${form.currentSalary}` : "";
+      const remarksText = `Structbay finance — submitted via storefront.\nEmployment Type: ${form.employmentType}${salariedDetails}${selfEmployedDetails}\nTyped Loan Amount: ${form.loanAmount}`;
 
       const res = await fetch(`${base}/finance/applications`, {
         method: "POST",
@@ -48,6 +53,7 @@ export function Finance() {
           mobile: form.phone.trim(),
           email: form.email.trim(),
           projectLocation: form.city.trim(),
+          companyName: form.employmentType === "Self Employed" ? form.companyName.trim() : undefined,
           loanAmountRequired,
           remarks: remarksText,
         }),
@@ -198,9 +204,69 @@ export function Finance() {
                     type="text"
                     value={form.currentSalary}
                     onChange={(e) => update("currentSalary", e.target.value)}
-                    required
+                    required={form.employmentType === "Salaried"}
                     className="w-full bg-[#f8f9fa] border border-gray-100 rounded-xl pl-11 pr-4 py-3.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-300 transition-all duration-200"
                   />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {form.employmentType === "Self Employed" && (
+            <div className="space-y-6 pt-2">
+              <div className="bg-[#fff4ed] border-l-[3px] border-[#f4722b] text-black font-extrabold text-[13px] tracking-wide px-4 py-3.5 rounded-r-lg">
+                IF SELF EMPLOYED
+              </div>
+              
+              <div>
+                <label className="block text-[13px] font-bold text-gray-500 mb-2">Company Name</label>
+                <input
+                  type="text"
+                  value={form.companyName}
+                  onChange={(e) => update("companyName", e.target.value)}
+                  required={form.employmentType === "Self Employed"}
+                  className="w-full bg-[#f8f9fa] border border-gray-100 rounded-xl px-4 py-3.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-300 transition-all duration-200"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[13px] font-bold text-gray-500 mb-2">Years in Business</label>
+                <div className="relative">
+                  <select
+                    value={form.yearsInBusiness}
+                    onChange={(e) => update("yearsInBusiness", e.target.value)}
+                    className="w-full bg-[#f8f9fa] border border-gray-100 rounded-xl px-4 py-3.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-300 transition-all duration-200 appearance-none pr-10"
+                  >
+                    <option value="<1">&lt;1</option>
+                    <option value="1-3">1-3</option>
+                    <option value="3-5">3-5</option>
+                    <option value="5+">5+</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <ChevronDown className="h-4 w-4 text-gray-400" />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[13px] font-bold text-gray-500 mb-2">Annual Turnover</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <IndianRupee className="h-5 w-5 text-purple-800 stroke-[1.5]" />
+                  </div>
+                  <select
+                    value={form.annualTurnover}
+                    onChange={(e) => update("annualTurnover", e.target.value)}
+                    className="w-full bg-[#f8f9fa] border border-gray-100 rounded-xl pl-11 pr-4 py-3.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-300 transition-all duration-200 appearance-none pr-10"
+                  >
+                    <option value="<1 crore">&lt;1 crore</option>
+                    <option value="1-5 crore">1-5 crore</option>
+                    <option value="5-10 crore">5-10 crore</option>
+                    <option value="10+ crore">10+ crore</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <ChevronDown className="h-4 w-4 text-gray-400" />
+                  </div>
                 </div>
               </div>
             </div>

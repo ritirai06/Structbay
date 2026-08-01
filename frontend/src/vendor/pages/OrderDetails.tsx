@@ -1,3 +1,4 @@
+import { formatDate } from "../../lib/formatDate";
 import { useParams, Link } from 'react-router';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Package, MapPin, Upload, Truck, CheckCircle, Circle, AlertCircle, Phone, User, Clock, MessageCircle } from 'lucide-react';
@@ -7,6 +8,7 @@ import { VendorOrderDocuments } from '../components/VendorOrderDocuments';
 import { api } from '../lib/api';
 import { vendorPath } from '../../lib/portalRoutes';
 import { formatPaymentMethod, formatPaymentStatus } from '../../lib/paymentLabels';
+
 
 const SB = { color: 'var(--sb-text-primary)', muted: 'var(--sb-text-muted)', faint: 'var(--sb-text-faint)', orange: 'var(--sb-orange)', card: 'var(--sb-card)', border: 'var(--sb-border)', bg: 'var(--sb-bg-section)' };
 
@@ -162,7 +164,7 @@ export function OrderDetails() {
           </div>
           <p className="text-sm" style={{ color: SB.muted }}>
             {order.deliveryType === 'structbay_delivery' ? 'Structbay Delivery' : 'Vendor Delivery'} ·{' '}
-            Assigned {order.assignedAt ? new Date(order.assignedAt).toLocaleDateString('en-IN') : '—'}
+            Assigned {order.assignedAt ? formatDate(order.assignedAt) : '—'}
           </p>
         </div>
         <StatusBadge status={order.status} />
@@ -244,6 +246,17 @@ export function OrderDetails() {
                     }
                   />
                 )}
+                {p.customColor && (
+                  <InfoRow
+                    label="Color"
+                    value={
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-3 h-3 rounded-full border border-black/10" style={{ backgroundColor: /^#[0-9A-Fa-f]{6}$/.test(p.customColor) ? p.customColor : "transparent" }}></div>
+                        {p.customColor}
+                      </div>
+                    }
+                  />
+                )}
                 <InfoRow label="SKU" value={p.sku ?? p.product?.sku ?? '—'} />
                 <InfoRow label="Quantity" value={String(p.quantity ?? '—')} />
                 <InfoRow label="GST %" value={p.gstPercentage != null ? String(p.gstPercentage) : '—'} />
@@ -256,50 +269,7 @@ export function OrderDetails() {
           </div>
         </div>
 
-        <div className="wf-section">
-          <div className="wf-section__head">
-            <span className="wf-section__badge">2</span>
-            <div>
-              <h2 className="wf-section__title">Customer & delivery</h2>
-              <p className="wf-section__desc">Site address and contact for fulfillment</p>
-            </div>
-          </div>
-          <div className="wf-section__body space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <InfoRow label="Customer" value={cust.name ?? '—'} />
-            <InfoRow label="Contact" value={cust.phone ?? '—'} />
-          </div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: SB.faint }}>Delivery Address</p>
-            <div className="flex items-start gap-2 p-3 rounded-xl" style={{ background: SB.bg, border: `1px solid ${SB.border}` }}>
-              <MapPin className="w-4 h-4 mt-0.5 shrink-0" style={{ color: SB.orange }} />
-              <div>
-                <p className="text-sm" style={{ color: SB.color }}>
-                  {formatAddress(order.deliveryAddress) || '—'}
-                </p>
-                {order.deliveryAddress?.contactPerson && (
-                  <div className="flex items-center gap-3 mt-2">
-                    <span className="text-xs flex items-center gap-1" style={{ color: SB.muted }}>
-                      <User className="w-3 h-3" />{order.deliveryAddress.contactPerson}
-                    </span>
-                    {order.deliveryAddress.contactPhone && (
-                      <span className="text-xs flex items-center gap-1" style={{ color: SB.muted }}>
-                        <Phone className="w-3 h-3" />{order.deliveryAddress.contactPhone}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          {order.dispatchInstructions && (
-            <div className="p-3 rounded-xl" style={{ background: 'rgba(249,115,22,0.06)', border: '1px solid var(--sb-orange-border)' }}>
-              <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: SB.orange }}>Dispatch Instructions</p>
-              <p className="text-sm" style={{ color: SB.muted }}>{order.dispatchInstructions}</p>
-            </div>
-          )}
-          </div>
-        </div>
+
       </div>
 
       {order.deliveryType === "structbay_delivery" && (
@@ -330,7 +300,7 @@ export function OrderDetails() {
             {dispatch.vehicleDetails?.driverName && <InfoRow label="Driver" value={dispatch.vehicleDetails.driverName} />}
             {dispatch.vehicleDetails?.driverPhone && <InfoRow label="Driver Phone" value={dispatch.vehicleDetails.driverPhone} />}
             {dispatch.trackingNumber && <InfoRow label="Tracking #" value={dispatch.trackingNumber} />}
-            {dispatch.dispatchDate && <InfoRow label="Dispatch Date" value={new Date(dispatch.dispatchDate).toLocaleDateString('en-IN')} />}
+            {dispatch.dispatchDate && <InfoRow label="Dispatch Date" value={formatDate(dispatch.dispatchDate)} />}
             {dispatch.courierPartner && <InfoRow label="Courier" value={dispatch.courierPartner} />}
           </div>
         </div>

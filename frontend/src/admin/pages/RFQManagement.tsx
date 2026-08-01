@@ -1,7 +1,9 @@
+import { formatDate } from "../../lib/formatDate";
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import { Search, RefreshCw, Eye, Trash2, Loader2, ClipboardList, Download } from "lucide-react";
 import { adminFetch as apiFetch } from "../../lib/adminApi";
 import { AdminDeleteConfirmModal } from "../components/AdminDeleteConfirmModal";
+
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: "bg-sb-orange/15 text-sb-orange border-sb-orange/25",
@@ -127,6 +129,7 @@ export function RFQManagement() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
   const [selected, setSelected] = useState<any>(null);
   const [stats, setStats] = useState({ total: 0, pending: 0, inProgress: 0, quoted: 0, converted: 0 });
   const [saving, setSaving] = useState(false);
@@ -146,6 +149,7 @@ export function RFQManagement() {
     }
     const params = new URLSearchParams({ limit: "20" });
     if (statusFilter) params.set("status", statusFilter);
+    if (typeFilter) params.set("rfqType", typeFilter);
     const listP = apiFetch(`/concrete-rfqs?${params}`)
       .then((d) => {
         const raw = d.data;
@@ -168,7 +172,7 @@ export function RFQManagement() {
     return Promise.all([listP, statsP]).finally(() => {
       if (!soft) setLoading(false);
     });
-  }, [statusFilter]);
+  }, [statusFilter, typeFilter]);
 
   useEffect(() => {
     void load();
@@ -230,13 +234,20 @@ export function RFQManagement() {
   const q = search.trim().toLowerCase();
   const filtered = useMemo(() => {
     return items.filter((i) => {
+      if (typeFilter === "CONCRETE") {
+        if (i.rfqType === "SAND_AGGREGATES" || i.grade === "M Sand & Aggregates") return false;
+      }
+      if (typeFilter === "SAND_AGGREGATES") {
+        if (i.rfqType !== "SAND_AGGREGATES" && i.grade !== "M Sand & Aggregates") return false;
+      }
+
       if (!q) return true;
       const num = String(i.rfqNumber ?? "");
       const name = String(i.customerName ?? "").toLowerCase();
       const city = String(i.city ?? "").toLowerCase();
       return num.includes(search) || name.includes(q) || city.includes(q);
     });
-  }, [items, q, search]);
+  }, [items, q, search, typeFilter]);
 
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const filteredIds = useMemo(() => filtered.map((i) => String(i._id)), [filtered]);
@@ -343,6 +354,15 @@ export function RFQManagement() {
               {s}
             </option>
           ))}
+        </select>
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value)}
+          className="bg-sb-cream-secondary border border-sb-ink/10 rounded-lg text-sm text-sb-ink px-3 py-2 focus:outline-none focus:border-sb-orange transition-colors"
+        >
+          <option value="">All Types</option>
+          <option value="CONCRETE">Concrete</option>
+          <option value="SAND_AGGREGATES">M Sand & Aggregates</option>
         </select>
         <button
           type="button"
@@ -451,7 +471,7 @@ export function RFQManagement() {
                       {item.status}
                     </span>
                   </td>
-                  <td className="py-3 px-3 text-xs text-gray-500">{new Date(item.createdAt).toLocaleDateString()}</td>
+                  <td className="py-3 px-3 text-xs text-gray-500">{formatDate(item.createdAt)}</td>
                   <td className="py-3 px-3">
                     <div className="flex items-center gap-1">
                       <button

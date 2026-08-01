@@ -123,8 +123,8 @@ exports.readyForDispatch = asyncHandler(async (req, res) => {
   const vo = await VendorOrder.findOne({ _id: req.params.id, ...match });
   if (!vo) throw new AppError('Order not found or not assigned to you.', 404);
   if (!isWorkflowVendorOrder(vo)) throw new AppError('Workflow not available for this order.', 400);
-  if (!['ACCEPTED', 'CHANGES_REQUESTED'].includes(vo.status)) {
-    throw new AppError('You can only submit ready-for-dispatch after acceptance or after admin requested changes.', 400);
+  if (!['DISPATCH_CONFIRMED', 'CHANGES_REQUESTED'].includes(vo.status)) {
+    throw new AppError('You can only submit ready-for-dispatch after admin dispatch confirmation or after admin requested changes.', 400);
   }
   if (!canTransition(vo.status, 'READY_FOR_DISPATCH')) throw new AppError('Invalid status transition.', 400);
 
@@ -197,14 +197,14 @@ exports.markDispatched = asyncHandler(async (req, res) => {
   const proof = req.files?.proof?.[0];
   const shippingLabel = req.files?.shippingLabel?.[0];
   if (!proof) throw new AppError('Dispatch proof file is required.', 400);
-  if (!transporterName || !lrNumber || !dispatchDate) {
-    throw new AppError('transporter_name, lr_number, and dispatch_date are required.', 400);
+  if (!transporterName || !dispatchDate) {
+    throw new AppError('transporter_name and dispatch_date are required.', 400);
   }
 
   vo.shipmentDispatch = {
     transporterName,
     vehicleNumber: vehicleNumber || undefined,
-    lrNumber,
+    lrNumber: lrNumber || undefined,
     trackingNumber: trackingNumber || undefined,
     dispatchDate: new Date(dispatchDate),
     proofUrl: proof.path,
@@ -240,7 +240,7 @@ exports.markDispatched = asyncHandler(async (req, res) => {
       trackingNumber: vo.shipmentDispatch.trackingNumber,
       courierPartner: vo.shipmentDispatch.transporterName,
       transporterName: vo.shipmentDispatch.transporterName,
-      lrNumber: vo.shipmentDispatch.lrNumber,
+      lrNumber: lrNumber || undefined,
       status: 'dispatched',
       createdBy: req.user._id,
       dispatchRemarks: `LR ${lrNumber}`,

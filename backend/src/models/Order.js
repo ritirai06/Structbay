@@ -6,6 +6,7 @@ const orderItemSchema = new mongoose.Schema(
     variation:     { type: mongoose.Schema.Types.ObjectId, ref: 'ProductVariation', default: null },
     name:          { type: String, required: true },
     sku:           { type: String, default: null },
+    customColor:   { type: String, default: null },
     quantity:      { type: Number, required: true, min: 1 },
     unitPrice:     { type: Number, required: true },
     gstPercentage: { type: Number, default: 18 },

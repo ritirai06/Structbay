@@ -1,3 +1,4 @@
+import { formatDate } from "../../lib/formatDate";
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/card";
@@ -16,6 +17,7 @@ import { AdminDeleteConfirmModal } from "../components/AdminDeleteConfirmModal";
 import { AdminBulkToolbar } from "../components/AdminBulkToolbar";
 import { useAdminResourceDelete } from "../hooks/useAdminResourceDelete";
 import { adminToast } from "../lib/adminToast";
+
 
 function RatingStarsRow({ rating }: { rating: number }) {
   const n = Math.min(5, Math.max(0, Math.round(Number(rating) || 0)));
@@ -2259,7 +2261,7 @@ function FooterTab() {
         slug: "",
         title: "",
         subtitle: "",
-        lastUpdated: new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }),
+        lastUpdated: formatDate(),
         sortOrder: policies.length,
         isActive: true,
         sections: [{ title: "", bodyText: "" }],

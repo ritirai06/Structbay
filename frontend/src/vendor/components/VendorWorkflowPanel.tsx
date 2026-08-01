@@ -10,6 +10,7 @@ import { StatusBadge } from './StatusBadge';
 const STEPS = [
   { key: 'NEW_ASSIGNED', label: 'Assigned' },
   { key: 'ACCEPTED', label: 'Accepted' },
+  { key: 'DISPATCH_CONFIRMED', label: 'Dispatch confirmed' },
   { key: 'READY_FOR_DISPATCH', label: 'Ready dispatch' },
   { key: 'DISPATCH_APPROVED', label: 'Dispatch approved' },
   { key: 'VENDOR_INVOICE_SUBMITTED', label: 'Vendor invoice' },
@@ -329,7 +330,16 @@ export function VendorWorkflowPanel({
           </div>
         )}
 
-        {(st === 'ACCEPTED' || st === 'CHANGES_REQUESTED') && (
+        {st === 'ACCEPTED' && (
+          <div className="wf-subsection">
+            <p className="wf-subsection__title">Awaiting Dispatch Confirmation</p>
+            <p className="text-sm" style={{ color: 'var(--sb-text-muted)' }}>
+              Awaiting Structbay Admin to confirm dispatch authorization. You will be able to submit dispatch details once approved.
+            </p>
+          </div>
+        )}
+
+        {(st === 'DISPATCH_CONFIRMED' || st === 'CHANGES_REQUESTED') && (
           <div className="wf-subsection">
             <p className="wf-subsection__title">Submit ready for dispatch</p>
             <form
@@ -455,8 +465,8 @@ export function VendorWorkflowPanel({
                   <input value={dispVehicle} onChange={(e) => setDispVehicle(e.target.value)} className="wf-field__input" />
                 </div>
                 <div className="wf-field">
-                  <label className="wf-field__label">LR / docket number *</label>
-                  <input required value={dispLr} onChange={(e) => setDispLr(e.target.value)} className="wf-field__input" />
+                  <label className="wf-field__label">LR / docket number (optional)</label>
+                  <input value={dispLr} onChange={(e) => setDispLr(e.target.value)} className="wf-field__input" />
                 </div>
                 <div className="wf-field">
                   <label className="wf-field__label">Tracking ID (optional)</label>

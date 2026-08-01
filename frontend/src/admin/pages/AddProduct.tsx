@@ -41,7 +41,7 @@ const emptyForm = {
   gstPercentage: 18, priceIncludesGst: false, status: "DRAFT",
   deliveryType: "vendor_delivery" as "vendor_delivery" | "structbay_delivery",
   productStructure: "simple" as "simple" | "variant",
-  isFeatured: false, isTopSelling: false, isAssured: false, isExpress: false, alwaysInStock: false,
+  isFeatured: false, isTopSelling: false, isAssured: false, isExpress: false, alwaysInStock: false, allowCustomColor: false,
   displayOrder: 0,
   seo: { metaTitle: "", metaDescription: "", metaKeywords: [] },
   faqs: [] as { question: string; answer: string }[],
@@ -156,6 +156,31 @@ function Toggle({ checked, onChange, label, icon: Icon }: {
         />
       </button>
     </div>
+  );
+}
+
+function MetaKeywordsInput({ value, onChange }: { value: string[]; onChange: (val: string[]) => void }) {
+  const [str, setStr] = useState(value?.join(", ") || "");
+  
+  // Sync if value changes externally (e.g. initial load)
+  useEffect(() => {
+    const current = value?.join(", ") || "";
+    const internal = str.split(",").map(k => k.trim()).filter(Boolean).join(", ");
+    if (current !== internal) {
+      setStr(current);
+    }
+  }, [value]);
+
+  return (
+    <input
+      className={inp}
+      placeholder="cement, construction, building materials"
+      value={str}
+      onChange={(e) => {
+        setStr(e.target.value);
+        onChange(e.target.value.split(",").map(k => k.trim()).filter(Boolean));
+      }}
+    />
   );
 }
 
@@ -414,8 +439,13 @@ export function AddProduct() {
             p.productStructure === "variant" || (p.variations?.length > 0)
               ? "variant"
               : "simple",
-          status: p.status, isFeatured: p.isFeatured, isTopSelling: p.isTopSelling,
-          isAssured: p.isAssured, isExpress: p.isExpress, alwaysInStock: !!p.alwaysInStock, displayOrder: p.displayOrder,
+          status: p.status, isFeatured: !!p.isFeatured,
+      isTopSelling: !!p.isTopSelling,
+      isAssured: !!p.isAssured,
+      isExpress: !!p.isExpress,
+      alwaysInStock: !!p.alwaysInStock,
+      allowCustomColor: !!p.allowCustomColor,
+      displayOrder: p.displayOrder || 0,
           seo: p.seo || { metaTitle: "", metaDescription: "", metaKeywords: [] },
           faqs: p.faqs || [], videos: p.videos || [], documents: p.documents || [],
           returnExchangePolicy: normalizeReturnExchangePolicy(p.returnExchangePolicy),
@@ -768,13 +798,16 @@ export function AddProduct() {
               <Field label="Storefront price display">
                 <select
                   className={sel}
-                  value={form.priceIncludesGst ? "incl" : "excl"}
-                  onChange={e => set("priceIncludesGst", e.target.value === "incl")}
+                  value={form.priceIncludesGst ? "true" : "false"}
+                  onChange={e => set("priceIncludesGst", e.target.value === "true")}
                 >
-                  <option value="excl">Excluding GST (default)</option>
-                  <option value="incl">Including GST</option>
+                  <option value="false">Prices exclude GST (GST added at checkout)</option>
+                  <option value="true">Prices include GST (Inclusive pricing)</option>
                 </select>
               </Field>
+              <div className="grid grid-cols-2 gap-4 mt-2">
+                <Toggle checked={form.allowCustomColor} onChange={(v) => { setForm({ ...form, allowCustomColor: v }); setDirty(true); }} label="Allow Custom Color (e.g. Paint)" icon={Shield} />
+              </div>
               <p className="text-xs text-sb-ink/50 -mt-2">
                 {form.productStructure === "variant"
                   ? "Variant products use per-variant pricing in the Variants tab."
@@ -1055,9 +1088,10 @@ export function AddProduct() {
                   value={form.seo.metaDescription} onChange={e => set("seo", { ...form.seo, metaDescription: e.target.value })} />
               </Field>
               <Field label="Meta Keywords (comma separated)">
-                <input className={inp} placeholder="cement, construction, building materials"
-                  value={form.seo.metaKeywords?.join(", ")}
-                  onChange={e => set("seo", { ...form.seo, metaKeywords: e.target.value.split(",").map(k => k.trim()).filter(Boolean) })} />
+                <MetaKeywordsInput
+                  value={form.seo.metaKeywords || []}
+                  onChange={val => set("seo", { ...form.seo, metaKeywords: val })}
+                />
               </Field>
             </Section>
           )}

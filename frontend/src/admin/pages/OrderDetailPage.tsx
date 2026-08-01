@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { ArrowLeft, Loader2, MessageCircle } from "lucide-react";
 import { adminFetch as apiFetch } from "../../lib/adminApi";
@@ -368,6 +368,40 @@ export function OrderDetailPage() {
      return vo && ["DELIVERED", "COMPLETED"].includes(vo.status);
   }).length || 0;
 
+  const combinedTimeline = useMemo(() => {
+    if (!order) return [];
+    
+    const timeline = (order.statusHistory || []).map((sh: any) => {
+      const d = sh.changedAt || sh.timestamp || new Date().toISOString();
+      return {
+        timestamp: new Date(d).getTime() || 0,
+        dateStr: d,
+        status: sh.status,
+        note: sh.note,
+        source: "Order",
+      };
+    });
+
+    if (order.vendorOrders && Array.isArray(order.vendorOrders)) {
+      order.vendorOrders.forEach((vo: any) => {
+        if (vo.statusHistory && Array.isArray(vo.statusHistory)) {
+          vo.statusHistory.forEach((sh: any) => {
+            const d = sh.timestamp || sh.changedAt || new Date().toISOString();
+            timeline.push({
+              timestamp: new Date(d).getTime() || 0,
+              dateStr: d,
+              status: sh.status,
+              note: sh.note || formatStatusText(sh.status),
+              source: `Sub-order ${vo.orderNumber}`,
+            });
+          });
+        }
+      });
+    }
+
+    return timeline.sort((a: any, b: any) => b.timestamp - a.timestamp);
+  }, [order]);
+
   return (
     <div className="admin-page">
       <Link to={adminPath("orders")} className="inline-flex items-center gap-2 text-sm text-sb-ink/60 hover:text-sb-orange mb-4">
@@ -378,7 +412,7 @@ export function OrderDetailPage() {
         <div>
           <h1 className="admin-page-title text-sb-ink">Order {order.orderNumber}</h1>
           <p className="admin-page-desc mt-1">
-            {order.customer?.name} · {order.city?.name} · {new Date(order.createdAt).toLocaleString()}
+            {order.customer?.name} · {order.city?.name} · {order.createdAt && new Date(order.createdAt).getTime() ? new Date(order.createdAt).toLocaleString() : '—'}
           </p>
         </div>
         <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border ${ORDER_STATUS_COLORS[order.status] || "bg-sb-cream-secondary text-sb-ink/55 border-sb-ink/12"}`}>
@@ -405,9 +439,9 @@ export function OrderDetailPage() {
               {order.paymentTransactionId?.providerTxnId && <span className="text-xs text-sb-ink/60 mt-1">Txn: {order.paymentTransactionId.providerTxnId}</span>}
               {order.paymentTransactionId?.paidAt && (
                 <span className="text-xs text-sb-ink/60">
-                  {new Date(order.paymentTransactionId.paidAt).toLocaleString("en-IN", {
+                  {new Date(order.paymentTransactionId.paidAt).getTime() ? new Date(order.paymentTransactionId.paidAt).toLocaleString("en-IN", {
                     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
-                  })}
+                  }) : '—'}
                 </span>
               )}
             </div>
@@ -635,19 +669,19 @@ export function OrderDetailPage() {
             main={
               <WorkflowCard title="Recent Activity">
                 <div className="relative border-l border-sb-orange/20 ml-3 pl-4 space-y-6 pb-2">
-                  {order.statusHistory?.slice().reverse().map((sh: any, i: number) => (
+                  {combinedTimeline.map((sh: any, i: number) => (
                     <div key={`ms-${i}`} className="relative">
                       <div className="absolute -left-[1.35rem] top-1 w-2.5 h-2.5 rounded-full bg-sb-orange"></div>
-                      <p className="text-xs text-sb-ink/50 mb-0.5">{new Date(sh.changedAt || sh.timestamp).toLocaleString("en-IN", {
+                      <p className="text-xs text-sb-ink/50 mb-0.5">{new Date(sh.timestamp).toLocaleString("en-IN", {
                         day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit"
                       })}</p>
                       <p className="text-sm text-sb-ink">
-                        <span className="font-semibold">{formatStatusText(sh.status)}</span>
+                        <span className="font-semibold">{sh.source === 'Order' ? formatStatusText(sh.status) : sh.source + ' - ' + formatStatusText(sh.status)}</span>
                         {sh.note && <span className="text-sb-ink/70"> - {sh.note}</span>}
                       </p>
                     </div>
                   ))}
-                  {(!order.statusHistory || order.statusHistory.length === 0) && (
+                  {combinedTimeline.length === 0 && (
                     <p className="text-sm text-sb-ink/50">No recent activity.</p>
                   )}
                 </div>

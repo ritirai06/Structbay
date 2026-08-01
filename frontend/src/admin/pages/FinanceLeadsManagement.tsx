@@ -1,8 +1,10 @@
+import { formatDate } from "../../lib/formatDate";
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, RefreshCw, Landmark, Download, Eye, X, Copy, FileText, Calendar, User, Phone, Mail, MapPin, DollarSign, Briefcase, Clock, CheckCircle, AlertCircle } from "lucide-react";
 import { adminFetch as apiFetch, getAdminToken } from "../../lib/adminApi";
 import { getApiV1Base } from "../../lib/apiBase";
 import { adminToast } from "../lib/adminToast";
+
 
 type Lead = {
   _id: string;
@@ -25,6 +27,7 @@ type LeadDetail = Lead & {
   purposeOfLoan?: string;
   monthlyTurnover?: number;
   internalNotes?: string;
+  remarks?: string;
   documents?: any[];
   statusHistory?: any[];
   activityLog?: any[];
@@ -124,7 +127,7 @@ function DetailModal({ lead, onClose, onRefresh, admins }: { lead: LeadDetail; o
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shrink-0 rounded-t-xl z-10">
           <div>
             <h2 className="text-xl font-bold text-gray-900">Application #{lead.financeNumber}</h2>
-            <p className="text-sm text-gray-500 mt-1">Submitted on {new Date(lead.createdAt || "").toLocaleDateString()}</p>
+            <p className="text-sm text-gray-500 mt-1">Submitted on {formatDate(lead.createdAt || "")}</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">×</button>
         </div>
@@ -208,7 +211,9 @@ function DetailModal({ lead, onClose, onRefresh, admins }: { lead: LeadDetail; o
               </div>
               <div>
                 <p className="text-xs text-gray-500 uppercase">Annual Turnover</p>
-                <p className="text-sm font-medium text-gray-900">₹{(lead.monthlyTurnover || 0).toLocaleString("en-IN")}</p>
+                <p className="text-sm font-medium text-gray-900">
+                  {lead.remarks?.match(/Annual Turnover: (.*)/)?.[1] || `₹${(lead.monthlyTurnover || 0).toLocaleString("en-IN")}`}
+                </p>
               </div>
             </div>
           </section>
@@ -221,7 +226,9 @@ function DetailModal({ lead, onClose, onRefresh, admins }: { lead: LeadDetail; o
                 <DollarSign className="w-4 h-4 text-gray-400 mt-1 flex-shrink-0" />
                 <div>
                   <p className="text-xs text-gray-500 uppercase">Loan Amount Required</p>
-                  <p className="text-sm font-medium text-gray-900">₹{(lead.loanAmountRequired || 0).toLocaleString("en-IN")}</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {lead.remarks?.match(/Typed Loan Amount: (.*)/)?.[1] || `₹${(lead.loanAmountRequired || 0).toLocaleString("en-IN")}`}
+                  </p>
                 </div>
               </div>
               <div>
@@ -234,6 +241,16 @@ function DetailModal({ lead, onClose, onRefresh, admins }: { lead: LeadDetail; o
               </div>
             </div>
           </section>
+
+          {/* Remarks */}
+          {lead.remarks && (
+            <section>
+              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4 pb-2 border-b border-gray-200">Customer Remarks</h3>
+              <div className="bg-orange-50 border border-orange-100 rounded-lg p-4 text-sm text-gray-800 whitespace-pre-wrap">
+                {lead.remarks}
+              </div>
+            </section>
+          )}
 
           {/* Documents */}
           {lead.documents && lead.documents.length > 0 && (
@@ -491,7 +508,9 @@ export function FinanceLeadsManagement() {
                   <td className="py-3 px-4 text-gray-600">{lead.mobile}</td>
                   <td className="py-3 px-4 text-gray-600 text-xs">{lead.email || "—"}</td>
                   <td className="py-3 px-4 text-gray-600">{lead.projectLocation || "—"}</td>
-                  <td className="py-3 px-4 font-semibold text-gray-900">₹{(lead.loanAmountRequired || 0).toLocaleString("en-IN")}</td>
+                  <td className="py-3 px-4 font-semibold text-gray-900">
+                    {lead.remarks?.match(/Typed Loan Amount: (.*)/)?.[1] || `₹${(lead.loanAmountRequired || 0).toLocaleString("en-IN")}`}
+                  </td>
                   <td className="py-3 px-4">
                     <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${STATUS_COLORS[lead.status || "NEW"]}`}>
                       {(() => {
@@ -502,7 +521,7 @@ export function FinanceLeadsManagement() {
                     </span>
                   </td>
                   <td className="py-3 px-4 text-sm text-gray-600">{lead.assignedTo?.name || "—"}</td>
-                  <td className="py-3 px-4 text-xs text-gray-500">{new Date(lead.createdAt || "").toLocaleDateString()}</td>
+                  <td className="py-3 px-4 text-xs text-gray-500">{formatDate(lead.createdAt || "")}</td>
                   <td className="py-3 px-4">
                     <Eye className="w-4 h-4 text-gray-400" />
                   </td>

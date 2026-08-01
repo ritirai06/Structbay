@@ -1,9 +1,11 @@
+import { formatDate } from "../../lib/formatDate";
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router';
 import { History, Download, FileText, Truck, ChevronLeft, ChevronRight, Package } from 'lucide-react';
 import { StatusBadge } from '../components/StatusBadge';
 import { api } from '../lib/api';
 import { vendorPath } from '../../lib/portalRoutes';
+
 
 const SB = { color: 'var(--sb-text-primary)', muted: 'var(--sb-text-muted)', faint: 'var(--sb-text-faint)', orange: 'var(--sb-orange)', card: 'var(--sb-card)', border: 'var(--sb-border)', bg: 'var(--sb-bg-section)' };
 
@@ -66,7 +68,7 @@ export function OrderHistory() {
               <table className="w-full text-sm min-w-[900px]">
                 <thead>
                   <tr style={{ borderBottom: `1px solid ${SB.border}` }}>
-                    {['Order #', 'Product', 'Customer', 'City', 'Delivered', 'Status', 'Actions'].map(h => (
+                    {['Order #', 'Product', 'City', 'Delivered', 'Status', 'Actions'].map(h => (
                       <th key={h} className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: SB.faint }}>{h}</th>
                     ))}
                   </tr>
@@ -91,10 +93,10 @@ export function OrderHistory() {
                           ))}
                         </div>
                       </td>
-                      <td className="py-3.5 px-4 whitespace-nowrap" style={{ color: SB.muted }}>{o.customer?.name ?? '—'}</td>
+
                       <td className="py-3.5 px-4 whitespace-nowrap" style={{ color: SB.muted }}>{o.deliveryAddress?.city ?? '—'}</td>
                       <td className="py-3.5 px-4 whitespace-nowrap" style={{ color: SB.muted }}>
-                        {o.actualDeliveryDate ? new Date(o.actualDeliveryDate).toLocaleDateString('en-IN') : '—'}
+                        {o.actualDeliveryDate ? formatDate(o.actualDeliveryDate) : '—'}
                       </td>
                       <td className="py-3.5 px-4"><StatusBadge status={o.status} /></td>
                       <td className="py-3.5 px-4">

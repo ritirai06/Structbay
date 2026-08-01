@@ -1,9 +1,11 @@
+import { formatDate } from "../../lib/formatDate";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link } from "react-router";
 import { Download, Eye, Loader2, RefreshCw, FileText, ExternalLink } from "lucide-react";
 import { adminFetch as apiFetch } from "../../lib/adminApi";
 import { useAdminListDelete } from "../hooks/useAdminListDelete";
 import {
+
   AdminListDeleteControls,
   AdminRowDeleteButton,
   AdminTableSelectCell,
@@ -233,7 +235,7 @@ export function InvoiceManagement() {
                       </span>
                     </td>
                     <td className="py-3 px-4 text-xs text-sb-ink/50 whitespace-nowrap">
-                      {r.updatedAt ? new Date(r.updatedAt).toLocaleDateString() : "—"}
+                      {r.updatedAt ? formatDate(r.updatedAt) : "—"}
                     </td>
                     <td className="py-3 px-4 text-right">
                       <div className="flex justify-end gap-1">

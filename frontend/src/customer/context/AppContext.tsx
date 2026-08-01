@@ -17,6 +17,7 @@ export interface CartItem {
   productId?: string;
   variationId?: string;
   variationLabel?: string;
+  customColor?: string;
   name: string;
   brand: string;
   /** Fallback unit price when `pricingSnapshot` is missing (legacy carts). */
@@ -85,6 +86,7 @@ function readStoredCart(): CartItem[] {
         pricingSnapshot: parseStoredPricingSnapshot(o.pricingSnapshot),
         gstPercentage,
         gstType: o.gstType === "inclusive" || o.gstType === "exclusive" ? o.gstType : undefined,
+        customColor: typeof o.customColor === "string" ? o.customColor : undefined,
       });
     }
     return out;

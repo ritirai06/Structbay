@@ -7,6 +7,7 @@ const cartItemSchema = new mongoose.Schema(
     /** Preferred vendor user (role VENDOR) when multi-vendor pricing is used. */
     vendorUser: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     quantity:  { type: Number, required: true, min: 1, default: 1 },
+    customColor: { type: String, default: null },
     savedForLater: { type: Boolean, default: false },
   },
   { _id: true, timestamps: true }

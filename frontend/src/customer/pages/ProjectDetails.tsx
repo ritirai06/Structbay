@@ -1,8 +1,10 @@
+import { formatDate } from "../../lib/formatDate";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { Building2, ArrowRight, Package, TrendingUp, Calendar, MapPin, Truck, ChevronRight, Check } from "lucide-react";
 import { api } from "../lib/api";
 import { useApp } from "../context/AppContext";
+
 
 type OrderItem = {
   orderNumber: string;
@@ -141,7 +143,7 @@ export default function ProjectDetails() {
                       </span>
                     </div>
                     <div className="flex items-center gap-3 text-xs text-gray-500 mb-3">
-                      <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {new Date(order.createdAt).toLocaleDateString()}</span>
+                      <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {formatDate(order.createdAt)}</span>
                       <span className="flex items-center gap-1"><Package className="w-3.5 h-3.5" /> {order.items.length} items</span>
                     </div>
                   </div>

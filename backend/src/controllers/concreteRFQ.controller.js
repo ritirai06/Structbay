@@ -19,10 +19,17 @@ const escapeHtml = (s) =>
 const genNumber = () => generateConcreteRfqNumber();
 
 const getAll = asyncHandler(async (req, res) => {
-  const { status, city, page = 1, limit = 20 } = req.query;
+  const { status, city, rfqType, page = 1, limit = 20 } = req.query;
   const filter = {};
   if (status) filter.status = status;
   if (city) filter.city = { $regex: city, $options: 'i' };
+  if (rfqType) {
+    if (rfqType === 'CONCRETE') {
+      filter.$or = [{ rfqType: 'CONCRETE' }, { rfqType: { $exists: false } }];
+    } else {
+      filter.rfqType = rfqType;
+    }
+  }
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(100, parseInt(limit));
   const [items, total] = await Promise.all([

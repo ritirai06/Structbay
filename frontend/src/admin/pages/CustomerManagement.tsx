@@ -1,7 +1,9 @@
+import { formatDate } from "../../lib/formatDate";
 import { useState, useEffect, useCallback } from "react";
 import { Search, RefreshCw, Eye, Loader2, UserCircle } from "lucide-react";
 import { adminFetch as apiFetch } from "../../lib/adminApi";
 import { adminToast } from "../lib/adminToast";
+
 
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE: "bg-sb-orange/12 text-sb-orange border-sb-orange/22",
@@ -118,7 +120,7 @@ export function CustomerManagement() {
                       {c.status}
                     </span>
                   </td>
-                  <td className="py-3.5 px-4 text-xs text-sb-ink/50">{new Date(c.createdAt).toLocaleDateString()}</td>
+                  <td className="py-3.5 px-4 text-xs text-sb-ink/50">{formatDate(c.createdAt)}</td>
                   <td className="py-3.5 px-4">
                     <button onClick={() => setSelected(c)} className="p-1.5 border border-sb-ink/10 rounded-lg text-sb-ink/55 hover:text-sb-ink hover:border-sb-ink/20 transition-colors">
                       <Eye className="w-3.5 h-3.5" />
@@ -147,7 +149,7 @@ export function CustomerManagement() {
                 ["Phone", selected.phone || "—"],
                 ["Status", selected.status],
                 ["Email Verified", selected.isEmailVerified ? "Yes" : "No"],
-                ["Joined", new Date(selected.createdAt).toLocaleDateString()],
+                ["Joined", formatDate(selected.createdAt)],
               ].map(([k, v]) => (
                 <div key={String(k)} className="p-3 bg-sb-cream border border-sb-ink/10 rounded-lg">
                   <p className="text-[10px] text-sb-ink/50 uppercase tracking-wide mb-0.5">{k}</p>

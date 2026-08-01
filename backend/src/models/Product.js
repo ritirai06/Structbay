@@ -61,6 +61,7 @@ const productSchema = new mongoose.Schema(
     productStructure: { type: String, enum: ['simple', 'variant'], default: 'simple' },
 
     status: { type: String, enum: ['DRAFT', 'ACTIVE', 'ARCHIVED'], default: 'DRAFT' },
+    allowCustomColor: { type: Boolean, default: false },
     alwaysInStock: { type: Boolean, default: false },
     isFeatured: { type: Boolean, default: false },
     isTopSelling: { type: Boolean, default: false },
