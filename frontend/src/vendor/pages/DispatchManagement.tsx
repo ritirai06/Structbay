@@ -94,7 +94,6 @@ export function DispatchManagement() {
   const [pickupContact, setPickupContact] = useState('');
   const [pickupPhone, setPickupPhone] = useState('');
   const [pickupTime, setPickupTime] = useState('');
-  const [remarks, setRemarks] = useState('');
 
   // Update fields
   const [newStatus, setNewStatus] = useState('');
@@ -104,7 +103,6 @@ export function DispatchManagement() {
 
   // Proof fields
   const [receivedBy, setReceivedBy] = useState('');
-  const [deliveryRemarks, setDeliveryRemarks] = useState('');
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [docFile, setDocFile] = useState<File | null>(null);
   const [docType, setDocType] = useState('packing_slip');
@@ -179,7 +177,7 @@ export function DispatchManagement() {
     try {
       const body: Record<string, unknown> = {
         orderId: selectedOrder._id, dispatchType,
-        dispatchDate, expectedDeliveryDate: expectedDelivery, dispatchRemarks: remarks,
+        dispatchDate, expectedDeliveryDate: expectedDelivery,
       };
       if (dispatchType === 'vendor_delivery') {
         Object.assign(body, { vehicleNumber, vehicleType, driverName, driverPhone });
@@ -236,7 +234,6 @@ export function DispatchManagement() {
       form.append('document', proofFile);
       form.append('type', 'photo');
       form.append('receivedBy', receivedBy);
-      form.append('deliveryRemarks', deliveryRemarks);
       await api.uploadDeliveryProof(existingDispatch._id, form);
       setMsg({ type: 'success', text: 'Delivery proof uploaded! Order marked as delivered.' });
       setProofFile(null);
@@ -445,10 +442,6 @@ export function DispatchManagement() {
                       </Field>
                     </div>
 
-                    <Field label="Remarks">
-                      <textarea value={remarks} onChange={e => setRemarks(e.target.value)} rows={2} placeholder="Special handling notes..." className={inputCls} style={inputStyle} />
-                    </Field>
-
                     <button type="submit" disabled={submitting}
                       className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold disabled:opacity-60"
                       style={{ background: 'var(--sb-orange)', color: '#0D0D0D' }}>
@@ -546,9 +539,6 @@ export function DispatchManagement() {
                     <form onSubmit={handleProofUpload} className="space-y-4">
                       <Field label="Received By">
                         <input type="text" value={receivedBy} onChange={e => setReceivedBy(e.target.value)} placeholder="Person who received the material" className={inputCls} style={inputStyle} />
-                      </Field>
-                      <Field label="Delivery Remarks">
-                        <textarea value={deliveryRemarks} onChange={e => setDeliveryRemarks(e.target.value)} rows={2} placeholder="Any delivery notes..." className={inputCls} style={inputStyle} />
                       </Field>
                       <Field label="Delivery Photo / POD" required>
                         <label className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl cursor-pointer"

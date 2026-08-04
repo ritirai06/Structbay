@@ -287,24 +287,7 @@ export function OrderDetails() {
         </div>
       )}
 
-      {/* Dispatch Info */}
-      {dispatch && (
-        <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
-          <div className="flex items-center gap-2 mb-4">
-            <Truck className="w-4 h-4" style={{ color: SB.orange }} />
-            <h2 className="vendor-section-title" style={{ color: SB.muted }}>Dispatch Details</h2>
-            <StatusBadge status={dispatch.status} />
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {dispatch.vehicleDetails?.vehicleNumber && <InfoRow label="Vehicle No." value={dispatch.vehicleDetails.vehicleNumber} />}
-            {dispatch.vehicleDetails?.driverName && <InfoRow label="Driver" value={dispatch.vehicleDetails.driverName} />}
-            {dispatch.vehicleDetails?.driverPhone && <InfoRow label="Driver Phone" value={dispatch.vehicleDetails.driverPhone} />}
-            {dispatch.trackingNumber && <InfoRow label="Tracking #" value={dispatch.trackingNumber} />}
-            {dispatch.dispatchDate && <InfoRow label="Dispatch Date" value={formatDate(dispatch.dispatchDate)} />}
-            {dispatch.courierPartner && <InfoRow label="Courier" value={dispatch.courierPartner} />}
-          </div>
-        </div>
-      )}
+
 
       {Number(order.workflowVersion) !== 2 && (
       <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
@@ -358,26 +341,6 @@ export function OrderDetails() {
       )}
 
 
-      {/* Tracking Notes */}
-      <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
-        <div className="flex items-center gap-2 mb-4">
-          <Truck className="w-4 h-4" style={{ color: SB.orange }} />
-          <h2 className="vendor-section-title" style={{ color: SB.muted }}>Tracking Notes</h2>
-        </div>
-        <div className="space-y-4">
-          <div className="wf-field">
-            <label className="wf-field__label">Internal (Visible to Admin only)</label>
-            <textarea
-              className="wf-field__input min-h-[100px] resize-y"
-              placeholder="Pickup window, driver contact…"
-              value={order.masterOrder?.deliveryDetails ?? order.deliveryDetails ?? ""}
-              readOnly
-            />
-            <p className="text-xs mt-1" style={{ color: SB.faint }}>Notes added by admin. Contact admin to update.</p>
-          </div>
-        </div>
-      </div>
-
       {/* Internal Chat */}
       <div className="rounded-2xl p-5" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
         <div className="flex items-center gap-2 mb-3">
@@ -392,16 +355,7 @@ export function OrderDetails() {
         </Link>
       </div>
 
-      {/* Admin Notes */}
-      {order.adminNotes && (
-        <div className="rounded-2xl p-5 flex items-start gap-3" style={{ background: 'rgba(249,115,22,0.06)', border: '1px solid var(--sb-orange-border)' }}>
-          <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" style={{ color: SB.orange }} />
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: SB.orange }}>Admin Notes</p>
-            <p className="text-sm" style={{ color: 'var(--sb-text-secondary)' }}>{order.adminNotes}</p>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }

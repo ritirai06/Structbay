@@ -7,11 +7,11 @@ function vendorProgressRank(status) {
   const s = String(status || '');
   if (s === 'COMPLETED') return 7;
   if (s === 'DELIVERED') return 6;
-  if (['DISPATCHED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DISPATCH_CONFIRMED', 'PICKED_UP'].includes(s)) return 5;
+  if (['DISPATCHED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'PICKED_UP'].includes(s)) return 5;
   if (s === 'SB_INVOICE_SENT') return 4;
   if (['VENDOR_INVOICE_SUBMITTED', 'DISPATCH_APPROVED', 'INVOICE_UPLOADED'].includes(s)) return 3;
   if (s === 'READY_FOR_DISPATCH') return 2;
-  if (['ACCEPTED', 'CHANGES_REQUESTED', 'NEW_ASSIGNED', 'ASSIGNED', 'PICKUP_SCHEDULED'].includes(s)) return 1;
+  if (['ACCEPTED', 'CHANGES_REQUESTED', 'NEW_ASSIGNED', 'ASSIGNED', 'PICKUP_SCHEDULED', 'DISPATCH_CONFIRMED'].includes(s)) return 1;
   return 0;
 }
 

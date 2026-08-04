@@ -162,11 +162,12 @@ export function OrderSuccess() {
         <h3 className="font-semibold mb-4 text-foreground">What&apos;s Next?</h3>
         <div className="space-y-3">
           {[
-            { step: "1", title: "Order Placed", desc: "Your order has been placed successfully.", done: true },
-            { step: "2", title: "Order Confirmed", desc: "Your order is confirmed by the vendor.", done: false },
-            { step: "3", title: "Quality Check", desc: "Products are inspected at our warehouse.", done: false },
-            { step: "4", title: "Dispatch", desc: "Your order will be dispatched within 24 hours.", done: false },
-            { step: "5", title: "Delivery", desc: "Delivered to your site address.", done: false },
+            { step: "1", title: "Order placed", desc: "Your order has been placed successfully.", done: true },
+            { step: "2", title: "Order confirmed", desc: "Your order is confirmed.", done: false },
+            { step: "3", title: "Processing", desc: "Your order is being processed for dispatch.", done: false },
+            { step: "4", title: "Out for delivery", desc: "Your order is out for delivery.", done: false },
+            { step: "5", title: "Partial delivered", desc: "Some items have been delivered to your site.", done: false },
+            { step: "6", title: "Full delivery complete", desc: "All items have been successfully delivered.", done: false },
           ].map((item) => (
             <div key={item.step} className="flex items-start gap-3">
               <div

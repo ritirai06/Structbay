@@ -136,13 +136,6 @@ export const vendorRoutes: RouteObject[] = [
               return { Component: Profile };
             },
           },
-          {
-            path: "support",
-            lazy: async () => {
-              const { Support } = await import("../vendor/pages/Support");
-              return { Component: Support };
-            },
-          },
         ],
       },
     ],

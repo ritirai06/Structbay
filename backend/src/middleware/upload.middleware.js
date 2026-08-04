@@ -43,7 +43,7 @@ const buildCloudinaryStorage = (folder, defaultResourceType = 'auto') => ({
     let resourceType = defaultResourceType;
     if (defaultResourceType === 'auto') {
       const ext = fileExtension(file.originalname).toLowerCase();
-      if (['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.csv', '.zip'].includes(ext)) {
+      if (['.doc', '.docx', '.xls', '.xlsx', '.csv', '.zip'].includes(ext)) {
         resourceType = 'raw';
       }
     }

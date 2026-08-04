@@ -58,9 +58,19 @@ async function finalizeInvoiceUpload(order, invoice, req, structbayInvoiceNumber
     uploadedBy: req.user._id,
   };
 
+  if (req.body.transporterName || req.body.transporterGstNumber || req.body.vehicleNumber) {
+    if (!order.shipmentDispatch) order.shipmentDispatch = {};
+    if (req.body.transporterName) order.shipmentDispatch.transporterName = req.body.transporterName.trim();
+    if (req.body.transporterGstNumber) order.shipmentDispatch.transporterGstNumber = req.body.transporterGstNumber.trim();
+    if (req.body.vehicleNumber) order.shipmentDispatch.vehicleNumber = req.body.vehicleNumber.trim();
+  }
+
   if (isWorkflowVendorOrder(order)) {
     order.status = 'VENDOR_INVOICE_SUBMITTED';
-    pushEmbeddedHistory(order, 'VENDOR_INVOICE_SUBMITTED', req.user._id, 'User', 'Vendor submitted final tax invoice.');
+    const note = invoice.vendorRemarks 
+      ? `Vendor submitted final tax invoice. Remarks: ${invoice.vendorRemarks}` 
+      : 'Vendor submitted final tax invoice.';
+    pushEmbeddedHistory(order, 'VENDOR_INVOICE_SUBMITTED', req.user._id, 'User', note);
     await appendAudit(order._id, 'VENDOR_INVOICE_SUBMITTED', 'Vendor invoice PDF submitted', req.user._id, 'User');
     notifyAllAdmins({
       type: 'VENDOR_INVOICE_SUBMITTED',

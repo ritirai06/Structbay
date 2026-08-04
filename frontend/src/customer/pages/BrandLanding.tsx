@@ -212,6 +212,8 @@ export function BrandLanding() {
                             addToCart({
                               id: `${String(slug)}::base`,
                               productSlug: String(slug),
+                              productId: p._id || p.id || undefined,
+                              categoryId: typeof p.category === 'object' ? p.category._id : p.category,
                               name: p.name,
                               brand: brandName,
                               price: snap ? resolveUnitPriceFromSnapshot(snap, 1) : Number(price),

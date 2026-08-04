@@ -75,10 +75,10 @@ const NAV_ITEMS = [
 function mapApiStatus(status: string): { label: string; cls: string } {
   if (status === "PENDING") return { label: "Order placed", cls: "text-gray-500" };
   if (["PAID", "VENDOR_ASSIGNMENT_PENDING"].includes(status)) return { label: "Order confirmed", cls: "text-green-600 font-semibold" };
-  if (["PROCESSING", "READY_FOR_DISPATCH"].includes(status)) return { label: "Processing", cls: "text-blue-500 font-semibold" };
-  if (["PARTIALLY_DISPATCHED", "DISPATCHED"].includes(status)) return { label: "Out for delivery", cls: "text-[#E85A00] font-semibold" };
+  if (["PROCESSING", "READY_FOR_DISPATCH", "PARTIALLY_DISPATCHED"].includes(status)) return { label: "Processing", cls: "text-blue-500 font-semibold" };
+  if (status === "DISPATCHED") return { label: "Out for delivery", cls: "text-[#E85A00] font-semibold" };
   if (status === "PARTIALLY_DELIVERED") return { label: "Partial delivered", cls: "text-[#E85A00] font-semibold" };
-  if (["DELIVERED", "COMPLETED"].includes(status)) return { label: "Delivered", cls: "text-[#E85A00] font-semibold" };
+  if (["DELIVERED", "COMPLETED"].includes(status)) return { label: "Full delivery complete", cls: "text-[#E85A00] font-semibold" };
   if (status === "CANCELLED") return { label: "Cancelled", cls: "text-red-400 font-semibold" };
   if (status === "RETURNED") return { label: "Returned", cls: "text-red-400 font-semibold" };
 
@@ -428,7 +428,7 @@ function OrdersSection({ orders, onReload }: { orders: CustomerUiOrder[]; onRelo
                   onClick={() => openInvoices(order)}
                   className="flex-1 flex items-center justify-center gap-1.5 border border-gray-200 hover:border-[#E85A00]/40 rounded-xl py-2 text-xs text-gray-500 hover:text-black transition-all"
                 >
-                  <Download className="w-3.5 h-3.5" /> Order Acknowledged
+                  <Download className="w-3.5 h-3.5" /> Order Acknowledgement
                 </button>
                 {!canCustomerCancelOrder(order.apiStatus) ? null : (
                   <button

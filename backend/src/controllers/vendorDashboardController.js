@@ -33,6 +33,7 @@ exports.getDashboardStats = async (req, res) => {
         _id: null,
         totalOrders: { $sum: 1 },
         completedOrders: { $sum: { $cond: [{ $in: ['$status', ['DELIVERED', 'COMPLETED']] }, 1, 0] } },
+        newOrders: { $sum: { $cond: [{ $in: ['$status', ['NEW_ASSIGNED', 'ASSIGNED']] }, 1, 0] } },
         totalAmount: { $sum: '$totalAmount' },
       }},
     ]),
@@ -40,7 +41,7 @@ exports.getDashboardStats = async (req, res) => {
 
   return ApiResponse.success(res, 200, 'Dashboard stats retrieved.', {
     orderStats: { total: totalOrders, pending: pendingOrders, readyForDispatch, inTransit, delivered, pendingInvoices },
-    monthlyFulfillment: monthlyStats[0] || { totalOrders: 0, completedOrders: 0, totalAmount: 0 },
+    monthlyFulfillment: monthlyStats[0] || { totalOrders: 0, completedOrders: 0, totalAmount: 0, newOrders: 0 },
     recentOrders: recentOrders.map((o) => decorateVendorOrderForPortal(o)),
     recentActivities,
     unreadNotifications,

@@ -17,7 +17,6 @@ const navItems = [
   { to: "/vendor/history",       icon: History,         label: "Order History" },
   { to: "/vendor/analytics",     icon: TrendingUp,      label: "Analytics" },
   { to: "/vendor/profile",       icon: User,            label: "Profile" },
-  { to: "/vendor/support",       icon: HelpCircle,      label: "Support" },
 ];
 
 export function Sidebar() {

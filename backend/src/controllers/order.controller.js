@@ -85,12 +85,15 @@ const create = asyncHandler(async (req, res) => {
 });
 
 const updateStatus = asyncHandler(async (req, res) => {
-  const { status, note } = req.body;
+  const { status } = req.body;
+  if (!status) throw new AppError('status is required.', 400);
+
   const order = await Order.findById(req.params.id);
   if (!order) throw new AppError('Order not found.', 404);
+
   const oldStatus = order.status;
   order.status = status;
-  order.statusHistory.push({ status, changedBy: req.user._id, note });
+  order.statusHistory.push({ status, changedBy: req.user._id });
   await order.save();
   await logAction({ adminId: req.user._id, action: 'UPDATE', module: 'Order', targetId: order._id.toString(),
     description: `Status: ${oldStatus} → ${status}`, ipAddress: req.ip });
@@ -138,7 +141,6 @@ const assignVendor = asyncHandler(async (req, res) => {
     order.statusHistory.push({
       status: 'PROCESSING',
       changedBy: req.user._id,
-      note: 'Vendor assigned by admin.',
     });
   }
   await order.save();
@@ -533,12 +535,6 @@ const INVENTORY_RELEASE_STATUSES = [
 const BULK_DELETE_MAX = 200;
 
 async function deleteOrderHard(order, userId, ip) {
-  if (NON_DELETABLE_ORDER_STATUSES.includes(order.status)) {
-    throw new AppError(
-      'Cannot delete while order is in active dispatch or delivery. Cancel the order or wait until it is completed.',
-      400
-    );
-  }
   if (INVENTORY_RELEASE_STATUSES.includes(order.status)) {
     try {
       await releaseInventory(order.items, order.city);
@@ -608,18 +604,42 @@ const resendVendorEmail = asyncHandler(async (req, res) => {
   const vendorId = vendorOrder.vendor;
   
   let productsList = vendorOrder.items.map(i => `- ${i.productName} (Qty: ${i.quantity})`).join('<br>');
-  const message = `Order ${vendorOrder.orderNumber} has been assigned to you. <br><br><strong>Products Assigned:</strong><br>${productsList}`;
+  let type = 'order_assigned';
+  let title = 'Order Assignment Updated';
+  let message = `Order ${vendorOrder.orderNumber} has been assigned to you. <br><br><strong>Products Assigned:</strong><br>${productsList}`;
+  let actionLabel = 'View order';
+
+  switch (vendorOrder.status) {
+    case 'DISPATCH_CONFIRMED':
+      type = 'wf_dispatch_confirmed';
+      title = 'Dispatch Authorized (Reminder)';
+      message = `Structbay has confirmed dispatch for ${vendorOrder.orderNumber}. Please submit your dispatch readiness details.`;
+      actionLabel = 'Submit ready dispatch';
+      break;
+    case 'CHANGES_REQUESTED':
+      type = 'wf_changes_requested';
+      title = 'Dispatch Changes Requested (Reminder)';
+      message = `Structbay requested changes for ${vendorOrder.orderNumber}. Please review and update.`;
+      actionLabel = 'Update dispatch details';
+      break;
+    case 'DISPATCH_APPROVED':
+      type = 'wf_dispatch_approved';
+      title = 'Dispatch Approved (Reminder)';
+      message = `Structbay approved dispatch for ${vendorOrder.orderNumber}. Please upload your final tax invoice.`;
+      actionLabel = 'Upload invoice';
+      break;
+  }
 
   const { notifyVendor } = require('../services/vendorNotification.service');
   
   await notifyVendor({
     vendorId,
-    type: 'order_assigned',
-    title: 'Order Assignment Updated',
+    type,
+    title,
     message,
     relatedOrder: vendorOrder._id,
     actionUrl: `/orders/${vendorOrder._id}`,
-    actionLabel: 'View order',
+    actionLabel,
     createdBy: req.user._id,
   });
 

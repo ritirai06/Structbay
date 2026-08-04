@@ -10,7 +10,6 @@ import { StatusBadge } from './StatusBadge';
 const STEPS = [
   { key: 'NEW_ASSIGNED', label: 'Assigned' },
   { key: 'ACCEPTED', label: 'Accepted' },
-  { key: 'DISPATCH_CONFIRMED', label: 'Dispatch confirmed' },
   { key: 'READY_FOR_DISPATCH', label: 'Ready dispatch' },
   { key: 'DISPATCH_APPROVED', label: 'Dispatch approved' },
   { key: 'VENDOR_INVOICE_SUBMITTED', label: 'Vendor invoice' },
@@ -73,11 +72,11 @@ function SubmittedDocuments({ order, onRequestDateChange }: { order: any; onRequ
         ...(pre?.invoiceFileUrl ? [{ url: pre.invoiceFileUrl, label: 'Pre-dispatch invoice' }] : []),
         ...(Array.isArray(pre?.packingFiles)
           ? pre.packingFiles
-              .filter((f: { url?: string }) => f?.url)
-              .map((f: { url: string; name?: string }, i: number) => ({
-                url: f.url,
-                label: f.name || `Packing file ${i + 1}`,
-              }))
+            .filter((f: { url?: string }) => f?.url)
+            .map((f: { url: string; name?: string }, i: number) => ({
+              url: f.url,
+              label: f.name || `Packing file ${i + 1}`,
+            }))
           : []),
       ],
     });
@@ -160,7 +159,7 @@ export function VendorWorkflowPanel({
   const [readyDate, setReadyDate] = useState('');
   const [readyTime, setReadyTime] = useState('');
   const [readyRemark, setReadyRemark] = useState('');
-  
+
   const [showDateChange, setShowDateChange] = useState(false);
   const [changeDate, setChangeDate] = useState('');
   const [changeTime, setChangeTime] = useState('');
@@ -222,17 +221,17 @@ export function VendorWorkflowPanel({
           <div className="h-2 rounded-full bg-black/8 overflow-hidden">
             <div className="h-full rounded-full transition-all duration-500" style={{ width: `${progressPct}%`, background: 'var(--sb-orange)' }} />
           </div>
-          <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1">
+          <div className="mt-3 flex justify-between w-full">
             {STEPS.map((s, i) => {
               const done = allDone || i < idx;
               const active = !allDone && i === idx && st !== 'REJECTED';
               return (
                 <span
                   key={s.key}
-                  className="text-[11px] font-medium"
+                  className="text-[10px] sm:text-[11px] font-medium text-center leading-tight flex-1"
                   style={{ color: done || active ? 'var(--sb-text-primary)' : 'var(--sb-text-faint)' }}
                 >
-                  {i + 1}. {s.label}
+                  <span className="hidden sm:inline">{i + 1}. </span>{s.label}
                 </span>
               );
             })}
@@ -245,11 +244,11 @@ export function VendorWorkflowPanel({
           </div>
         )}
 
-        <SubmittedDocuments 
-          order={order} 
-          onRequestDateChange={st !== 'COMPLETED' && st !== 'REJECTED' && st !== 'ASSIGNED' && st !== 'ACCEPTED' && st !== 'CHANGES_REQUESTED' ? () => setShowDateChange(true) : undefined} 
+        <SubmittedDocuments
+          order={order}
+          onRequestDateChange={st !== 'COMPLETED' && st !== 'REJECTED' && st !== 'ASSIGNED' && st !== 'ACCEPTED' && st !== 'CHANGES_REQUESTED' ? () => setShowDateChange(true) : undefined}
         />
-        
+
         {showDateChange && (
           <div className="wf-subsection bg-blue-50/50 border border-blue-100 p-4 rounded-lg mt-4">
             <h3 className="text-sm font-bold text-sb-ink mb-2">Request Dispatch Date Change</h3>
@@ -269,11 +268,11 @@ export function VendorWorkflowPanel({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="wf-field">
                   <label className="wf-field__label">New Date *</label>
-                  <input type="date" required value={changeDate} onChange={e => setChangeDate(e.target.value)} className="wf-field__input" />
+                  <input type={changeDate ? "date" : "text"} placeholder="dd/mm/yyyy" onFocus={(e) => (e.target.type = "date")} onBlur={(e) => { if (!e.target.value) e.target.type = "text"; }} required value={changeDate} onChange={e => setChangeDate(e.target.value)} className="wf-field__input" />
                 </div>
                 <div className="wf-field">
                   <label className="wf-field__label">New Time *</label>
-                  <input type="time" required value={changeTime} onChange={e => setChangeTime(e.target.value)} className="wf-field__input" />
+                  <input type={changeTime ? "time" : "text"} placeholder="--:-- --" onFocus={(e) => (e.target.type = "time")} onBlur={(e) => { if (!e.target.value) e.target.type = "text"; }} required value={changeTime} onChange={e => setChangeTime(e.target.value)} className="wf-field__input" />
                 </div>
               </div>
               <div className="wf-field">
@@ -330,16 +329,7 @@ export function VendorWorkflowPanel({
           </div>
         )}
 
-        {st === 'ACCEPTED' && (
-          <div className="wf-subsection">
-            <p className="wf-subsection__title">Awaiting Dispatch Confirmation</p>
-            <p className="text-sm" style={{ color: 'var(--sb-text-muted)' }}>
-              Awaiting Structbay Admin to confirm dispatch authorization. You will be able to submit dispatch details once approved.
-            </p>
-          </div>
-        )}
-
-        {(st === 'DISPATCH_CONFIRMED' || st === 'CHANGES_REQUESTED') && (
+        {(st === 'ACCEPTED' || st === 'DISPATCH_CONFIRMED' || st === 'CHANGES_REQUESTED') && (
           <div className="wf-subsection">
             <p className="wf-subsection__title">Submit ready for dispatch</p>
             <form
@@ -367,7 +357,10 @@ export function VendorWorkflowPanel({
                   <label className="wf-field__label">Estimated dispatch date *</label>
                   <input
                     required
-                    type="date"
+                    type={readyDate ? "date" : "text"}
+                    placeholder="dd/mm/yyyy"
+                    onFocus={(e) => (e.target.type = "date")}
+                    onBlur={(e) => { if (!e.target.value) e.target.type = "text"; }}
                     value={readyDate}
                     onChange={(e) => setReadyDate(e.target.value)}
                     className="wf-field__input"
@@ -377,7 +370,10 @@ export function VendorWorkflowPanel({
                   <label className="wf-field__label">Estimated dispatch time *</label>
                   <input
                     required
-                    type="time"
+                    type={readyTime ? "time" : "text"}
+                    placeholder="--:-- --"
+                    onFocus={(e) => (e.target.type = "time")}
+                    onBlur={(e) => { if (!e.target.value) e.target.type = "text"; }}
                     value={readyTime}
                     onChange={(e) => setReadyTime(e.target.value)}
                     className="wf-field__input"
@@ -396,7 +392,7 @@ export function VendorWorkflowPanel({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <WorkflowFileUpload
                   name="packing"
-                  label="Packing photos / documents"
+                  label="Packing photos / documents (optional)"
                   hint="Upload images or PDFs of packed material"
                   accept=".pdf,image/*"
                   multiple
@@ -474,7 +470,7 @@ export function VendorWorkflowPanel({
                 </div>
                 <div className="wf-field">
                   <label className="wf-field__label">Dispatch date *</label>
-                  <input required type="date" value={dispWhen} onChange={(e) => setDispWhen(e.target.value)} className="wf-field__input" />
+                  <input required type={dispWhen ? "date" : "text"} placeholder="dd/mm/yyyy" onFocus={(e) => (e.target.type = "date")} onBlur={(e) => { if (!e.target.value) e.target.type = "text"; }} value={dispWhen} onChange={(e) => setDispWhen(e.target.value)} className="wf-field__input" />
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
@@ -545,7 +541,7 @@ export function VendorWorkflowPanel({
             >
               <div className="wf-field max-w-xs">
                 <label className="wf-field__label">Delivery date *</label>
-                <input required type="date" value={delWhen} onChange={(e) => setDelWhen(e.target.value)} className="wf-field__input" />
+                <input required type={delWhen ? "date" : "text"} placeholder="dd/mm/yyyy" onFocus={(e) => (e.target.type = "date")} onBlur={(e) => { if (!e.target.value) e.target.type = "text"; }} value={delWhen} onChange={(e) => setDelWhen(e.target.value)} className="wf-field__input" />
               </div>
               <WorkflowFileUpload name="pod" label="Proof of delivery *" hint="Signed challan, site photo, or customer acknowledgement" accept=".pdf,image/*" required />
               <div className="wf-form-footer">

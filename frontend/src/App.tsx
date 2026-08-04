@@ -78,6 +78,12 @@ function GlobalError() {
             ? "A new version of the app is available, or there was a network interruption." 
             : "We encountered an unexpected error while trying to load this page."}
         </p>
+        {(error as any)?.message || (error as any)?.statusText || error ? (
+          <div className="text-left text-xs text-red-600 bg-red-50 border border-red-100 p-3 rounded-lg mb-6 overflow-auto max-h-[300px]">
+            <div className="font-bold mb-1">{(error as any)?.message || (error as any)?.statusText || "Error details:"}</div>
+            <pre className="whitespace-pre-wrap font-mono">{(error as any)?.stack || JSON.stringify(error, null, 2)}</pre>
+          </div>
+        ) : null}
         <div className="flex gap-3 justify-center">
           <button 
             onClick={() => window.location.reload()}

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronUp, CheckCircle2, Circle } from "lucide-react";
 import { Link, useLocation } from "react-router";
-import { WorkflowCard, DeliveryTypeSelector, VendorWorkflowSubmissions, lineDefaultDeliveryType } from "./orderDetailShared";
+import { WorkflowCard, DeliveryTypeSelector, VendorWorkflowSubmissions, lineDefaultDeliveryType, fmtDate } from "./orderDetailShared";
 import { ShippingLabelCard } from "./ShippingLabelCard";
 import { adminPath } from "../../../lib/portalRoutes";
 import { WorkflowFileUpload, WorkflowFilePreview } from "@shared/components/workflow/WorkflowFileUpload";
@@ -51,7 +51,7 @@ export function ProductCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const location = useLocation();
-  const hasAdminActions = vo && ["ACCEPTED", "READY_FOR_DISPATCH", "DISPATCHED", "DELIVERED", "SB_INVOICE_SENT"].includes(vo.status);
+  const hasAdminActions = vo && ["ACCEPTED", "READY_FOR_DISPATCH", "DISPATCHED", "DELIVERED", "SB_INVOICE_SENT", "CHANGES_REQUESTED"].includes(vo.status);
 
   const assignedVendor = item.assignedVendorUser?.companyName || item.assignedVendorUser?.name;
   const lineDefaultType = lineDefaultDeliveryType(item);
@@ -77,15 +77,7 @@ export function ProductCard({
     return s.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
   };
 
-  const resendEmail = async () => {
-    if (!order?._id || !vo?._id) return;
-    try {
-      await apiFetch(`/orders/${order._id}/vendor-orders/${vo._id}/resend-email`, { method: "POST" });
-      adminToast.success("Email sent successfully!");
-    } catch (e) {
-      adminToast.error(e instanceof Error ? e.message : "Failed to send email");
-    }
-  };
+
 
   return (
     <div className={`mb-4 border rounded-xl overflow-hidden bg-white shadow-sm transition-all duration-200 ${expanded ? "border-sb-orange ring-1 ring-sb-orange/20" : "border-sb-ink/10 hover:border-sb-ink/20"}`}>
@@ -226,12 +218,9 @@ export function ProductCard({
                     <span className="bg-blue-600 text-white w-5 h-5 flex items-center justify-center rounded-full text-[10px]">2</span>
                     Fulfillment Workflow
                   </h4>
-                  <button onClick={resendEmail} className="wf-btn wf-btn--secondary !py-1 !px-3 text-xs">
-                    Resend Email
-                  </button>
                 </div>
 
-                <div className="wf-auto-grid">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
                   <WorkflowCard title="Delivery type override (Post-assignment)">
                           <DeliveryTypeSelector
                             name={`dt-${item._id}`}
@@ -306,7 +295,7 @@ export function ProductCard({
                             <p>Invoice # · <strong>{vo.vendorInvoice.invoiceNumber}</strong></p>
                           )}
                           {vo.vendorInvoice.uploadedAt && (
-                            <p>Uploaded · <strong>{new Date(vo.vendorInvoice.uploadedAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong></p>
+                            <p>Uploaded · <strong>{fmtDate(vo.vendorInvoice.uploadedAt)}</strong></p>
                           )}
                         </div>
                         <WorkflowFilePreview files={[{ url: vo.vendorInvoice.invoicePdfUrl, label: 'Vendor invoice' }]} />
@@ -316,11 +305,11 @@ export function ProductCard({
 
                   {vo.workflowVersion === 2 && vo.status === "VENDOR_INVOICE_SUBMITTED" && (
                     <WorkflowCard title="StructBay invoice & e-way" variant="accent">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="flex flex-col gap-4">
                         <WorkflowFileUpload label="StructBay invoice (PDF)" accept=".pdf,application/pdf" name={`sb-inv-${vo._id}`} />
                         <WorkflowFileUpload label="E-way bill (PDF)" accept=".pdf,application/pdf" name={`sb-ew-${vo._id}`} />
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                      <div className="flex flex-col gap-3 mt-3">
                         <div className="wf-field">
                           <label className="wf-field__label">SB invoice number</label>
                           <input id={`sb-${vo._id}-inum`} className="wf-field__input" placeholder="INV-…" />
@@ -367,28 +356,12 @@ export function ProductCard({
                   {vo.workflowVersion === 2 && hasAdminActions && (
                     <WorkflowCard title="Actions" variant="accent">
                           <div className="flex flex-col gap-3 items-stretch">
-                        {vo.status === "ACCEPTED" && (
-                          <button
-                            type="button"
-                            className="wf-btn wf-btn--primary w-full justify-center bg-sb-orange hover:bg-orange-600 border-none text-white"
-                            onClick={async () => {
-                              const ok = await adminToast.confirm("Confirm dispatch authorization?", {
-                                description: "This allows the vendor to submit their dispatch readiness details.",
-                                confirmLabel: "Confirm Dispatch",
-                              });
-                              if (!ok) return;
-                              try {
-                                await apiFetch(`/admin/vendor-orders/${vo._id}/workflow/confirm-dispatch`, { method: "POST" });
-                                await loadOrder();
-                                adminToast.success("Dispatch confirmed");
-                              } catch (e) {
-                                adminToast.error(e instanceof Error ? e.message : "Confirm dispatch failed");
-                              }
-                            }}
-                          >
-                            Confirm dispatch
-                          </button>
+                        {vo.status === "CHANGES_REQUESTED" && (
+                          <div className="text-sm text-sb-orange font-medium bg-sb-orange/10 p-3 rounded-lg border border-sb-orange/20">
+                            Waiting for the vendor to update dispatch details based on your requested changes.
+                          </div>
                         )}
+
                         {vo.status === "READY_FOR_DISPATCH" && (
                           <>
                             <button
@@ -414,25 +387,19 @@ export function ProductCard({
                                 <button
                                   type="button"
                                   className="wf-btn wf-btn--secondary w-full justify-center text-red-600 border-red-200 hover:border-red-600 hover:text-red-700 hover:bg-red-50"
-                                  onClick={() => {
-                                    setInputModal({
-                                      title: "Request changes",
-                                      label: "Reason",
-                                      required: true,
-                                      confirmLabel: "Reject dispatch",
-                                      onConfirm: async (reason: string) => {
-                                        try {
-                                          await apiFetch(`/admin/vendor-orders/${vo._id}/workflow/reject-dispatch`, {
-                                            method: "POST",
-                                            body: JSON.stringify({ reason }),
-                                          });
-                                          await loadOrder();
-                                          adminToast.success("Dispatch rejected");
-                                        } catch (e) {
-                                          adminToast.error(e instanceof Error ? e.message : "Reject failed");
-                                        }
-                                      },
+                                  onClick={async () => {
+                                    const ok = await adminToast.confirm("Request Changes", {
+                                      description: "Are you sure you want to request changes? Please communicate the required changes via Order Chat.",
+                                      confirmLabel: "Request Changes",
                                     });
+                                    if (!ok) return;
+                                    try {
+                                      await apiFetch(`/admin/vendor-orders/${vo._id}/workflow/request-changes`, { method: "POST" });
+                                      await loadOrder();
+                                      adminToast.success("Changes requested");
+                                    } catch (e) {
+                                      adminToast.error(e instanceof Error ? e.message : "Request changes failed");
+                                    }
                                   }}
                                 >
                                   Request changes
@@ -477,24 +444,21 @@ export function ProductCard({
                               <button
                                 type="button"
                                 className="wf-btn wf-btn--primary w-full justify-center"
-                                onClick={() => {
-                                  setInputModal({
-                                    title: "Mark delivered",
-                                    label: "Delivery note (optional)",
+                                onClick={async () => {
+                                  const ok = await adminToast.confirm("Mark delivered", {
+                                    description: "Are you sure you want to mark this order as delivered?",
                                     confirmLabel: "Confirm delivery",
-                                    onConfirm: async (note: string) => {
-                                      try {
-                                        await apiFetch(`/admin/vendor-orders/${vo._id}/workflow/mark-sb-delivered`, {
-                                          method: "POST",
-                                          body: JSON.stringify({ note }),
-                                        });
-                                        await loadOrder();
-                                        adminToast.success("Order marked delivered");
-                                      } catch (e) {
-                                        adminToast.error(e instanceof Error ? e.message : "Delivery update failed");
-                                      }
-                                    },
                                   });
+                                  if (!ok) return;
+                                  try {
+                                    await apiFetch(`/admin/vendor-orders/${vo._id}/workflow/mark-sb-delivered`, {
+                                      method: "POST",
+                                    });
+                                    await loadOrder();
+                                    adminToast.success("Order marked delivered");
+                                  } catch (e) {
+                                    adminToast.error(e instanceof Error ? e.message : "Delivery update failed");
+                                  }
                                 }}
                               >
                                 Mark delivered

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { HelpCircle, MessageSquare, Send, Phone, Mail, Clock, ChevronDown, CheckCircle, AlertCircle } from 'lucide-react';
+import { HelpCircle, MessageSquare, Send, Phone, Mail, Clock, ChevronDown, CheckCircle, AlertCircle, Trash2 } from 'lucide-react';
 import { api } from '../lib/api';
 
 const SB = { color: 'var(--sb-text-primary)', muted: 'var(--sb-text-muted)', faint: 'var(--sb-text-faint)', orange: 'var(--sb-orange)', card: 'var(--sb-card)', border: 'var(--sb-border)', bg: 'var(--sb-bg-section)' };
@@ -36,6 +36,8 @@ export function Support() {
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [ticketsLoading, setTicketsLoading] = useState(true);
 
   useEffect(() => {
     api.getContact().then((r: any) => setContact(r.data)).catch(() => {});
@@ -43,7 +45,30 @@ export function Support() {
       .then(r => r.json())
       .then((r: any) => { if (Array.isArray(r.data)) setFaqs(r.data); })
       .catch(() => {});
+    loadTickets();
   }, []);
+
+  const loadTickets = async () => {
+    try {
+      setTicketsLoading(true);
+      const res = await api.getSupportTickets();
+      setTickets(res.data || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setTicketsLoading(false);
+    }
+  };
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (!confirm('Are you sure you want to delete this ticket?')) return;
+    try {
+      await api.deleteSupportTicket(id);
+      loadTickets();
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -52,6 +77,7 @@ export function Support() {
       await api.submitSupportTicket({ subject, priority, description });
       setMsg({ type: 'success', text: 'Ticket submitted! Our team will respond within 24–48 hours.' });
       setSubject(''); setDescription(''); setPriority('medium');
+      loadTickets();
       setTimeout(() => { setShowTicket(false); setMsg(null); }, 3000);
     } catch (err: any) {
       setMsg({ type: 'error', text: err.message ?? 'Submission failed. Please try again.' });
@@ -135,58 +161,92 @@ export function Support() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Contact Info — from CMS */}
-        <div className="rounded-2xl p-5 space-y-4" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
-          <h2 className="vendor-section-title" style={{ color: SB.muted }}>Contact Structbay</h2>
-          {phone && (
-            <div className="flex items-start gap-3 p-3 rounded-xl" style={{ background: SB.bg, border: `1px solid ${SB.border}` }}>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--sb-orange-subtle)' }}>
-                <Phone className="w-4 h-4" style={{ color: SB.orange }} />
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: SB.faint }}>Phone</p>
-                <p className="text-sm font-medium mt-0.5" style={{ color: SB.color }}>{phone}</p>
-              </div>
+        <div className="lg:col-span-2 space-y-4">
+          <h2 className="vendor-section-title" style={{ color: SB.muted }}>My Support Tickets</h2>
+          {ticketsLoading ? (
+             <div className="text-sm text-sb-ink/50 py-4">Loading tickets...</div>
+          ) : tickets.length === 0 ? (
+             <div className="rounded-xl border border-dashed border-sb-ink/20 p-8 text-center text-sm text-sb-ink/50">
+               No support tickets found. Create one if you need help!
+             </div>
+          ) : (
+            <div className="space-y-3">
+              {tickets.map(t => (
+                <div key={t._id} className="rounded-xl p-4 transition-colors hover:bg-sb-cream" style={{ border: `1px solid ${SB.border}`, background: SB.card }}>
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-semibold text-sm" style={{ color: SB.color }}>{t.subject}</h3>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--sb-orange-subtle)', color: SB.orange }}>
+                        {t.status.replace("_", " ")}
+                      </span>
+                      <span className="text-xs" style={{ color: SB.faint }}>
+                        {new Date(t.createdAt).toLocaleDateString()}
+                      </span>
+                      <button onClick={(e) => handleDelete(e, t._id)} className="p-1 hover:bg-red-50 text-red-400 rounded-lg transition-colors ml-2" title="Delete Ticket">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-xs line-clamp-2" style={{ color: SB.muted }}>{t.description}</p>
+                </div>
+              ))}
             </div>
-          )}
-          {email && (
-            <div className="flex items-start gap-3 p-3 rounded-xl" style={{ background: SB.bg, border: `1px solid ${SB.border}` }}>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--sb-orange-subtle)' }}>
-                <Mail className="w-4 h-4" style={{ color: SB.orange }} />
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: SB.faint }}>Email</p>
-                <p className="text-sm font-medium mt-0.5" style={{ color: SB.color }}>{email}</p>
-              </div>
-            </div>
-          )}
-          {hours && (
-            <div className="flex items-start gap-3 p-3 rounded-xl" style={{ background: SB.bg, border: `1px solid ${SB.border}` }}>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--sb-orange-subtle)' }}>
-                <Clock className="w-4 h-4" style={{ color: SB.orange }} />
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: SB.faint }}>Hours</p>
-                <p className="text-sm font-medium mt-0.5" style={{ color: SB.color }}>{hours}</p>
-              </div>
-            </div>
-          )}
-          {!phone && !email && !hours && (
-            <p className="text-sm" style={{ color: SB.faint }}>Contact info managed by admin.</p>
           )}
         </div>
 
-        {/* FAQ — from CMS if available, else empty */}
-        <div className="lg:col-span-2 space-y-3">
-          <div className="flex items-center gap-2">
-            <HelpCircle className="w-4 h-4" style={{ color: SB.orange }} />
-            <h2 className="vendor-section-title" style={{ color: SB.muted }}>Frequently Asked Questions</h2>
+        {/* Contact Info — from CMS */}
+        <div className="space-y-5">
+          <div className="rounded-2xl p-5 space-y-4" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
+            <h2 className="vendor-section-title" style={{ color: SB.muted }}>Contact Structbay</h2>
+            {phone && (
+              <div className="flex items-start gap-3 p-3 rounded-xl" style={{ background: SB.bg, border: `1px solid ${SB.border}` }}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--sb-orange-subtle)' }}>
+                  <Phone className="w-4 h-4" style={{ color: SB.orange }} />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: SB.faint }}>Phone</p>
+                  <p className="text-sm font-medium mt-0.5" style={{ color: SB.color }}>{phone}</p>
+                </div>
+              </div>
+            )}
+            {email && (
+              <div className="flex items-start gap-3 p-3 rounded-xl" style={{ background: SB.bg, border: `1px solid ${SB.border}` }}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--sb-orange-subtle)' }}>
+                  <Mail className="w-4 h-4" style={{ color: SB.orange }} />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: SB.faint }}>Email</p>
+                  <p className="text-sm font-medium mt-0.5" style={{ color: SB.color }}>{email}</p>
+                </div>
+              </div>
+            )}
+            {hours && (
+              <div className="flex items-start gap-3 p-3 rounded-xl" style={{ background: SB.bg, border: `1px solid ${SB.border}` }}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--sb-orange-subtle)' }}>
+                  <Clock className="w-4 h-4" style={{ color: SB.orange }} />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: SB.faint }}>Hours</p>
+                  <p className="text-sm font-medium mt-0.5" style={{ color: SB.color }}>{hours}</p>
+                </div>
+              </div>
+            )}
+            {!phone && !email && !hours && (
+              <p className="text-sm" style={{ color: SB.faint }}>Contact info managed by admin.</p>
+            )}
           </div>
-          {faqs.length === 0 ? (
-            <p className="text-sm" style={{ color: SB.faint }}>FAQs are managed by admin in the CMS.</p>
-          ) : (
-            faqs.map((faq: any) => <FaqItem key={faq.question || faq.q} q={faq.question || faq.q} a={faq.answer || faq.a} />)
-          )}
+          
+          <div className="rounded-2xl p-5 space-y-4" style={{ background: SB.card, border: `1px solid ${SB.border}` }}>
+            <div className="flex items-center gap-2 mb-2">
+              <HelpCircle className="w-4 h-4" style={{ color: SB.orange }} />
+              <h2 className="vendor-section-title" style={{ color: SB.muted }}>FAQs</h2>
+            </div>
+            {faqs.length === 0 ? (
+              <p className="text-sm" style={{ color: SB.faint }}>FAQs are managed by admin in the CMS.</p>
+            ) : (
+              faqs.map((faq: any) => <FaqItem key={faq.question || faq.q} q={faq.question || faq.q} a={faq.answer || faq.a} />)
+            )}
+          </div>
         </div>
       </div>
     </div>

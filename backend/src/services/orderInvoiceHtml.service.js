@@ -116,19 +116,33 @@ function buildOrderAcknowledgementHtml(order) {
     <div style="padding:24px;">
       <p style="margin:0 0 16px;font-size:13px;color:#444;line-height:1.5;">
         Thank you for your order. Below is a summary for your records.
-        <strong style="color:#171717;">Official tax invoices</strong> (where applicable) may be issued at dispatch or delivery as per Structbay and vendor fulfilment.
       </p>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px;">
         <div style="background:#fff;border-radius:12px;padding:14px 16px;border:1px solid #e5e5e5;">
-          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#666;font-weight:700;margin-bottom:8px;">Bill to / Ship to</div>
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#666;font-weight:700;margin-bottom:8px;">Bill to</div>
           <div style="font-size:14px;line-height:1.55;">
-            <strong>${esc(addr.name || '—')}</strong><br/>
+            <strong>${esc(o.customer?.name || addr.name || '—')}</strong><br/>
+            ${o.customer?.companyName ? `<strong>Company:</strong> ${esc(o.customer.companyName)}<br/>` : ''}
+            ${o.customer?.gstin ? `<strong>GSTIN:</strong> ${esc(o.customer.gstin)}<br/>` : ''}
             ${esc(addr.line1 || '')}${addr.line1 ? '<br/>' : ''}
             ${esc(addr.line2 || '')}${addr.line2 ? '<br/>' : ''}
             ${esc([addr.city, addr.state].filter(Boolean).join(', '))}${addr.city || addr.state ? '<br/>' : ''}
             PIN: ${esc(addr.pincode || '—')}<br/>
-            ${addr.phone ? `Phone: ${esc(addr.phone)}` : ''}
+            ${addr.phone ? `Phone: ${esc(addr.phone)}` : (o.customer?.phone ? `Phone: ${esc(o.customer.phone)}` : '')}
+          </div>
+        </div>
+        <div style="background:#fff;border-radius:12px;padding:14px 16px;border:1px solid #e5e5e5;">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#666;font-weight:700;margin-bottom:8px;">Ship to</div>
+          <div style="font-size:14px;line-height:1.55;">
+            <strong>${esc(o.customer?.name || addr.name || '—')}</strong><br/>
+            ${o.customer?.companyName ? `<strong>Company:</strong> ${esc(o.customer.companyName)}<br/>` : ''}
+            ${o.customer?.gstin ? `<strong>GSTIN:</strong> ${esc(o.customer.gstin)}<br/>` : ''}
+            ${esc(addr.line1 || '')}${addr.line1 ? '<br/>' : ''}
+            ${esc(addr.line2 || '')}${addr.line2 ? '<br/>' : ''}
+            ${esc([addr.city, addr.state].filter(Boolean).join(', '))}${addr.city || addr.state ? '<br/>' : ''}
+            PIN: ${esc(addr.pincode || '—')}<br/>
+            ${addr.phone ? `Phone: ${esc(addr.phone)}` : (o.customer?.phone ? `Phone: ${esc(o.customer.phone)}` : '')}
           </div>
         </div>
         <div style="background:#fff;border-radius:12px;padding:14px 16px;border:1px solid #e5e5e5;">
@@ -138,7 +152,6 @@ function buildOrderAcknowledgementHtml(order) {
             <div><strong>Date</strong> ${esc(formatDate(o.createdAt))}</div>
             <div><strong>Warehouse city</strong> ${cityLabel || '—'}</div>
             <div><strong>Payment</strong> ${esc(o.paymentMethod || '—')} · <strong>Status</strong> ${esc(o.paymentStatus || '—')}</div>
-            <div><strong>Fulfilment</strong> ${esc(o.status || '—')}</div>
           </div>
         </div>
       </div>

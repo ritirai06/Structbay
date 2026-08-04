@@ -49,7 +49,7 @@ exports.onTime = asyncHandler(async (req, res) => {
       late:    { $sum: '$late' },
       avgDelay:{ $avg: { $cond: [{ $gt: ['$daysDiff', 0] }, '$daysDiff', null] } },
     }},
-    { $addFields: { onTimeRate: { $cond: ['$total', { $multiply: [{ $divide: ['$onTime', '$total'] }, 100] }, 0] } } },
+    { $addFields: { onTimeRate: { $cond: [{ $gt: ['$total', 0] }, { $multiply: [{ $divide: ['$onTime', '$total'] }, 100] }, 0] } } },
   ]);
 
   return ApiResponse.success(res, 200, 'On-time delivery report.', data[0] || {});
@@ -75,7 +75,7 @@ exports.partnerPerformance = asyncHandler(async (req, res) => {
         ],
       }},
     }},
-    { $addFields: { successRate: { $cond: ['$total', { $multiply: [{ $divide: ['$delivered', '$total'] }, 100] }, 0] } } },
+    { $addFields: { successRate: { $cond: [{ $gt: ['$total', 0] }, { $multiply: [{ $divide: ['$delivered', '$total'] }, 100] }, 0] } } },
     { $sort: { successRate: -1 } },
   ]);
 
@@ -101,11 +101,11 @@ exports.vendorWise = asyncHandler(async (req, res) => {
         ],
       }},
     }},
-    { $addFields: { deliveryRate: { $cond: ['$total', { $multiply: [{ $divide: ['$delivered', '$total'] }, 100] }, 0] } } },
+    { $addFields: { deliveryRate: { $cond: [{ $gt: ['$total', 0] }, { $multiply: [{ $divide: ['$delivered', '$total'] }, 100] }, 0] } } },
     { $sort: { deliveryRate: -1 } },
     { $limit: Number(limit) },
     { $lookup: { from: 'vendors', localField: '_id', foreignField: '_id', as: 'vendor' } },
-    { $unwind: { path: '$vendor', preserveNullAndEmpty: true } },
+    { $unwind: { path: '$vendor', preserveNullAndEmptyArrays: true } },
   ]);
 
   return ApiResponse.success(res, 200, 'Vendor delivery performance.', data);
@@ -124,10 +124,10 @@ exports.cityWise = asyncHandler(async (req, res) => {
       delivered: { $sum: { $cond: [{ $in: ['$status', ['DELIVERED', 'COMPLETED']] }, 1, 0] } },
       cancelled: { $sum: { $cond: [{ $eq: ['$status', 'CANCELLED'] }, 1, 0] } },
     }},
-    { $addFields: { deliveryRate: { $cond: ['$total', { $multiply: [{ $divide: ['$delivered', '$total'] }, 100] }, 0] } } },
+    { $addFields: { deliveryRate: { $cond: [{ $gt: ['$total', 0] }, { $multiply: [{ $divide: ['$delivered', '$total'] }, 100] }, 0] } } },
     { $sort: { deliveryRate: -1 } },
     { $lookup: { from: 'cities', localField: '_id', foreignField: '_id', as: 'city' } },
-    { $unwind: { path: '$city', preserveNullAndEmpty: true } },
+    { $unwind: { path: '$city', preserveNullAndEmptyArrays: true } },
   ]);
 
   return ApiResponse.success(res, 200, 'City-wise delivery report.', data);

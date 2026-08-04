@@ -38,7 +38,9 @@ exports.getChat = asyncHandler(async (req, res) => {
     }, { arrayFilters: [{ 'el.senderType': 'ADMIN', 'el.isRead': false }] });
   }
 
-  const refreshed = await OrderChat.findById(chat._id).populate('customer', 'name email');
+  const refreshed = await OrderChat.findById(chat._id)
+    .populate('customer', 'name email')
+    .populate('masterOrder', 'orderNumber');
   return ApiResponse.success(res, 200, 'Chat retrieved.', refreshed);
 });
 

@@ -203,11 +203,36 @@ async function assignOrderLineFulfillment({
           if (!EARLY_VO_STATUSES.has(vendorOrder.status)) {
             throw new AppError('Cannot reassign vendor after fulfillment has progressed.', 409);
           }
-          // Remove the item from the old vendor order
-          vendorOrder.items = vendorOrder.items.filter(i => String(i.masterItemId) !== String(item._id));
-          vendorOrder.totalAmount = vendorOrder.items.reduce((sum, i) => sum + (Number(i.lineTotal) || 0), 0);
-          await vendorOrder.save();
-          vendorOrder = null; // Force finding/creating a new vendor order for the new vendor
+          
+          if (vendorOrder.items.length === 1) {
+            // Reassign the existing sub-order instead of creating a new one
+            const oldVendorId = vendorOrder.vendor;
+            vendorOrder.vendor = vendor._id;
+            vendorOrder.status = 'NEW_ASSIGNED';
+            vendorOrder.assignedBy = adminUserId;
+            vendorOrder.assignedAt = new Date();
+            
+            vendorOrder.statusHistory.push({
+              status: 'NEW_ASSIGNED',
+              updatedBy: adminUserId,
+              model: 'User',
+              note: `Reassigned from vendor ${oldVendorId} to ${vendor._id} by admin.`,
+              timestamp: new Date()
+            });
+            
+            vendorOrder.deliveryType = effectiveType;
+            vendorOrder.items[0] = buildVoItemFromOrderLine(item);
+            vendorOrder.totalAmount = vendorOrder.items.reduce((sum, i) => sum + (Number(i.lineTotal) || 0), 0);
+            vendorOrder.markModified('items');
+            await vendorOrder.save();
+          } else {
+            // If the sub-order contains multiple items and we're only reassigning ONE of them,
+            // we must split it by removing it from the old vendor order and creating a new one.
+            vendorOrder.items = vendorOrder.items.filter(i => String(i.masterItemId) !== String(item._id));
+            vendorOrder.totalAmount = vendorOrder.items.reduce((sum, i) => sum + (Number(i.lineTotal) || 0), 0);
+            await vendorOrder.save();
+            vendorOrder = null; // Force finding/creating a new vendor order for the new vendor
+          }
         } else {
           // Vendor is the same; update the item details
           vendorOrder.deliveryType = effectiveType;

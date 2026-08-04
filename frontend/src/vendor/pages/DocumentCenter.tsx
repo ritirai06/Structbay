@@ -40,7 +40,6 @@ export function DocumentCenter() {
   const [docNumber, setDocNumber] = useState('');
   const [issueDate, setIssueDate] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
-  const [notes, setNotes] = useState('');
   const [file, setFile] = useState<File | null>(null);
 
   async function load() {
@@ -66,10 +65,9 @@ export function DocumentCenter() {
       if (docNumber) form.append('documentNumber', docNumber);
       if (issueDate) form.append('issueDate', issueDate);
       if (expiryDate)form.append('expiryDate', expiryDate);
-      if (notes)     form.append('notes', notes);
       await api.uploadDocument(form);
       setMsg({ type: 'success', text: 'Document uploaded successfully!' });
-      setFile(null); setDocName(''); setDocNumber(''); setIssueDate(''); setExpiryDate(''); setNotes('');
+      setFile(null); setDocName(''); setDocNumber(''); setIssueDate(''); setExpiryDate('');
       setShowUpload(false);
       load();
     } catch (err: any) {
@@ -151,11 +149,7 @@ export function DocumentCenter() {
                 <input type="date" value={expiryDate} onChange={e => setExpiryDate(e.target.value)} className={inputCls} style={inputStyle} />
               </div>
             </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: SB.muted }}>Notes</label>
-              <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
-                placeholder="Optional notes" className={inputCls} style={inputStyle} />
-            </div>
+
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: SB.muted }}>
                 File <span className="text-red-400">*</span>

@@ -26,6 +26,7 @@ import { ShippingLabelCard } from "../components/order/ShippingLabelCard";
 import { adminToast } from "../lib/adminToast";
 import { AdminInputModal } from "../components/AdminInputModal";
 import { ProductCard } from "../components/order/ProductCard";
+import { AdminCustomerChatBox } from "../components/order/AdminCustomerChatBox";
 
 type InputModalState = {
   title: string;
@@ -169,10 +170,10 @@ export function OrderDetailPage() {
     };
   }, [order?._id, order?.vendorOrders]);
 
-  const updateStatus = async (status: string, note = "") => {
+  const updateStatus = async (status: string) => {
     if (!order?._id) return;
     try {
-      await apiFetch(`/orders/${order._id}/status`, { method: "PATCH", body: JSON.stringify({ status, note }) });
+      await apiFetch(`/orders/${order._id}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
       await loadOrder();
       adminToast.success("Order status updated");
     } catch (e) {
@@ -182,8 +183,7 @@ export function OrderDetailPage() {
 
   const saveStatus = async () => {
     setStatusSaving(true);
-    await updateStatus(statusDraft.status, statusDraft.note);
-    setStatusDraft((prev) => ({ ...prev, note: "" }));
+    await updateStatus(statusDraft.status);
     setStatusSaving(false);
   };
 
@@ -329,6 +329,40 @@ export function OrderDetailPage() {
     }
   };
 
+  const combinedTimeline = useMemo(() => {
+    if (!order) return [];
+    
+    const timeline = (order.statusHistory || []).map((sh: any) => {
+      const d = sh.changedAt || sh.timestamp || new Date().toISOString();
+      return {
+        timestamp: new Date(d).getTime() || 0,
+        dateStr: d,
+        status: sh.status,
+        note: sh.note,
+        source: "Order",
+      };
+    });
+
+    if (order.vendorOrders && Array.isArray(order.vendorOrders)) {
+      order.vendorOrders.forEach((vo: any) => {
+        if (vo.statusHistory && Array.isArray(vo.statusHistory)) {
+          vo.statusHistory.forEach((sh: any) => {
+            const d = sh.timestamp || sh.changedAt || new Date().toISOString();
+            timeline.push({
+              timestamp: new Date(d).getTime() || 0,
+              dateStr: d,
+              status: sh.status,
+              note: sh.note || formatStatusText(sh.status),
+              source: `Sub-order ${vo.orderNumber}`,
+            });
+          });
+        }
+      });
+    }
+
+    return timeline.sort((a: any, b: any) => b.timestamp - a.timestamp);
+  }, [order]);
+
   if (loading) {
     return (
       <div className="admin-page flex justify-center py-24">
@@ -368,40 +402,6 @@ export function OrderDetailPage() {
      return vo && ["DELIVERED", "COMPLETED"].includes(vo.status);
   }).length || 0;
 
-  const combinedTimeline = useMemo(() => {
-    if (!order) return [];
-    
-    const timeline = (order.statusHistory || []).map((sh: any) => {
-      const d = sh.changedAt || sh.timestamp || new Date().toISOString();
-      return {
-        timestamp: new Date(d).getTime() || 0,
-        dateStr: d,
-        status: sh.status,
-        note: sh.note,
-        source: "Order",
-      };
-    });
-
-    if (order.vendorOrders && Array.isArray(order.vendorOrders)) {
-      order.vendorOrders.forEach((vo: any) => {
-        if (vo.statusHistory && Array.isArray(vo.statusHistory)) {
-          vo.statusHistory.forEach((sh: any) => {
-            const d = sh.timestamp || sh.changedAt || new Date().toISOString();
-            timeline.push({
-              timestamp: new Date(d).getTime() || 0,
-              dateStr: d,
-              status: sh.status,
-              note: sh.note || formatStatusText(sh.status),
-              source: `Sub-order ${vo.orderNumber}`,
-            });
-          });
-        }
-      });
-    }
-
-    return timeline.sort((a: any, b: any) => b.timestamp - a.timestamp);
-  }, [order]);
-
   return (
     <div className="admin-page">
       <Link to={adminPath("orders")} className="inline-flex items-center gap-2 text-sm text-sb-ink/60 hover:text-sb-orange mb-4">
@@ -415,9 +415,11 @@ export function OrderDetailPage() {
             {order.customer?.name} · {order.city?.name} · {order.createdAt && new Date(order.createdAt).getTime() ? new Date(order.createdAt).toLocaleString() : '—'}
           </p>
         </div>
-        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border ${ORDER_STATUS_COLORS[order.status] || "bg-sb-cream-secondary text-sb-ink/55 border-sb-ink/12"}`}>
-          {order.status}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold border ${ORDER_STATUS_COLORS[order.status] || "bg-sb-cream-secondary text-sb-ink/55 border-sb-ink/12"}`}>
+            {order.status}
+          </span>
+        </div>
       </div>      {/* Top Header Information */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <InfoTile label="Customer" value={order.customer?.name ?? "—"} sub={order.customer?.phone} />
@@ -561,45 +563,6 @@ export function OrderDetailPage() {
               </WorkflowCard>
             )}
 
-            {/* Tracking Notes */}
-            <WorkflowCard title="Tracking notes" variant="accent">
-              <div className="wf-field">
-                <label className="wf-field__label">Visible to customer</label>
-                <textarea
-                  className="wf-field__input min-h-[100px] resize-y"
-                  placeholder="Pickup window, driver contact…"
-                  value={order.deliveryDetails ?? ""}
-                  onChange={(e) => setOrder((p: any) => ({ ...p, deliveryDetails: e.target.value }))}
-                />
-              </div>
-              <div className="flex flex-col gap-2 pt-1">
-                {order.paymentStatus === "PENDING" && (
-                  <button type="button" onClick={() => openConfirmPaymentModal()} className="wf-btn wf-btn--secondary w-full justify-center">
-                    Confirm payment
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      await apiFetch(`/orders/${order._id}/edit`, {
-                        method: "PATCH",
-                        body: JSON.stringify({ deliveryDetails: order.deliveryDetails ?? "" }),
-                      });
-                      adminToast.success("Notes saved");
-                    } catch (e) {
-                      adminToast.error(e instanceof Error ? e.message : "Could not save notes");
-                    }
-                  }}
-                  className="wf-btn wf-btn--primary w-full justify-center"
-                >
-                  Save notes
-                </button>
-                <Link to={adminPath("orders", order._id, "chat")} className="wf-btn wf-btn--secondary no-underline w-full justify-center">
-                  <MessageCircle className="w-4 h-4" /> Chat
-                </Link>
-              </div>
-            </WorkflowCard>
           </div>
         }
       />
@@ -617,7 +580,8 @@ export function OrderDetailPage() {
         >
           <WorkflowSplit
             main={
-              <WorkflowCard title="Status">
+              <div className="space-y-6">
+                <WorkflowCard title="Status">
                 <div className="flex flex-wrap gap-4">
                   <select
                     className="wf-field__input flex-1 min-w-[200px]"
@@ -626,16 +590,10 @@ export function OrderDetailPage() {
                   >
                     {ALL_ORDER_STATUSES.map((st) => (
                       <option key={st} value={st}>
-                        {st}
+                        {formatStatusText(st)}
                       </option>
                     ))}
                   </select>
-                  <input
-                    className="wf-field__input flex-1 min-w-[200px]"
-                    placeholder="Status note (optional)"
-                    value={statusDraft.note}
-                    onChange={(e) => setStatusDraft((p) => ({ ...p, note: e.target.value }))}
-                  />
                   <button
                     type="button"
                     disabled={statusSaving}
@@ -646,6 +604,8 @@ export function OrderDetailPage() {
                   </button>
                 </div>
               </WorkflowCard>
+              <AdminCustomerChatBox orderId={order._id} />
+            </div>
             }
             aside={
               <WorkflowCard title="Summary" variant="muted">

@@ -21,7 +21,7 @@ exports.assignVendors = asyncHandler(async (req, res) => {
 
   const NONASSIGNABLE = ['CANCELLED', 'DELIVERED', 'COMPLETED'];
   if (NONASSIGNABLE.includes(order.status)) {
-    throw new AppError(`Cannot assign vendor to order in status: ${order.status}`, 422);
+    throw new AppError('This order has already been completed or cancelled and cannot be assigned to a vendor.', 422);
   }
 
   // Existing sub-order count to generate index

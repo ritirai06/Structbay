@@ -6,12 +6,12 @@
 /** Master-order statuses where customer may still cancel. */
 const CUSTOMER_CANCELLABLE_MASTER_ORDER_STATUSES = [
   'PENDING',
-  'PAID',
-  'VENDOR_ASSIGNMENT_PENDING',
 ];
 
 /** Master-order statuses that always block cancellation (dispatch / terminal). */
 const CUSTOMER_NON_CANCELLABLE_MASTER_ORDER_STATUSES = [
+  'PAID',
+  'VENDOR_ASSIGNMENT_PENDING',
   'PROCESSING',
   'READY_FOR_DISPATCH',
   'PARTIALLY_DISPATCHED',

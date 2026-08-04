@@ -199,4 +199,9 @@ const cmsController = require('../controllers/cms.controller');
 router.get('/cms/commerce-settings',    ...adminOnly, cmsController.getCommerceSettings);
 router.put('/cms/commerce-settings',    ...adminOnly, cmsController.updateCommerceSettings);
 
+// ─── Global Settings ──────────────────────────────────────────────────────────
+const adminSettingsController = require('../controllers/adminSettingsController');
+router.get('/settings',    ...adminOnly, asyncHandler(adminSettingsController.getSettings));
+router.put('/settings',    ...adminOnly, asyncHandler(adminSettingsController.updateSettings));
+
 module.exports = router;

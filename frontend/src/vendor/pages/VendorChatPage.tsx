@@ -45,7 +45,7 @@ export function VendorChatPage() {
         <ArrowLeft className="w-4 h-4" /> Back to order
       </Link>
       <h1 className="text-xl font-semibold text-sb-ink mb-1">Chat with Admin</h1>
-      <p className="text-xs mb-6" style={{ color: SB.muted }}>Order ID: {orderId}</p>
+
 
       {loading ? (
         <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-sb-orange" /></div>

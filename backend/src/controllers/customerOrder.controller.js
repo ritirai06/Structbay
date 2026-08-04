@@ -57,7 +57,7 @@ exports.cancelOrder = asyncHandler(async (req, res) => {
     throw new AppError(
       order.status === 'READY_FOR_DISPATCH'
         ? 'Order cannot be cancelled once it is Ready for Dispatch. Contact Structbay support.'
-        : `Order cannot be cancelled at status: ${order.status}.`,
+        : 'This order has progressed too far and cannot be cancelled automatically. Please contact Structbay support.',
       422
     );
   }

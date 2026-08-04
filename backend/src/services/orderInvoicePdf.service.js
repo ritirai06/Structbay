@@ -81,25 +81,32 @@ function buildOrderAcknowledgementPdf(order) {
     let y = 108;
     doc.fillColor(gray).fontSize(10).font('Helvetica')
       .text(
-        'Thank you for your order. Below is a summary for your records. Official tax invoices may be issued at dispatch or delivery.',
+        'Thank you for your order. Below is a summary for your records.',
         48,
         y,
         { width: pageW - 96, lineGap: 2 }
       );
     y = doc.y + 18;
 
-    const colW = (pageW - 96 - 12) / 2;
-    doc.fillColor(black).fontSize(9).font('Helvetica-Bold').text('BILL TO / SHIP TO', 48, y);
-    doc.text('ORDER DETAILS', 48 + colW + 12, y);
+    const colW = (pageW - 96 - 24) / 3;
+    doc.fillColor(black).fontSize(9).font('Helvetica-Bold').text('BILL TO', 48, y);
+    doc.text('SHIP TO', 48 + colW + 12, y);
+    doc.text('ORDER DETAILS', 48 + colW * 2 + 24, y);
     y += 14;
 
+    const customerName = o.customer?.name || addr.name || '—';
+    const companyName = o.customer?.companyName ? `Company: ${o.customer.companyName}` : '';
+    const gstin = o.customer?.gstin ? `GSTIN: ${o.customer.gstin}` : '';
+
     const addrLines = [
-      addr.name || '—',
+      customerName,
+      companyName,
+      gstin,
       addr.line1 || '',
       addr.line2 || '',
       [addr.city, addr.state].filter(Boolean).join(', '),
       addr.pincode ? `PIN: ${addr.pincode}` : '',
-      addr.phone ? `Phone: ${addr.phone}` : '',
+      addr.phone ? `Phone: ${addr.phone}` : (o.customer?.phone ? `Phone: ${o.customer.phone}` : ''),
     ].filter(Boolean);
 
     const detailLines = [
@@ -107,16 +114,18 @@ function buildOrderAcknowledgementPdf(order) {
       `Date ${formatDate(o.createdAt)}`,
       `City ${o.city?.name || '—'}`,
       `Payment ${o.paymentMethod || '—'} · ${o.paymentStatus || '—'}`,
-      `Status ${o.status || '—'}`,
     ];
 
     doc.font('Helvetica').fontSize(9).fillColor(black);
     const boxTop = y;
-    doc.roundedRect(48, boxTop, colW, 88, 6).strokeColor('#e5e5e5').lineWidth(1).stroke();
-    doc.roundedRect(48 + colW + 12, boxTop, colW, 88, 6).stroke();
+    const boxH = 110;
+    doc.roundedRect(48, boxTop, colW, boxH, 6).strokeColor('#e5e5e5').lineWidth(1).stroke();
+    doc.roundedRect(48 + colW + 12, boxTop, colW, boxH, 6).stroke();
+    doc.roundedRect(48 + colW * 2 + 24, boxTop, colW, boxH, 6).stroke();
     doc.text(addrLines.join('\n'), 56, boxTop + 8, { width: colW - 16, lineGap: 2 });
-    doc.text(detailLines.join('\n'), 56 + colW + 12, boxTop + 8, { width: colW - 16, lineGap: 2 });
-    y = boxTop + 100;
+    doc.text(addrLines.join('\n'), 56 + colW + 12, boxTop + 8, { width: colW - 16, lineGap: 2 });
+    doc.text(detailLines.join('\n'), 56 + colW * 2 + 24, boxTop + 8, { width: colW - 16, lineGap: 2 });
+    y = boxTop + boxH + 12;
 
     doc.fillColor(black).fontSize(10).font('Helvetica-Bold');
     const cols = { item: 48, qty: 320, rate: 400, amt: pageW - 48 - 80 };

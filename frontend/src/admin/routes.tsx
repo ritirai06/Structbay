@@ -24,6 +24,7 @@ import { AuditLogs } from "./pages/AuditLogs";
 import { Settings } from "./pages/Settings";
 import { AdminUsers } from "./pages/AdminUsers";
 import { CouponManagement } from "./pages/CouponManagement";
+import { VendorSupport } from "./pages/VendorSupport";
 
 export const router = createBrowserRouter([
   {
@@ -58,6 +59,7 @@ export const router = createBrowserRouter([
       { path: "audit-logs", Component: AuditLogs },
       { path: "settings", Component: Settings },
       { path: "admin-users", Component: AdminUsers },
+      { path: "vendor-support", Component: VendorSupport },
     ],
   },
 ]);

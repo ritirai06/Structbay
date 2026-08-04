@@ -21,6 +21,7 @@ const staffNotificationSchema = new mongoose.Schema(
         'ORDER_DISPATCHED',
         'ORDER_DELIVERED',
         'DELIVERY_CONFIRMED',
+        'SUPPORT_TICKET',
       ],
     },
     title: { type: String, required: true },

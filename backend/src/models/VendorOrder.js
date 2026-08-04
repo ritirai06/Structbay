@@ -75,7 +75,6 @@ const vendorOrderSchema = new mongoose.Schema(
         status: String,
         updatedBy: { type: mongoose.Schema.Types.ObjectId, refPath: 'statusHistory.model' },
         model: { type: String, enum: ['User', 'Vendor'] },
-        note: String,
         timestamp: { type: Date, default: Date.now },
       },
     ],
@@ -112,12 +111,12 @@ const vendorOrderSchema = new mongoose.Schema(
       ],
       invoiceFileUrl: String,
       invoiceCloudinaryId: String,
-      remarks: String,
     },
 
     /** After Structbay sends docs; vendor fills LR / transporter etc. */
     shipmentDispatch: {
       transporterName: String,
+      transporterGstNumber: String,
       vehicleNumber: String,
       lrNumber: String,
       trackingNumber: String,
@@ -162,7 +161,6 @@ const vendorOrderSchema = new mongoose.Schema(
     workflowVersion: { type: Number, default: 2 },
 
     rejectReason: String,
-    adminChangeRequestNote: String,
 
     isDeleted: { type: Boolean, default: false, select: false },
   },

@@ -17,7 +17,7 @@ exports.currentStock = asyncHandler(async (req, res) => {
     ...(categoryId ? [{ $match: { 'product.category': require('mongoose').Types.ObjectId(categoryId) } }] : []),
     ...(brandId    ? [{ $match: { 'product.brand':    require('mongoose').Types.ObjectId(brandId)    } }] : []),
     { $lookup: { from: 'cities', localField: 'city', foreignField: '_id', as: 'city' } },
-    { $unwind: { path: '$city', preserveNullAndEmpty: true } },
+    { $unwind: { path: '$city', preserveNullAndEmptyArrays: true } },
     { $addFields: { available: { $max: [0, { $subtract: ['$quantity', '$reserved'] }] } } },
     { $sort: { quantity: 1 } },
     { $skip: (pageNum - 1) * limitNum },
@@ -78,7 +78,7 @@ exports.cityWise = asyncHandler(async (req, res) => {
       }, 1, 0] } },
     }},
     { $lookup: { from: 'cities', localField: '_id', foreignField: '_id', as: 'city' } },
-    { $unwind: { path: '$city', preserveNullAndEmpty: true } },
+    { $unwind: { path: '$city', preserveNullAndEmptyArrays: true } },
     { $sort: { totalQuantity: -1 } },
   ]);
   return ApiResponse.success(res, 200, 'City-wise inventory.', data);

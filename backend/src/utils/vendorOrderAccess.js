@@ -1,5 +1,6 @@
 const Vendor = require('../models/Vendor');
 const { isValidId } = require('../lib/apiShape');
+const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const VendorOrder = require('../models/VendorOrder');
 
@@ -15,7 +16,7 @@ async function vendorIdsForUser(user) {
     const v = await Vendor.findOne({ email: String(user.email).toLowerCase() }).select('_id').lean();
     if (v?._id) set.add(v._id.toString());
   }
-  return [...set].map((id) => String(id));
+  return [...set].map((id) => new mongoose.Types.ObjectId(id));
 }
 
 /**

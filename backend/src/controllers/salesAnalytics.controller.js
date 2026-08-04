@@ -78,7 +78,7 @@ exports.topProducts = asyncHandler(async (req, res) => {
     { $sort: { revenue: -1 } },
     { $limit: Number(limit) },
     { $lookup: { from: 'products', localField: '_id', foreignField: '_id', as: 'product' } },
-    { $unwind: { path: '$product', preserveNullAndEmpty: true } },
+    { $unwind: { path: '$product', preserveNullAndEmptyArrays: true } },
   ]);
 
   return ApiResponse.success(res, 200, 'Top products by revenue.', data);
@@ -99,7 +99,7 @@ exports.topCities = asyncHandler(async (req, res) => {
     { $sort: { revenue: -1 } },
     { $limit: Number(limit) },
     { $lookup: { from: 'cities', localField: '_id', foreignField: '_id', as: 'city' } },
-    { $unwind: { path: '$city', preserveNullAndEmpty: true } },
+    { $unwind: { path: '$city', preserveNullAndEmptyArrays: true } },
   ]);
 
   return ApiResponse.success(res, 200, 'Top cities by revenue.', data);
@@ -114,7 +114,7 @@ exports.topCategories = asyncHandler(async (req, res) => {
     { $match: { ...dateFilter, status: { $ne: 'CANCELLED' } } },
     { $unwind: '$items' },
     { $lookup: { from: 'products', localField: 'items.product', foreignField: '_id', as: 'prod' } },
-    { $unwind: { path: '$prod', preserveNullAndEmpty: true } },
+    { $unwind: { path: '$prod', preserveNullAndEmptyArrays: true } },
     { $group: {
       _id:      '$prod.category',
       revenue:  { $sum: '$items.lineTotal' },
@@ -124,7 +124,7 @@ exports.topCategories = asyncHandler(async (req, res) => {
     { $sort: { revenue: -1 } },
     { $limit: Number(limit) },
     { $lookup: { from: 'categories', localField: '_id', foreignField: '_id', as: 'category' } },
-    { $unwind: { path: '$category', preserveNullAndEmpty: true } },
+    { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
   ]);
 
   return ApiResponse.success(res, 200, 'Top categories by revenue.', data);

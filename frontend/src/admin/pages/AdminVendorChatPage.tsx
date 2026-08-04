@@ -49,7 +49,7 @@ export function AdminVendorChatPage() {
         <ArrowLeft className="w-4 h-4" /> Back
       </Link>
       <h1 className="text-xl font-semibold text-sb-ink mb-1">Vendor Chat</h1>
-      <p className="text-xs text-sb-ink/50 mb-6">Sub-order ID: {vendorOrderId}</p>
+
 
       {loading ? (
         <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-sb-orange" /></div>

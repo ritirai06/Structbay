@@ -159,7 +159,7 @@ export function WorkflowFilePreview({
 
         if (
           finalUrl.includes('res.cloudinary.com') &&
-          finalUrl.includes('/image/upload/') &&
+          (finalUrl.includes('/image/upload/') || finalUrl.includes('/raw/upload/')) &&
           !ext
         ) {
           const qIdx = finalUrl.indexOf('?');
@@ -175,7 +175,9 @@ export function WorkflowFilePreview({
 
         let downloadUrl = finalUrl;
         if (downloadUrl.includes('res.cloudinary.com') && downloadUrl.includes('/image/upload/')) {
-           downloadUrl = downloadUrl.replace('/image/upload/', '/image/upload/fl_attachment/');
+           const safeName = (name || "document").replace(/[^a-zA-Z0-9_-]/g, '_');
+           const attachStr = ext ? `fl_attachment:${safeName}.${ext}` : `fl_attachment:${safeName}`;
+           downloadUrl = downloadUrl.replace('/image/upload/', `/image/upload/${attachStr}/`);
         }
 
         return (

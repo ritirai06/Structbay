@@ -29,11 +29,11 @@ const productSalesAgg = (matchFilter, sort, limitN) => [
   { $sort: sort },
   { $limit: limitN },
   { $lookup: { from: 'products', localField: 'productId', foreignField: '_id', as: 'product' } },
-  { $unwind: { path: '$product', preserveNullAndEmpty: true } },
+  { $unwind: { path: '$product', preserveNullAndEmptyArrays: true } },
   { $lookup: { from: 'categories', localField: 'product.category', foreignField: '_id', as: 'category' } },
-  { $unwind: { path: '$category', preserveNullAndEmpty: true } },
+  { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
   { $lookup: { from: 'brands', localField: 'product.brand', foreignField: '_id', as: 'brand' } },
-  { $unwind: { path: '$brand', preserveNullAndEmpty: true } },
+  { $unwind: { path: '$brand', preserveNullAndEmptyArrays: true } },
 ];
 
 // ─── GET /reports/products/top-selling ───────────────────────────────────────
@@ -85,7 +85,7 @@ exports.performance = asyncHandler(async (req, res) => {
     { $skip: (pageNum - 1) * limitNum },
     { $limit: limitNum },
     { $lookup: { from: 'products', localField: 'productId', foreignField: '_id', as: 'meta' } },
-    { $unwind: { path: '$meta', preserveNullAndEmpty: true } },
+    { $unwind: { path: '$meta', preserveNullAndEmptyArrays: true } },
   ];
 
   const data = await Order.aggregate(pipeline);
@@ -153,7 +153,7 @@ exports.brandReport = asyncHandler(async (req, res) => {
     { $match: { ...dateFilter, status: { $ne: 'CANCELLED' } } },
     { $unwind: '$items' },
     { $lookup: { from: 'products', localField: 'items.product', foreignField: '_id', as: 'p' } },
-    { $unwind: { path: '$p', preserveNullAndEmpty: true } },
+    { $unwind: { path: '$p', preserveNullAndEmptyArrays: true } },
     { $group: {
       _id:      '$p.brand',
       revenue:  { $sum: '$items.lineTotal' },
@@ -163,7 +163,7 @@ exports.brandReport = asyncHandler(async (req, res) => {
     { $sort: { revenue: -1 } },
     { $limit: Number(limit) },
     { $lookup: { from: 'brands', localField: '_id', foreignField: '_id', as: 'brand' } },
-    { $unwind: { path: '$brand', preserveNullAndEmpty: true } },
+    { $unwind: { path: '$brand', preserveNullAndEmptyArrays: true } },
   ]);
 
   return ApiResponse.success(res, 200, 'Brand report.', data);
@@ -178,7 +178,7 @@ exports.categoryReport = asyncHandler(async (req, res) => {
     { $match: { ...dateFilter, status: { $ne: 'CANCELLED' } } },
     { $unwind: '$items' },
     { $lookup: { from: 'products', localField: 'items.product', foreignField: '_id', as: 'p' } },
-    { $unwind: { path: '$p', preserveNullAndEmpty: true } },
+    { $unwind: { path: '$p', preserveNullAndEmptyArrays: true } },
     { $group: {
       _id:      '$p.category',
       revenue:  { $sum: '$items.lineTotal' },
@@ -188,7 +188,7 @@ exports.categoryReport = asyncHandler(async (req, res) => {
     { $sort: { revenue: -1 } },
     { $limit: Number(limit) },
     { $lookup: { from: 'categories', localField: '_id', foreignField: '_id', as: 'category' } },
-    { $unwind: { path: '$category', preserveNullAndEmpty: true } },
+    { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
   ]);
 
   return ApiResponse.success(res, 200, 'Category report.', data);
@@ -209,11 +209,11 @@ exports.cityReport = asyncHandler(async (req, res) => {
       delivered: { $sum: { $cond: [{ $in: ['$status', ['DELIVERED', 'COMPLETED']] }, 1, 0] } },
     }},
     { $addFields: { conversionRate: {
-      $cond: ['$orders', { $multiply: [{ $divide: ['$delivered', '$orders'] }, 100] }, 0],
+      $cond: [{ $gt: ['$orders', 0] }, { $multiply: [{ $divide: ['$delivered', '$orders'] }, 100] }, 0],
     }}},
     { $sort: { revenue: -1 } },
     { $lookup: { from: 'cities', localField: '_id', foreignField: '_id', as: 'city' } },
-    { $unwind: { path: '$city', preserveNullAndEmpty: true } },
+    { $unwind: { path: '$city', preserveNullAndEmptyArrays: true } },
   ]);
 
   return ApiResponse.success(res, 200, 'City report.', data);

@@ -47,7 +47,7 @@ exports.topCustomers = asyncHandler(async (req, res) => {
     { $sort: { totalSpend: -1 } },
     { $limit: Number(limit) },
     { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'customer' } },
-    { $unwind: { path: '$customer', preserveNullAndEmpty: true } },
+    { $unwind: { path: '$customer', preserveNullAndEmptyArrays: true } },
     { $project: {
       totalSpend: 1, orderCount: 1, avgOrder: 1, lastOrder: 1,
       'customer.name': 1, 'customer.email': 1, 'customer.phone': 1, 'customer.createdAt': 1,

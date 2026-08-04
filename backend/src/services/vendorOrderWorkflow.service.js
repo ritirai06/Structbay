@@ -20,7 +20,7 @@ const WORKFLOW_STATUSES = new Set([
 const TRANSITIONS = {
   NEW_ASSIGNED: ['ACCEPTED', 'REJECTED'],
   ASSIGNED: ['ACCEPTED', 'REJECTED'],
-  ACCEPTED: ['DISPATCH_CONFIRMED'],
+  ACCEPTED: ['READY_FOR_DISPATCH', 'DISPATCH_CONFIRMED'],
   DISPATCH_CONFIRMED: ['READY_FOR_DISPATCH'],
   CHANGES_REQUESTED: ['READY_FOR_DISPATCH'],
   READY_FOR_DISPATCH: ['DISPATCH_APPROVED', 'CHANGES_REQUESTED'],
@@ -53,13 +53,12 @@ async function appendAudit(vendorOrderId, status, remarks, changedBy, changedByM
   });
 }
 
-function pushEmbeddedHistory(vo, status, updatedBy, model, note) {
+function pushEmbeddedHistory(vo, status, updatedBy, model) {
   if (!vo.statusHistory) vo.statusHistory = [];
   vo.statusHistory.push({
     status,
     updatedBy,
     model,
-    note,
     timestamp: new Date(),
   });
 }

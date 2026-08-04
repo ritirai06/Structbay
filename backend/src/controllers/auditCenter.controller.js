@@ -63,7 +63,7 @@ exports.summary = asyncHandler(async (req, res) => {
       { $sort: { count: -1 } },
       { $limit: 10 },
       { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'user' } },
-      { $unwind: { path: '$user', preserveNullAndEmpty: true } },
+      { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
       { $project: { count: 1, 'user.name': 1, 'user.email': 1, 'user.role': 1 } },
     ]),
     AuditLog.countDocuments(dateFilter),

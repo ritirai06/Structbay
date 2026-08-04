@@ -1110,6 +1110,8 @@ export function CategoryListing() {
                         addToCart({
                           id,
                           productSlug: slug,
+                          productId: product._id || product.id || undefined,
+                          categoryId: typeof product.category === 'object' ? product.category._id : product.category,
                           variationId,
                           variationLabel,
                           name: product.name,

@@ -69,6 +69,7 @@ const customerCouponRoutes = require('./src/routes/customer/coupon.routes');
 const paymentRoutes = require('./src/routes/customer/payment.routes');
 const projectRoutes = require('./src/routes/customer/project.routes');
 const contactRoutes = require('./src/routes/contact.routes');
+const supportRoutes = require('./src/routes/support.routes');
 
 const app = express();
 const path = require('path');
@@ -259,6 +260,7 @@ app.use(`${V1}/coupons`, customerCouponRoutes);
 app.use(`${V1}/payments`, paymentRoutes);
 app.use(`${V1}/customer/projects`, projectRoutes);
 app.use(`${V1}/contact`, contactRoutes);
+app.use(`${V1}/support`, supportRoutes);
 
 
 // Serve React build

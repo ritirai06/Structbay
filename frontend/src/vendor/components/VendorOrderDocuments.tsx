@@ -22,9 +22,15 @@ export type VendorOrderDocumentsPayload = {
   has_all?: boolean;
 };
 
-function openDocument(url: string) {
+function openDocument(url: string, download: boolean = false) {
   if (!url) return;
-  window.open(url, '_blank', 'noopener,noreferrer');
+  let finalUrl = url;
+  if (download && url.includes('res.cloudinary.com') && url.includes('/image/upload/') && !url.includes('/fl_attachment/')) {
+    const m = url.match(/\/([^\/]+\.pdf)(\?|$)/i);
+    const filename = m ? m[1] : 'document.pdf';
+    finalUrl = url.replace('/image/upload/', `/image/upload/fl_attachment:${filename}/`);
+  }
+  window.open(finalUrl, '_blank', 'noopener,noreferrer');
 }
 
 function DocButton({
@@ -56,7 +62,7 @@ function DocButton({
         </button>
         <button
           type="button"
-          onClick={() => openDocument(url)}
+          onClick={() => openDocument(url, true)}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
           style={{ background: 'var(--sb-orange)', color: '#0D0D0D' }}
         >

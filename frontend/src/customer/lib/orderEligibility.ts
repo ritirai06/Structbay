@@ -5,9 +5,7 @@
  */
 
 export const CUSTOMER_CANCELLABLE_ORDER_STATUSES = new Set([
-  "PENDING",
-  "PAID",
-  "VENDOR_ASSIGNMENT_PENDING",
+  "PENDING"
 ]);
 
 export const CUSTOMER_REPLACEMENT_ORDER_STATUSES = new Set([

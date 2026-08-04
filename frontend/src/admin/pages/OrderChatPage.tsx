@@ -46,7 +46,7 @@ export function OrderChatPage() {
         <ArrowLeft className="w-4 h-4" /> Back to orders
       </Link>
       <h1 className="text-xl font-semibold text-sb-ink mb-1">Order chat</h1>
-      <p className="text-xs text-sb-ink/50 mb-6">Order ID: {orderId}</p>
+      <p className="text-xs text-sb-ink/50 mb-6">Order ID: {chat?.masterOrder?.orderNumber || orderId}</p>
 
       {loading ? (
         <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-sb-orange" /></div>
@@ -61,7 +61,7 @@ export function OrderChatPage() {
                 className={`rounded-lg px-3 py-2 text-sm max-w-[90%] ${
                   m.senderType === "ADMIN"
                     ? "ml-auto bg-sb-orange/15 text-sb-ink border border-sb-orange/25"
-                    : "mr-auto bg-[#111] text-sb-ink/60 border border-sb-ink/10"
+                    : "mr-auto bg-white text-sb-ink border border-sb-ink/10"
                 }`}
               >
                 <p className="text-[10px] uppercase tracking-wider opacity-60 mb-0.5">{m.senderType}</p>

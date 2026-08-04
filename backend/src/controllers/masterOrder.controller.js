@@ -88,7 +88,7 @@ exports.create = asyncHandler(async (req, res) => {
   const order = await Order.create({
     ...req.body,
     orderNumber,
-    statusHistory: [{ status: req.body.status || 'PENDING', changedBy: req.user._id, note: 'Created by admin.' }],
+    statusHistory: [{ status: req.body.status || 'PENDING', changedBy: req.user._id }],
   });
   await logAction({ adminId: req.user._id, action: 'CREATE', module: 'Order',
     targetId: order._id.toString(), description: `Admin created order ${orderNumber}`, ipAddress: req.ip });
@@ -99,7 +99,7 @@ exports.create = asyncHandler(async (req, res) => {
 
 // ─── PATCH /orders/:id/status ─────────────────────────────────────────────────
 exports.updateStatus = asyncHandler(async (req, res) => {
-  const { status, note } = req.body;
+  const { status } = req.body;
   if (!status) throw new AppError('status is required.', 400);
 
   const order = await Order.findById(req.params.id);
@@ -107,7 +107,7 @@ exports.updateStatus = asyncHandler(async (req, res) => {
 
   const old = order.status;
   order.status = status;
-  order.statusHistory.push({ status, changedBy: req.user._id, note });
+  order.statusHistory.push({ status, changedBy: req.user._id });
   await order.save();
 
   // Deduct inventory on delivery
@@ -129,12 +129,16 @@ exports.updateStatus = asyncHandler(async (req, res) => {
 
 // ─── PATCH /orders/:id/edit ───────────────────────────────────────────────────
 exports.editOrder = asyncHandler(async (req, res) => {
-  const allowed = ['adminNotes', 'notes', 'shippingAddress', 'paymentMethod', 'deliveryDetails'];
+  const allowed = ['shippingAddress', 'paymentMethod'];
   const updates = {};
   allowed.forEach((f) => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });
 
-  const order = await Order.findByIdAndUpdate(req.params.id, updates, { new: true });
+  const order = await Order.findById(req.params.id);
   if (!order) throw new AppError('Order not found.', 404);
+
+  Object.assign(order, updates);
+
+  await order.save();
 
   await logOrderActivity({ masterOrder: order._id, actorType: 'ADMIN', actor: req.user._id,
     action: 'ORDER_UPDATED', description: 'Order details updated.', newValue: updates });

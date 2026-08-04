@@ -133,7 +133,7 @@ export function buildCartSummaryFromLines(
     for (const coupon of coupons) {
       let applicableSubtotal = 0;
       for (const line of lines) {
-        const catId = typeof line.product.category === 'object' ? (line.product.category as any)?._id : line.product.category;
+        const catId = line.categoryId;
         if (!coupon.applicableCategories || coupon.applicableCategories.length === 0 || (catId && coupon.applicableCategories.includes(catId))) {
           applicableSubtotal += lineSubtotalExGst(line);
         }

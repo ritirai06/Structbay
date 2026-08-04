@@ -32,7 +32,7 @@ const NON_DELETABLE_ORDER_STATUSES = new Set([
 ]);
 
 function orderCanSoftDelete(status: string) {
-  return !NON_DELETABLE_ORDER_STATUSES.has(status);
+  return true; // Allow admin to delete any order as requested
 }
 
 export function OrderManagement() {
@@ -295,12 +295,8 @@ export function OrderManagement() {
                           onClick={() =>
                             deleteHook.requestDelete([rowId], `order ${order.orderNumber}`)
                           }
-                          disabled={deleteHook.busy || !orderCanSoftDelete(order.status)}
-                          title={
-                            orderCanSoftDelete(order.status)
-                              ? "Delete"
-                              : "Cannot delete while order is in dispatch or delivery"
-                          }
+                          disabled={deleteHook.busy}
+                          title="Delete"
                         />
                       </div>
                     </td>

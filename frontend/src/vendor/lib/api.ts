@@ -159,6 +159,9 @@ export const api = {
   getActivityLogs: (page = 1) => req<any>('GET', `/activity-logs?page=${page}`),
 
   // ── Support ─────────────────────────────────────────────────────────────
+  getSupportTickets: () => req<any>('GET', '/api/v1/support'),
+  getSupportTicket: (id: string) => req<any>('GET', `/api/v1/support/${id}`),
+  deleteSupportTicket: (id: string) => req<any>('DELETE', `/api/v1/support/${id}`),
   submitSupportTicket: (data: { subject: string; priority: string; description: string }) =>
     req<any>('POST', '/support', data),
 

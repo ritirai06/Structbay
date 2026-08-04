@@ -40,13 +40,13 @@ exports.performance = asyncHandler(async (req, res) => {
       }},
     }},
     { $addFields: {
-      fulfillmentRate:      { $cond: ['$totalOrders', { $multiply: [{ $divide: ['$completed', '$totalOrders'] }, 100] }, 0] },
-      invoiceComplianceRate:{ $cond: ['$totalOrders', { $multiply: [{ $divide: ['$invoiceVerified', '$totalOrders'] }, 100] }, 0] },
+      fulfillmentRate:      { $cond: [{ $gt: ['$totalOrders', 0] }, { $multiply: [{ $divide: ['$completed', '$totalOrders'] }, 100] }, 0] },
+      invoiceComplianceRate:{ $cond: [{ $gt: ['$totalOrders', 0] }, { $multiply: [{ $divide: ['$invoiceVerified', '$totalOrders'] }, 100] }, 0] },
     }},
     { $sort: { fulfillmentRate: -1 } },
     { $limit: Number(limit) },
     { $lookup: { from: 'vendors', localField: '_id', foreignField: '_id', as: 'vendor' } },
-    { $unwind: { path: '$vendor', preserveNullAndEmpty: true } },
+    { $unwind: { path: '$vendor', preserveNullAndEmptyArrays: true } },
     { $project: {
       totalOrders: 1, completed: 1, delivered: 1, cancelled: 1,
       totalRevenue: 1, fulfillmentRate: 1, invoiceComplianceRate: 1,
@@ -81,14 +81,14 @@ exports.ranking = asyncHandler(async (req, res) => {
     { $addFields: {
       score: {
         $add: [
-          { $multiply: [{ $cond: ['$totalOrders', { $divide: ['$completed', '$totalOrders'] }, 0] }, 70] },
-          { $multiply: [{ $cond: ['$totalOrders', { $divide: ['$onTime',    '$totalOrders'] }, 0] }, 30] },
+          { $multiply: [{ $cond: [{ $gt: ['$totalOrders', 0] }, { $divide: ['$completed', '$totalOrders'] }, 0] }, 70] },
+          { $multiply: [{ $cond: [{ $gt: ['$totalOrders', 0] }, { $divide: ['$onTime',    '$totalOrders'] }, 0] }, 30] },
         ],
       },
     }},
     { $sort: { score: -1 } },
     { $lookup: { from: 'vendors', localField: '_id', foreignField: '_id', as: 'vendor' } },
-    { $unwind: { path: '$vendor', preserveNullAndEmpty: true } },
+    { $unwind: { path: '$vendor', preserveNullAndEmptyArrays: true } },
     { $project: {
       totalOrders: 1, completed: 1, revenue: 1, onTime: 1, score: 1,
       'vendor.companyName': 1, 'vendor.contactPerson': 1,
@@ -120,10 +120,10 @@ exports.sla = asyncHandler(async (req, res) => {
       breachedSLA: { $sum: '$breachedSLA' },
       total:       { $sum: 1 },
     }},
-    { $addFields: { slaRate: { $cond: ['$total', { $multiply: [{ $divide: ['$withinSLA', '$total'] }, 100] }, 0] } } },
+    { $addFields: { slaRate: { $cond: [{ $gt: ['$total', 0] }, { $multiply: [{ $divide: ['$withinSLA', '$total'] }, 100] }, 0] } } },
     { $sort: { slaRate: -1 } },
     { $lookup: { from: 'vendors', localField: '_id', foreignField: '_id', as: 'vendor' } },
-    { $unwind: { path: '$vendor', preserveNullAndEmpty: true } },
+    { $unwind: { path: '$vendor', preserveNullAndEmptyArrays: true } },
   ]);
 
   return ApiResponse.success(res, 200, 'Vendor SLA report.', data);

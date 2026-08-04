@@ -5,15 +5,42 @@ import { Input } from "@shared/components/ui/input";
 import { Label } from "@shared/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@shared/components/ui/tabs";
 import { Switch } from "@shared/components/ui/switch";
-import { getApiV1Base } from "../../lib/apiBase";
-import { getAdminToken, adminFetch } from "../../lib/adminApi";
+import { adminFetch } from "../../lib/adminApi";
 
 export function Settings() {
-  const [minimumOrderValue, setMinimumOrderValue] = useState<string>("2000");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
-  // Fetch commerce settings on mount
+  // Commerce
+  const [minimumOrderValue, setMinimumOrderValue] = useState<string>("2000");
+
+  // General
+  const [siteName, setSiteName] = useState("");
+  const [supportEmail, setSupportEmail] = useState("");
+  const [supportPhone, setSupportPhone] = useState("");
+
+  // Email
+  const [smtpHost, setSmtpHost] = useState("");
+  const [smtpPort, setSmtpPort] = useState("");
+  const [smtpUser, setSmtpUser] = useState("");
+  const [smtpPass, setSmtpPass] = useState("");
+
+  // Notifications
+  const [orderNotifications, setOrderNotifications] = useState(true);
+  const [lowStockAlerts, setLowStockAlerts] = useState(true);
+  const [rfqNotifications, setRfqNotifications] = useState(true);
+  const [dailyReports, setDailyReports] = useState(false);
+
+  // Payment
+  const [razorpayKey, setRazorpayKey] = useState("");
+  const [razorpaySecret, setRazorpaySecret] = useState("");
+  const [testMode, setTestMode] = useState(true);
+
+  // Tax
+  const [gstNumber, setGstNumber] = useState("");
+  const [panNumber, setPanNumber] = useState("");
+  const [inclusivePricing, setInclusivePricing] = useState(false);
+
   useEffect(() => {
     const fetchCommerceSettings = async () => {
       try {
@@ -25,16 +52,50 @@ export function Settings() {
         console.error('Failed to fetch commerce settings:', error);
       }
     };
+    
+    const fetchGlobalSettings = async () => {
+      try {
+        const data = await adminFetch<any>('/admin/settings');
+        if (data.success && data.data) {
+          const s = data.data;
+          setSiteName(s.siteName || "");
+          setSupportEmail(s.supportEmail || "");
+          setSupportPhone(s.supportPhone || "");
+          setSmtpHost(s.smtpHost || "");
+          setSmtpPort(s.smtpPort || "");
+          setSmtpUser(s.smtpUser || "");
+          setSmtpPass(s.smtpPass || "");
+          setOrderNotifications(s.orderNotifications ?? true);
+          setLowStockAlerts(s.lowStockAlerts ?? true);
+          setRfqNotifications(s.rfqNotifications ?? true);
+          setDailyReports(s.dailyReports ?? false);
+          setRazorpayKey(s.razorpayKey || "");
+          setRazorpaySecret(s.razorpaySecret || "");
+          setTestMode(s.testMode ?? true);
+          setGstNumber(s.gstNumber || "");
+          setPanNumber(s.panNumber || "");
+          setInclusivePricing(s.inclusivePricing ?? false);
+        }
+      } catch (error) {
+        console.error('Failed to fetch global settings:', error);
+      }
+    };
+
     fetchCommerceSettings();
+    fetchGlobalSettings();
   }, []);
+
+  const showMsg = (type: 'success' | 'error', text: string) => {
+    setMessage({ type, text });
+    setTimeout(() => setMessage(null), 3000);
+  };
 
   const handleSaveCommerceSettings = async () => {
     setLoading(true);
-    setMessage(null);
     try {
       const value = parseInt(minimumOrderValue, 10);
       if (isNaN(value) || value < 0) {
-        setMessage({ type: 'error', text: 'Please enter a valid positive number.' });
+        showMsg('error', 'Please enter a valid positive number.');
         setLoading(false);
         return;
       }
@@ -42,13 +103,34 @@ export function Settings() {
         method: 'PUT',
         body: JSON.stringify({ minimumOrderValue: value }),
       });
-      if (data.success) {
-        setMessage({ type: 'success', text: 'Commerce settings saved successfully.' });
-      } else {
-        setMessage({ type: 'error', text: 'Failed to save settings.' });
-      }
+      if (data.success) showMsg('success', 'Commerce settings saved successfully.');
+      else showMsg('error', 'Failed to save settings.');
     } catch (error: any) {
-      setMessage({ type: 'error', text: error.message || 'Failed to save settings.' });
+      showMsg('error', error.message || 'Failed to save settings.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveGlobalSettings = async () => {
+    setLoading(true);
+    try {
+      const payload = {
+        siteName, supportEmail, supportPhone,
+        smtpHost, smtpPort, smtpUser, smtpPass,
+        orderNotifications, lowStockAlerts, rfqNotifications, dailyReports,
+        razorpayKey, razorpaySecret, testMode,
+        gstNumber, panNumber, inclusivePricing
+      };
+      
+      const data = await adminFetch('/admin/settings', {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      });
+      if (data.success) showMsg('success', 'Settings saved successfully.');
+      else showMsg('error', 'Failed to save settings.');
+    } catch (error: any) {
+      showMsg('error', error.message || 'Failed to save settings.');
     } finally {
       setLoading(false);
     }
@@ -56,10 +138,22 @@ export function Settings() {
 
   return (
     <div className="p-6">
-      <div className="mb-6">
-        <h1 className="admin-page-title text-sb-ink">Settings</h1>
-        <p className="text-sb-ink/55">Configure system settings and preferences</p>
+      <div className="mb-6 flex justify-between items-center">
+        <div>
+          <h1 className="admin-page-title text-sb-ink">Settings</h1>
+          <p className="text-sb-ink/55">Configure system settings and preferences</p>
+        </div>
       </div>
+      
+      {message && (
+        <div className={`mb-6 p-4 rounded-lg text-sm font-medium ${
+          message.type === 'success' 
+            ? 'bg-green-50 text-green-700 border border-green-200' 
+            : 'bg-red-50 text-red-700 border border-red-200'
+        }`}>
+          {message.text}
+        </div>
+      )}
 
       <Tabs defaultValue="general" className="space-y-6">
         <TabsList>
@@ -79,17 +173,19 @@ export function Settings() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="siteName">Site Name</Label>
-                <Input id="siteName" defaultValue="Structbay" />
+                <Input id="siteName" value={siteName} onChange={e => setSiteName(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="supportEmail">Support Email</Label>
-                <Input id="supportEmail" defaultValue="support@structbay.com" />
+                <Input id="supportEmail" value={supportEmail} onChange={e => setSupportEmail(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="supportPhone">Support Phone</Label>
-                <Input id="supportPhone" defaultValue="+91 70905 70505" />
+                <Input id="supportPhone" value={supportPhone} onChange={e => setSupportPhone(e.target.value)} />
               </div>
-              <Button>Save Changes</Button>
+              <Button onClick={handleSaveGlobalSettings} disabled={loading}>
+                {loading ? 'Saving...' : 'Save Changes'}
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -101,15 +197,6 @@ export function Settings() {
               <CardDescription>Configure order and checkout rules</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {message && (
-                <div className={`p-3 rounded-md text-sm ${
-                  message.type === 'success' 
-                    ? 'bg-green-50 text-green-700 border border-green-200' 
-                    : 'bg-red-50 text-red-700 border border-red-200'
-                }`}>
-                  {message.text}
-                </div>
-              )}
               <div className="space-y-2">
                 <Label htmlFor="minimumOrderValue">Minimum Order Value (₹)</Label>
                 <Input 
@@ -125,10 +212,7 @@ export function Settings() {
                   Customers cannot checkout until their cart total reaches this amount.
                 </p>
               </div>
-              <Button 
-                onClick={handleSaveCommerceSettings} 
-                disabled={loading}
-              >
+              <Button onClick={handleSaveCommerceSettings} disabled={loading}>
                 {loading ? 'Saving...' : 'Save Commerce Settings'}
               </Button>
             </CardContent>
@@ -143,21 +227,23 @@ export function Settings() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="smtpHost">SMTP Host</Label>
-                <Input id="smtpHost" placeholder="smtp.gmail.com" />
+                <Input id="smtpHost" value={smtpHost} onChange={e => setSmtpHost(e.target.value)} placeholder="smtp.gmail.com" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="smtpPort">SMTP Port</Label>
-                <Input id="smtpPort" placeholder="587" />
+                <Input id="smtpPort" value={smtpPort} onChange={e => setSmtpPort(e.target.value)} placeholder="587" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="smtpUser">SMTP Username</Label>
-                <Input id="smtpUser" placeholder="your-email@example.com" />
+                <Input id="smtpUser" value={smtpUser} onChange={e => setSmtpUser(e.target.value)} placeholder="your-email@example.com" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="smtpPass">SMTP Password</Label>
-                <Input id="smtpPass" type="password" placeholder="••••••••" />
+                <Input id="smtpPass" type="password" value={smtpPass} onChange={e => setSmtpPass(e.target.value)} placeholder="••••••••" />
               </div>
-              <Button>Save Configuration</Button>
+              <Button onClick={handleSaveGlobalSettings} disabled={loading}>
+                {loading ? 'Saving...' : 'Save Configuration'}
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -173,30 +259,32 @@ export function Settings() {
                   <p className="font-medium text-sb-ink">Order Notifications</p>
                   <p className="text-sm text-sb-ink/55">Get notified when new orders arrive</p>
                 </div>
-                <Switch defaultChecked />
+                <Switch checked={orderNotifications} onCheckedChange={setOrderNotifications} />
               </div>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium text-sb-ink">Low Stock Alerts</p>
                   <p className="text-sm text-sb-ink/55">Alerts when inventory is running low</p>
                 </div>
-                <Switch defaultChecked />
+                <Switch checked={lowStockAlerts} onCheckedChange={setLowStockAlerts} />
               </div>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium text-sb-ink">RFQ Notifications</p>
                   <p className="text-sm text-sb-ink/55">Get notified about new RFQ requests</p>
                 </div>
-                <Switch defaultChecked />
+                <Switch checked={rfqNotifications} onCheckedChange={setRfqNotifications} />
               </div>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium text-sb-ink">Daily Reports</p>
                   <p className="text-sm text-sb-ink/55">Receive daily business summary</p>
                 </div>
-                <Switch />
+                <Switch checked={dailyReports} onCheckedChange={setDailyReports} />
               </div>
-              <Button>Save Preferences</Button>
+              <Button onClick={handleSaveGlobalSettings} disabled={loading}>
+                {loading ? 'Saving...' : 'Save Preferences'}
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -209,20 +297,22 @@ export function Settings() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="razorpayKey">Razorpay API Key</Label>
-                <Input id="razorpayKey" placeholder="rzp_test_..." />
+                <Input id="razorpayKey" value={razorpayKey} onChange={e => setRazorpayKey(e.target.value)} placeholder="rzp_test_..." />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="razorpaySecret">Razorpay Secret Key</Label>
-                <Input id="razorpaySecret" type="password" placeholder="••••••••" />
+                <Input id="razorpaySecret" type="password" value={razorpaySecret} onChange={e => setRazorpaySecret(e.target.value)} placeholder="••••••••" />
               </div>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium text-sb-ink">Test Mode</p>
                   <p className="text-sm text-sb-ink/55">Use test credentials</p>
                 </div>
-                <Switch defaultChecked />
+                <Switch checked={testMode} onCheckedChange={setTestMode} />
               </div>
-              <Button>Save Settings</Button>
+              <Button onClick={handleSaveGlobalSettings} disabled={loading}>
+                {loading ? 'Saving...' : 'Save Settings'}
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -235,20 +325,22 @@ export function Settings() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="gstNumber">GST Number</Label>
-                <Input id="gstNumber" placeholder="29XXXXXXXXXXXZX" />
+                <Input id="gstNumber" value={gstNumber} onChange={e => setGstNumber(e.target.value)} placeholder="29XXXXXXXXXXXZX" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="panNumber">PAN Number</Label>
-                <Input id="panNumber" placeholder="XXXXX9999X" />
+                <Input id="panNumber" value={panNumber} onChange={e => setPanNumber(e.target.value)} placeholder="XXXXX9999X" />
               </div>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium text-sb-ink">GST Inclusive Pricing</p>
                   <p className="text-sm text-sb-ink/55">Show prices inclusive of GST</p>
                 </div>
-                <Switch />
+                <Switch checked={inclusivePricing} onCheckedChange={setInclusivePricing} />
               </div>
-              <Button>Save Tax Settings</Button>
+              <Button onClick={handleSaveGlobalSettings} disabled={loading}>
+                {loading ? 'Saving...' : 'Save Tax Settings'}
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>

@@ -29,17 +29,7 @@ import { productHref } from "../lib/productRoutes";
 import { availabilityForProduct } from "../lib/productAvailability";
 import { ProductAvailabilityBadge } from "../components/ProductAvailabilityBadge";
 
-// Helper to reliably parse user color inputs into valid CSS background colors
-function parseUserColor(val: string): string {
-  if (!val) return "transparent";
-  const trimmed = val.trim();
-  // If it's a 3 or 6 digit hex code without the '#', prepend it
-  if (/^([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(trimmed)) {
-    return `#${trimmed}`;
-  }
-  // Otherwise trust the browser to handle it (e.g. "red", "#FF0000", "rgb(...)")
-  return trimmed;
-}
+
 
 function PdpAccordion({
   title,
@@ -197,6 +187,28 @@ export function ProductDetails() {
   const [crossSells, setCrossSells] = useState<any[]>([]);
   const [showBulkPricingModal, setShowBulkPricingModal] = useState(false);
   const [customColorText, setCustomColorText] = useState("");
+
+  const [zoomStyle, setZoomStyle] = useState<React.CSSProperties>({ transformOrigin: "center center", transform: "scale(1)" });
+  const [isZooming, setIsZooming] = useState(false);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - left) / width) * 100;
+    const y = ((e.clientY - top) / height) * 100;
+    setZoomStyle({
+      transformOrigin: `${x}% ${y}%`,
+      transform: "scale(2.5)",
+    });
+    if (!isZooming) setIsZooming(true);
+  };
+
+  const handleMouseLeave = () => {
+    setZoomStyle({
+      transformOrigin: "center center",
+      transform: "scale(1)",
+    });
+    setIsZooming(false);
+  };
 
   // Debug: Log the Related Products API Response
   useEffect(() => {
@@ -447,6 +459,8 @@ export function ProductDetails() {
     addToCart({
       id: cartId,
       productSlug: pslug,
+      productId: product._id || product.id || undefined,
+      categoryId: typeof product.category === 'object' ? product.category._id : product.category,
       variationId: vid,
       variationLabel: isVariant && selectedVar 
         ? formatVariationLabel(selectedVar)
@@ -494,12 +508,21 @@ export function ProductDetails() {
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-start">
           {/* Sticky gallery */}
           <div className="sf-pdp-gallery">
-            <div className="sf-pdp-gallery__main relative">
+            <div 
+              className="sf-pdp-gallery__main relative overflow-hidden cursor-zoom-in"
+              onMouseMove={handleMouseMove}
+              onMouseLeave={handleMouseLeave}
+            >
               {discount > 0 && (
                 <span className="sf-pdp-gallery__discount">{discount}% OFF</span>
               )}
               {images[activeImage] ? (
-                <img src={images[activeImage]} alt={product.name} className="sf-pdp-gallery__img" />
+                <img 
+                  src={images[activeImage]} 
+                  alt={product.name} 
+                  className={`sf-pdp-gallery__img ${isZooming ? '' : 'transition-transform duration-300 ease-out'}`} 
+                  style={zoomStyle} 
+                />
               ) : (
                 <div className="sf-pdp-gallery__empty">
                   <Package className="w-16 h-16 text-gray-300" aria-hidden />
@@ -753,15 +776,11 @@ export function ProductDetails() {
               <div className="sf-pdp-variant-group">
                 <p className="sf-pdp-variant-label">Custom Color</p>
                 <div className="relative mt-1 max-w-sm flex gap-3 items-center">
-                  <div 
-                    className="w-10 h-10 rounded-full flex-shrink-0 border border-gray-300 shadow-inner"
-                    style={{ backgroundColor: parseUserColor(customColorText) }}
-                  />
                   <input
                     type="text"
                     value={customColorText}
                     onChange={(e) => setCustomColorText(e.target.value)}
-                    placeholder="Enter hex code or color name (e.g. F54927 or Red)"
+                    placeholder="Enter color code and color name"
                     className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-sb-orange focus:ring-1 focus:ring-sb-orange"
                   />
                 </div>

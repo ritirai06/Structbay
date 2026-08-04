@@ -4,6 +4,7 @@ import { useNavigate } from "react-router";
 import { Bell, Search } from "lucide-react";
 import { adminFetch, clearAdminSession, getAdminToken } from "../../lib/adminApi";
 import { adminPath } from "../../lib/portalRoutes";
+import { adminToast } from "../lib/adminToast";
 import {
 
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -35,6 +36,7 @@ function notificationPath(n: StaffNotification): string {
   if (n.relatedVendorOrder) return adminPath("dispatch");
   if (n.type === "NEW_RFQ") return adminPath("rfqs");
   if (n.type === "LOW_STOCK") return adminPath("inventory");
+  if (n.type === "SUPPORT_TICKET") return adminPath("vendor-support");
   return adminPath("orders");
 }
 
@@ -79,6 +81,7 @@ export function Header() {
         setNotifications((prev) => {
           const exists = prev.some((n) => n._id === payload._id);
           if (exists) return prev;
+          adminToast.info(payload.title, payload.message);
           return [payload, ...prev].slice(0, 8);
         });
         setUnreadCount((c) => c + 1);

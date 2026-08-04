@@ -39,9 +39,11 @@ export function UploadInvoice() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  const [vendorRemarks, setVendorRemarks] = useState('');
   const [pickupContactName, setPickupContactName] = useState('');
   const [pickupContactPhone, setPickupContactPhone] = useState('');
+  const [transporterName, setTransporterName] = useState('');
+  const [transporterGstNumber, setTransporterGstNumber] = useState('');
+  const [vehicleNumber, setVehicleNumber] = useState('');
   const [file, setFile] = useState<File | null>(null);
 
   useEffect(() => {
@@ -56,6 +58,10 @@ export function UploadInvoice() {
           const lg = oRes.value.data?.structbayLogistics;
           if (lg?.pickupContactName) setPickupContactName(lg.pickupContactName);
           if (lg?.pickupContactPhone) setPickupContactPhone(lg.pickupContactPhone);
+          const sd = oRes.value.data?.shipmentDispatch;
+          if (sd?.transporterName) setTransporterName(sd.transporterName);
+          if (sd?.transporterGstNumber) setTransporterGstNumber(sd.transporterGstNumber);
+          if (sd?.vehicleNumber) setVehicleNumber(sd.vehicleNumber);
         }
         if (iRes.status === 'fulfilled') {
           setExistingInvoice(iRes.value.data);
@@ -88,11 +94,13 @@ export function UploadInvoice() {
       const form = new FormData();
       form.append('invoice', file);
       form.append('orderId', orderId!);
-      if (vendorRemarks.trim()) form.append('vendorRemarks', vendorRemarks.trim());
       if (order?.deliveryType === 'structbay_delivery') {
         form.append('pickupContactName', pickupContactName.trim());
         form.append('pickupContactPhone', pickupContactPhone.trim());
       }
+      if (transporterName.trim()) form.append('transporterName', transporterName.trim());
+      if (transporterGstNumber.trim()) form.append('transporterGstNumber', transporterGstNumber.trim());
+      if (vehicleNumber.trim()) form.append('vehicleNumber', vehicleNumber.trim());
 
       if (existingInvoice && existingInvoice.status !== 'replaced') {
         await api.replaceInvoice(existingInvoice._id, form);
@@ -107,7 +115,9 @@ export function UploadInvoice() {
   }
   const fixPdfUrl = (url: string) => {
     if (url.includes('res.cloudinary.com') && url.includes('/image/upload/') && !url.includes('/fl_attachment/') && /\.pdf(\?|$)/i.test(url)) {
-      return url.replace('/image/upload/', '/image/upload/fl_attachment/');
+      const m = url.match(/\/([^\/]+\.pdf)(\?|$)/i);
+      const filename = m ? m[1] : 'invoice.pdf';
+      return url.replace('/image/upload/', `/image/upload/fl_attachment:${filename}/`);
     }
     return url;
   };
@@ -232,16 +242,26 @@ export function UploadInvoice() {
                 </label>
               </Field>
 
-              <Field label="Remarks">
-                <textarea
-                  value={vendorRemarks}
-                  onChange={e => setVendorRemarks(e.target.value)}
-                  rows={3}
-                  placeholder="Add any notes related to this invoice..."
-                  className={inputCls}
-                  style={inputStyle}
-                />
-              </Field>
+              <div className="rounded-xl p-4 space-y-4" style={{ background: SB.bg, border: `1px solid ${SB.border}` }}>
+                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: SB.color }}>
+                  Transport Details
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Field label="Transporter Name">
+                    <input type="text" value={transporterName} onChange={e => setTransporterName(e.target.value)}
+                      placeholder="e.g. VRL Logistics" className={inputCls} style={inputStyle} />
+                  </Field>
+                  <Field label="Transporter GST Number">
+                    <input type="text" value={transporterGstNumber} onChange={e => setTransporterGstNumber(e.target.value)}
+                      placeholder="e.g. 29AAAAA0000A1Z5" className={inputCls} style={inputStyle} />
+                  </Field>
+                  <Field label="Vehicle Number">
+                    <input type="text" value={vehicleNumber} onChange={e => setVehicleNumber(e.target.value)}
+                      placeholder="e.g. MH12AB1234" className={inputCls} style={inputStyle} />
+                  </Field>
+                </div>
+              </div>
+
 
               {typeB && (
                 <div className="rounded-xl p-4 space-y-4" style={{ background: 'rgba(249,115,22,0.06)', border: '1px solid var(--sb-orange-border)' }}>

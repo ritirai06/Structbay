@@ -195,6 +195,7 @@ exports.downloadInvoiceFile = asyncHandler(async (req, res) => {
 exports.downloadInvoiceSummary = asyncHandler(async (req, res) => {
   const order = await Order.findOne({ _id: req.params.id, customer: req.user._id })
     .populate('city', 'name state')
+    .populate('customer', 'name companyName gstin phone')
     .populate('items.product', 'name sku')
     .populate('items.variation', 'attributes sku');
   if (!order) throw new AppError('Order not found.', 404);
@@ -212,6 +213,7 @@ exports.downloadInvoiceSummary = asyncHandler(async (req, res) => {
 exports.downloadInvoicePdf = asyncHandler(async (req, res) => {
   const order = await Order.findOne({ _id: req.params.id, customer: req.user._id })
     .populate('city', 'name state')
+    .populate('customer', 'name companyName gstin phone')
     .populate('items.product', 'name sku')
     .populate('items.variation', 'attributes sku');
   if (!order) throw new AppError('Order not found.', 404);
@@ -234,7 +236,7 @@ exports.cancelOrder = asyncHandler(async (req, res) => {
     throw new AppError(
       order.status === 'READY_FOR_DISPATCH'
         ? 'Order cannot be cancelled once it is Ready for Dispatch. Contact Structbay support.'
-        : `Order cannot be cancelled at status: ${order.status}.`,
+        : 'This order has progressed too far and cannot be cancelled automatically. Please contact Structbay support.',
       422
     );
   }
@@ -288,7 +290,7 @@ exports.confirmDelivery = asyncHandler(async (req, res) => {
   const order = await Order.findOne({ _id: req.params.id, customer: req.user._id });
   if (!order) throw new AppError('Order not found.', 404);
   if (!['DELIVERED', 'PARTIALLY_DELIVERED'].includes(order.status)) {
-    throw new AppError('Order is not in delivered status.', 422);
+    throw new AppError('Delivery can only be confirmed after the order has actually been delivered.', 422);
   }
 
   order.status = 'COMPLETED';

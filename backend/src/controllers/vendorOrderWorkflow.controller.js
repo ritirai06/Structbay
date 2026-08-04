@@ -36,9 +36,9 @@ exports.acceptOrder = asyncHandler(async (req, res) => {
   const vo = await VendorOrder.findOne({ _id: req.params.id, ...match });
   if (!vo) throw new AppError('Order not found or not assigned to you.', 404);
   if (!['NEW_ASSIGNED', 'ASSIGNED'].includes(vo.status)) {
-    throw new AppError('This order cannot be accepted in its current status.', 400);
+    throw new AppError('This order can no longer be accepted.', 400);
   }
-  if (!canTransition(vo.status, 'ACCEPTED')) throw new AppError('Invalid status transition.', 400);
+  if (!canTransition(vo.status, 'ACCEPTED')) throw new AppError('The order cannot be accepted from its current state.', 400);
 
   vo.status = 'ACCEPTED';
   pushEmbeddedHistory(vo, 'ACCEPTED', req.user._id, 'User', 'Vendor accepted the order.');
@@ -71,9 +71,9 @@ exports.rejectOrder = asyncHandler(async (req, res) => {
   const vo = await VendorOrder.findOne({ _id: req.params.id, ...match });
   if (!vo) throw new AppError('Order not found or not assigned to you.', 404);
   if (!['NEW_ASSIGNED', 'ASSIGNED'].includes(vo.status)) {
-    throw new AppError('This order cannot be rejected in its current status.', 400);
+    throw new AppError('This order can no longer be rejected.', 400);
   }
-  if (!canTransition(vo.status, 'REJECTED')) throw new AppError('Invalid status transition.', 400);
+  if (!canTransition(vo.status, 'REJECTED')) throw new AppError('The order cannot be rejected from its current state.', 400);
 
   vo.status = 'REJECTED';
   vo.rejectReason = reason || 'Rejected by vendor';
@@ -123,10 +123,10 @@ exports.readyForDispatch = asyncHandler(async (req, res) => {
   const vo = await VendorOrder.findOne({ _id: req.params.id, ...match });
   if (!vo) throw new AppError('Order not found or not assigned to you.', 404);
   if (!isWorkflowVendorOrder(vo)) throw new AppError('Workflow not available for this order.', 400);
-  if (!['DISPATCH_CONFIRMED', 'CHANGES_REQUESTED'].includes(vo.status)) {
-    throw new AppError('You can only submit ready-for-dispatch after admin dispatch confirmation or after admin requested changes.', 400);
+  if (!['ACCEPTED', 'DISPATCH_CONFIRMED', 'CHANGES_REQUESTED'].includes(vo.status)) {
+    throw new AppError('You can only submit ready-for-dispatch after accepting the order, or after admin requested changes.', 400);
   }
-  if (!canTransition(vo.status, 'READY_FOR_DISPATCH')) throw new AppError('Invalid status transition.', 400);
+  if (!canTransition(vo.status, 'READY_FOR_DISPATCH')) throw new AppError('The order cannot be marked as ready for dispatch from its current state.', 400);
 
   const packingFiles = [];
   const grouped = req.files || {};
@@ -283,7 +283,7 @@ exports.markPickedUpTypeB = asyncHandler(async (req, res) => {
   if (!vo) throw new AppError('Order not found or not assigned to you.', 404);
 
   if (vo.status !== 'SB_INVOICE_SENT') {
-    throw new AppError('Order must be in SB_INVOICE_SENT status to mark as picked up.', 400);
+    throw new AppError('The Structbay invoice must be sent before marking the order as picked up.', 400);
   }
   if (vo.deliveryType !== 'structbay_delivery') {
     throw new AppError('This action is only available for Structbay delivery (Type B) orders.', 400);

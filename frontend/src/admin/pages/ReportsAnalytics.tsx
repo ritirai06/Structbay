@@ -115,6 +115,7 @@ export function ReportsAnalytics() {
       setOrderSummary(ordSumRes.data);
       setInvoiceStatusRows(Array.isArray(invStatRes.data) ? invStatRes.data : []);
     } catch (e) {
+      console.error("REPORT LOAD ERROR:", e);
       setErr(e instanceof Error ? e.message : "Failed to load reports");
     } finally {
       setLoading(false);

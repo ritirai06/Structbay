@@ -113,19 +113,26 @@ router.put ('/notifications/:id/archive',   ...vendorGuard, asyncHandler(vendorN
 
 // ─── SUPPORT TICKETS ───────────────────────────────────────────────────────
 router.post('/support', ...vendorGuard, asyncHandler(async (req, res) => {
-  const Notification = require('../models/Notification');
+  const SupportTicket = require('../models/SupportTicket');
+  const { notifyAllAdmins } = require('../services/staffNotification.service');
   const { subject, priority = 'medium', description } = req.body;
   if (!subject || !description) return ApiResponse.badRequest(res, 'subject and description are required.');
+  
+  const ticket = await SupportTicket.create({
+    vendor: req.user._id,
+    subject,
+    description,
+    priority,
+  });
+
   // Create an admin notification for the support request
-  await Notification.create({
-    type: 'support_ticket',
+  await notifyAllAdmins({
+    type: 'SUPPORT_TICKET',
     title: `Vendor Support: ${subject}`,
     message: description,
-    priority,
-    recipients: [],
-    metadata: { vendorId: req.user._id, vendorName: req.user.companyName || req.user.name },
+    metadata: { ticketId: ticket._id, vendorId: req.user._id, vendorName: req.user.companyName || req.user.name, priority },
   });
-  return ApiResponse.created(res, 'Support ticket submitted. Our team will respond within 24-48 hours.');
+  return ApiResponse.created(res, 'Support ticket submitted. Our team will respond within 24-48 hours.', { ticket });
 }));
 
 // ─── ACTIVITY LOGS ──────────────────────────────────────────────────────────

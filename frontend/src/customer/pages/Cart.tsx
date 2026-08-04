@@ -124,7 +124,7 @@ export function Cart() {
         let hasApplicableItems = false;
         
         for (const line of cart) {
-          const catId = typeof line.product.category === 'object' ? (line.product.category as any)?._id : line.product.category;
+          const catId = line.categoryId;
           if (!couponData.applicableCategories || couponData.applicableCategories.length === 0 || (catId && couponData.applicableCategories.includes(catId))) {
             hasApplicableItems = true;
             applicableSubtotal += lineSubtotalExGst(line);
@@ -146,8 +146,9 @@ export function Cart() {
       } else {
         alert(data.message || 'Invalid Coupon Code');
       }
-    } catch (err) {
-      alert('Error validating coupon. Please try again.');
+    } catch (err: any) {
+      alert(`Error validating coupon: ${err?.message || 'Unknown error'}`);
+      console.error('Coupon validation error:', err);
     }
   };
 

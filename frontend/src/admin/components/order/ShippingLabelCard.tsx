@@ -234,7 +234,7 @@ export function ShippingLabelCard({
         </div>
       ) : (
         <>
-          <div className="flex flex-col gap-3 mb-4">
+          <div className="grid grid-cols-2 gap-3 mb-4">
             <div className="rounded-lg border border-sb-ink/10 bg-white px-3 py-2">
               <div className="text-[11px] font-medium text-sb-ink/50">Label status</div>
               <div className="text-sm font-medium text-sb-ink mt-0.5">{labelStatusText(label)}</div>
@@ -251,20 +251,25 @@ export function ShippingLabelCard({
                 )}
               </div>
             )}
-            <div className="rounded-lg border border-sb-ink/10 bg-white px-3 py-2">
-              <div className="text-[11px] font-medium text-sb-ink/50">Shipment ID</div>
-              <div className="text-sm font-medium text-sb-ink mt-0.5 font-mono">{label?.shipmentId || "—"}</div>
-            </div>
-            <div className="rounded-lg border border-sb-ink/10 bg-white px-3 py-2">
-              <div className="text-[11px] font-medium text-sb-ink/50">Tracking</div>
-              <div className="text-sm font-medium text-sb-ink mt-0.5 font-mono">{label?.trackingNumber || "—"}</div>
-            </div>
-            <div className="rounded-lg border border-sb-ink/10 bg-white px-3 py-2">
-              <div className="text-[11px] font-medium text-sb-ink/50">Generated</div>
-              <div className="text-sm font-medium text-sb-ink mt-0.5">
-                {label?.generatedAt ? new Date(label.generatedAt).toLocaleString() : "—"}
-              </div>
-            </div>
+            {hasLabel && (
+              <>
+                <div className="rounded-lg border border-sb-ink/10 bg-white px-3 py-2">
+                  <div className="text-[11px] font-medium text-sb-ink/50">Shipment ID</div>
+                  <div className="text-sm font-medium text-sb-ink mt-0.5">{label?.shipmentId || "—"}</div>
+                </div>
+                <div className="rounded-lg border border-sb-ink/10 bg-white px-3 py-2">
+                  <div className="text-[11px] font-medium text-sb-ink/50">Tracking</div>
+                  <div className="text-sm font-medium text-sb-ink mt-0.5">{label?.trackingNumber || "—"}</div>
+                </div>
+                <div className="rounded-lg border border-sb-ink/10 bg-white px-3 py-2 col-span-2">
+                  <div className="text-[11px] font-medium text-sb-ink/50">Generated</div>
+                  <div className="text-sm font-medium text-sb-ink mt-0.5">
+                    {label?.generatedAt ? new Date(label.generatedAt).toLocaleString() : "—"}
+                    {label?.generatedBy?.name ? ` by ${label.generatedBy.name}` : ""}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           {error && (

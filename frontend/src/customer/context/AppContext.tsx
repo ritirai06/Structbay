@@ -15,6 +15,7 @@ export interface CartItem {
   productSlug?: string;
   /** MongoDB _id of the product — used for upsell/cross-sell lookups. */
   productId?: string;
+  categoryId?: string;
   variationId?: string;
   variationLabel?: string;
   customColor?: string;

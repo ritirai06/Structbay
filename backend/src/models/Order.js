@@ -47,7 +47,6 @@ const statusHistoryEntry = new mongoose.Schema(
     status:    { type: String, required: true },
     changedAt: { type: Date, default: Date.now },
     changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
-    note:      { type: String, default: null },
   },
   { _id: false }
 );
@@ -105,11 +104,6 @@ const orderSchema = new mongoose.Schema(
     ewayBillNumber:      { type: String, default: null, sparse: true },
     deliveryChallanNumber:{ type: String, default: null, sparse: true },
     invoiceUrl:          { type: String, default: null }, // backward compat
-
-    notes:      { type: String, default: null },
-    adminNotes: { type: String, default: null },
-    /** Customer-visible delivery narrative (admin); separate from internal adminNotes. */
-    deliveryDetails: { type: String, default: null },
 
     statusHistory:  [statusHistoryEntry],
     isSplit:        { type: Boolean, default: false },

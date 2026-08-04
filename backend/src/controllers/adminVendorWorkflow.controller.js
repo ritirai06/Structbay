@@ -29,10 +29,10 @@ exports.confirmDispatch = asyncHandler(async (req, res) => {
   if (vo.status !== 'ACCEPTED') {
     throw new AppError('Only ACCEPTED orders can be confirmed for dispatch.', 400);
   }
-  if (!canTransition(vo.status, 'DISPATCH_CONFIRMED')) throw new AppError('Invalid transition.', 400);
+  if (!canTransition(vo.status, 'DISPATCH_CONFIRMED')) throw new AppError('The sub-order cannot be confirmed for dispatch from its current state.', 400);
 
   vo.status = 'DISPATCH_CONFIRMED';
-  pushEmbeddedHistory(vo, 'DISPATCH_CONFIRMED', req.user._id, 'User', 'Admin confirmed dispatch authorization.');
+  pushEmbeddedHistory(vo, 'DISPATCH_CONFIRMED', req.user._id, 'User');
   await vo.save();
   await appendAudit(vo._id, 'DISPATCH_CONFIRMED', 'Admin confirmed dispatch authorization', req.user._id, 'User');
 
@@ -69,11 +69,11 @@ exports.approveDispatch = asyncHandler(async (req, res) => {
   if (vo.status !== 'READY_FOR_DISPATCH') {
     throw new AppError('Only orders in READY_FOR_DISPATCH can be approved.', 400);
   }
-  if (!canTransition(vo.status, 'DISPATCH_APPROVED')) throw new AppError('Invalid transition.', 400);
+  if (!canTransition(vo.status, 'DISPATCH_APPROVED')) throw new AppError('The sub-order cannot be approved for dispatch from its current state.', 400);
 
   vo.status = 'DISPATCH_APPROVED';
   vo.adminChangeRequestNote = undefined;
-  pushEmbeddedHistory(vo, 'DISPATCH_APPROVED', req.user._id, 'User', 'Admin approved dispatch.');
+  pushEmbeddedHistory(vo, 'DISPATCH_APPROVED', req.user._id, 'User');
   await vo.save();
   await appendAudit(vo._id, 'DISPATCH_APPROVED', 'Admin approved dispatch', req.user._id, 'User');
 
@@ -104,31 +104,27 @@ exports.approveDispatch = asyncHandler(async (req, res) => {
 });
 
 exports.requestDispatchChanges = asyncHandler(async (req, res) => {
-  const { note } = req.body;
-  if (!note || !String(note).trim()) throw new AppError('note is required.', 400);
-
   const vo = await VendorOrder.findById(req.params.id);
   if (!vo) throw new AppError('Vendor order not found.', 404);
   if (!isWorkflowVendorOrder(vo)) throw new AppError('Workflow not active for this vendor order.', 400);
   if (vo.status !== 'READY_FOR_DISPATCH') {
     throw new AppError('Changes can only be requested while the order is READY_FOR_DISPATCH.', 400);
   }
-  if (!canTransition(vo.status, 'CHANGES_REQUESTED')) throw new AppError('Invalid transition.', 400);
+  if (!canTransition(vo.status, 'CHANGES_REQUESTED')) throw new AppError('Changes cannot be requested from the current state.', 400);
 
   vo.status = 'CHANGES_REQUESTED';
-  vo.adminChangeRequestNote = note.trim();
-  pushEmbeddedHistory(vo, 'CHANGES_REQUESTED', req.user._id, 'User', note.trim());
+  pushEmbeddedHistory(vo, 'CHANGES_REQUESTED', req.user._id, 'User');
   await vo.save();
-  await appendAudit(vo._id, 'CHANGES_REQUESTED', note.trim(), req.user._id, 'User');
+  await appendAudit(vo._id, 'CHANGES_REQUESTED', 'Admin requested dispatch changes', req.user._id, 'User');
 
   const vendorId = vendorUserId(vo);
   if (vendorId) {
     notifyVendor({
       vendorId,
       type: 'wf_changes_requested',
-    title: 'Changes requested',
-    message: `Structbay requested changes before dispatch approval for ${vo.orderNumber}: ${note.trim()}`,
-    relatedOrder: vo._id,
+      title: 'Changes requested',
+      message: `Structbay requested changes before dispatch approval for ${vo.orderNumber}. Please check Order Chat for details.`,
+      relatedOrder: vo._id,
     actionUrl: `/orders/${vo._id}`,
     actionLabel: 'Update & resubmit',
       createdBy: req.user._id,
@@ -155,7 +151,7 @@ exports.sendStructbayDocs = asyncHandler(async (req, res) => {
   if (vo.status !== 'VENDOR_INVOICE_SUBMITTED') {
     throw new AppError('Structbay documents can only be sent after the vendor final invoice is submitted.', 400);
   }
-  if (!canTransition(vo.status, 'SB_INVOICE_SENT')) throw new AppError('Invalid transition.', 400);
+  if (!canTransition(vo.status, 'SB_INVOICE_SENT')) throw new AppError('The Structbay invoice cannot be sent from the current state.', 400);
 
   const grouped = req.files || {};
   const inv = (grouped.sbInvoice && grouped.sbInvoice[0]) || null;
@@ -174,7 +170,7 @@ exports.sendStructbayDocs = asyncHandler(async (req, res) => {
     sentBy: req.user._id,
   };
   vo.status = 'SB_INVOICE_SENT';
-  pushEmbeddedHistory(vo, 'SB_INVOICE_SENT', req.user._id, 'User', 'Structbay invoice and e-way bill sent to vendor.');
+  pushEmbeddedHistory(vo, 'SB_INVOICE_SENT', req.user._id, 'User');
   await vo.save();
   await appendAudit(vo._id, 'SB_INVOICE_SENT', 'SB invoice + e-way sent', req.user._id, 'User');
 
@@ -229,7 +225,7 @@ exports.confirmDelivery = asyncHandler(async (req, res) => {
   if (vo.deliveryType !== 'structbay_delivery' && !vo.deliveryProof?.podUrl) {
     throw new AppError('Proof of delivery is missing; cannot complete this order.', 400);
   }
-  if (!canTransition(vo.status, 'COMPLETED')) throw new AppError('Invalid transition.', 400);
+  if (!canTransition(vo.status, 'COMPLETED')) throw new AppError('The sub-order cannot be marked as completed from its current state.', 400);
 
   vo.status = 'COMPLETED';
   const prev = vo.deliveryProof && vo.deliveryProof.toObject ? vo.deliveryProof.toObject() : vo.deliveryProof || {};
@@ -238,7 +234,7 @@ exports.confirmDelivery = asyncHandler(async (req, res) => {
     confirmedByAdmin: req.user._id,
     confirmedAt: new Date(),
   };
-  pushEmbeddedHistory(vo, 'COMPLETED', req.user._id, 'User', 'Admin confirmed delivery (POD verified).');
+  pushEmbeddedHistory(vo, 'COMPLETED', req.user._id, 'User');
   await vo.save();
   await appendAudit(vo._id, 'COMPLETED', 'Admin confirmed delivery', req.user._id, 'User');
 
@@ -290,12 +286,12 @@ exports.markStructbayDispatched = asyncHandler(async (req, res) => {
   if (vo.status !== 'SB_INVOICE_SENT') {
     throw new AppError('Mark out for delivery only after Structbay invoice & e-way bill are sent.', 400);
   }
-  if (!canTransition(vo.status, 'DISPATCHED')) throw new AppError('Invalid transition.', 400);
+  if (!canTransition(vo.status, 'DISPATCHED')) throw new AppError('The sub-order cannot be marked as dispatched from its current state.', 400);
 
   vo.status = 'DISPATCHED';
   vo.dispatchStatus = 'DISPATCHED';
   vo.actualDispatchDate = new Date();
-  pushEmbeddedHistory(vo, 'DISPATCHED', req.user._id, 'User', 'Structbay marked out for delivery (Type B).');
+  pushEmbeddedHistory(vo, 'DISPATCHED', req.user._id, 'User');
   await vo.save();
   await appendAudit(vo._id, 'DISPATCHED', 'Structbay out for delivery', req.user._id, 'User');
 
@@ -334,7 +330,7 @@ exports.markStructbayDelivered = asyncHandler(async (req, res) => {
   if (vo.status !== 'DISPATCHED') {
     throw new AppError('Mark delivered only after the order is out for delivery.', 400);
   }
-  if (!canTransition(vo.status, 'DELIVERED')) throw new AppError('Invalid transition.', 400);
+  if (!canTransition(vo.status, 'DELIVERED')) throw new AppError('The sub-order cannot be marked as delivered from its current state.', 400);
 
   const when = deliveryDate ? new Date(deliveryDate) : new Date();
   vo.deliveryProof = {
@@ -344,7 +340,7 @@ exports.markStructbayDelivered = asyncHandler(async (req, res) => {
   vo.actualDeliveryDate = when;
   vo.status = 'DELIVERED';
   vo.dispatchStatus = 'DELIVERED';
-  pushEmbeddedHistory(vo, 'DELIVERED', req.user._id, 'User', note?.trim() || 'Structbay marked delivered to customer (Type B).');
+  pushEmbeddedHistory(vo, 'DELIVERED', req.user._id, 'User');
   await vo.save();
   await appendAudit(vo._id, 'DELIVERED', note?.trim() || 'Structbay delivery complete', req.user._id, 'User');
 

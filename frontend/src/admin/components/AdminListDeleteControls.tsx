@@ -28,9 +28,6 @@ export function AdminListDeleteControls({ deleteHook, visibleIds, disabled, item
         onDeleteSelected={() =>
           deleteHook.requestDelete(deleteHook.selectedIds, `${deleteHook.selectedIds.length} ${label}`)
         }
-        onDeleteAll={() =>
-          deleteHook.requestDelete(visibleIds, `all ${visibleIds.length} visible ${label}`)
-        }
         itemLabel={label}
         disabled={disabled || deleteHook.busy}
       />
@@ -51,18 +48,21 @@ export function AdminTableSelectHeader({
   checked,
   onChange,
   ariaLabel = "Select all rows",
+  disabled,
 }: {
   checked: boolean;
   onChange: () => void;
   ariaLabel?: string;
+  disabled?: boolean;
 }) {
   return (
     <th className="w-10 py-3 px-2">
       <input
         type="checkbox"
-        className="h-4 w-4 rounded border-sb-ink/25 accent-sb-orange"
+        className="h-4 w-4 rounded border-sb-ink/25 accent-sb-orange disabled:opacity-50 disabled:cursor-not-allowed"
         checked={checked}
         onChange={onChange}
+        disabled={disabled}
         aria-label={ariaLabel}
       />
     </th>
@@ -73,18 +73,21 @@ export function AdminTableSelectCell({
   checked,
   onChange,
   ariaLabel,
+  disabled,
 }: {
   checked: boolean;
   onChange: () => void;
   ariaLabel?: string;
+  disabled?: boolean;
 }) {
   return (
     <td className="py-3.5 px-2">
       <input
         type="checkbox"
-        className="h-4 w-4 rounded border-sb-ink/25 accent-sb-orange"
+        className="h-4 w-4 rounded border-sb-ink/25 accent-sb-orange disabled:opacity-50 disabled:cursor-not-allowed"
         checked={checked}
         onChange={onChange}
+        disabled={disabled}
         aria-label={ariaLabel}
       />
     </td>

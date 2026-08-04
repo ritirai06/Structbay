@@ -64,7 +64,7 @@ exports.vendorFulfillment = asyncHandler(async (req, res) => {
       },
     },
     { $lookup: { from: 'vendors', localField: '_id', foreignField: '_id', as: 'vendor' } },
-    { $unwind: { path: '$vendor', preserveNullAndEmpty: true } },
+    { $unwind: { path: '$vendor', preserveNullAndEmptyArrays: true } },
     { $sort: { totalOrders: -1 } },
   ]);
 
@@ -81,7 +81,7 @@ exports.cityWise = asyncHandler(async (req, res) => {
     { $match: match },
     { $group: { _id: '$city', count: { $sum: 1 }, revenue: { $sum: '$grandTotal' } } },
     { $lookup: { from: 'cities', localField: '_id', foreignField: '_id', as: 'city' } },
-    { $unwind: { path: '$city', preserveNullAndEmpty: true } },
+    { $unwind: { path: '$city', preserveNullAndEmptyArrays: true } },
     { $sort: { count: -1 } },
   ]);
 
@@ -102,7 +102,7 @@ exports.categoryWise = asyncHandler(async (req, res) => {
         from: 'products', localField: 'items.product', foreignField: '_id', as: 'product',
       },
     },
-    { $unwind: { path: '$product', preserveNullAndEmpty: true } },
+    { $unwind: { path: '$product', preserveNullAndEmptyArrays: true } },
     {
       $group: {
         _id:      '$product.category',
@@ -112,7 +112,7 @@ exports.categoryWise = asyncHandler(async (req, res) => {
       },
     },
     { $lookup: { from: 'categories', localField: '_id', foreignField: '_id', as: 'category' } },
-    { $unwind: { path: '$category', preserveNullAndEmpty: true } },
+    { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
     { $sort: { revenue: -1 } },
   ]);
 
@@ -153,7 +153,7 @@ exports.dispatchPerformance = asyncHandler(async (req, res) => {
       total:           { $sum: 1 },
     }},
     { $lookup: { from: 'vendors', localField: '_id', foreignField: '_id', as: 'vendor' } },
-    { $unwind: { path: '$vendor', preserveNullAndEmpty: true } },
+    { $unwind: { path: '$vendor', preserveNullAndEmptyArrays: true } },
     { $sort: { avgDispatchDays: 1 } },
   ]);
 

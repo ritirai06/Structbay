@@ -1298,6 +1298,8 @@ export function Homepage() {
                         addToCart({
                           id,
                           productSlug: slug,
+                          productId: p._id || p.id || undefined,
+                          categoryId: typeof p.category === 'object' ? p.category._id : p.category,
                           variationId,
                           variationLabel,
                           name: p.name,
