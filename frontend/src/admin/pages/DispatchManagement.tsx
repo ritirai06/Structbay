@@ -257,6 +257,7 @@ export function DispatchManagement() {
           <div className="space-y-3 text-sm">
             {[
               ["Transporter", selected.transport?.transporterName],
+              ["Transporter GST", selected.transport?.transporterGstNumber],
               ["LR / Docket", selected.transport?.lrNumber],
               ["Vehicle", selected.transport?.vehicleNumber],
               ["Tracking", selected.transport?.trackingNumber],

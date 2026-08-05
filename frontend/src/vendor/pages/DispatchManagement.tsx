@@ -44,6 +44,7 @@ function TransportDetails({ dispatch }: { dispatch: any }) {
   const t = dispatch?.transport || {};
   const rows: [string, string][] = [
     ['Transporter', t.transporterName || dispatch?.courierPartner || '—'],
+    ['Transporter GST', t.transporterGstNumber || dispatch?.transport?.transporterGstNumber || '—'],
     ['LR / Docket', t.lrNumber || '—'],
     ['Vehicle', t.vehicleNumber || dispatch?.vehicleDetails?.vehicleNumber || '—'],
     ['Tracking', t.trackingNumber || '—'],
@@ -308,6 +309,7 @@ export function DispatchManagement() {
                   </div>
                   <p className="text-xs truncate" style={{ color: SB.color }}>
                     {dispatch.transport?.transporterName || dispatch.courierPartner || '—'}
+                    {dispatch.transport?.transporterGstNumber ? ` (${dispatch.transport.transporterGstNumber})` : ''}
                     {dispatch.transport?.lrNumber ? ` · LR ${dispatch.transport.lrNumber}` : ''}
                   </p>
                   <p className="text-[10px] mt-0.5" style={{ color: SB.faint }}>

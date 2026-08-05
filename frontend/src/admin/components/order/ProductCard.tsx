@@ -94,11 +94,13 @@ export function ProductCard({
             </h3>
             <div className="flex flex-col lg:flex-row lg:flex-wrap lg:items-center gap-x-4 gap-y-1 text-xs text-sb-ink/60">
               {(item.variationLabel || item.sku) && <span><span className="lg:hidden font-semibold text-sb-ink/40 mr-2 uppercase">SKU</span>{item.variationLabel || item.sku}</span>}
-              {item.customColor && (
+              {(item.customColor || item.color || (item.variation?.attributes && (item.variation.attributes.color || item.variation.attributes.Color))) && (
                 <span className="flex items-center gap-1">
                   <span className="lg:hidden font-semibold text-sb-ink/40 mr-2 uppercase">Color</span>
-                  <div className="w-2.5 h-2.5 rounded-full border border-sb-ink/20" style={{ backgroundColor: /^#[0-9A-Fa-f]{6}$/.test(item.customColor) ? item.customColor : "transparent" }}></div>
-                  <span>{item.customColor}</span>
+                  {/^#[0-9A-Fa-f]{6}$/.test(item.customColor || item.color || item.variation?.attributes?.color || item.variation?.attributes?.Color) ? (
+                    <div className="w-2.5 h-2.5 rounded-full border border-sb-ink/20 shadow-sm" style={{ backgroundColor: item.customColor || item.color || item.variation?.attributes?.color || item.variation?.attributes?.Color }}></div>
+                  ) : null}
+                  <span>{item.customColor || item.color || item.variation?.attributes?.color || item.variation?.attributes?.Color}</span>
                 </span>
               )}
               <span><span className="lg:hidden font-semibold text-sb-ink/40 mr-2 uppercase">Qty</span>{item.quantity}</span>

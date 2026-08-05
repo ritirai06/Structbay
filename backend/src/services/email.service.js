@@ -141,21 +141,22 @@ const getEmailBranding = async () => {
 const masterTemplate = ({ title, greeting, bodyHtml, cta, branding }) => {
   const { siteUrl, companyName, logoUrl, address, phone, email, copyright, description, social } = branding;
 
+  // Premium Dark Header style. Logo text fallback is highly visible on dark background.
   const logoBlock = logoUrl
-    ? `<img src="${esc(logoUrl)}" alt="${esc(companyName)}" style="max-height:48px;max-width:180px;display:block;" />`
-    : `<span style="font-size:26px;font-weight:900;color:#E85A00;letter-spacing:-1px;font-family:Arial,sans-serif;">Struct<span style="color:#ffffff;">Bay</span></span>`;
+    ? `<img src="${esc(logoUrl)}" alt="${esc(companyName)}" style="max-height:40px;max-width:180px;display:block;border:none;outline:none;text-decoration:none;" />`
+    : `<span style="font-size:28px;font-weight:900;color:#E85A00;letter-spacing:-1px;font-family:Arial,sans-serif;text-decoration:none;">Struct<span style="color:#ffffff;">Bay</span></span>`;
 
   const ctaBlock = cta
-    ? `<table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin:28px auto 8px;"><tr><td align="center" style="border-radius:8px;background-color:#FF6A00;box-shadow:0 4px 12px rgba(255,106,0,0.3);">
-        <a href="${esc(cta.url)}" target="_blank" style="display:inline-block;padding:16px 40px;font-family:Arial,sans-serif;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px;letter-spacing:0.5px;">${esc(cta.label)}</a>
+    ? `<table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin:32px auto 16px; width: 100%;"><tr><td align="center">
+        <a href="${esc(cta.url)}" target="_blank" style="display:inline-block;padding:14px 48px;font-family:Arial,sans-serif;font-size:16px;font-weight:700;color:#ffffff;background-color:#E85A00;text-decoration:none;border-radius:6px;letter-spacing:0.5px;">${esc(cta.label)}</a>
        </td></tr></table>` : '';
 
   const socialIcons = [];
-  if (social.facebook && social.facebook !== '#') socialIcons.push(`<a href="${esc(social.facebook)}" style="margin:0 6px;display:inline-block;"><img src="https://cdn-icons-png.flaticon.com/32/733/733547.png" width="20" height="20" alt="Facebook" style="border:0;display:block;" /></a>`);
-  if (social.instagram && social.instagram !== '#') socialIcons.push(`<a href="${esc(social.instagram)}" style="margin:0 6px;display:inline-block;"><img src="https://cdn-icons-png.flaticon.com/32/2111/2111463.png" width="20" height="20" alt="Instagram" style="border:0;display:block;" /></a>`);
-  if (social.linkedin && social.linkedin !== '#') socialIcons.push(`<a href="${esc(social.linkedin)}" style="margin:0 6px;display:inline-block;"><img src="https://cdn-icons-png.flaticon.com/32/733/733561.png" width="20" height="20" alt="LinkedIn" style="border:0;display:block;" /></a>`);
-  if (social.twitter && social.twitter !== '#') socialIcons.push(`<a href="${esc(social.twitter)}" style="margin:0 6px;display:inline-block;"><img src="https://cdn-icons-png.flaticon.com/32/5968/5968830.png" width="20" height="20" alt="Twitter" style="border:0;display:block;" /></a>`);
-  if (social.youtube && social.youtube !== '#') socialIcons.push(`<a href="${esc(social.youtube)}" style="margin:0 6px;display:inline-block;"><img src="https://cdn-icons-png.flaticon.com/32/1384/1384060.png" width="20" height="20" alt="YouTube" style="border:0;display:block;" /></a>`);
+  if (social.facebook && social.facebook !== '#') socialIcons.push(`<a href="${esc(social.facebook)}" style="margin:0 8px;display:inline-block;text-decoration:none;"><img src="https://cdn-icons-png.flaticon.com/32/733/733547.png" width="22" height="22" alt="Facebook" style="border:0;display:block;" /></a>`);
+  if (social.instagram && social.instagram !== '#') socialIcons.push(`<a href="${esc(social.instagram)}" style="margin:0 8px;display:inline-block;text-decoration:none;"><img src="https://cdn-icons-png.flaticon.com/32/2111/2111463.png" width="22" height="22" alt="Instagram" style="border:0;display:block;" /></a>`);
+  if (social.linkedin && social.linkedin !== '#') socialIcons.push(`<a href="${esc(social.linkedin)}" style="margin:0 8px;display:inline-block;text-decoration:none;"><img src="https://cdn-icons-png.flaticon.com/32/733/733561.png" width="22" height="22" alt="LinkedIn" style="border:0;display:block;" /></a>`);
+  if (social.twitter && social.twitter !== '#') socialIcons.push(`<a href="${esc(social.twitter)}" style="margin:0 8px;display:inline-block;text-decoration:none;"><img src="https://cdn-icons-png.flaticon.com/32/5968/5968830.png" width="22" height="22" alt="Twitter" style="border:0;display:block;" /></a>`);
+  if (social.youtube && social.youtube !== '#') socialIcons.push(`<a href="${esc(social.youtube)}" style="margin:0 8px;display:inline-block;text-decoration:none;"><img src="https://cdn-icons-png.flaticon.com/32/1384/1384060.png" width="22" height="22" alt="YouTube" style="border:0;display:block;" /></a>`);
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -168,38 +169,35 @@ const masterTemplate = ({ title, greeting, bodyHtml, cta, branding }) => {
   table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
   img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
   table { border-collapse: collapse !important; }
-  body { height: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; font-family: Arial, Helvetica, sans-serif; background-color: #f8f8f8; }
+  body { height: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f3f4f6; }
   
   @media screen and (max-width: 600px) {
-    .container { width: 100% !important; max-width: 100% !important; }
-    .mobile-hidden { display: none !important; }
-    .mobile-block { display: block !important; width: 100% !important; padding-bottom: 15px !important; }
-    .mobile-center { text-align: center !important; }
-    .p-15 { padding: 15px !important; }
-    .nav-links { font-size: 12px !important; }
+    .container { width: 100% !important; max-width: 100% !important; border-radius: 0 !important; border-left: none !important; border-right: none !important; }
+    .header-pad { padding: 20px 24px !important; }
+    .body-pad { padding: 24px !important; }
   }
 </style>
 </head>
-<body style="background-color:#f8f8f8; margin:0; padding:0;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f8f8f8;">
-    <tr><td align="center" style="padding: 20px 10px;">
+<body style="background-color:#f3f4f6; margin:0; padding:0;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f3f4f6;">
+    <tr><td align="center" style="padding: 30px 10px;">
       
       <!-- Main Card -->
-      <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.05); overflow:hidden;">
+      <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff; border: 1px solid #e5e7eb; border-radius:8px; overflow:hidden;">
         
-        <!-- Header -->
-        <tr><td style="padding: 24px; text-align: center; border-bottom: 1px solid #f0f0f0;">
-          <a href="${esc(siteUrl)}" target="_blank" style="text-decoration:none;">
+        <!-- Header (Dark Premium) -->
+        <tr><td class="header-pad" style="background-color: #0D0D0D; padding: 24px 32px; text-align: left;">
+          <a href="${esc(siteUrl)}" target="_blank" style="text-decoration:none; display:inline-block;">
             ${logoBlock}
           </a>
         </td></tr>
 
         <!-- Content -->
-        <tr><td style="padding: 32px;">
-          ${title ? `<h2 style="margin-top:0; margin-bottom: 20px; font-size: 20px; color: #333333; font-family: Arial, sans-serif;">${esc(title)}</h2>` : ''}
-          ${greeting ? `<p style="margin-top:0; margin-bottom: 16px; font-size: 15px; color: #444444; line-height: 1.5; font-family: Arial, sans-serif;">${esc(greeting)}</p>` : ''}
+        <tr><td class="body-pad" style="padding: 40px 32px;">
+          ${title ? `<h2 style="margin-top:0; margin-bottom: 24px; font-size: 22px; color: #111827; font-weight: 700;">${esc(title)}</h2>` : ''}
+          ${greeting ? `<p style="margin-top:0; margin-bottom: 20px; font-size: 16px; color: #374151; line-height: 1.6;">${esc(greeting)}</p>` : ''}
           
-          <div style="font-size: 14px; color: #555555; line-height: 1.6; font-family: Arial, sans-serif;">
+          <div style="font-size: 15px; color: #4B5563; line-height: 1.6;">
             ${bodyHtml}
           </div>
 
@@ -207,20 +205,25 @@ const masterTemplate = ({ title, greeting, bodyHtml, cta, branding }) => {
         </td></tr>
 
         <!-- Footer -->
-        <tr><td style="background-color: #fafafa; padding: 24px; border-top: 1px solid #f0f0f0; text-align: center; font-family: Arial, sans-serif; font-size: 12px; color: #888888; line-height: 1.6;">
-          ${socialIcons.length ? `<div style="margin-bottom: 16px;">${socialIcons.join('')}</div>` : ''}
-          <p style="margin:0;"><strong>${esc(companyName)}</strong></p>
-          <p style="margin:4px 0 0 0;">${esc(address)}</p>
-          <p style="margin:4px 0 0 0;"><a href="mailto:${esc(email)}" style="color:#888888; text-decoration:underline;">${esc(email)}</a> &nbsp;|&nbsp; ${esc(phone)}</p>
-          <p style="margin:16px 0 0 0;">${esc(copyright)}</p>
+        <tr><td style="background-color: #f9fafb; padding: 32px; border-top: 1px solid #e5e7eb; text-align: center; font-size: 13px; color: #6b7280; line-height: 1.6;">
+          ${socialIcons.length ? `<div style="margin-bottom: 20px;">${socialIcons.join('')}</div>` : ''}
+          <p style="margin:0; font-weight: 600; color: #374151;">${esc(companyName)}</p>
+          <p style="margin:8px 0 0 0;">${esc(description)}</p>
+          <p style="margin:8px 0 0 0;">${esc(address)}</p>
+          <p style="margin:8px 0 0 0;"><a href="mailto:${esc(email)}" style="color:#2563eb; text-decoration:none;">${esc(email)}</a> &nbsp;|&nbsp; <a href="tel:${esc(phone)}" style="color:#2563eb; text-decoration:none;">${esc(phone)}</a></p>
+          <p style="margin:24px 0 0 0; font-size: 12px; color: #9ca3af;">${esc(copyright)}</p>
         </td></tr>
       </table>
 
       <!-- Anti-spam note -->
-      <p style="margin:16px auto 0;max-width:600px;font-family:Arial,sans-serif;font-size:11px;color:#999999;text-align:center;line-height:1.5;">
-        You received this email because of your activity on ${esc(companyName)}.
-        If you did not expect this, you can safely ignore it.
-      </p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr><td align="center" style="padding-top: 24px;">
+          <p style="margin:0; max-width:500px; font-size:12px; color:#9ca3af; text-align:center; line-height:1.5;">
+            You received this email because of your activity on ${esc(companyName)}.
+            If you did not expect this, you can safely ignore it.
+          </p>
+        </td></tr>
+      </table>
     </td></tr>
   </table>
 </body>
@@ -376,47 +379,58 @@ const sendPasswordChangedEmail = async ({ to, name }) => {
 const sendOrderPlacedEmail = async ({ to, name, orderNumber, amount, subtotal, gstTotal, items = [] }) => {
   const branding = await getEmailBranding();
   const itemsHtml = items.length
-    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;border:1px solid #f0f0f0;border-radius:6px;overflow:hidden;">
-        <tr style="background:#f8f8f8;">
-          <th style="padding:10px 14px;text-align:left;font-size:12px;color:#666;font-weight:600;border-bottom:1px solid #eeeeee;">Product</th>
-          <th style="padding:10px 14px;text-align:center;font-size:12px;color:#666;font-weight:600;border-bottom:1px solid #eeeeee;">Qty</th>
-          <th style="padding:10px 14px;text-align:right;font-size:12px;color:#666;font-weight:600;border-bottom:1px solid #eeeeee;">Price</th>
-        </tr>
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0; border:1px solid #e5e7eb; border-radius:8px; overflow:hidden;">
+        <thead>
+          <tr style="background:#f9fafb;">
+            <th style="padding:12px 16px; text-align:left; font-size:12px; color:#6b7280; text-transform:uppercase; letter-spacing:0.05em; font-weight:600; border-bottom:1px solid #e5e7eb;">Item</th>
+            <th style="padding:12px 16px; text-align:center; font-size:12px; color:#6b7280; text-transform:uppercase; letter-spacing:0.05em; font-weight:600; border-bottom:1px solid #e5e7eb; width:60px;">Qty</th>
+            <th style="padding:12px 16px; text-align:right; font-size:12px; color:#6b7280; text-transform:uppercase; letter-spacing:0.05em; font-weight:600; border-bottom:1px solid #e5e7eb; width:100px;">Price</th>
+          </tr>
+        </thead>
+        <tbody>
         ${items.map(i => `
-        <tr>
-          <td style="padding:10px 14px;font-size:13px;color:#333;border-bottom:1px solid #f5f5f5;">${esc(i.name)}</td>
-          <td style="padding:10px 14px;font-size:13px;color:#555;text-align:center;border-bottom:1px solid #f5f5f5;">${esc(String(i.quantity))}</td>
-          <td style="padding:10px 14px;font-size:13px;color:#333;text-align:right;border-bottom:1px solid #f5f5f5;">₹${Number(i.price || 0).toLocaleString('en-IN')}</td>
-        </tr>`).join('')}
-        <tr style="background:#f8f8f8;">
-          <td colspan="2" style="padding:12px 14px;font-size:13px;color:#555;">Subtotal</td>
-          <td style="padding:12px 14px;font-size:13px;color:#333;text-align:right;">₹${Number(subtotal || 0).toLocaleString('en-IN')}</td>
-        </tr>
-        <tr style="background:#f8f8f8;">
-          <td colspan="2" style="padding:12px 14px;font-size:13px;color:#555;border-bottom:1px solid #eeeeee;">GST</td>
-          <td style="padding:12px 14px;font-size:13px;color:#333;text-align:right;border-bottom:1px solid #eeeeee;">₹${Number(gstTotal || 0).toLocaleString('en-IN')}</td>
-        </tr>
-        <tr style="background:#f8f8f8;">
-          <td colspan="2" style="padding:12px 14px;font-size:14px;font-weight:700;color:#333;">Grand Total</td>
-          <td style="padding:12px 14px;font-size:14px;font-weight:700;color:#E85A00;text-align:right;">₹${Number(amount || 0).toLocaleString('en-IN')}</td>
-        </tr>
+          <tr>
+            <td style="padding:16px; font-size:14px; color:#111827; border-bottom:1px solid #f3f4f6; font-weight:500;">${esc(i.name)}</td>
+            <td style="padding:16px; font-size:14px; color:#4b5563; text-align:center; border-bottom:1px solid #f3f4f6;">${esc(String(i.quantity))}</td>
+            <td style="padding:16px; font-size:14px; color:#111827; text-align:right; border-bottom:1px solid #f3f4f6;">₹${Number(i.price || 0).toLocaleString('en-IN')}</td>
+          </tr>`).join('')}
+        </tbody>
+        <tfoot>
+          <tr style="background:#ffffff;">
+            <td colspan="2" style="padding:12px 16px; font-size:13px; color:#6b7280; text-align:right;">Subtotal</td>
+            <td style="padding:12px 16px; font-size:14px; color:#111827; text-align:right;">₹${Number(subtotal || 0).toLocaleString('en-IN')}</td>
+          </tr>
+          <tr style="background:#ffffff;">
+            <td colspan="2" style="padding:12px 16px; font-size:13px; color:#6b7280; text-align:right; border-bottom:1px solid #e5e7eb;">GST</td>
+            <td style="padding:12px 16px; font-size:14px; color:#111827; text-align:right; border-bottom:1px solid #e5e7eb;">₹${Number(gstTotal || 0).toLocaleString('en-IN')}</td>
+          </tr>
+          <tr style="background:#f9fafb;">
+            <td colspan="2" style="padding:16px; font-size:15px; font-weight:700; color:#111827; text-align:right;">Grand Total</td>
+            <td style="padding:16px; font-size:16px; font-weight:700; color:#E85A00; text-align:right;">₹${Number(amount || 0).toLocaleString('en-IN')}</td>
+          </tr>
+        </tfoot>
       </table>`
-    : `<p style="background:#f8f8f8;padding:14px;border-radius:6px;font-size:14px;color:#555;">
-        Order Total: <strong style="color:#E85A00;">₹${Number(amount || 0).toLocaleString('en-IN')}</strong>
-      </p>`;
+    : `<div style="background:#f9fafb; border:1px solid #e5e7eb; padding:16px; border-radius:8px; font-size:15px; color:#374151; margin:24px 0;">
+        Order Total: <strong style="color:#E85A00; font-size:18px; float:right;">₹${Number(amount || 0).toLocaleString('en-IN')}</strong>
+      </div>`;
 
   return _buildAndSend({
     to, subject: `Order Placed — ${orderNumber}`,
     title: 'Order Placed Successfully! 🛒',
     greeting: `Hi ${name},`,
     bodyHtml: `
-      <p>Your order has been placed successfully on StructBay. Here are your order details:</p>
-      <div style="background:#f8f8f8;border-radius:8px;padding:16px;margin:16px 0;">
-        <p style="margin:0;font-size:13px;color:#666;">Order Number: <strong style="color:#333;font-size:15px;">${esc(orderNumber)}</strong></p>
+      <p>Your order has been placed successfully on <strong>StructBay</strong>. We're currently preparing it for you.</p>
+      
+      <div style="background:#f8fafc; border-left:4px solid #3b82f6; padding:16px; margin:24px 0; border-radius:0 8px 8px 0;">
+        <p style="margin:0; font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:0.05em; font-weight:600;">Order Number</p>
+        <p style="margin:4px 0 0; font-size:18px; color:#0f172a; font-weight:700;">${esc(orderNumber)}</p>
       </div>
+
+      <h3 style="font-size:16px; color:#111827; margin:32px 0 8px 0; font-weight:600;">Order Summary</h3>
       ${itemsHtml}
-      <p>Our team is reviewing your order and a vendor will be assigned shortly. You'll receive a confirmation email once it's confirmed.</p>`,
-    cta: { label: 'Track Order', url: `${branding.siteUrl}/orders/${orderNumber}` },
+      
+      <p style="margin-top:24px;">Our team is reviewing your order and a vendor will be assigned shortly. You'll receive a confirmation email once it is confirmed and dispatched.</p>`,
+    cta: { label: 'Track Your Order', url: `${branding.siteUrl}/orders/${orderNumber}` },
     vars: {},
   });
 };

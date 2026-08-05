@@ -80,11 +80,11 @@ function formatAddress(addr: Record<string, unknown> | undefined | null): string
   return parts.join(', ');
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
+function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
       <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: SB.faint }}>{label}</p>
-      <p className="font-medium text-sm" style={{ color: SB.color }}>{value || '—'}</p>
+      <div className="font-medium text-sm" style={{ color: SB.color }}>{value || '—'}</div>
     </div>
   );
 }
@@ -246,13 +246,15 @@ export function OrderDetails() {
                     }
                   />
                 )}
-                {p.customColor && (
+                {(p.customColor || p.color || (p.variation?.attributes && (p.variation.attributes.color || p.variation.attributes.Color))) && (
                   <InfoRow
                     label="Color"
                     value={
                       <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 rounded-full border border-black/10" style={{ backgroundColor: /^#[0-9A-Fa-f]{6}$/.test(p.customColor) ? p.customColor : "transparent" }}></div>
-                        {p.customColor}
+                        {/^#[0-9A-Fa-f]{6}$/.test(p.customColor || p.color || p.variation?.attributes?.color || p.variation?.attributes?.Color) ? (
+                           <div className="w-3 h-3 rounded-full border shadow-sm" style={{ backgroundColor: p.customColor || p.color || p.variation?.attributes?.color || p.variation?.attributes?.Color }}></div>
+                        ) : null}
+                        <span>{p.customColor || p.color || p.variation?.attributes?.color || p.variation?.attributes?.Color}</span>
                       </div>
                     }
                   />

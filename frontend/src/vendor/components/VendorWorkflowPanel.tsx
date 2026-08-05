@@ -82,11 +82,12 @@ function SubmittedDocuments({ order, onRequestDateChange }: { order: any; onRequ
     });
   }
 
-  if (ship?.transporterName || ship?.lrNumber || ship?.proofUrl) {
+  if (ship?.transporterName || ship?.transporterGstNumber || ship?.lrNumber || ship?.proofUrl) {
     blocks.push({
       title: 'Dispatch',
       meta: [
         ship.transporterName ? `Transporter: ${ship.transporterName}` : '',
+        ship.transporterGstNumber ? `Transporter GST: ${ship.transporterGstNumber}` : '',
         ship.lrNumber ? `LR: ${ship.lrNumber}` : '',
         ship.vehicleNumber ? `Vehicle: ${ship.vehicleNumber}` : '',
         ship.dispatchDate ? `Date: ${fmtWhen(ship.dispatchDate)}` : '',

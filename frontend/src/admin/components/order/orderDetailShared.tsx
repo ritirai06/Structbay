@@ -231,7 +231,7 @@ export function VendorWorkflowSubmissions({ detail }: { detail: any }) {
     (Array.isArray(pre?.packingFiles) && pre.packingFiles.length > 0) ||
     detail.expectedDispatchDate;
   const hasShip =
-    ship?.transporterName || ship?.lrNumber || ship?.vehicleNumber || ship?.proofUrl || ship?.dispatchDate;
+    ship?.transporterName || ship?.transporterGstNumber || ship?.lrNumber || ship?.vehicleNumber || ship?.proofUrl || ship?.dispatchDate;
   const hasPod = pod?.podUrl || pod?.deliveryDate;
   const hasVendorInv = vendorInv?.invoicePdfUrl;
   if (!hasPre && !hasShip && !hasPod && !hasVendorInv) return null;
@@ -273,6 +273,7 @@ export function VendorWorkflowSubmissions({ detail }: { detail: any }) {
             <p className="wf-doc-block__heading">Dispatch</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs text-sb-ink/65">
               <p>Transporter · <strong>{ship?.transporterName || "—"}</strong></p>
+              {ship?.transporterGstNumber && <p>Transporter GST · <strong>{ship.transporterGstNumber}</strong></p>}
               <p>LR · <strong>{ship?.lrNumber || "—"}</strong></p>
               <p>Vehicle · <strong>{ship?.vehicleNumber || "—"}</strong></p>
               {ship?.trackingNumber && <p>Tracking · <strong>{ship.trackingNumber}</strong></p>}
