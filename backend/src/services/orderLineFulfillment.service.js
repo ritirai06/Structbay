@@ -25,6 +25,7 @@ function buildVoItemFromOrderLine(line) {
     masterItemId: line._id,
     productName: line.name,
     sku: line.sku || undefined,
+    customColor: line.customColor || undefined,
     variationLabel: line.variationLabel || undefined,
     quantity: line.quantity,
     unitPrice: line.unitPrice,

@@ -120,7 +120,7 @@ const orderSchema = new mongoose.Schema(
   }
 );
 
-orderSchema.pre(/^find/, function (next) { this.where({ isDeleted: false }); next(); });
+orderSchema.pre(/^find/, function (next) { this.where({ isDeleted: { $ne: true } }); next(); });
 // orderNumber: unique index from field definition
 orderSchema.index({ customer: 1, status: 1 });
 orderSchema.index({ status: 1, createdAt: -1 });

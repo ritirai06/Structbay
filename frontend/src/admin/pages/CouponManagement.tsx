@@ -34,7 +34,6 @@ export function CouponManagement() {
     code: "",
     type: "PERCENTAGE",
     discountValue: 0,
-    discountValue: 0,
     minCartValue: 0,
     isActive: true,
     applicableCategories: [],

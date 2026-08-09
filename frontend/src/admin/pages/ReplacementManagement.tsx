@@ -164,6 +164,18 @@ export function ReplacementManagement() {
               <p className="text-xs text-sb-ink/50 uppercase mb-1">Description</p>
               <p className="whitespace-pre-wrap bg-sb-cream border border-sb-ink/10 rounded-lg p-3">{selected.description || "—"}</p>
             </div>
+            {selected.images?.length > 0 && (
+              <div>
+                <p className="text-xs text-sb-ink/50 uppercase mb-1">Attached Images</p>
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {selected.images.map((url: string, ix: number) => (
+                    <a key={ix} href={url} target="_blank" rel="noreferrer" className="shrink-0 hover:opacity-80 transition-opacity">
+                      <img src={url} alt={`Attachment ${ix + 1}`} className="h-20 w-20 object-cover rounded border border-sb-ink/10" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
             {["PENDING", "UNDER_REVIEW"].includes(selected.status) && (
               <>
                 <div>

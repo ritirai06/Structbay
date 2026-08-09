@@ -576,7 +576,6 @@ export function Checkout() {
                           {item.customColor && (
                             <div className="flex items-center gap-1 mt-0.5">
                               <span className="text-[10px] text-muted-foreground">Color:</span>
-                              <div className="w-2.5 h-2.5 rounded-full border border-gray-300" style={{ backgroundColor: /^#[0-9A-Fa-f]{6}$/.test(item.customColor) ? item.customColor : "transparent" }}></div>
                               <span className="text-[10px] text-gray-700 font-medium">{item.customColor}</span>
                             </div>
                           )}

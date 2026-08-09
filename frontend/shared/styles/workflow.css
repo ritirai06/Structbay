@@ -125,11 +125,7 @@
   gap: 0.5rem;
 }
 
-@media (min-width: 480px) {
-  .wf-delivery-type {
-    grid-template-columns: 1fr 1fr;
-  }
-}
+
 
 .wf-delivery-type__option {
   display: flex;

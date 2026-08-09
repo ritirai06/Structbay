@@ -65,6 +65,7 @@ export function OrderTracking() {
   const [replaceBusy, setReplaceBusy] = useState(false);
   const [replaceReason, setReplaceReason] = useState<"WRONG_PRODUCT" | "DAMAGED_PRODUCT">("DAMAGED_PRODUCT");
   const [replaceDesc, setReplaceDesc] = useState("");
+  const [replaceImages, setReplaceImages] = useState<File[]>([]);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
   const [showReplace, setShowReplace] = useState(false);
 
@@ -132,20 +133,25 @@ export function OrderTracking() {
   }, [id, hasSession, loadChat]);
 
   const progress = tracking?.order?.customerProgress;
-  const currentStep = (progress?.customerStep || "order_placed") as StepKey;
+  let currentStep = (progress?.customerStep || "order_placed") as StepKey;
+  const historyForCurrentStep = tracking?.order?.statusHistory || [];
+  const hasBeenDelivered = historyForCurrentStep.some(h => ["DELIVERED", "COMPLETED"].includes(h.status));
+  if (hasBeenDelivered && currentStep !== "cancelled" && currentStep !== "returned") {
+    currentStep = "full_delivery";
+  }
   const currentLabel = progress?.customerStatusLabel || "Order placed";
 
   const deliveryNote = ""; // Removed from customer view as per vendor/admin internal requirement
   const logisticsSnippets = useMemo(() => {
     const lines = tracking?.deliveryLines as
       | {
-          orderNumber: string;
-          structbayLogistics?: {
-            pickupScheduledText?: string;
-            companyName?: string;
-            driverContactDetails?: string;
-          } | null;
-        }[]
+        orderNumber: string;
+        structbayLogistics?: {
+          pickupScheduledText?: string;
+          companyName?: string;
+          driverContactDetails?: string;
+        } | null;
+      }[]
       | undefined;
     if (!Array.isArray(lines)) return [];
     const out: string[] = [];
@@ -162,27 +168,27 @@ export function OrderTracking() {
   const timelineSteps = useMemo(() => {
     const history = tracking?.order?.statusHistory || [];
     const mapStatus = (st: string) => {
-       if (["PENDING"].includes(st)) return "Order placed";
-       if (["PAID", "VENDOR_ASSIGNMENT_PENDING"].includes(st)) return "Order confirmed";
-       if (["PROCESSING", "READY_FOR_DISPATCH", "PARTIALLY_DISPATCHED"].includes(st)) return "Processing";
-       if (["DISPATCHED"].includes(st)) return "Out for delivery";
-       if (["PARTIALLY_DELIVERED"].includes(st)) return "Partial delivered";
-       if (["DELIVERED", "COMPLETED"].includes(st)) return "Full delivery complete";
-       if (st === "CANCELLED") return "Cancelled";
-       if (st === "RETURNED") return "Returned";
-       return null;
+      if (["PENDING"].includes(st)) return "Order placed";
+      if (["PAID", "VENDOR_ASSIGNMENT_PENDING"].includes(st)) return "Order confirmed";
+      if (["PROCESSING", "READY_FOR_DISPATCH", "PARTIALLY_DISPATCHED"].includes(st)) return "Processing";
+      if (["DISPATCHED"].includes(st)) return "Out for delivery";
+      if (["PARTIALLY_DELIVERED"].includes(st)) return "Partial delivered";
+      if (["DELIVERED", "COMPLETED"].includes(st)) return "Full delivery complete";
+      if (st === "CANCELLED") return "Cancelled";
+      if (st === "RETURNED") return "Returned";
+      return null;
     };
 
     const reachedSteps: Record<string, { timestamp: string, notes: string[] }> = {};
-    
+
     for (const entry of history) {
       const label = mapStatus(entry.status);
       if (!label) continue;
-      
+
       if (!reachedSteps[label]) {
         reachedSteps[label] = { timestamp: entry.changedAt, notes: [] };
       }
-      
+
       if (entry.note) {
         const lowerNote = entry.note.toLowerCase();
         const isSystem = lowerNote === "order placed by customer." || lowerNote.startsWith("payment received");
@@ -194,38 +200,38 @@ export function OrderTracking() {
 
     const out = [];
     for (let i = 0; i < CUSTOMER_MILESTONE_LABELS.length; i++) {
-       const label = CUSTOMER_MILESTONE_LABELS[i];
-       const reached = reachedSteps[label];
-       const st = stepRowState(currentStep, i);
-       out.push({
-         label,
-         done: st.done,
-         active: st.active,
-         pending: st.pending,
-         timestamp: reached ? reached.timestamp : null,
-         notes: reached ? reached.notes : []
-       });
+      const label = CUSTOMER_MILESTONE_LABELS[i];
+      const reached = reachedSteps[label];
+      const st = stepRowState(currentStep, i);
+      out.push({
+        label,
+        done: st.done,
+        active: st.active,
+        pending: st.pending,
+        timestamp: reached ? reached.timestamp : null,
+        notes: reached ? reached.notes : []
+      });
     }
 
     if (reachedSteps["Cancelled"]) {
-       out.push({
-         label: "Cancelled",
-         done: true,
-         active: true,
-         pending: false,
-         timestamp: reachedSteps["Cancelled"].timestamp,
-         notes: reachedSteps["Cancelled"].notes
-       });
+      out.push({
+        label: "Cancelled",
+        done: true,
+        active: true,
+        pending: false,
+        timestamp: reachedSteps["Cancelled"].timestamp,
+        notes: reachedSteps["Cancelled"].notes
+      });
     }
     if (reachedSteps["Returned"]) {
-       out.push({
-         label: "Returned",
-         done: true,
-         active: true,
-         pending: false,
-         timestamp: reachedSteps["Returned"].timestamp,
-         notes: reachedSteps["Returned"].notes
-       });
+      out.push({
+        label: "Returned",
+        done: true,
+        active: true,
+        pending: false,
+        timestamp: reachedSteps["Returned"].timestamp,
+        notes: reachedSteps["Returned"].notes
+      });
     }
     return out;
   }, [tracking?.order?.statusHistory, currentStep]);
@@ -280,13 +286,23 @@ export function OrderTracking() {
     setReplaceBusy(true);
     setActionMsg(null);
     try {
+      const imageUrls: string[] = [];
+      if (replaceImages.length > 0) {
+        for (const file of replaceImages) {
+          const res = await api.uploadCustomerDocument(file);
+          if (res?.data?.url) imageUrls.push(res.data.url);
+        }
+      }
+
       await api.createReplacementRequest({
         masterOrderId: String(orderDbId),
         reason: replaceReason,
         description: replaceDesc.trim(),
+        images: imageUrls,
       });
       setActionMsg("Replacement request submitted.");
       setReplaceDesc("");
+      setReplaceImages([]);
       setShowReplace(false);
     } catch (e) {
       setActionMsg(e instanceof Error ? e.message : "Could not submit request");
@@ -391,11 +407,10 @@ export function OrderTracking() {
 
           {actionMsg && (
             <p
-              className={`text-sm px-3 py-2 border ${
-                actionMsg.includes("cancelled") || actionMsg.includes("submitted")
+              className={`text-sm px-3 py-2 border ${actionMsg.includes("cancelled") || actionMsg.includes("submitted")
                   ? "bg-green-50 text-green-800 border-green-200"
                   : "bg-red-50 text-red-700 border-red-200"
-              }`}
+                }`}
             >
               {actionMsg}
             </p>
@@ -410,13 +425,12 @@ export function OrderTracking() {
                   return (
                     <div key={step.label} className="flex gap-4 items-start relative">
                       <div
-                        className={`w-7 h-7 flex items-center justify-center shrink-0 z-10 ${
-                          step.done
+                        className={`w-7 h-7 flex items-center justify-center shrink-0 z-10 ${step.done
                             ? "bg-green-500 text-white"
                             : step.active
                               ? "border-2 border-[#E85A00] bg-white"
                               : "border border-gray-200 bg-white"
-                        }`}
+                          }`}
                       >
                         {step.done ? (
                           <CheckCircle2 className="w-4 h-4" />
@@ -429,9 +443,8 @@ export function OrderTracking() {
                       <div className="pt-1 w-full">
                         <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1 w-full">
                           <p
-                            className={`text-sm ${
-                              step.done || step.active ? "font-semibold text-black" : "text-gray-400"
-                            }`}
+                            className={`text-sm ${step.done || step.active ? "font-semibold text-black" : "text-gray-400"
+                              }`}
                           >
                             {step.label}
                           </p>
@@ -463,7 +476,7 @@ export function OrderTracking() {
                 <Truck className="w-4 h-4 text-[#E85A00]" />
                 Tracking Updates
               </h3>
-              
+
               <div className="space-y-4">
                 {/* Logistics snippets if any */}
                 {logisticsSnippets.length > 0 && (
@@ -475,7 +488,7 @@ export function OrderTracking() {
                     </ul>
                   </div>
                 )}
-                
+
               </div>
             </div>
           ) : null}
@@ -494,9 +507,7 @@ export function OrderTracking() {
                       <span className="text-black">{it.name}</span>
                       {it.customColor && (
                         <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
-                          Color: 
-                          <span className="w-2.5 h-2.5 inline-block rounded-full border border-gray-300" style={{ backgroundColor: /^#[0-9A-Fa-f]{6}$/.test(it.customColor) ? it.customColor : "transparent" }}></span>
-                          {it.customColor}
+                          Color: {it.customColor}
                         </p>
                       )}
                     </div>
@@ -551,6 +562,25 @@ export function OrderTracking() {
                 placeholder="Brief description…"
                 className="w-full border border-gray-200 bg-gray-50 px-3 py-2 text-sm"
               />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Attach images (optional)
+                </label>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={(e) => {
+                    if (e.target.files) {
+                      setReplaceImages(Array.from(e.target.files));
+                    }
+                  }}
+                  className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-gray-50 file:text-gray-700 hover:file:bg-gray-100"
+                />
+                {replaceImages.length > 0 && (
+                  <p className="text-xs text-gray-500 mt-1">{replaceImages.length} file(s) selected</p>
+                )}
+              </div>
               <button
                 type="button"
                 disabled={replaceBusy || !replaceDesc.trim()}
@@ -566,9 +596,9 @@ export function OrderTracking() {
           <div className="border border-gray-200 bg-white p-5">
             <h3 className="text-sm font-semibold text-black mb-4 flex items-center gap-2">
               <MessageCircle className="w-4 h-4 text-[#E85A00]" />
-              Chat with StructBay Support
+              Chat with Structbay Support
             </h3>
-            
+
             <div className="bg-gray-50 border border-gray-100 flex flex-col h-[300px]">
               <div className="flex-1 p-4 overflow-y-auto space-y-4">
                 {messages.length === 0 ? (
@@ -588,12 +618,11 @@ export function OrderTracking() {
                             {new Date(msg.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
-                        <div 
-                          className={`max-w-[85%] rounded-md px-3 py-2 text-sm ${
-                            isCustomer 
-                              ? "bg-[#E85A00] text-white rounded-tr-none" 
+                        <div
+                          className={`max-w-[85%] rounded-md px-3 py-2 text-sm ${isCustomer
+                              ? "bg-[#E85A00] text-white rounded-tr-none"
                               : "bg-white border border-gray-200 text-gray-800 rounded-tl-none"
-                          }`}
+                            }`}
                         >
                           <p className="whitespace-pre-wrap">{msg.text}</p>
                         </div>
@@ -602,7 +631,7 @@ export function OrderTracking() {
                   })
                 )}
               </div>
-              
+
               <div className="p-3 bg-white border-t border-gray-100 flex gap-2">
                 <input
                   type="text"

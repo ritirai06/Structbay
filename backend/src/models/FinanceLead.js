@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const financeLeadSchema = new mongoose.Schema(
   {
     // Applicant Info
-    financeNumber: { type: String, unique: true, sparse: true }, // FIN...
+    financeNumber: { type: String }, // FIN...
     name:          { type: String, required: true, trim: true },
     companyName:   { type: String, trim: true },
     mobile:        { type: String, required: true, trim: true },
@@ -70,7 +70,7 @@ financeLeadSchema.pre(/^find/, function (next) { this.where({ isDeleted: false }
 financeLeadSchema.index({ status: 1, createdAt: -1 });
 financeLeadSchema.index({ assignedTo: 1, status: 1 });
 financeLeadSchema.index({ mobile: 1 });
-financeLeadSchema.index({ financeNumber: 1 });
+financeLeadSchema.index({ financeNumber: 1 }, { unique: true, sparse: true });
 
 financeLeadSchema.virtual('city').get(function() { return this.projectLocation; });
 

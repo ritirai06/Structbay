@@ -31,6 +31,7 @@ const adminOnly = [protect, requireRole('ADMIN')];
 const referenceSearchCtrl = require('../controllers/referenceSearch.controller');
 router.get('/reference-search', ...adminOnly, asyncHandler(referenceSearchCtrl.searchReferences));
 
+
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 router.get('/dashboard', ...adminOnly, getDashboard);
 
@@ -170,6 +171,8 @@ router.put ('/vendor-orders/:id',                ...adminOnly, asyncHandler(admi
 router.delete('/vendor-orders/:id',              ...adminOnly, asyncHandler(adminVendorOrderCtrl.cancelVendorOrder));
 router.post('/vendor-orders/:id/request-invoice',...adminOnly, asyncHandler(adminVendorOrderCtrl.requestInvoice));
 router.post('/vendor-orders/:id/request-dispatch',...adminOnly, asyncHandler(adminVendorOrderCtrl.requestDispatch));
+router.post('/vendor-orders/:id/date-change-request/approve', ...adminOnly, asyncHandler(adminVendorOrderCtrl.approveDateChangeRequest));
+router.post('/vendor-orders/:id/date-change-request/reject',  ...adminOnly, asyncHandler(adminVendorOrderCtrl.rejectDateChangeRequest));
 
 router.post('/vendor-orders/:id/workflow/confirm-dispatch', ...adminOnly, asyncHandler(adminVendorWorkflowCtrl.confirmDispatch));
 router.post('/vendor-orders/:id/workflow/approve-dispatch', ...adminOnly, asyncHandler(adminVendorWorkflowCtrl.approveDispatch));

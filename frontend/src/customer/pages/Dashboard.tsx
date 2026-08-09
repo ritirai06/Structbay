@@ -68,6 +68,7 @@ const NAV_ITEMS = [
   { icon: Package, label: "My Orders", key: "orders" },
   { icon: Building2, label: "My Projects", key: "projects", path: "/projects" },
   { icon: MapPin, label: "Addresses", key: "addresses" },
+  { icon: MessageSquare, label: "Chats", key: "chats" },
   { icon: Bell, label: "Notifications", key: "notifications" },
   { icon: UserIcon, label: "Profile", key: "profile" },
 ];
@@ -889,6 +890,81 @@ function ProfileSection({ user }: { user: any }) {
   );
 }
 
+/* ─── Section: Chats ─────────────────────────────────────── */
+function ChatsSection() {
+  const [chats, setChats] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.getMyOrderChats()
+      .then((res) => {
+        if (!cancelled) {
+          setChats(res?.data || []);
+          setLoading(false);
+        }
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setErr(e instanceof Error ? e.message : "Failed to load chats");
+          setLoading(false);
+        }
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  if (loading) return <div className="text-center py-10 text-gray-500">Loading chats...</div>;
+  if (err) return <div className="text-center py-10 text-red-500">{err}</div>;
+  if (chats.length === 0) {
+    return (
+      <div className="bg-white p-8 rounded-2xl border border-gray-200 text-center flex flex-col items-center">
+        <MessageSquare className="w-12 h-12 text-gray-300 mb-3" />
+        <p className="text-black font-semibold text-lg">No chats yet</p>
+        <p className="text-gray-500/70 text-sm mt-1 max-w-sm">
+          You don't have any active chats with support. Chats will appear here when you or the admin send a message on an order.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-lg font-bold text-black mb-4">Support Chats</h2>
+      {chats.map((chat) => (
+        <div key={chat._id} className="bg-white p-5 rounded-xl border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-[#E85A00]/40 transition-colors">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="font-semibold text-black">
+                Order {chat.masterOrder?.orderNumber || chat.masterOrder?._id || "Unknown"}
+              </span>
+              <span className={`text-xs px-2 py-0.5 rounded-full border ${mapApiStatus(chat.masterOrder?.status || "").cls.includes("red") ? "bg-red-50 text-red-600 border-red-200" : "bg-gray-100 text-gray-600 border-gray-200"}`}>
+                {mapApiStatus(chat.masterOrder?.status || "").label}
+              </span>
+            </div>
+            {chat.messages && chat.messages.length > 0 && (
+              <p className="text-sm text-gray-700 mt-1 truncate max-w-lg">
+                <span className="font-medium text-gray-900">{chat.messages[chat.messages.length - 1].sender === "CUSTOMER" ? "You: " : "Support: "}</span>
+                {chat.messages[chat.messages.length - 1].text}
+              </p>
+            )}
+            <p className="text-xs text-gray-500/80 mt-1.5">
+              Last message: {new Date(chat.lastMessageAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+            </p>
+          </div>
+          <Link
+            to={`/orders/${chat.masterOrder?._id}#chat`}
+            className="flex items-center justify-center gap-1.5 text-[#E85A00] text-sm font-bold bg-[#E85A00]/10 px-4 py-2 rounded-lg hover:bg-[#E85A00]/20 transition-colors shrink-0"
+          >
+            Continue chat
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ─── Main Dashboard ────────────────────────────────────── */
 export function Dashboard() {
   const { user, setIsLoggedIn, setUser, isLoggedIn } = useApp();
@@ -986,6 +1062,7 @@ export function Dashboard() {
   const sectionTitle: Record<string, string> = {
     dashboard: "Dashboard", orders: "My Orders", projects: "My Projects",
     addresses: "Addresses", notifications: "Notifications", profile: "Profile",
+    chats: "Support Chats",
   };
 
   return (
@@ -1036,6 +1113,7 @@ export function Dashboard() {
           {active === "dashboard" && <DashboardHome user={user} setActive={setActive} orders={orders} stats={dashboardStats} savedAddrCount={savedAddrCount} />}
           {active === "orders" && <OrdersSection orders={orders} onReload={loadOrders} />}
           {active === "addresses" && <AddressesSection onCountChange={setSavedAddrCount} />}
+          {active === "chats" && <ChatsSection />}
           {active === "notifications" && <NotificationsSection onUnreadChange={setNotifUnread} />}
           {active === "profile" && <ProfileSection user={user} />}
         </div>

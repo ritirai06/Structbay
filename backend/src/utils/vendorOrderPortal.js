@@ -15,6 +15,7 @@ function decorateVendorOrderForPortal(doc) {
       product: it.product,
       variation: it.variation,
       sku: it.sku || '',
+      customColor: it.customColor,
       variationLabel: it.variationLabel
         || (it.variation && it.variation.attributes
           ? formatVariationLabel(it.variation.attributes)

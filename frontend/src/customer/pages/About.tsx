@@ -43,7 +43,7 @@ export function About() {
             </div>
             <div>
               <div className="text-4xl md:text-5xl font-medium text-sb-orange mb-4">5+</div>
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-[0.2em] leading-relaxed">Cities Indian Covered</div>
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-[0.2em] leading-relaxed">Indian Cities Covered</div>
             </div>
             <div>
               <div className="text-4xl md:text-5xl font-medium text-sb-orange mb-4">50000+</div>
@@ -99,7 +99,7 @@ export function About() {
               <h4 className="text-lg font-bold text-gray-900 mb-3 flex items-start gap-2">
                 <span className="text-sb-orange mt-1">✦</span> One-stop shop
               </h4>
-              <p className="text-gray-600 text-sm leading-relaxed text-justify">For all construction needs of your dream project, we provide everything you need for building your dream project.</p>
+              <p className="text-gray-600 text-sm leading-relaxed text-justify">We provide a comprehensive range of materials for all your construction needs, helping you build your dream project with ease.</p>
             </div>
             
             <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:border-sb-orange/30 transition-colors">

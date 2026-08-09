@@ -271,7 +271,7 @@ export function VendorWorkflowSubmissions({ detail }: { detail: any }) {
         {hasShip && (
           <div className="wf-doc-block">
             <p className="wf-doc-block__heading">Dispatch</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs text-sb-ink/65">
+            <div className="flex flex-col gap-1.5 text-xs text-sb-ink/65">
               <p>Transporter · <strong>{ship?.transporterName || "—"}</strong></p>
               {ship?.transporterGstNumber && <p>Transporter GST · <strong>{ship.transporterGstNumber}</strong></p>}
               <p>LR · <strong>{ship?.lrNumber || "—"}</strong></p>

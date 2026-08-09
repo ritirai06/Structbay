@@ -8,7 +8,7 @@ const variationSchema = new mongoose.Schema(
       of: String,
       default: {},
     },
-    sku: { type: String, trim: true, sparse: true, default: null },
+    sku: { type: String, trim: true, default: null },
     barcode: { type: String, trim: true, default: null },
     mrp: { type: Number, default: null, min: 0 },
     /** Optional reference weight (kg); city stock stays on Inventory. */

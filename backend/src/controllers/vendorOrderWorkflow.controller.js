@@ -326,9 +326,13 @@ exports.requestDispatchDateChange = asyncHandler(async (req, res) => {
   const vo = await VendorOrder.findOne({ _id: req.params.id, ...match });
   if (!vo) throw new AppError('Order not found or not assigned to you.', 404);
   
-  if (!vo.expectedDispatchDate) {
-    throw new AppError('Dispatch date has not been set yet.', 400);
-  }
+  vo.dateChangeRequest = {
+    requestedDate: new Date(newDate),
+    reason,
+    status: 'PENDING',
+    requestedAt: new Date()
+  };
+  await vo.save();
 
   await appendAudit(vo._id, 'DATE_CHANGE_REQUESTED', `Vendor requested to change dispatch date to ${new Date(newDate).toLocaleString('en-IN')} (Reason: ${reason})`, req.user._id, 'Vendor');
 

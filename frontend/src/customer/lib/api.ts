@@ -278,6 +278,7 @@ export const api = {
   getOrder: (id: string) => req<any>('GET', `/orders/${id}`),
   getOrderTracking: (id: string) => req<any>('GET', `/orders/${id}/tracking`),
   getOrderChat: (orderId: string) => reqV1<any>('GET', `/order-chat/${orderId}`),
+  getMyOrderChats: () => reqV1<any>('GET', `/order-chat/my`),
   postOrderChatMessage: (orderId: string, text: string) =>
     reqV1<any>('POST', `/order-chat/${orderId}/messages`, { text }),
   getOrderInvoices: (id: string) => req<any>('GET', `/orders/${id}/invoices`),
@@ -385,6 +386,7 @@ export const api = {
     reason: 'WRONG_PRODUCT' | 'DAMAGED_PRODUCT';
     description: string;
     vendorOrderId?: string;
+    images?: string[];
   }) => reqV1<any>('POST', '/replacements', data),
 
   getMyReplacementRequests: () => reqV1<any>('GET', '/replacements/my'),

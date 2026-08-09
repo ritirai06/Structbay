@@ -49,6 +49,7 @@ exports.assignVendors = asyncHandler(async (req, res) => {
         masterItemId:  item._id,
         productName:   item.name,
         sku:           item.sku,
+        customColor:   item.customColor || undefined,
         variationLabel: item.variationLabel || undefined,
         quantity:      item.quantity,
         unitPrice:     item.unitPrice,

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { CheckCircle, XCircle, Truck, FileText, PackageCheck } from 'lucide-react';
+import { CheckCircle, XCircle, Truck, FileText, PackageCheck, AlertCircle } from 'lucide-react';
 import { WorkflowFilePreview, WorkflowFileUpload } from '@shared/components/workflow/WorkflowFileUpload';
 import { api } from '../lib/api';
 import { vendorPath } from '../../lib/portalRoutes';
@@ -173,6 +173,15 @@ export function VendorWorkflowPanel({
   const [delWhen, setDelWhen] = useState('');
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (order?.shipmentDispatch) {
+      if (order.shipmentDispatch.transporterName) setDispTransporter(order.shipmentDispatch.transporterName);
+      if (order.shipmentDispatch.vehicleNumber) setDispVehicle(order.shipmentDispatch.vehicleNumber);
+      if (order.shipmentDispatch.lrNumber) setDispLr(order.shipmentDispatch.lrNumber);
+      if (order.shipmentDispatch.trackingNumber) setDispTrack(order.shipmentDispatch.trackingNumber);
+    }
+  }, [order?.shipmentDispatch]);
+
   const st = String(order?.status ?? '');
   const typeB = order?.deliveryType === 'structbay_delivery';
   const allDone = st === 'COMPLETED';
@@ -239,9 +248,16 @@ export function VendorWorkflowPanel({
           </div>
         </div>
 
-        {pending && (
-          <div className="wf-milestone">
+        {pending && pending !== 'None' && (
+          <div className="wf-milestone" style={{ background: 'var(--sb-orange-subtle)', borderColor: 'var(--sb-orange)', color: 'var(--sb-orange)' }}>
+            <AlertCircle className="w-4 h-4 shrink-0" />
             <span><strong>Action needed:</strong> {pending}</span>
+          </div>
+        )}
+        {pending === 'None' && (
+          <div className="wf-milestone" style={{ background: 'rgba(34, 197, 94, 0.1)', borderColor: 'rgba(34, 197, 94, 0.25)', color: '#166534' }}>
+            <CheckCircle className="w-4 h-4 shrink-0 text-green-600" />
+            <span><strong>All caught up!</strong> No action needed at this time.</span>
           </div>
         )}
 
@@ -254,17 +270,24 @@ export function VendorWorkflowPanel({
           <div className="wf-subsection bg-blue-50/50 border border-blue-100 p-4 rounded-lg mt-4">
             <h3 className="text-sm font-bold text-sb-ink mb-2">Request Dispatch Date Change</h3>
             <p className="text-xs text-sb-ink/60 mb-4">Select a new date and provide a reason. This requires admin approval.</p>
-            <form onSubmit={(e) => {
+            <form onSubmit={async (e) => {
               e.preventDefault();
               if (!changeDate || !changeTime || !changeReason) {
                 alert('All fields are required.'); return;
               }
               const localDate = new Date(`${changeDate}T${changeTime}`);
-              void run(() => api.workflowRequestDateChange(orderId, localDate.toISOString(), changeReason)).then(() => {
+              setBusy(true);
+              try {
+                await api.workflowRequestDateChange(orderId, localDate.toISOString(), changeReason);
+                await onUpdated();
                 setShowDateChange(false);
                 setChangeDate(''); setChangeTime(''); setChangeReason('');
                 alert('Date change request sent to admin successfully.');
-              });
+              } catch (err: any) {
+                alert(err.response?.data?.message || err.message || 'Request failed');
+              } finally {
+                setBusy(false);
+              }
             }} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="wf-field">

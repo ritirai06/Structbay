@@ -136,8 +136,8 @@ export function SearchResults() {
                     selectedVariationId={selVid}
                     onVariationChange={(vid) => setVarChoice((v) => ({ ...v, [slug]: vid }))}
                     cartLine={cartLine}
-                    onAdd={({ qty, variationId, variationLabel, unitPrice, pricingSnapshot, image }) => {
-                      const id = `${slug}::${variationId || "base"}`;
+                    onAdd={({ qty, variationId, variationLabel, customColor, unitPrice, pricingSnapshot, image }) => {
+                      const id = `${slug}::${variationId || "base"}${customColor ? "::color=" + encodeURIComponent(customColor) : ""}`;
                       addToCart({
                         id,
                         productSlug: slug,
@@ -145,6 +145,7 @@ export function SearchResults() {
                         categoryId: typeof product.category === 'object' ? product.category._id : product.category,
                         variationId,
                         variationLabel,
+                        customColor,
                         name: product.name,
                         brand: brandName,
                         price: unitPrice,

@@ -9,7 +9,7 @@ export function AdminCustomerChatBox({ orderId }: { orderId: string }) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const load = async (isPoll = false) => {
     if (!orderId) return;
@@ -32,8 +32,8 @@ export function AdminCustomerChatBox({ orderId }: { orderId: string }) {
   }, [orderId]);
 
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
     }
   }, [chat?.messages?.length]);
 
@@ -60,7 +60,7 @@ export function AdminCustomerChatBox({ orderId }: { orderId: string }) {
         <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-sb-orange" /></div>
       ) : (
         <div className="flex flex-col h-[300px]">
-          <div className="flex-1 overflow-y-auto space-y-3 p-2 mb-3 bg-white/50 rounded-lg border border-sb-ink/5">
+          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto space-y-3 p-2 mb-3 bg-white/50 rounded-lg border border-sb-ink/5">
             {(chat?.messages?.length ? chat.messages : []).map((m: any, i: number) => (
               <div
                 key={i}
@@ -84,7 +84,6 @@ export function AdminCustomerChatBox({ orderId }: { orderId: string }) {
             {(!chat?.messages || chat.messages.length === 0) && (
               <p className="text-xs text-sb-ink/50 text-center py-4">No messages yet.</p>
             )}
-            <div ref={messagesEndRef} />
           </div>
           {err && <p className="text-red-500 text-[10px] mb-1">{err}</p>}
           <div className="flex gap-2">

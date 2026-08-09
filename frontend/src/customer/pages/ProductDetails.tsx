@@ -455,7 +455,8 @@ export function ProductDetails() {
     }
     const pslug = product.slug || product._id;
     const vid = isVariant ? selectedVid || undefined : undefined;
-    const cartId = `${pslug}::${vid || "base"}`;
+    const ccol = product.allowCustomColor && customColorText ? customColorText.trim() : "";
+    const cartId = `${pslug}::${vid || "base"}${ccol ? "::color=" + encodeURIComponent(ccol) : ""}`;
     addToCart({
       id: cartId,
       productSlug: pslug,
@@ -475,7 +476,6 @@ export function ProductDetails() {
       pricingSnapshot: pricingSnap,
       gstPercentage: gstPct,
       gstType: product.priceIncludesGst ? "inclusive" : "exclusive",
-      productId: product._id || product.id || undefined,
     });
     toast.success(`${qty} item(s) added to cart`);
   };

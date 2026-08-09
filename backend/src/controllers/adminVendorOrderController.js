@@ -12,6 +12,8 @@ const { rowFromVendorOrder } = require('../utils/vendorDispatchEnrich');
 const { notifyVendor } = require('../services/vendorNotification.service');
 const { PAGINATION } = require('../config/constants');
 const { generateSubOrderNumber, getNextSubOrderIndex } = require('../services/refNumber.service');
+const { appendAudit } = require('../services/vendorOrderWorkflow.service');
+const { decorateVendorOrderForPortal } = require('../utils/vendorOrderPortal');
 
 const VALID_DELIVERY_TYPES = ['vendor_delivery', 'structbay_delivery'];
 
@@ -47,6 +49,7 @@ const assignOrderToVendor = asyncHandler(async (req, res) => {
       masterItemId: ap.masterItemId || undefined,
       productName: ap.productName || 'Product',
       sku: ap.sku || undefined,
+      customColor: ap.customColor || undefined,
       quantity: qty,
       unitPrice: unit,
       gstPercentage: ap.gstPercentage != null ? Number(ap.gstPercentage) : 18,
@@ -462,6 +465,64 @@ const getVendorDispatchBoard = asyncHandler(async (req, res) => {
   );
 });
 
+const approveDateChangeRequest = asyncHandler(async (req, res) => {
+  const order = await VendorOrder.findById(req.params.id);
+  if (!order) throw new AppError('Order not found', 404);
+  
+  if (order.dateChangeRequest && order.dateChangeRequest.status === 'PENDING') {
+    order.dateChangeRequest.status = 'APPROVED';
+    order.expectedDispatchDate = order.dateChangeRequest.requestedDate;
+    await order.save();
+    
+    try {
+      await appendAudit(order._id, 'DATE_CHANGE_APPROVED', `Admin approved new dispatch date to ${new Date(order.expectedDispatchDate).toLocaleString('en-IN')}`, req.user._id, 'User');
+    } catch(auditErr) { /* non-fatal */ }
+    
+    try {
+      const Notification = require('../models/Notification');
+      await Notification.create({
+        vendor: order.vendor,
+        title: 'Dispatch Date Change Approved',
+        message: `Your request to change dispatch date for order ${order.orderNumber} has been approved.`,
+        type: 'ORDER_UPDATE',
+        refId: order._id,
+      });
+    } catch(notifErr) { /* non-fatal */ }
+    
+    return ApiResponse.success(res, 200, 'Date change request approved.', decorateVendorOrderForPortal(order));
+  }
+  
+  throw new AppError('No pending date change request found.', 400);
+});
+
+const rejectDateChangeRequest = asyncHandler(async (req, res) => {
+  const order = await VendorOrder.findById(req.params.id);
+  if (!order) throw new AppError('Order not found', 404);
+  
+  if (order.dateChangeRequest && order.dateChangeRequest.status === 'PENDING') {
+    order.dateChangeRequest.status = 'REJECTED';
+    await order.save();
+    
+    try {
+      await appendAudit(order._id, 'DATE_CHANGE_REJECTED', `Admin rejected vendor's request to change dispatch date.`, req.user._id, 'User');
+    } catch(auditErr) { /* non-fatal */ }
+    
+    try {
+      const Notification = require('../models/Notification');
+      await Notification.create({
+        vendor: order.vendor,
+        title: 'Dispatch Date Change Rejected',
+        message: `Your request to change dispatch date for order ${order.orderNumber} has been rejected by admin.`,
+        type: 'ORDER_UPDATE',
+        refId: order._id,
+      });
+    } catch(notifErr) { /* non-fatal */ }
+    
+    return ApiResponse.success(res, 200, 'Date change request rejected.', decorateVendorOrderForPortal(order));
+  }
+  throw new AppError('No pending date change request found.', 400);
+});
+
 module.exports = {
   assignOrderToVendor,
   getAllVendorOrders,
@@ -473,4 +534,6 @@ module.exports = {
   bulkDeleteVendorOrders,
   getVendorOrderAnalytics,
   getVendorDispatchBoard,
+  approveDateChangeRequest,
+  rejectDateChangeRequest,
 };

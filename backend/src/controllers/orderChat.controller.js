@@ -74,6 +74,29 @@ exports.sendMessage = asyncHandler(async (req, res) => {
   return ApiResponse.success(res, 200, 'Message sent.', chat.messages[chat.messages.length - 1]);
 });
 
+// ─── GET /order-chat/my (customer — my chats) ─────────────────────────────────
+exports.getMyChats = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 20 } = req.query;
+  // only chats that have at least one message
+  const filter = { customer: req.user._id, 'messages.0': { $exists: true } };
+
+  const pageNum  = Math.max(1, parseInt(page));
+  const limitNum = Math.min(100, parseInt(limit));
+
+  const [chats, total] = await Promise.all([
+    OrderChat.find(filter)
+      .populate('masterOrder', 'orderNumber status')
+      .sort({ lastMessageAt: -1 })
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum),
+    OrderChat.countDocuments(filter),
+  ]);
+
+  return ApiResponse.success(res, 200, 'My chats retrieved.', chats, {
+    total, page: pageNum, limit: limitNum, pages: Math.ceil(total / limitNum),
+  });
+});
+
 // ─── GET /order-chat (admin — all chats) ──────────────────────────────────────
 exports.getAllChats = asyncHandler(async (req, res) => {
   const { unread, page = 1, limit = 20 } = req.query;

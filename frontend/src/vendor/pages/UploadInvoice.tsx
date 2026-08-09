@@ -242,25 +242,27 @@ export function UploadInvoice() {
                 </label>
               </Field>
 
-              <div className="rounded-xl p-4 space-y-4" style={{ background: SB.bg, border: `1px solid ${SB.border}` }}>
-                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: SB.color }}>
-                  Transport Details
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="Transporter Name">
-                    <input type="text" value={transporterName} onChange={e => setTransporterName(e.target.value)}
-                      placeholder="e.g. VRL Logistics" className={inputCls} style={inputStyle} />
-                  </Field>
-                  <Field label="Transporter GST Number">
-                    <input type="text" value={transporterGstNumber} onChange={e => setTransporterGstNumber(e.target.value)}
-                      placeholder="e.g. 29AAAAA0000A1Z5" className={inputCls} style={inputStyle} />
-                  </Field>
-                  <Field label="Vehicle Number">
-                    <input type="text" value={vehicleNumber} onChange={e => setVehicleNumber(e.target.value)}
-                      placeholder="e.g. MH12AB1234" className={inputCls} style={inputStyle} />
-                  </Field>
+              {!typeB && (
+                <div className="rounded-xl p-4 space-y-4" style={{ background: SB.bg, border: `1px solid ${SB.border}` }}>
+                  <p className="text-xs font-bold uppercase tracking-wider" style={{ color: SB.color }}>
+                    Transport Details
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Field label="Transporter Name">
+                      <input type="text" value={transporterName} onChange={e => setTransporterName(e.target.value)}
+                        placeholder="e.g. VRL Logistics" className={inputCls} style={inputStyle} />
+                    </Field>
+                    <Field label="Transporter GST Number">
+                      <input type="text" value={transporterGstNumber} onChange={e => setTransporterGstNumber(e.target.value)}
+                        placeholder="e.g. 29AAAAA0000A1Z5" className={inputCls} style={inputStyle} />
+                    </Field>
+                    <Field label="Vehicle Number">
+                      <input type="text" value={vehicleNumber} onChange={e => setVehicleNumber(e.target.value)}
+                        placeholder="e.g. MH12AB1234" className={inputCls} style={inputStyle} />
+                    </Field>
+                  </div>
                 </div>
-              </div>
+              )}
 
 
               {typeB && (

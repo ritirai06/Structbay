@@ -8,6 +8,8 @@ const authenticated = [protect, requireRole('CUSTOMER', 'ADMIN')];
 
 // Admin: view all chats
 router.get('/',                         ...adminOnly,    ctrl.getAllChats);
+// Customer: view my chats
+router.get('/my',                       ...[protect, requireRole('CUSTOMER')], ctrl.getMyChats);
 // Per-order: both customer and admin
 router.get('/:orderId',                 ...authenticated, ctrl.getChat);
 router.post('/:orderId/messages',       ...authenticated, ctrl.sendMessage);

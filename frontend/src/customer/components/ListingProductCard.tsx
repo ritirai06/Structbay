@@ -43,6 +43,7 @@ type Props = {
     qty: number;
     variationId?: string;
     variationLabel?: string;
+    customColor?: string;
     unitPrice: number;
     pricingSnapshot: PricingSnapshot | null;
     image: string;
@@ -203,12 +204,14 @@ export function ListingProductCard({
       return;
     }
     const priceAtQty = snap ? resolveUnitPriceFromSnapshot(snap, addQty) : unitEx;
+    const ccol = product.allowCustomColor && customColorText ? customColorText.trim() : undefined;
     onAdd({
       qty: addQty,
       variationId: isVariant ? vid || undefined : undefined,
       variationLabel: isVariant && selectedVar 
         ? formatVariationLabel(selectedVar) + ((selections["Color"] === "Custom" || selections["Colour"] === "Custom" || selections["Colors"] === "Custom" || selections["Colours"] === "Custom") && customColorText ? ` (Custom: ${customColorText})` : "") 
         : undefined,
+      customColor: ccol,
       unitPrice: priceAtQty,
       pricingSnapshot: snap,
       image: image || "",

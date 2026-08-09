@@ -14,7 +14,7 @@ const messageSchema = new mongoose.Schema({
 }, { _id: true });
 
 const vendorChatSchema = new mongoose.Schema({
-  vendorOrder: { type: mongoose.Schema.Types.ObjectId, ref: 'VendorOrder', required: true, index: true },
+  vendorOrder: { type: mongoose.Schema.Types.ObjectId, ref: 'VendorOrder', required: true },
   vendor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   messages: [messageSchema],
   lastMessageAt: { type: Date, default: Date.now },

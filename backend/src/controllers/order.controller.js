@@ -63,7 +63,7 @@ const getById = asyncHandler(async (req, res) => {
     .populate('paymentTransactionId')
     .populate({
       path: 'vendorOrders',
-      select: 'orderNumber deliveryType status invoiceStatus structbayLogistics vendor totalAmount workflowVersion',
+      select: 'orderNumber deliveryType status invoiceStatus structbayLogistics vendor totalAmount workflowVersion dateChangeRequest preDispatch shipmentDispatch deliveryProof',
     });
   if (!order) throw new AppError('Order not found.', 404);
   const payload = order.toObject({ virtuals: true });
@@ -208,6 +208,7 @@ const assignVendor = asyncHandler(async (req, res) => {
           masterItemId: line._id,
           productName: line.name,
           sku: line.sku || undefined,
+          customColor: line.customColor || undefined,
           quantity: line.quantity,
           unitPrice: line.unitPrice,
           gstPercentage: line.gstPercentage ?? 18,

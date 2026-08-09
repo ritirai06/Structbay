@@ -73,13 +73,11 @@ describe('product variation matrix generation', () => {
 
     const redSmall = await ProductVariation.findOne({
       product: product._id,
-      'attributes.size': 'S',
-      'attributes.color': 'Red',
+      'attributes.Size': 'S',
+      'attributes.Color': 'Red',
     }).lean();
     expect(redSmall.sku).toMatch(/^MSHIRT-/);
-    expect(redSmall.attributes.custom).toEqual(
-      expect.arrayContaining([expect.objectContaining({ key: 'Color_code', value: '#FF0000' })])
-    );
+    expect(redSmall.attributes.Color_code).toBe('#FF0000');
   });
 
   test('generates 3 diameters x 3 weights = 9 construction variants', async () => {

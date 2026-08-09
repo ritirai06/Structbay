@@ -20,7 +20,7 @@ export function Layout() {
   if (!user) return <Navigate to="/vendor/login" replace />;
 
   return (
-    <div className="vendor-portal flex h-screen" style={{ background: 'var(--sb-bg)' }}>
+    <div className="vendor-portal flex h-screen w-full overflow-hidden" style={{ background: 'var(--sb-bg)' }}>
       {/* Mobile sidebar overlay backdrop */}
       {sidebarOpen && (
         <div

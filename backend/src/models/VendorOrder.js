@@ -7,6 +7,7 @@ const subOrderItemSchema = new mongoose.Schema(
     masterItemId: { type: mongoose.Schema.Types.ObjectId },
     productName: { type: String, required: true },
     sku: String,
+    customColor: String,
     quantity: { type: Number, required: true },
     unitPrice: { type: Number, required: true },
     gstPercentage: { type: Number, default: 18 },
@@ -161,6 +162,13 @@ const vendorOrderSchema = new mongoose.Schema(
     workflowVersion: { type: Number, default: 2 },
 
     rejectReason: String,
+
+    dateChangeRequest: {
+      requestedDate: Date,
+      reason: String,
+      status: { type: String, enum: ['PENDING', 'APPROVED', 'REJECTED'] },
+      requestedAt: Date
+    },
 
     isDeleted: { type: Boolean, default: false, select: false },
   },

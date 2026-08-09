@@ -484,7 +484,7 @@ export function OrderDetailPage() {
       {/* Main Workspace Split */}
       <WorkflowSplit
         main={
-          <div className="space-y-4">
+          <div id="step-vendor" className="space-y-4">
             <h2 className="text-lg font-bold text-sb-ink flex items-center justify-between">
               Product Fulfillment
             </h2>

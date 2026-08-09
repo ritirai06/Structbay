@@ -223,14 +223,7 @@ export function ProductCard({
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
-                  <WorkflowCard title="Delivery type override (Post-assignment)">
-                          <DeliveryTypeSelector
-                            name={`dt-${item._id}`}
-                            value={vo.deliveryType === "structbay_delivery" ? "structbay_delivery" : "vendor_delivery"}
-                            onChange={(v) => void saveDeliveryType(vo._id, v)}
-                            disabled={["DISPATCH_APPROVED", "VENDOR_INVOICE_SUBMITTED", "SB_INVOICE_SENT", "DISPATCHED", "DELIVERED", "COMPLETED"].includes(vo.status)}
-                          />
-                  </WorkflowCard>
+
 
                   {vo.deliveryType === "structbay_delivery" && (
                     <WorkflowCard title="Structbay logistics">
@@ -284,6 +277,51 @@ export function ProductCard({
                           deliveryType={vo.deliveryType === "structbay_delivery" ? "structbay_delivery" : "vendor_delivery"}
                     refreshKey={labelRefreshKey}
                   />
+
+                  {(voDetail?.dateChangeRequest || vo.dateChangeRequest)?.status === "PENDING" && (
+                    <WorkflowCard title="Date Change Request" variant="accent">
+                      <div className="bg-orange-50 border border-orange-200 p-4 rounded-lg space-y-3">
+                        <div className="text-sm">
+                          <p><strong>Vendor requested new dispatch date:</strong> {fmtDate((voDetail?.dateChangeRequest || vo.dateChangeRequest).requestedDate)}</p>
+                          <p className="mt-1 text-sb-ink/75"><strong>Reason:</strong> {(voDetail?.dateChangeRequest || vo.dateChangeRequest).reason}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            className="wf-btn wf-btn--primary bg-green-600 border-green-600 hover:bg-green-700"
+                            onClick={async () => {
+                              if (!window.confirm("Approve new dispatch date?")) return;
+                              try {
+                                await apiFetch(`/admin/vendor-orders/${vo._id}/date-change-request/approve`, { method: 'POST' });
+                                await loadOrder();
+                                adminToast.success("Date change approved.");
+                              } catch(e) {
+                                adminToast.error(e instanceof Error ? e.message : "Error approving date");
+                              }
+                            }}
+                          >
+                            Approve
+                          </button>
+                          <button
+                            type="button"
+                            className="wf-btn wf-btn--secondary text-red-600 border-red-200 bg-white hover:bg-red-50"
+                            onClick={async () => {
+                              if (!window.confirm("Reject new dispatch date?")) return;
+                              try {
+                                await apiFetch(`/admin/vendor-orders/${vo._id}/date-change-request/reject`, { method: 'POST' });
+                                await loadOrder();
+                                adminToast.success("Date change rejected.");
+                              } catch(e) {
+                                adminToast.error(e instanceof Error ? e.message : "Error rejecting date");
+                              }
+                            }}
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    </WorkflowCard>
+                  )}
 
                   {vo.workflowVersion === 2 && (
                     <VendorWorkflowSubmissions detail={voDetail} />

@@ -745,7 +745,7 @@ export function CategoryListing() {
           const visibleFilters: any[] = [];
           const seenOptions = new Set<string>();
           const sortedFilters = [...categoryFilters]
-            .filter((f: any) => f?.key && f?.isActive !== false)
+            .filter((f: any) => f?.key && f?.isActive !== false && !f.key.toLowerCase().includes('color') && !f.key.toLowerCase().includes('colour') && !(f.label || "").toLowerCase().includes('color') && !(f.label || "").toLowerCase().includes('colour'))
             .sort((a: any, b: any) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
           for (const f of sortedFilters) {
             const opts = f.options || [];
@@ -1105,8 +1105,8 @@ export function CategoryListing() {
                       selectedVariationId={selVid}
                       onVariationChange={(vid) => setVarChoice((v) => ({ ...v, [slug]: vid }))}
                       cartLine={cartLine}
-                      onAdd={({ qty, variationId, variationLabel, unitPrice, pricingSnapshot, image }) => {
-                        const id = `${slug}::${variationId || "base"}`;
+                      onAdd={({ qty, variationId, variationLabel, customColor, unitPrice, pricingSnapshot, image }) => {
+                        const id = `${slug}::${variationId || "base"}${customColor ? "::color=" + encodeURIComponent(customColor) : ""}`;
                         addToCart({
                           id,
                           productSlug: slug,
@@ -1114,6 +1114,7 @@ export function CategoryListing() {
                           categoryId: typeof product.category === 'object' ? product.category._id : product.category,
                           variationId,
                           variationLabel,
+                          customColor,
                           name: product.name,
                           brand: brandName,
                           price: unitPrice,

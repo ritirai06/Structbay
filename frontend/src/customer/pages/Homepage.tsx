@@ -97,9 +97,9 @@ const DEFAULT_SUB =
 const INTRO_TITLE = "Smart Construction Starts With Smarter Sourcing";
 const INTRO_TAGLINE = "Built for Contractors, Backed by Brands.";
 const INTRO_BODY_DEFAULT =
-  "Structbay combines the reliability of branded materials, the power of affordable pricing, and the ease of single-window sourcing â€” everything you need to finish projects faster and better.";
+  "Structbay combines the reliability of branded materials, the power of affordable pricing, and the ease of single-window sourcing — everything you need to finish projects faster and better.";
 
-/** Desktop reference: line break before â€œthe ease ofâ€¦â€ */
+/** Desktop reference: line break before "the ease of..." */
 function IntroBodyText({ text }: { text: string }) {
   const formattedText = text.replace(/StructBay/g, 'Structbay');
   const marker = "the ease of single-window";
@@ -125,7 +125,7 @@ const HOMEPAGE_CATEGORY_LIMIT = 14;
 
 const WHY_CHOOSE_STATS = [
   { icon: iconStatProducts, target: 10000, label: "Products from Top Brands" },
-  { icon: iconStatCities, target: 5, label: "Cities Indian Covered" },
+  { icon: iconStatCities, target: 5, label: "Indian Cities Covered" },
   { icon: iconStatContractors, target: 500, label: "Trusted Contractors" },
 ] as const;
 
@@ -1293,8 +1293,8 @@ export function Homepage() {
                       selectedVariationId={selVid}
                       onVariationChange={(vid) => setVarChoice((v) => ({ ...v, [slug]: vid }))}
                       cartLine={cartLine}
-                      onAdd={({ qty, variationId, variationLabel, unitPrice, pricingSnapshot, image }) => {
-                        const id = `${slug}::${variationId || "base"}`;
+                      onAdd={({ qty, variationId, variationLabel, customColor, unitPrice, pricingSnapshot, image }) => {
+                        const id = `${slug}::${variationId || "base"}${customColor ? "::color=" + encodeURIComponent(customColor) : ""}`;
                         addToCart({
                           id,
                           productSlug: slug,
@@ -1302,6 +1302,7 @@ export function Homepage() {
                           categoryId: typeof p.category === 'object' ? p.category._id : p.category,
                           variationId,
                           variationLabel,
+                          customColor,
                           name: p.name,
                           brand: brandName,
                           price: unitPrice,
