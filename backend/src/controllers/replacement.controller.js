@@ -61,7 +61,8 @@ exports.getAll = asyncHandler(async (req, res) => {
 // ─── GET /replacements/my (customer) ─────────────────────────────────────────
 exports.getMy = asyncHandler(async (req, res) => {
   const rrs = await ReplacementRequest.find({ customer: req.user._id })
-    .populate('masterOrder', 'orderNumber status')
+    .populate({ path: 'masterOrder', select: 'orderNumber status' })
+    .populate({ path: 'replacementItems.product', select: 'name sku images' })
     .sort({ createdAt: -1 });
   return ApiResponse.success(res, 200, 'Your replacement requests.', rrs);
 });

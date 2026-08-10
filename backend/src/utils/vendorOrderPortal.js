@@ -83,17 +83,33 @@ const M_RANK = {
   'Order Placed': 0,
   Processing: 1,
   'Out For Delivery': 2,
-  Delivered: 3,
-  Completed: 4,
+  'Partially Delivered': 3,
+  Delivered: 4,
+  Completed: 5,
 };
 
 function aggregateCustomerMilestone(vendorOrders) {
   if (!vendorOrders || !vendorOrders.length) return 'Order Placed';
+
+  const milestones = vendorOrders.map((vo) => customerMilestoneFromVendorStatus(vo.status));
+
+  const allCompleted = milestones.every((m) => m === 'Completed');
+  if (allCompleted) return 'Completed';
+
+  const allDeliveredOrCompleted = milestones.every(
+    (m) => m === 'Delivered' || m === 'Completed'
+  );
+  if (allDeliveredOrCompleted) return 'Delivered';
+
+  const someDeliveredOrCompleted = milestones.some(
+    (m) => m === 'Delivered' || m === 'Completed'
+  );
+  if (someDeliveredOrCompleted) return 'Partially Delivered';
+
+  // No deliveries yet — return the highest milestone among remaining orders
   let max = 0;
   let label = 'Order Placed';
-  for (const vo of vendorOrders) {
-    const onlyV2 = Number(vo.workflowVersion) === 2;
-    const m = onlyV2 ? customerMilestoneFromVendorStatus(vo.status) : customerMilestoneFromVendorStatus(vo.status);
+  for (const m of milestones) {
     const r = M_RANK[m] ?? 0;
     if (r > max) {
       max = r;

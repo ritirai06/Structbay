@@ -98,8 +98,9 @@ exports.getTracking = asyncHandler(async (req, res) => {
   }).sort({ createdAt: 1 }).select('action description createdAt');
 
   const vendorOrders = await VendorOrder.find({ masterOrder: order._id })
-    .select('orderNumber deliveryType status structbayLogistics')
+    .select('orderNumber deliveryType status structbayLogistics items')
     .populate('vendor', 'companyName name')
+    .populate('items.product', 'name')
     .lean();
 
   const deliveryLines = (vendorOrders || []).map((vo) => ({
@@ -113,6 +114,7 @@ exports.getTracking = asyncHandler(async (req, res) => {
     status: vo.status,
     structbayLogistics:
       vo.deliveryType === 'structbay_delivery' ? vo.structbayLogistics || null : null,
+    items: vo.items,
   }));
 
   const derivedStatus = deriveMasterStatusFromVendorOrders(vendorOrders);

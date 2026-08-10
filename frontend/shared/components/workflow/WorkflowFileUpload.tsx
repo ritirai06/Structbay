@@ -1,5 +1,5 @@
 import { useId, useRef, useState } from "react";
-import { FileText, ImageIcon, Upload, X, Eye, Download } from "lucide-react";
+import { FileText, File as FileIcon, Upload, X, Eye, Download } from "lucide-react";
 
 type Props = {
   label: string;
@@ -154,31 +154,24 @@ export function WorkflowFilePreview({
         const name = f.label || f.name || `File ${i + 1}`;
         let finalUrl = f.url;
         let ext = "";
-        const m = finalUrl.match(/\.([a-zA-Z0-9]+)(?:[\?#]|$)/);
-        if (m) ext = m[1].toLowerCase();
+        const urlMatch = finalUrl.match(/\.([a-zA-Z0-9]+)(?:[\?#]|$)/);
+        if (urlMatch) ext = urlMatch[1].toLowerCase();
 
-        if (
-          finalUrl.includes('res.cloudinary.com') &&
-          (finalUrl.includes('/image/upload/') || finalUrl.includes('/raw/upload/')) &&
-          !ext
-        ) {
-          const qIdx = finalUrl.indexOf('?');
-          if (qIdx !== -1) {
-            finalUrl = finalUrl.slice(0, qIdx) + ".pdf" + finalUrl.slice(qIdx);
-          } else {
-            finalUrl += ".pdf";
-          }
-          ext = "pdf";
+        // If URL has no extension, try to infer from the file name or label
+        if (!ext && name) {
+          const nameMatch = name.match(/\.([a-zA-Z0-9]+)$/);
+          if (nameMatch) ext = nameMatch[1].toLowerCase();
         }
 
         const isImg = ["png", "jpg", "jpeg", "gif", "webp", "bmp"].includes(ext);
 
+        // We should NOT append an extension to the Cloudinary URL.
+        // Cloudinary raw files will throw 404 if we alter the URL extension.
+        // And image resources will serve correctly from their original secure_url.
+        
         let downloadUrl = finalUrl;
-        if (downloadUrl.includes('res.cloudinary.com') && downloadUrl.includes('/image/upload/')) {
-           const safeName = (name || "document").replace(/[^a-zA-Z0-9_-]/g, '_');
-           const attachStr = ext ? `fl_attachment:${safeName}.${ext}` : `fl_attachment:${safeName}`;
-           downloadUrl = downloadUrl.replace('/image/upload/', `/image/upload/${attachStr}/`);
-        }
+        // Just use the finalUrl for download, relying on target="_blank" and download attribute.
+        // We removed fl_attachment because it can cause Cloudinary to reject the request if the file was uploaded as raw.
 
         return (
           <div
@@ -189,7 +182,7 @@ export function WorkflowFilePreview({
               {isImg ? (
                 <img src={finalUrl} alt="" className="h-full w-full object-cover" />
               ) : (
-                <ImageIcon className="w-6 h-6 text-gray-400 m-auto mt-2" />
+                <FileText className="w-6 h-6 text-gray-400 m-auto mt-2" />
               )}
             </div>
             <div className="min-w-0 flex-1">

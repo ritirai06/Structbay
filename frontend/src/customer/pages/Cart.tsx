@@ -12,7 +12,11 @@ import {
 import { productHref } from "../lib/productRoutes";
 import { listingUnitPrice, pricingSnapshotFromProduct, resolveUnitPriceFromSnapshot } from "../lib/wholesalePricing";
 import { displayUnitFromExGst } from "../lib/displayPricing";
-import { firstImageUrl } from "../lib/productAttributes";
+import {
+  firstImageUrl,
+  flattenVariationAttributes,
+  formatVariationLabel,
+} from "../lib/productAttributes";
 
 // Default minimum order value (₹2,000) - will be fetched from API
 const DEFAULT_MINIMUM_ORDER_VALUE = 2000;
@@ -265,10 +269,14 @@ export function Cart() {
             const display = formatCartLineDisplay(item, "exclusive");
             return (
               <div key={item.id} className="bg-white rounded-2xl border border-border p-4 flex gap-4">
-                <img src={item.image} alt={item.name} className="w-20 h-20 object-cover rounded-xl bg-muted shrink-0" />
+                <Link to={productHref(item.productSlug || item.productId || "")} className="shrink-0">
+                  <img src={item.image} alt={item.name} className="w-20 h-20 object-cover rounded-xl bg-muted" />
+                </Link>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-muted-foreground">{item.brand}</p>
-                  <h4 className="text-sm font-medium text-foreground line-clamp-2 leading-snug">{item.name}</h4>
+                  <Link to={productHref(item.productSlug || item.productId || "")} className="hover:underline">
+                    <h4 className="text-sm font-medium text-foreground line-clamp-2 leading-snug">{item.name}</h4>
+                  </Link>
                   {item.variationLabel && (
                     <p className="text-xs text-muted-foreground mt-0.5">{item.variationLabel}</p>
                   )}

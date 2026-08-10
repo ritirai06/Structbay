@@ -130,13 +130,17 @@ export function OrderDetailPage() {
       for (const item of order.items as any[]) {
         if (!item?._id) continue;
         const dbVendorId = vendorUserId(item.assignedVendorUser) || vendorUserId(item.assignedVendor) || "";
+        const vo = order.vendorOrders?.find((v: any) => v._id === item.vendorOrderId);
+        const savedDeliveryType = vo?.deliveryType || item.deliveryType;
+        const currentDeliveryType = drafts[item._id]?.deliveryType;
+        const targetDeliveryType = savedDeliveryType || lineDefaultDeliveryType(item);
         
         // Keep row state isolated and prevent overwrite if user hasn't saved.
         // If draft doesn't exist, OR if we aren't saving lines right now and the DB differs (implying remote update or successful save), update it.
-        if (!drafts[item._id] || (!savingLines && drafts[item._id].vendorId !== dbVendorId)) {
+        if (!drafts[item._id] || (!savingLines && (drafts[item._id].vendorId !== dbVendorId || currentDeliveryType !== targetDeliveryType))) {
           drafts[item._id] = {
             vendorId: dbVendorId,
-            deliveryType: lineDefaultDeliveryType(item),
+            deliveryType: targetDeliveryType,
             reason: "",
           };
           changed = true;
@@ -491,12 +495,15 @@ export function OrderDetailPage() {
             <div className="space-y-2">
               {(order.items as any[]).map((item: any) => {
                 const lineDefaultType = lineDefaultDeliveryType(item);
+                const vo = order.vendorOrders?.find((v: any) => v._id === item.vendorOrderId);
+                const savedDeliveryType = vo?.deliveryType || item.deliveryType;
+                const targetDeliveryType = savedDeliveryType || lineDefaultDeliveryType(item);
+                const dbVendorId = vendorUserId(item.assignedVendorUser) || vendorUserId(item.assignedVendor) || "";
                 const draft = lineDrafts[item._id] || {
-                  vendorId: "",
-                  deliveryType: lineDefaultType,
+                  vendorId: dbVendorId,
+                  deliveryType: targetDeliveryType,
                   reason: "",
                 };
-                const vo = order.vendorOrders?.find((v: any) => v._id === item.vendorOrderId);
                 const voDetail = vo ? voDetailById[vo._id] : undefined;
                 return (
                   <ProductCard

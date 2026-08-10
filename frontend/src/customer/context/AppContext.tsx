@@ -75,7 +75,9 @@ function readStoredCart(): CartItem[] {
           : undefined;
       out.push({
         id,
+        productId: typeof o.productId === "string" ? o.productId : undefined,
         productSlug: typeof o.productSlug === "string" ? o.productSlug : undefined,
+        categoryId: typeof o.categoryId === "string" ? o.categoryId : undefined,
         variationId: typeof o.variationId === "string" ? o.variationId : undefined,
         variationLabel: typeof o.variationLabel === "string" ? o.variationLabel : undefined,
         name,

@@ -142,28 +142,6 @@ export function OrderTracking() {
   const currentLabel = progress?.customerStatusLabel || "Order placed";
 
   const deliveryNote = ""; // Removed from customer view as per vendor/admin internal requirement
-  const logisticsSnippets = useMemo(() => {
-    const lines = tracking?.deliveryLines as
-      | {
-        orderNumber: string;
-        structbayLogistics?: {
-          pickupScheduledText?: string;
-          companyName?: string;
-          driverContactDetails?: string;
-        } | null;
-      }[]
-      | undefined;
-    if (!Array.isArray(lines)) return [];
-    const out: string[] = [];
-    for (const line of lines) {
-      const l = line.structbayLogistics;
-      if (!l) continue;
-      if (l.pickupScheduledText) out.push(l.pickupScheduledText);
-      if (l.companyName) out.push(`Carrier: ${l.companyName}`);
-      if (l.driverContactDetails) out.push(`Contact: ${l.driverContactDetails}`);
-    }
-    return out;
-  }, [tracking?.deliveryLines]);
 
   const timelineSteps = useMemo(() => {
     const history = tracking?.order?.statusHistory || [];
@@ -469,31 +447,7 @@ export function OrderTracking() {
             </div>
           </div>
 
-          {/* Tracking Updates */}
-          {logisticsSnippets.length > 0 ? (
-            <div className="border border-gray-200 bg-white p-5">
-              <h3 className="text-sm font-semibold text-black mb-4 flex items-center gap-2">
-                <Truck className="w-4 h-4 text-[#E85A00]" />
-                Tracking Updates
-              </h3>
-
-              <div className="space-y-4">
-                {/* Logistics snippets if any */}
-                {logisticsSnippets.length > 0 && (
-                  <div className="bg-gray-50 p-3 text-sm text-gray-700 border border-gray-100">
-                    <ul className="space-y-1">
-                      {logisticsSnippets.map((s, i) => (
-                        <li key={i}>{s}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-              </div>
-            </div>
-          ) : null}
-
-          {/* Items */}
+          {/* Items (Flat List) */}
           {Array.isArray(order?.items) && order.items.length > 0 && (
             <div className="border border-gray-200 bg-white p-5">
               <h3 className="text-sm font-semibold text-black mb-3 flex items-center gap-2">
@@ -504,7 +458,7 @@ export function OrderTracking() {
                 {order.items.map((it: any, ix: number) => (
                   <li key={ix} className="flex justify-between gap-3 py-1.5 border-b border-gray-100 last:border-0">
                     <div>
-                      <span className="text-black">{it.name}</span>
+                      <span className="text-black">{it.name || it.product?.name}</span>
                       {it.customColor && (
                         <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
                           Color: {it.customColor}
