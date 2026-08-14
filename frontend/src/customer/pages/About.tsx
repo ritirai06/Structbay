@@ -43,7 +43,7 @@ export function About() {
             </div>
             <div>
               <div className="text-4xl md:text-5xl font-medium text-sb-orange mb-4">5+</div>
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-[0.2em] leading-relaxed">Indian Cities Covered</div>
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-[0.2em] leading-relaxed">Indian Cities Coming Soon</div>
             </div>
             <div>
               <div className="text-4xl md:text-5xl font-medium text-sb-orange mb-4">50000+</div>

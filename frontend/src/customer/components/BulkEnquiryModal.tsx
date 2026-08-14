@@ -232,7 +232,7 @@ export function BulkEnquiryModal({ open, onClose }: Props) {
                     Bulk order enquiry
                   </h2>
                   <p className="text-sm text-white/85 mt-1 leading-snug">
-                    For orders above 100 MT or ₹5 Lakh. Dedicated account management and B2B pricing.
+                    For orders above  ₹5 Lakh. Dedicated account management and exclusive discounts.
                   </p>
                   <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-white/80">
                     {["Dedicated account manager", "Best bulk pricing", "Credit terms available"].map((label) => (

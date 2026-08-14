@@ -30,7 +30,7 @@ function productFilterFromPayload({ filters = {}, scopeType, categoryId, brandId
   const q = {};
   Object.assign(q, statusConditions(f));
 
-  if (f.categoryId && isValidId(f.categoryId)) q.category = f.categoryId;
+  if (f.categoryId && isValidId(f.categoryId)) q.categories = { $in: [f.categoryId] };
   if (f.brandId && isValidId(f.brandId)) q.brand = f.brandId;
 
   if (f.structbayAssured === true || f.structbayAssured === 'true') q.isStructbayAssured = true;
@@ -39,7 +39,7 @@ function productFilterFromPayload({ filters = {}, scopeType, categoryId, brandId
   if (f.isFeatured === true || f.isFeatured === 'true') q.isFeatured = true;
 
   if (scopeType === 'CATEGORY' && categoryId && isValidId(categoryId)) {
-    q.category = categoryId;
+    q.categories = { $in: [categoryId] };
   }
   if (scopeType === 'BRAND' && brandId && isValidId(brandId)) {
     q.brand = brandId;
@@ -73,7 +73,7 @@ async function resolveCatalogProducts({
     const pid = productId || filters.productId;
     if (!isValidId(pid)) return { products: [], truncated: false };
     const p = await Product.findOne({ _id: pid, ...statusConditions(filters) })
-      .populate('category', 'name slug')
+      .populate('categories', 'name slug')
       .populate('brand', 'name slug logo')
       .lean();
     return { products: p ? [p] : [], truncated: false };
@@ -92,7 +92,7 @@ async function resolveCatalogProducts({
     truncated = productIdSet.length > MAX_PRODUCTS;
     const q = { _id: { $in: slice }, ...statusConditions(filters) };
     const list = await Product.find(q)
-      .populate('category', 'name slug')
+      .populate('categories', 'name slug')
       .populate('brand', 'name slug logo')
       .sort({ name: 1 })
       .lean();
@@ -103,7 +103,7 @@ async function resolveCatalogProducts({
     const q = productFilterFromPayload({ filters, scopeType: 'ALL' });
     const total = await Product.countDocuments(q);
     const list = await Product.find(q)
-      .populate('category', 'name slug')
+      .populate('categories', 'name slug')
       .populate('brand', 'name slug logo')
       .sort({ displayOrder: 1, name: 1 })
       .limit(MAX_PRODUCTS)
@@ -117,7 +117,7 @@ async function resolveCatalogProducts({
     if (!ids.length) return { products: [], truncated };
     // Admin explicitly picked rows — do not drop DRAFT products that appear in the admin grid.
     const list = await Product.find({ _id: { $in: ids } })
-      .populate('category', 'name slug')
+      .populate('categories', 'name slug')
       .populate('brand', 'name slug logo')
       .lean();
     return { products: list, truncated };

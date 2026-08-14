@@ -382,13 +382,13 @@ export function ConcreteRFQModal({ open, onClose }: Props) {
               {/* Delivery Date */}
               <label className="block">
                 <span className="mb-1.5 block text-sm font-medium text-gray-700">
-                  Required Delivery Date *
+                  Required Date and Time of Delivery *
                 </span>
                 <input
-                  type="date"
+                  type="datetime-local"
                   value={form.deliveryDate}
                   onChange={(e) => update("deliveryDate", e.target.value)}
-                  min={new Date().toISOString().split("T")[0]}
+                  min={new Date().toISOString().slice(0, 16)}
                   required
                   className={fieldClass}
                 />

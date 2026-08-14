@@ -66,7 +66,7 @@ function flatRowsFromBundles(bundles, includePricing) {
   const rows = [];
   for (const b of bundles) {
     const p = b.product;
-    const cat = p.category?.name || '';
+    const cat = (p.categories || []).map(c => c?.name).filter(Boolean).join(', ');
     const brand = p.brand?.name || '';
     const badges = badgeLine(p);
     const url = productUrl(p.slug);
@@ -179,7 +179,7 @@ async function renderPdfBuffer({ bundles, catalogName, coverMeta, options }) {
         if (idx > 0) doc.addPage();
         const p = b.product;
         doc.fontSize(16).fillColor('#0f172a').text(p.name, 48, 48, { width: doc.page.width - 96 });
-        doc.fontSize(9).fillColor('#64748b').text(`${p.brand?.name || ''} · ${p.category?.name || ''} · SKU ${p.sku}`, 48, 72, { width: doc.page.width - 96 });
+        doc.fontSize(9).fillColor('#64748b').text(`${p.brand?.name || ''} · ${(p.categories || []).map(c => c?.name).filter(Boolean).join(', ')} · SKU ${p.sku}`, 48, 72, { width: doc.page.width - 96 });
         doc.fontSize(9).fillColor('#334155').text(badgeLine(p) || '—', 48, 88, { width: doc.page.width - 96 });
 
         let imgY = 110;
@@ -324,7 +324,7 @@ async function renderXlsxBuffer({ bundles, catalogName, coverMeta, options }) {
         product: p.name,
         sku: p.sku,
         brand: p.brand?.name || '',
-        category: p.category?.name || '',
+        category: (p.categories || []).map(c => c?.name).filter(Boolean).join(', '),
         vsku: v?.sku || '',
         attrs: v ? formatAttrs(v.attributes) : '',
         mrp: v?.mrp ?? '',

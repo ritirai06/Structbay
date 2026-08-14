@@ -48,7 +48,7 @@ const getAll = asyncHandler(async (req, res) => {
   const { search, status, category, brand, page = 1, limit = 24 } = req.query;
   const filter = {};
   if (status) filter.status = status;
-  if (category) filter.category = category;
+  if (category) filter.categories = category;
   if (brand) filter.brand = brand;
   if (search) {
     const searchOr = await catalogBrowse.buildProductSearchOr(search);
@@ -59,7 +59,7 @@ const getAll = asyncHandler(async (req, res) => {
   const limitNum = Math.min(100, parseInt(limit));
   const [products, total, activeTotal] = await Promise.all([
     Product.find(filter)
-      .populate('category', 'name slug')
+      .populate('categories', 'name slug')
       .populate('brand', 'name slug logo')
       .sort({ displayOrder: 1, createdAt: -1 })
       .skip((pageNum - 1) * limitNum)
@@ -75,7 +75,7 @@ const getAll = asyncHandler(async (req, res) => {
 
 const getById = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id)
-    .populate('category', 'name slug')
+    .populate('categories', 'name slug')
     .populate('brand', 'name slug logo')
     .populate('upsellProducts', 'name sku')
     .populate('crossSellProducts', 'name sku');
@@ -99,7 +99,7 @@ const getById = asyncHandler(async (req, res) => {
 
 const getBySlug = asyncHandler(async (req, res) => {
   const product = await Product.findOne({ slug: req.params.slug, status: 'ACTIVE' })
-    .populate('category', 'name slug')
+    .populate('categories', 'name slug')
     .populate('brand', 'name slug logo');
   if (!product) throw new AppError('Product not found.', 404);
   const variations = await ProductVariation.find({ product: product._id, status: 'ACTIVE' });
@@ -113,7 +113,7 @@ const create = asyncHandler(async (req, res) => {
     : { productFields: req.body, cityPricing: [], inventory: [] };
 
   const {
-    name, sku, category, brand, shortDescription, description,
+    name, sku, categories, brand, shortDescription, description,
     gstPercentage, priceIncludesGst, status, alwaysInStock, isFeatured, isTopSelling, isAssured, isExpress,
     isStructbayAssured, isStructbayDelivery, deliveryType, assuredVerifiedAt, assuredVerifiedBy,
     structbayDeliverySupported, structbayDeliveryZones, structbayDeliveryLeadTimeDays,
@@ -129,7 +129,7 @@ const create = asyncHandler(async (req, res) => {
   const referenceNumber = await generateRefNumber('PRODUCT');
 
     const [product] = await Product.create([{
-    name, sku, category, brand, shortDescription, description,
+    name, sku, categories, brand, shortDescription, description,
     gstPercentage, priceIncludesGst, status, alwaysInStock, isFeatured, isTopSelling, isAssured, isExpress,
     isStructbayAssured, isStructbayDelivery, deliveryType, assuredVerifiedAt, assuredVerifiedBy,
     structbayDeliverySupported, structbayDeliveryZones, structbayDeliveryLeadTimeDays,
@@ -179,7 +179,7 @@ const update = asyncHandler(async (req, res) => {
     : { productFields: req.body, cityPricing: [], inventory: [] };
 
   const allowed = [
-    'name', 'sku', 'category', 'brand', 'shortDescription', 'description',
+    'name', 'sku', 'categories', 'brand', 'shortDescription', 'description',
     'gstPercentage', 'priceIncludesGst', 'status', 'alwaysInStock', 'isFeatured', 'isTopSelling', 'isAssured', 'isExpress',
     'isStructbayAssured', 'isStructbayDelivery', 'deliveryType', 'assuredVerifiedAt', 'assuredVerifiedBy',
     'structbayDeliverySupported', 'structbayDeliveryZones', 'structbayDeliveryLeadTimeDays',
@@ -611,7 +611,7 @@ const bulkImport = asyncHandler(async (req, res) => {
       await Product.create({
         name,
         sku,
-        category,
+        categories: [category],
         brand,
         shortDescription: r.shortDescription != null ? String(r.shortDescription).trim() : null,
         description: r.description != null ? String(r.description).trim() : null,

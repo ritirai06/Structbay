@@ -118,8 +118,9 @@ function generateSubOrderNumber(masterOrderNumber, subIndex) {
  * Concrete RFQ reference: `CON` + `YYMMDD` + 4-digit daily sequence (e.g. CON2606120001).
  */
 async function generateConcreteRfqNumber(options = {}) {
-  const module = 'CONCRETE_RFQ';
-  const prefix = 'CON';
+  const isAggregates = options.rfqType === 'SAND_AGGREGATES';
+  const module = isAggregates ? 'AGGREGATES_RFQ' : 'CONCRETE_RFQ';
+  const prefix = isAggregates ? 'AGG' : 'CON';
   const date = getDateKeyYYMMDD();
   const maxRetries = 6;
 

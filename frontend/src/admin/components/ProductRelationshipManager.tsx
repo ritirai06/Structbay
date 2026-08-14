@@ -8,7 +8,7 @@ interface Product {
   sku: string;
   slug?: string;
   images?: { url?: string; publicId?: string }[];
-  category?: { _id: string; name: string } | string;
+  categories?: ({ _id: string; name: string } | string)[];
   brand?: { _id: string; name: string } | string;
   status: string;
 }
@@ -199,8 +199,9 @@ export function ProductRelationshipManager({
   };
 
   const getCategoryName = (product: Product) => {
-    if (typeof product.category === "object" && product.category) {
-      return product.category.name;
+    const firstCat = (product.categories || [])[0];
+    if (typeof firstCat === "object" && firstCat) {
+      return firstCat.name;
     }
     return null;
   };

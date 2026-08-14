@@ -16,7 +16,7 @@ const escapeHtml = (s) =>
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 
-const genNumber = () => generateConcreteRfqNumber();
+const genNumber = (rfqType) => generateConcreteRfqNumber({ rfqType });
 
 const getAll = asyncHandler(async (req, res) => {
   const { status, city, rfqType, page = 1, limit = 20 } = req.query;
@@ -55,8 +55,8 @@ const getById = asyncHandler(async (req, res) => {
 });
 
 const create = asyncHandler(async (req, res) => {
-  const rfqNumber = await genNumber();
   const body = { ...req.body };
+  const rfqNumber = await genNumber(body.rfqType);
   delete body.customer;
   if (body.siteAddress && !body.location) body.location = body.siteAddress;
   const payload = { ...body, rfqNumber };

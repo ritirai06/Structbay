@@ -32,7 +32,7 @@ const productSchema = new mongoose.Schema(
     sku: { type: String, required: true, trim: true, uppercase: true },
     referenceNumber: { type: String, unique: true, sparse: true },
 
-    category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
+    categories: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Category' }],
     brand: { type: mongoose.Schema.Types.ObjectId, ref: 'Brand', required: true },
 
     shortDescription: { type: String, trim: true, maxlength: 500, default: null },
@@ -116,7 +116,7 @@ const excludeSoftDeleted = function (next) {
 };
 productSchema.pre(/^find/, excludeSoftDeleted);
 productSchema.pre('countDocuments', excludeSoftDeleted);
-productSchema.index({ category: 1, brand: 1, status: 1, isDeleted: 1 });
+productSchema.index({ categories: 1, brand: 1, status: 1, isDeleted: 1 });
 productSchema.index(
   { slug: 1 },
   { unique: true, partialFilterExpression: { isDeleted: { $eq: false } } }

@@ -121,14 +121,6 @@ function TopMarquee({ segments }: { segments: string[] }) {
       `}
       </style>
       <div className="flex items-center justify-center gap-4 lg:gap-8 w-full max-w-4xl mx-auto px-4">
-        <button
-          type="button"
-          onClick={handlePrev}
-          className="p-1 cursor-pointer shrink-0 hover:bg-black/5 rounded-full transition-colors"
-          aria-label="Previous"
-        >
-          <ChevronLeft className="w-5 h-5 lg:w-6 lg:h-6 text-black" aria-hidden="true" />
-        </button>
         <div
           className="relative flex-1 min-w-0 min-h-[2.0rem] flex items-center justify-center overflow-hidden"
           aria-live="polite"
@@ -142,14 +134,6 @@ function TopMarquee({ segments }: { segments: string[] }) {
             {items[index]}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={handleNext}
-          className="p-1 cursor-pointer shrink-0 hover:bg-black/5 rounded-full transition-colors"
-          aria-label="Next"
-        >
-          <ChevronRight className="w-5 h-5 lg:w-6 lg:h-6 text-black" aria-hidden="true" />
-        </button>
       </div>
     </>
   );

@@ -902,9 +902,9 @@ export function CategoryListing() {
           <nav className="sf-category-head__crumbs flex items-center gap-2 flex-wrap" aria-label="Breadcrumb">
             <button 
               onClick={() => navigate(-1)} 
-              className="inline-flex items-center gap-1 text-sm text-[#E85A00] hover:underline mr-2"
+              className="inline-flex items-center gap-1 text-[#E85A00] hover:underline mr-2"
             >
-              <ChevronLeft className="w-4 h-4 -ml-1" /> Back
+              <ChevronLeft className="w-4 h-4 -ml-1" /> <span>Back</span>
             </button>
             <span className="text-gray-300">|</span>
             <Link to="/" className="ml-1">Home</Link>
@@ -1111,7 +1111,7 @@ export function CategoryListing() {
                           id,
                           productSlug: slug,
                           productId: product._id || product.id || undefined,
-                          categoryId: typeof product.category === 'object' ? product.category._id : product.category,
+                          categoryId: (product.categories || [])[0]?._id || (product.categories || [])[0] || product.category?._id || product.category,
                           variationId,
                           variationLabel,
                           customColor,

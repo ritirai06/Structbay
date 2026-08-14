@@ -36,7 +36,7 @@ const emptyReturnExchangePolicy = {
 };
 
 const emptyForm = {
-  name: "", sku: "", category: "", brand: "",
+  name: "", sku: "", categories: [] as string[], brand: "",
   shortDescription: "", description: "",
   gstPercentage: 18, priceIncludesGst: false, status: "DRAFT",
   deliveryType: "vendor_delivery" as "vendor_delivery" | "structbay_delivery",
@@ -323,13 +323,16 @@ export function AddProduct() {
       .catch(() => setCatalogBrands([]));
   }, []);
 
-  /** Brands linked to the selected category, plus legacy brands with no category set */
+  /** Brands linked to the selected categories, plus legacy brands with no category set */
   const brandsForCategory = useMemo(() => {
-    if (!form.category) return catalogBrands;
+    if (!form.categories || form.categories.length === 0) return catalogBrands;
     return catalogBrands.filter(
-      b => !b.categoryId || String(b.categoryId) === String(form.category)
+      b => {
+        const catId = b.category?._id || b.category || b.categoryId;
+        return !catId || form.categories.includes(String(catId));
+      }
     );
-  }, [catalogBrands, form.category]);
+  }, [catalogBrands, form.categories]);
 
   const brandSelectOptions = useMemo(() => {
     const list = [...brandsForCategory].sort((a, b) => a.name.localeCompare(b.name));
@@ -341,10 +344,10 @@ export function AddProduct() {
   }, [brandsForCategory, form.brand, catalogBrands]);
 
   useEffect(() => {
-    if (!form.category || !form.brand || catalogBrands.length === 0) return;
+    if (!form.categories || form.categories.length === 0 || !form.brand || catalogBrands.length === 0) return;
     const allowed = brandsForCategory.some(b => String(b._id) === String(form.brand));
     if (!allowed) set("brand", "");
-  }, [form.category, form.brand, brandsForCategory, catalogBrands.length]);
+  }, [form.categories, form.brand, brandsForCategory, catalogBrands.length]);
 
   useEffect(() => {
     apiFetch("/cities?limit=200&status=ACTIVE")
@@ -401,10 +404,15 @@ export function AddProduct() {
         const p = d.data;
         // Debug log for GET Product response
         console.log("DEBUG: GET Product", p);
+        // Handle legacy products that only have a single category
+        const initialCategories = p.categories && p.categories.length > 0 
+          ? p.categories.map((c: any) => c._id || c)
+          : (p.category ? [p.category._id || p.category] : []);
+
         // Debug log for frontend state initialization
         console.log("DEBUG: Frontend State Initialization", {
           form: {
-            name: p.name, sku: p.sku, category: p.category?._id || p.category,
+            name: p.name, sku: p.sku, categories: initialCategories,
             brand: p.brand?._id || p.brand, shortDescription: p.shortDescription || "",
             description: p.description || "", gstPercentage: p.gstPercentage,
             priceIncludesGst: !!p.priceIncludesGst,
@@ -428,7 +436,7 @@ export function AddProduct() {
           crossSellProducts: p.crossSellProducts || [],
         });
         setForm({
-          name: p.name, sku: p.sku, category: p.category?._id || p.category,
+          name: p.name, sku: p.sku, categories: initialCategories,
           brand: p.brand?._id || p.brand, shortDescription: p.shortDescription || "",
           description: p.description || "", gstPercentage: p.gstPercentage,
           priceIncludesGst: !!p.priceIncludesGst,
@@ -503,8 +511,13 @@ export function AddProduct() {
   };
 
   const save = async (overrideStatus?: string) => {
-    if (!form.name || !form.sku || !form.category || !form.brand) {
-      return toast.warning("Name, SKU, category, and brand are required.");
+    if (!form.name || !form.sku || !form.categories || form.categories.length === 0 || !form.brand) {
+      const missing = [];
+      if (!form.name) missing.push("Name");
+      if (!form.sku) missing.push("SKU");
+      if (!form.categories || form.categories.length === 0) missing.push("Categories");
+      if (!form.brand) missing.push("Brand");
+      return toast.warning(`Required fields missing: ${missing.join(", ")}`);
     }
     if (!form.deliveryType) {
       return toast.warning("Delivery type is required.");
@@ -814,15 +827,29 @@ export function AddProduct() {
                   : "City prices are stored ex-GST. Use the Pricing & Inventory tab to set per-city selling price, MRP, stock, and wholesale slabs."}
               </p>
               <div className="grid grid-cols-2 gap-4">
-                <Field label="Category" required>
-                  <select className={sel} value={form.category} onChange={e => set("category", e.target.value)}>
-                    <option value="">Select category</option>
-                    {catalogCategories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
-                  </select>
+                <Field label="Categories" required>
+                  <div className="space-y-2 max-h-48 overflow-y-auto bg-white border border-sb-ink/10 rounded-lg p-2">
+                    {catalogCategories.map(c => (
+                      <label key={c._id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-sb-cream-secondary p-1 rounded">
+                        <input 
+                          type="checkbox" 
+                          className="accent-sb-orange rounded cursor-pointer"
+                          checked={(form.categories || []).includes(c._id)}
+                          onChange={(e) => {
+                            const newCategories = e.target.checked
+                              ? [...(form.categories || []), c._id]
+                              : (form.categories || []).filter(id => id !== c._id);
+                            set("categories", newCategories);
+                          }}
+                        />
+                        {c.name}
+                      </label>
+                    ))}
+                  </div>
                 </Field>
                 <Field label="Brand" required>
-                  <select className={sel} value={form.brand} onChange={e => set("brand", e.target.value)} disabled={!form.category}>
-                    <option value="">{form.category ? "Select brand" : "Select category first"}</option>
+                  <select className={sel} value={form.brand} onChange={e => set("brand", e.target.value)} disabled={form.categories.length === 0}>
+                    <option value="">{form.categories.length > 0 ? "Select brand" : "Select categories first"}</option>
                     {brandSelectOptions.map(b => <option key={b._id} value={b._id}>{b.name}</option>)}
                   </select>
                 </Field>

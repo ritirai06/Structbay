@@ -207,7 +207,7 @@ export function ProductList() {
           escapeCsvCell(p.name),
           escapeCsvCell(p.sku),
           escapeCsvCell(p._id),
-          escapeCsvCell(p.category?.name),
+          escapeCsvCell((p.categories || []).map((c: any) => c?.name).filter(Boolean).join(", ")),
           escapeCsvCell(p.brand?.name),
           escapeCsvCell(p.status),
           escapeCsvCell(p.slug),
@@ -427,7 +427,7 @@ export function ProductList() {
                       title="Select all on this page"
                     />
                   </th>
-                  {["Product", "Product ID", "SKU", "Category", "Brand", "Cities", "Price Range", "Total Stock", "Badges", "Status", "Order", ""].map((h) => (
+                  {["Product", "Product ID", "SKU", "Categories", "Brand", "Cities", "Price Range", "Total Stock", "Badges", "Status", "Order", ""].map((h) => (
                     <th key={h}>{h}</th>
                   ))}
                 </tr>
@@ -468,7 +468,7 @@ export function ProductList() {
                       <CopyId id={String(p._id)} />
                     </td>
                     <td className="py-3.5 px-4 font-mono text-xs text-sb-ink/55">{p.sku}</td>
-                    <td className="py-3.5 px-4 text-sb-ink/65">{p.category?.name || "—"}</td>
+                    <td className="py-3.5 px-4 text-sb-ink/65">{(p.categories || []).map((c: any) => c?.name).filter(Boolean).join(", ") || "—"}</td>
                     <td className="py-3.5 px-4 text-sb-ink/65">{p.brand?.name || "—"}</td>
                     <td className="py-3.5 px-4 text-sb-ink/65 text-xs max-w-[140px]">
                       {(p.citiesAvailable || []).length

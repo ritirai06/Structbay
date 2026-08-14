@@ -125,7 +125,7 @@ const HOMEPAGE_CATEGORY_LIMIT = 14;
 
 const WHY_CHOOSE_STATS = [
   { icon: iconStatProducts, target: 10000, label: "Products from Top Brands" },
-  { icon: iconStatCities, target: 5, label: "Indian Cities Covered" },
+  { icon: iconStatCities, target: 5, label: "Indian Cities Coming Soon" },
   { icon: iconStatContractors, target: 500, label: "Trusted Contractors" },
 ] as const;
 
@@ -1185,7 +1185,7 @@ export function Homepage() {
                   <Link key={cat.slug} to={`/category/${cat.slug}`} className="sf-cat-tile group">
                     <div className="sf-cat-tile__img-wrap">
                       {cat.image?.url ? (
-                        <img src={cat.image.url} alt={cat.name} loading="lazy" />
+                        <img src={cat.image.url} alt={cat.name} />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-gray-100">
                           <Icon className="w-9 h-9 text-sb-orange/80" aria-hidden />

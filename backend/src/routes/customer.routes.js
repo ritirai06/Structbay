@@ -362,7 +362,7 @@ router.get(
 
     const [products, total] = await Promise.all([
       Product.find(filter)
-        .populate('category', 'name slug')
+        .populate('categories', 'name slug')
         .populate('brand', 'name slug logo')
         .sort(sortQuery)
         .skip((pageNum - 1) * limitNum)
@@ -385,7 +385,7 @@ router.get(
   optionalAuth,
   asyncHandler(async (req, res) => {
     const product = await Product.findOne({ slug: req.params.slug, status: 'ACTIVE' })
-      .populate('category', 'name slug')
+      .populate('categories', 'name slug')
       .populate('brand', 'name slug logo banner description');
     if (!product) return ApiResponse.notFound(res, 'Product not found.');
 
@@ -549,7 +549,8 @@ router.get(
     const categoryFilterDoc = await CategoryFilter.findOne({ category: category._id }).lean();
     const filterDefinitions = categoryFilterDoc?.filters || [];
 
-    const filter = { status: 'ACTIVE', category: category._id };
+    const filter = { status: 'ACTIVE' };
+    filter.$and = [ { $or: [{ category: category._id }, { categories: { $in: [category._id] } }] } ];
     const brandTokens = catalogBrowse
       .parseCommaList(brandsQuery || brand)
       .filter((t) => mongoose.Types.ObjectId.isValid(String(t)));
@@ -559,7 +560,7 @@ router.get(
     catalogBrowse.applyLegacyAndStructbayBadgeFilters(filter, req.query);
     if (search) {
       const searchOr = await catalogBrowse.buildProductSearchOr(search);
-      if (searchOr) filter.$or = searchOr.$or;
+      if (searchOr) filter.$and.push({ $or: searchOr.$or });
     }
 
     const { cityOid, cityContext } = await resolveStorefrontCityOid(req.query);
@@ -580,11 +581,12 @@ router.get(
       filter._id = { $in: attrProductIds };
     }
 
-    const brandDistinctFilter = { status: 'ACTIVE', category: category._id };
+    const brandDistinctFilter = { status: 'ACTIVE' };
+    brandDistinctFilter.$and = [ { $or: [{ category: category._id }, { categories: { $in: [category._id] } }] } ];
     catalogBrowse.applyLegacyAndStructbayBadgeFilters(brandDistinctFilter, req.query);
     if (search) {
       const searchOr = await catalogBrowse.buildProductSearchOr(search);
-      if (searchOr) brandDistinctFilter.$or = searchOr.$or;
+      if (searchOr) brandDistinctFilter.$and.push({ $or: searchOr.$or });
     }
     if (cityOid) {
       const subsetBrands = await catalogBrowse.computeCityScopedProductIdSubset(req.query, cityOid);
@@ -618,7 +620,7 @@ router.get(
       Brand.find({ _id: { $in: await Product.distinct('brand', brandDistinctFilter) } })
         .select('name slug logo').sort({ sortOrder: 1 }),
       (async () => {
-        const baseIds = await Product.find({ status: 'ACTIVE', category: category._id }).distinct('_id');
+        const baseIds = await Product.find({ status: 'ACTIVE', $or: [{ category: category._id }, { categories: { $in: [category._id] } }] }).distinct('_id');
         if (cityOid) {
           const priced = await marketplaceCity.getPricedProductIdsForCity(cityOid);
           const pricedSet = new Set(priced.map((id) => String(id)));
@@ -704,12 +706,12 @@ router.get(
 
     const [products, total, categories] = await Promise.all([
       Product.find(filter)
-        .populate('category', 'name slug')
+        .populate('categories', 'name slug')
         .skip((pageNum - 1) * limitNum)
         .limit(limitNum),
       Product.countDocuments(filter),
       Category.find({
-        _id: { $in: await Product.distinct('category', categoryDistinctFilter) },
+        _id: { $in: await Product.distinct('categories', categoryDistinctFilter) },
       }).select('name slug'),
     ]);
 
@@ -752,7 +754,7 @@ router.get(
       .lean();
 
     const catIds = categories.map((c) => c._id);
-    let countMatch = { status: 'ACTIVE', category: { $in: catIds } };
+    let countMatch = { status: 'ACTIVE', $or: [{ category: { $in: catIds } }, { categories: { $in: catIds } }] };
     if (cityOid) {
       const priced = await marketplaceCity.getPricedProductIdsForCity(cityOid);
       countMatch._id = { $in: priced };
@@ -822,8 +824,8 @@ router.get(
       Product.find(productMatch)
         .limit(10)
         .populate('brand', 'name slug logo')
-        .populate('category', 'name slug')
-        .select('name slug sku images isAssured isExpress isStructbayAssured isStructbayDelivery brand category'),
+        .populate('categories', 'name slug')
+        .select('name slug sku images isAssured isExpress isStructbayAssured isStructbayDelivery brand categories'),
       Category.find({ status: 'ACTIVE', name: regex }).limit(5).select('name slug image'),
       Brand.find({ status: 'ACTIVE', name: regex }).limit(5).select('name slug logo'),
     ]);

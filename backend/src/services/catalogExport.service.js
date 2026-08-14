@@ -61,7 +61,7 @@ async function resolveProductsForScope({ scope, productId, categoryId, brandId, 
   if (scope === 'PRODUCT') {
     if (!isValidId(productId)) return { products: [], truncated: false };
     const p = await Product.findOne({ _id: productId, ...base })
-      .populate('category', 'name slug')
+      .populate('categories', 'name slug')
       .populate('brand', 'name slug')
       .lean();
     return { products: p ? [p] : [], truncated: false };
@@ -69,10 +69,10 @@ async function resolveProductsForScope({ scope, productId, categoryId, brandId, 
 
   if (scope === 'CATEGORY') {
     if (!isValidId(categoryId)) return { products: [], truncated: false };
-    const q = { ...base, category: categoryId };
+    const q = { ...base, categories: { $in: [categoryId] } };
     const total = await Product.countDocuments(q);
     const list = await Product.find(q)
-      .populate('category', 'name slug')
+      .populate('categories', 'name slug')
       .populate('brand', 'name slug')
       .sort({ displayOrder: 1, name: 1 })
       .limit(MAX_ROWS)
@@ -86,7 +86,7 @@ async function resolveProductsForScope({ scope, productId, categoryId, brandId, 
     const q = { ...base, brand: brandId };
     const total = await Product.countDocuments(q);
     const list = await Product.find(q)
-      .populate('category', 'name slug')
+      .populate('categories', 'name slug')
       .populate('brand', 'name slug')
       .sort({ displayOrder: 1, name: 1 })
       .limit(MAX_ROWS)
@@ -108,7 +108,7 @@ async function resolveProductsForScope({ scope, productId, categoryId, brandId, 
     const slice = productIdSet.slice(0, MAX_ROWS);
     truncated = total > MAX_ROWS;
     const list = await Product.find({ _id: { $in: slice }, ...base })
-      .populate('category', 'name slug')
+      .populate('categories', 'name slug')
       .populate('brand', 'name slug')
       .sort({ name: 1 })
       .lean();
@@ -120,7 +120,7 @@ async function resolveProductsForScope({ scope, productId, categoryId, brandId, 
     truncated = (productIds || []).length > MAX_ROWS;
     if (!ids.length) return { products: [], truncated };
     const list = await Product.find({ _id: { $in: ids }, ...base })
-      .populate('category', 'name slug')
+      .populate('categories', 'name slug')
       .populate('brand', 'name slug')
       .lean();
     return { products: list, truncated };
@@ -153,7 +153,7 @@ function buildFlatRows(products, varMap) {
   for (const p of products) {
     const pid = String(p._id);
     const vars = varMap.get(pid) || [];
-    const cat = p.category?.name || '';
+    const cat = (p.categories || []).map(c => c?.name).filter(Boolean).join(', ');
     const brand = p.brand?.name || '';
     const badges = badgeSummary(p);
     const url = productPublicUrl(p.slug);
@@ -313,7 +313,7 @@ async function buildExport(opts) {
 
   let title = 'Product catalog';
   if (opts.scope === 'PRODUCT' && products[0]) title = products[0].name;
-  else if (opts.scope === 'CATEGORY' && products[0]?.category?.name) title = `${products[0].category.name} catalog`;
+  else if (opts.scope === 'CATEGORY' && products[0]?.categories?.[0]?.name) title = `${products[0].categories[0].name} catalog`;
   else if (opts.scope === 'BRAND' && products[0]?.brand?.name) title = `${products[0].brand.name} catalog`;
   else if (opts.scope === 'VENDOR') title = 'Vendor catalog';
   else if (opts.scope === 'CUSTOM') title = 'Custom product catalog';

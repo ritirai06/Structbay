@@ -131,6 +131,11 @@ export function Header() {
           <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-sb-text-secondary" />
           <input
             placeholder="Search products, orders, vendors..."
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && e.currentTarget.value.trim()) {
+                navigate(adminPath(`search?q=${encodeURIComponent(e.currentTarget.value.trim())}`));
+              }
+            }}
             className="w-full h-11 rounded-lg border border-white/12 bg-white py-2 pl-11 pr-4 text-sm text-black placeholder:text-gray-400 transition-colors focus:border-sb-orange focus:outline-none focus:ring-2 focus:ring-[var(--sb-orange-ring)]"
           />
         </div>

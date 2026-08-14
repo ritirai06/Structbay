@@ -405,7 +405,7 @@ export function ListingProductCard({
 
         {!simple && product?.allowCustomColor && (
           <div className="mt-2 mb-3">
-            <span className="sf-listing-card__field-label block mb-1">Color (Any code or name)</span>
+            <span className="sf-listing-card__field-label block mb-1">COLOR (CODE AND NAME)</span>
             <div className="flex gap-2 items-center">
               <input
                 type="text"
@@ -451,7 +451,7 @@ export function ListingProductCard({
 
         {!simple && bulkApplied && bulkFrom != null && bulkFrom < baseUnit && (
           <p className="sf-listing-card__bulk-applied">
-            Bulk price applied · ₹{displayBulkFrom?.toLocaleString("en-IN")}/unit
+            Bulk price applied · ₹{displayUnit?.toLocaleString("en-IN")}/unit
           </p>
         )}
 

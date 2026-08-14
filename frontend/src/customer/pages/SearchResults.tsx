@@ -142,7 +142,7 @@ export function SearchResults() {
                         id,
                         productSlug: slug,
                         productId: product._id || product.id || undefined,
-                        categoryId: typeof product.category === 'object' ? product.category._id : product.category,
+                        categoryId: (product.categories || [])[0]?._id || (product.categories || [])[0] || product.category?._id || product.category,
                         variationId,
                         variationLabel,
                         customColor,

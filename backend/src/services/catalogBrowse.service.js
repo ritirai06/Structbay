@@ -353,7 +353,10 @@ async function narrowProductsByCategoryAttributeFilters(categoryId, query, categ
     : null;
   if (!catOid) return null;
 
-  const productIdsInCat = await Product.find({ category: catOid, status: 'ACTIVE' }).distinct('_id');
+  const productIdsInCat = await Product.find({ 
+    status: 'ACTIVE',
+    $or: [{ category: catOid }, { categories: { $in: [catOid] } }]
+  }).distinct('_id');
   if (!productIdsInCat.length) return [];
 
   const match = {
@@ -378,9 +381,11 @@ async function unionSimpleProductsForCategory(categoryId, variantMatchedProductI
   if (!catOid) return variantMatchedProductIds;
 
   const simpleIds = await Product.find({
-    category: catOid,
     status: 'ACTIVE',
-    $or: [{ productStructure: 'simple' }, { productStructure: { $exists: false } }],
+    $and: [
+      { $or: [{ category: catOid }, { categories: { $in: [catOid] } }] },
+      { $or: [{ productStructure: 'simple' }, { productStructure: { $exists: false } }] }
+    ]
   }).distinct('_id');
 
   const merged = new Set(variantMatchedProductIds.map((id) => String(id)));

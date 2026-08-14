@@ -435,8 +435,9 @@ export function ProductDetails() {
   const faqs: any[] = product.faqs || [];
   const related: any[] = product.related || [];
   const brandName = product.brand?.name || product.brand || "";
-  const categorySlug = product.category?.slug || "";
-  const categoryName = product.category?.name || "";
+  const firstCategory = (product.categories || [])[0] || product.category || {};
+  const categorySlug = firstCategory.slug || "";
+  const categoryName = firstCategory.name || "";
   const moq = Math.max(1, Math.floor(Number(selectedVar?.moq) || 1));
   const showExpress = !!(product.isExpress || product.isStructbayDelivery || product.displayStructbayDelivery);
   const hasPrice = effectiveUnit > 0;
@@ -461,7 +462,7 @@ export function ProductDetails() {
       id: cartId,
       productSlug: pslug,
       productId: product._id || product.id || undefined,
-      categoryId: typeof product.category === 'object' ? product.category._id : product.category,
+      categoryId: firstCategory._id || firstCategory,
       variationId: vid,
       variationLabel: isVariant && selectedVar 
         ? formatVariationLabel(selectedVar)
@@ -489,7 +490,7 @@ export function ProductDetails() {
             onClick={() => navigate(-1)} 
             className="flex items-center gap-0.5 text-[#E85A00] hover:underline"
           >
-            <ChevronLeft className="w-4 h-4" /> Back
+            <ChevronLeft className="w-4 h-4" /> <span>Back</span>
           </button>
           <span className="text-gray-300 mx-0.5">|</span>
           <div className="flex items-center gap-2 text-gray-500">
@@ -774,7 +775,7 @@ export function ProductDetails() {
 
             {product.allowCustomColor && (
               <div className="sf-pdp-variant-group">
-                <p className="sf-pdp-variant-label">Custom Color</p>
+                <p className="sf-pdp-variant-label">COLOR (CODE AND NAME)</p>
                 <div className="relative mt-1 max-w-sm flex gap-3 items-center">
                   <input
                     type="text"
