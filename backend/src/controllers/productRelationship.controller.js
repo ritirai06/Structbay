@@ -201,7 +201,7 @@ const getUpsellProducts = asyncHandler(async (req, res) => {
      status: 'ACTIVE',
      isDeleted: { $ne: true }
    })
-     .populate('category', 'name slug')
+     .populate('categories', 'name slug')
      .populate('brand', 'name slug logo')
      .lean();
 
