@@ -292,13 +292,26 @@ export function Checkout() {
         appliedCoupons: appliedCoupons.length > 0 ? appliedCoupons.map((c: any) => ({ code: c.code })) : undefined,
         ...(savedAddressId ? { addressId: savedAddressId } : {}),
       });
-      const order = res?.data as { _id?: string; id?: string; orderNumber?: string } | undefined;
+      const order = res?.data as any;
       const placedId = order?._id ?? order?.id;
       if (!placedId) {
         throw new Error("Order response was incomplete. Check My Orders or try again.");
       }
-      navigate(`/payment-mock?orderId=${encodeURIComponent(String(placedId))}`, {
-        state: { order: { ...order, _id: String(placedId) } }
+      
+      // If Zoho generated a Checkout Session, redirect to it!
+      if (order.zohoPaymentUrl) {
+        window.location.href = order.zohoPaymentUrl;
+        return;
+      }
+
+      // If online payment failed to generate a URL, throw an error to display on checkout
+      if (form.paymentMethod !== 'cash_on_delivery') {
+         throw new Error("Zoho Payment Session generation failed. Please try again.");
+      }
+
+      // For COD, redirect directly to the success page
+      navigate(`/order-success?orderId=${encodeURIComponent(String(placedId))}`, {
+        state: { order: { ...order, _id: String(placedId) } },
       });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Could not place order.";

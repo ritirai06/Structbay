@@ -367,35 +367,54 @@ exports.placeOrder = asyncHandler(async (req, res) => {
     { $pull: { items: { savedForLater: false } } }
   );
 
-  // Create notification (in-app dashboard; confirmation email sent below)
-  await Notification.create({
-    customer: req.user._id,
-    title: 'Order confirmed',
-    message: `Your order ${orderNumber} has been placed. Total: ₹${grandTotal.toLocaleString('en-IN')}. You will receive email and dashboard updates as it progresses.`,
-    type: 'ORDER',
-    refId: orderNumber,
-  });
+  // Create notification and emails only for COD here. 
+  // For online payments, these are handled by the webhook after successful payment.
+  if (paymentMethod === 'cash_on_delivery') {
+    await Notification.create({
+      customer: req.user._id,
+      title: 'Order confirmed',
+      message: `Your order ${orderNumber} has been placed. Total: ₹${grandTotal.toLocaleString('en-IN')}. You will receive email and dashboard updates as it progresses.`,
+      type: 'ORDER',
+      refId: orderNumber,
+    });
 
-  notifyAllAdmins({
-    type: 'NEW_ORDER',
-    title: 'New order received',
-    message: `Order ${orderNumber} from ${req.user.name || 'customer'} · ₹${grandTotal.toLocaleString('en-IN')}`,
-    relatedMasterOrder: order._id,
-    metadata: { orderNumber, customerName: req.user.name },
-  }).catch(() => { });
+    notifyAllAdmins({
+      type: 'NEW_ORDER',
+      title: 'New order received',
+      message: `Order ${orderNumber} from ${req.user.name || 'customer'} · ₹${grandTotal.toLocaleString('en-IN')}`,
+      relatedMasterOrder: order._id,
+      metadata: { orderNumber, customerName: req.user.name },
+    }).catch(() => { });
 
-  // Send order placed email (non-blocking, uses master template + CMS branding)
-  sendOrderPlacedEmail({
-    to: req.user.email,
-    name: req.user.name || 'Customer',
-    orderNumber,
-    amount: grandTotal,
-    subtotal: Math.round(subtotal),
-    gstTotal: Math.round(gstTotal),
-    items: orderItems.map(i => ({ name: i.name, quantity: i.quantity, price: i.lineTotal })),
-    subject: `Order Confirmed – ${orderNumber} | Structbay`,
-    html: `<p>Hi ${req.user.name},</p><p>Your order <strong>${orderNumber}</strong> has been placed successfully.</p><p><strong>Total: ₹${grandTotal.toLocaleString()}</strong></p><p>We will notify you once your order is processed.</p>`,
-  }).catch(() => { });
+    // Send order placed email
+    sendOrderPlacedEmail({
+      to: req.user.email,
+      name: req.user.name || 'Customer',
+      orderNumber,
+      amount: grandTotal,
+      subtotal: Math.round(subtotal),
+      gstTotal: Math.round(gstTotal),
+      items: orderItems.map(i => ({ name: i.name, quantity: i.quantity, price: i.lineTotal })),
+      subject: `Order Confirmed – ${orderNumber} | Structbay`,
+      html: `<p>Hi ${req.user.name},</p><p>Your order <strong>${orderNumber}</strong> has been placed successfully.</p><p><strong>Total: ₹${grandTotal.toLocaleString()}</strong></p><p>We will notify you once your order is processed.</p>`,
+    }).catch(() => { });
+  }
 
-  return ApiResponse.created(res, 'Order placed successfully.', order);
+  let zohoPaymentUrl = null;
+  if (paymentMethod !== 'cash_on_delivery') {
+    try {
+      const zohoPaymentService = require('../services/zohoPayment.service');
+      zohoPaymentUrl = await zohoPaymentService.createCheckoutSession(order);
+    } catch (err) {
+      console.error('Zoho Payment Session Error:', err.message);
+      return res.status(400).json({ success: false, message: `Payment Error: ${err.message}` });
+    }
+  }
+
+  const responseData = order.toObject();
+  if (zohoPaymentUrl) {
+    responseData.zohoPaymentUrl = zohoPaymentUrl;
+  }
+
+  return ApiResponse.created(res, 'Order placed successfully.', responseData);
 });

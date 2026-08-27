@@ -1217,9 +1217,9 @@ export function Dashboard() {
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 flex lg:hidden">
           <div className="absolute inset-0 bg-black/70" onClick={() => setSidebarOpen(false)} />
-          <div className="relative w-60 h-full shadow-2xl">
+          <div className="relative w-64 h-full shadow-2xl bg-white">
             <Sidebar {...sidebarProps} />
-            <button onClick={() => setSidebarOpen(false)} className="absolute top-4 right-4 text-gray-500/60 hover:text-black">
+            <button onClick={() => setSidebarOpen(false)} className="absolute top-4 right-4 bg-gray-100 p-1.5 rounded-full text-gray-600 hover:text-black z-50">
               <X className="w-5 h-5" />
             </button>
           </div>

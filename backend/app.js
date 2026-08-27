@@ -205,7 +205,14 @@ app.use('/api', globalLimiter);
 app.use('/api/v1/auth', authLimiter);
 
 // ─── Body Parsers ─────────────────────────────────────────────────────────────
-app.use(express.json({ limit: '256kb' }));
+app.use(express.json({ 
+  limit: '256kb',
+  verify: (req, res, buf) => {
+    if (req.originalUrl.includes('/webhook')) {
+      req.rawBody = buf.toString();
+    }
+  }
+}));
 app.use(express.urlencoded({ extended: true, limit: '256kb' }));
 
 // ─── Data Sanitization ────────────────────────────────────────────────────────
@@ -258,6 +265,8 @@ app.use(`${V1}/product-relationships`, productRelationshipRoutes);
 app.use(`${V1}/admin/coupons`, adminCouponRoutes);
 app.use(`${V1}/coupons`, customerCouponRoutes);
 app.use(`${V1}/payments`, paymentRoutes);
+// Exactly matching the Zoho registered callback URI: /api/payment/zoho/callback
+app.use(`/api/payment`, require('./src/routes/zohoAuth.routes'));
 app.use(`${V1}/customer/projects`, projectRoutes);
 app.use(`${V1}/contact`, contactRoutes);
 app.use(`${V1}/support`, supportRoutes);
