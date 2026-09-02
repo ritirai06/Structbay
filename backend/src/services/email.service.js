@@ -237,6 +237,17 @@ const masterTemplate = ({ title, greeting, bodyHtml, cta, branding }) => {
  */
 const sendEmail = async ({ to, subject, html, text, replyTo, priority = 0 }) => {
   try {
+    let finalHtml = html;
+    if (html && !html.toLowerCase().includes('<html')) {
+      const branding = await getEmailBranding();
+      finalHtml = masterTemplate({
+        title: subject,
+        greeting: '',
+        bodyHtml: html,
+        branding
+      });
+    }
+
     const fromAddr = defaultFrom();
     if (!fromAddr) {
       logger.warn(`Email skipped (SMTP_FROM not set): would send to ${to} — ${subject}`);
@@ -245,7 +256,7 @@ const sendEmail = async ({ to, subject, html, text, replyTo, priority = 0 }) => 
     const job = await EmailQueue.create({
       to,
       subject,
-      html,
+      html: finalHtml,
       text,
       replyTo: replyTo || fromAddr,
       priority

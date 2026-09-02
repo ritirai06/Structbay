@@ -45,6 +45,11 @@ export function OrderSuccess() {
     return q || null;
   }, [searchParams]);
 
+  const queryOrderNumber = useMemo(() => {
+    const q = searchParams.get("orderNumber")?.trim();
+    return q || null;
+  }, [searchParams]);
+
   const stateOrder = state?.order;
   const stored = readPersisted();
 
@@ -54,6 +59,7 @@ export function OrderSuccess() {
   const validStored = pickOrderId(stored) === orderId ? stored : null;
 
   const orderNumber =
+    queryOrderNumber ??
     stateOrder?.orderNumber ??
     state?.orderNumber ??
     validStored?.orderNumber ??

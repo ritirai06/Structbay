@@ -22,6 +22,9 @@ const { ensureCmsDefaults, policyForResponse, landingPageForResponse, DEFAULT_FO
 
 const adminOnly = [protect, requireRole('ADMIN')];
 
+// ─── SETTINGS ─────────────────────────────────────────────────────────────────
+router.get('/commerce-settings', cms.getCommerceSettings);
+
 // ─── HOMEPAGE ─────────────────────────────────────────────────────────────────
 router.get('/homepage', cms.getHomepage);                         // Public
 router.put('/homepage', ...adminOnly, cms.updateHomepage);

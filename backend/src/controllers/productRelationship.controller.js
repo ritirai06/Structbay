@@ -16,7 +16,7 @@ const getRelationships = asyncHandler(async (req, res) => {
     ProductRelationship.find({ product: id, relationshipType: 'UPSSELL' })
       .populate({
         path: 'relatedProduct',
-        select: '_id name sku slug images category brand status sellingPrice mrp cityPricing variants defaultVariant discount pricing priceIncludesGst',
+        select: '_id name sku slug images categories brand status sellingPrice mrp cityPricing variants defaultVariant discount pricing priceIncludesGst',
         populate: {
           path: 'variants',
           select: '_id name sku images sellingPrice mrp cityPricing discount pricing priceIncludesGst'
@@ -26,7 +26,7 @@ const getRelationships = asyncHandler(async (req, res) => {
     ProductRelationship.find({ product: id, relationshipType: 'CROSS_SELL' })
       .populate({
         path: 'relatedProduct',
-        select: '_id name sku slug images category brand status sellingPrice mrp cityPricing variants defaultVariant discount pricing priceIncludesGst',
+        select: '_id name sku slug images categories brand status sellingPrice mrp cityPricing variants defaultVariant discount pricing priceIncludesGst',
         populate: {
           path: 'variants',
           select: '_id name sku images sellingPrice mrp cityPricing discount pricing priceIncludesGst'
@@ -201,7 +201,7 @@ const getUpsellProducts = asyncHandler(async (req, res) => {
      status: 'ACTIVE',
      isDeleted: { $ne: true }
    })
-     .populate('category', 'name slug')
+     .populate('categories', 'name slug')
      .populate('brand', 'name slug logo')
      .lean();
 
