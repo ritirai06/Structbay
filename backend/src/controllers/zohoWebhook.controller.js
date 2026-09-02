@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const logger = require('../config/logger');
 const Order = require('../models/Order');
 const PaymentTransaction = require('../models/PaymentTransaction');
-const { sendPaymentSuccessEmail, sendPaymentFailedEmail } = require('../services/email.service');
+const { sendPaymentSuccessEmail, sendPaymentFailedEmail, sendRefundCompletedEmail } = require('../services/email.service');
 const { notifyPaymentSuccess } = require('../services/communication.service');
 const { logOrderActivity } = require('../services/order.service');
 
@@ -173,6 +173,58 @@ exports.handleWebhook = async (req, res) => {
          }
        }
        return res.status(200).send('OK: Failure Processed');
+    }
+
+    // Handle Refund Events
+    if (['refund.success', 'refund_success', 'refund.completed', 'refund_completed', 'payment.refunded'].includes(eventType)) {
+       const transactionId = data.payment_id || data.id || data.transaction_id;
+       const orderRef = data.reference_id || data.custom_data?.order_id || data.description?.match(/Order (\d+)/)?.[1];
+       const parentPaymentId = data.parent_payment_id || data.payment_id;
+       
+       let order = null;
+       if (orderRef) {
+          order = await Order.findOne({ $or: [{ orderNumber: orderRef }, { _id: orderRef.length === 24 ? orderRef : null }] }).populate('customer', 'name email');
+       }
+       if (!order && parentPaymentId) {
+          const existingTxn = await PaymentTransaction.findOne({ providerTxnId: parentPaymentId });
+          if (existingTxn) {
+             order = await Order.findById(existingTxn.masterOrder).populate('customer', 'name email');
+          }
+       }
+
+       if (order) {
+          if (order.paymentStatus !== 'REFUNDED') {
+              order.paymentStatus = 'REFUNDED';
+              order.statusHistory.push({
+                status: order.status,
+                changedBy: null,
+                note: `Zoho Refund processed. (Refund ID: ${data.refund_id || transactionId})`,
+              });
+              await order.save();
+              
+              const refundAmount = data.amount || order.grandTotal;
+
+              if (order.paymentTransactionId) {
+                 await PaymentTransaction.findByIdAndUpdate(order.paymentTransactionId, {
+                    status: 'REFUNDED',
+                    refundAmount: refundAmount,
+                    refundedAt: new Date(),
+                    refundReference: data.refund_id || transactionId
+                 });
+              }
+
+              if (order.customer?.email) {
+                sendRefundCompletedEmail({
+                  to: order.customer.email,
+                  name: order.customer.name || 'Customer',
+                  orderNumber: order.orderNumber,
+                  amount: refundAmount,
+                  transactionId: data.refund_id || transactionId
+                }).catch(err => logger.error(`Refund Email error: ${err.message}`));
+              }
+          }
+       }
+       return res.status(200).send('OK: Refund Processed');
     }
 
     // Default response for unhandled events

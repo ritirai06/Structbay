@@ -61,7 +61,7 @@ class ZohoPaymentService {
       if (frontendUrl.includes('localhost')) {
          frontendUrl = 'https://struct-bay.hsdadigital.com';
       }
-      const redirectUrl = `${frontendUrl}/order-success?orderId=${order._id}`;
+      const redirectUrl = `${frontendUrl}/order-success?orderId=${order._id}&orderNumber=${order.orderNumber}`;
 
       // Typical Payload for Zoho Payment Links
       const payload = {
@@ -87,6 +87,9 @@ class ZohoPaymentService {
       }
     } catch (error) {
       logger.error(`Zoho createCheckoutSession failed: ${error.message}`);
+      if (error.response && error.response.status === 401) {
+         cachedToken = null; // Clear token on auth failure
+      }
       if (error.response && error.response.data) {
          logger.error(`Zoho response: ${JSON.stringify(error.response.data)}`);
          let errorMessage = error.response.data.message || error.response.data.error || 'Failed to generate Zoho Checkout Session.';

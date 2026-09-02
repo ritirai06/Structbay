@@ -64,6 +64,8 @@ exports.zohoCallback = asyncHandler(async (req, res) => {
       }
       
       fs.writeFileSync(envPath, envContent);
+      process.env[tokenKey] = refreshToken; // Update current process env
+
       logger.info('Zoho refresh token successfully generated and saved to .env');
     }
 
