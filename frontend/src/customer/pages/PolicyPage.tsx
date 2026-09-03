@@ -4,7 +4,9 @@ import { ChevronRight, Loader2 } from "lucide-react";
 import type { PolicyDoc } from "../lib/policyContent";
 import { POLICY_DOCS } from "../lib/policyContent";
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000/api/v1";
+import { getApiV1Base } from "../../lib/apiBase";
+
+const API_BASE = getApiV1Base();
 
 async function fetchPolicy(slug: string): Promise<PolicyDoc | null> {
   try {

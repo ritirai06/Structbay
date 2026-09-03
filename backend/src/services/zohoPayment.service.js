@@ -56,10 +56,10 @@ class ZohoPaymentService {
       const baseUrl = useSandbox ? 'https://paymentssandbox.zoho.in/api/v1' : 'https://payments.zoho.in/api/v1';
       const accountId = useSandbox ? process.env.ZOHO_PAYMENTS_SANDBOX_ACCOUNT_ID : process.env.ZOHO_PAYMENTS_LIVE_ACCOUNT_ID;
 
-      let frontendUrl = process.env.CUSTOMER_URL || 'https://struct-bay.hsdadigital.com';
+      let frontendUrl = process.env.CUSTOMER_URL || process.env.ZOHO_RETURN_URL_BASE || 'https://structbay.com';
       // Zoho Payments requires a valid public URL, so override localhost for testing
       if (frontendUrl.includes('localhost')) {
-         frontendUrl = 'https://struct-bay.hsdadigital.com';
+         frontendUrl = process.env.ZOHO_RETURN_URL_BASE || 'https://structbay.com';
       }
       const redirectUrl = `${frontendUrl}/order-success?orderId=${order._id}&orderNumber=${order.orderNumber}`;
 

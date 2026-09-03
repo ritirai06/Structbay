@@ -40,7 +40,7 @@ Use:
 - Authorized Redirect URI: the backend OAuth callback URL
 
 Example:
-https://struct-bay.hsdadigital.com/api/payment/zoho/callback
+https://structbay.com/api/payment/zoho/callback
 
 The redirect URI used in the OAuth URL must exactly match the URI registered in the Zoho client.
 
@@ -102,7 +102,7 @@ access_type=offline
 
 Example structure:
 
-https://accounts.zoho.in/oauth/v2/org/auth?scope=ZohoPaySandbox.payments.CREATE,ZohoPaySandbox.payments.READ,ZohoPaySandbox.payments.UPDATE&client_id=YOUR_CLIENT_ID&soid=zohopaysandbox.YOUR_ACCOUNT_ID&state=YOUR_STATE&response_type=code&redirect_uri=https%3A%2F%2Fstruct-bay.hsdadigital.com%2Fapi%2Fpayment%2Fzoho%2Fcallback&access_type=offline
+https://accounts.zoho.in/oauth/v2/org/auth?scope=ZohoPaySandbox.payments.CREATE,ZohoPaySandbox.payments.READ,ZohoPaySandbox.payments.UPDATE&client_id=YOUR_CLIENT_ID&soid=zohopaysandbox.YOUR_ACCOUNT_ID&state=YOUR_STATE&response_type=code&redirect_uri=https%3A%2F%2Fstructbay.com%2Fapi%2Fpayment%2Fzoho%2Fcallback&access_type=offline
 
 Open this URL in the browser while logged in as the Zoho Payments account owner/admin.
 
@@ -175,7 +175,7 @@ ZOHO_REFRESH_TOKEN=YOUR_SANDBOX_REFRESH_TOKEN
 ZOHO_ACCOUNTS_URL=https://accounts.zoho.in
 ZOHO_PAYMENTS_BASE_URL=https://paymentssandbox.zoho.in
 
-ZOHO_REDIRECT_URI=https://struct-bay.hsdadigital.com/api/payment/zoho/callback
+ZOHO_REDIRECT_URI=https://structbay.com/api/payment/zoho/callback
 
 Never commit .env to Git.
 
@@ -249,7 +249,7 @@ POST /api/payment/zoho/webhook
 
 Full URL:
 
-https://struct-bay.hsdadigital.com/api/payment/zoho/webhook
+https://structbay.com/api/payment/zoho/webhook
 
 It must accept POST requests from Zoho Payments and return HTTP 200 after successful processing.
 

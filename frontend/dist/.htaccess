@@ -1,8 +1,44 @@
-<IfModule mod_rewrite.c>
-  RewriteEngine On
-  RewriteBase /
-  RewriteRule ^index\.html$ - [L]
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule . /index.html [L]
+Options -MultiViews -Indexes
+RewriteEngine On
+
+# ─── Security Headers ─────────────────────────────────────────────────────────
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set X-XSS-Protection "1; mode=block"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
+
+# ─── API Reverse Proxy to Node.js backend (port 5000) ────────────────────────
+# All /api/* requests are forwarded to the Node.js backend
+RewriteCond %{REQUEST_URI} ^/api [NC]
+RewriteRule ^api/(.*)$ http://127.0.0.1:5000/api/$1 [P,L,NE]
+
+# ProxyPassReverse for correct redirect handling
+<IfModule mod_proxy.c>
+  ProxyPassReverse /api/ http://127.0.0.1:5000/api/
+</IfModule>
+
+# ─── React SPA Fallback (client-side routing) ─────────────────────────────────
+# Do NOT redirect if file/dir actually exists
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+# Do NOT redirect API calls
+RewriteCond %{REQUEST_URI} !^/api/
+# Everything else → index.html
+RewriteRule ^ /index.html [QSA,L]
+
+# ─── Cache static assets ──────────────────────────────────────────────────────
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/html "access plus 0 seconds"
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/jpg "access plus 1 year"
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/webp "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+  ExpiresByType font/woff2 "access plus 1 year"
+</IfModule>
+

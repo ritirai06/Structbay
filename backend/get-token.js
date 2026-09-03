@@ -11,7 +11,8 @@ async function exchange() {
     params.append('grant_type', 'authorization_code');
     params.append('client_id', clientId);
     params.append('client_secret', clientSecret);
-    params.append('redirect_uri', 'https://struct-bay.hsdadigital.com/api/payment/zoho/callback');
+    const redirectUri = process.env.ZOHO_REDIRECT_URI || 'https://structbay.com/api/payment/zoho/callback';
+    params.append('redirect_uri', redirectUri);
     params.append('code', code);
 
     const response = await axios.post(`https://accounts.zoho.in/oauth/v2/token`, params.toString(), {

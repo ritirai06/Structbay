@@ -21,7 +21,7 @@ exports.zohoCallback = asyncHandler(async (req, res) => {
     const clientId = useSandbox ? process.env.ZOHO_SANDBOX_CLIENT_ID : process.env.ZOHO_LIVE_CLIENT_ID;
     const clientSecret = useSandbox ? process.env.ZOHO_SANDBOX_CLIENT_SECRET : process.env.ZOHO_LIVE_CLIENT_SECRET;
     // Exactly as registered in Zoho per user instructions
-    const redirectUri = 'https://struct-bay.hsdadigital.com/api/payment/zoho/callback';
+    const redirectUri = process.env.ZOHO_REDIRECT_URI || 'https://structbay.com/api/payment/zoho/callback';
 
     if (!clientId || !clientSecret) {
        return res.status(500).json({ success: false, message: 'Zoho client credentials not configured in backend .env' });

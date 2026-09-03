@@ -15,7 +15,7 @@ async function test() {
       amount: 2570,
       currency: 'INR',
       description: 'Test Order',
-      return_url: 'https://struct-bay.hsdadigital.com/order-success'
+      return_url: `${process.env.ZOHO_RETURN_URL_BASE || 'https://structbay.com'}/order-success`
     };
 
     console.log("Testing POST to paymentssandbox...");

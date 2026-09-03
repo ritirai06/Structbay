@@ -205,15 +205,25 @@ app.use('/api', globalLimiter);
 app.use('/api/v1/auth', authLimiter);
 
 // ─── Body Parsers ─────────────────────────────────────────────────────────────
+// NOTE: Zoho webhook rawBody MUST be captured before any body parser runs.
+// The verify callback fires before Express processes the body, preserving the
+// exact bytes Zoho signed — required for HMAC-SHA256 signature verification.
 app.use(express.json({ 
   limit: '256kb',
   verify: (req, res, buf) => {
-    if (req.originalUrl.includes('/webhook')) {
+    // Capture raw body for ALL webhook paths (Zoho uses /api/payment/zoho/webhook)
+    if (req.originalUrl.includes('/webhook') || req.originalUrl.includes('/api/payment')) {
       req.rawBody = buf.toString();
     }
   }
 }));
 app.use(express.urlencoded({ extended: true, limit: '256kb' }));
+
+// ─── Zoho Webhook — mounted BEFORE rate limiting, XSS & sanitizers ────────────
+// Zoho calls this endpoint server-to-server (no browser origin, no JWT, no session).
+// It MUST NOT be blocked by CORS, rate limiting, XSS sanitization, or mongo-sanitize
+// because those would corrupt req.rawBody / req.body and break signature verification.
+app.use('/api/payment', require('./src/routes/zohoAuth.routes'));
 
 // ─── Data Sanitization ────────────────────────────────────────────────────────
 app.use(mongoSanitize()); // NoSQL injection
@@ -265,8 +275,9 @@ app.use(`${V1}/product-relationships`, productRelationshipRoutes);
 app.use(`${V1}/admin/coupons`, adminCouponRoutes);
 app.use(`${V1}/coupons`, customerCouponRoutes);
 app.use(`${V1}/payments`, paymentRoutes);
-// Exactly matching the Zoho registered callback URI: /api/payment/zoho/callback
-app.use(`/api/payment`, require('./src/routes/zohoAuth.routes'));
+// NOTE: /api/payment (Zoho OAuth callback + webhook) is mounted early above,
+// BEFORE rate-limiters and sanitizers. Do NOT add it here again.
+
 app.use(`${V1}/customer/projects`, projectRoutes);
 app.use(`${V1}/contact`, contactRoutes);
 app.use(`${V1}/support`, supportRoutes);

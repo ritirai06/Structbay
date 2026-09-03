@@ -6,57 +6,88 @@ const { sendPaymentSuccessEmail, sendPaymentFailedEmail, sendRefundCompletedEmai
 const { notifyPaymentSuccess } = require('../services/communication.service');
 const { logOrderActivity } = require('../services/order.service');
 
-// Verify Zoho Webhook Signature
+/**
+ * Verify Zoho Webhook Signature.
+ * Zoho signs the raw request body with HMAC-SHA256.
+ * They may send the digest as base64 OR hex depending on the account region.
+ * We check both to be safe.
+ */
 const verifyZohoSignature = (rawBody, signatureHeader, secretKey) => {
   if (!signatureHeader || !secretKey) return false;
-  
-  // Zoho typically uses HMAC SHA256 base64 encoded
   const hmac = crypto.createHmac('sha256', secretKey);
   hmac.update(rawBody, 'utf8');
-  const generatedSignature = hmac.digest('base64');
-  
-  return generatedSignature === signatureHeader;
+  const base64Sig = hmac.digest('base64');
+  const hexSig    = crypto.createHmac('sha256', secretKey).update(rawBody, 'utf8').digest('hex');
+  return base64Sig === signatureHeader || hexSig === signatureHeader;
 };
 
 exports.handleWebhook = async (req, res) => {
+  // ── Zoho requires acknowledgement within 15 seconds ──
+  // Set a safety timeout that responds 200 if business logic hangs.
+  let responded = false;
+  const safetyTimer = setTimeout(() => {
+    if (!responded) {
+      responded = true;
+      logger.error('Zoho Webhook: Handler took >14s — sending 200 timeout fallback.');
+      res.status(200).send('OK: Timeout fallback');
+    }
+  }, 14000);
+
+  const done = (code, msg) => {
+    if (!responded) {
+      responded = true;
+      clearTimeout(safetyTimer);
+      res.status(code).send(msg);
+    }
+  };
+
   try {
-    const rawBody = req.rawBody;
+    // ── Raw body (captured in app.js verify callback) ──
+    // Fallback: if rawBody not set (e.g. GET health probe), use JSON.stringify
+    const rawBody = req.rawBody || (req.body ? JSON.stringify(req.body) : null);
     if (!rawBody) {
       logger.warn('Zoho Webhook: No raw body found.');
-      return res.status(400).send('Bad Request: Missing raw body');
+      return done(400, 'Bad Request: Missing raw body');
     }
 
     const useSandbox = process.env.USE_ZOHO_SANDBOX === 'true';
-    const secretKey = useSandbox ? process.env.ZOHO_SANDBOX_WEBHOOK_SECRET : process.env.ZOHO_LIVE_WEBHOOK_SECRET;
-    
+    // Support both the old and new naming conventions
+    const secretKey = useSandbox
+      ? process.env.ZOHO_SANDBOX_WEBHOOK_SECRET
+      : (process.env.ZOHO_LIVE_SIGNING_KEY || process.env.ZOHO_LIVE_WEBHOOK_SECRET);
+
     if (!secretKey) {
-      logger.error('Zoho Webhook: Secret key not configured in .env');
-      return res.status(500).send('Internal Server Error');
+      // Secret not configured yet — log prominently but still ACK so Zoho
+      // doesn't retry indefinitely while the secret is being set up.
+      logger.error(
+        `Zoho Webhook: ${useSandbox ? 'ZOHO_SANDBOX_WEBHOOK_SECRET' : 'ZOHO_LIVE_SIGNING_KEY'} ` +
+        'is not set in .env. Configure it from the Zoho Payments Dashboard → Webhooks → Secret.'
+      );
+      return done(200, 'OK: Webhook received (signature check skipped — secret not configured)');
     }
 
-    // Common headers Zoho might use for signatures
-    const signature = req.headers['x-zoho-webhook-signature'] || req.headers['x-zoho-signature'] || req.headers['x-zohopay-signature'] || req.headers['authorization'];
-    
-    // Debug logging for signatures
-    logger.warn(`Zoho Webhook Headers: ${JSON.stringify(req.headers)}`);
-    const generatedSig = crypto.createHmac('sha256', secretKey).update(rawBody, 'utf8').digest('base64');
-    logger.warn(`Zoho Webhook Signature received: ${signature}`);
-    logger.warn(`Zoho Webhook Signature expected: ${generatedSig}`);
+    // ── Signature header — Zoho uses different header names ──
+    const rawSig =
+      req.headers['x-zoho-webhook-signature'] ||
+      req.headers['x-zohopay-signature'] ||
+      req.headers['x-zoho-signature'] ||
+      req.headers['authorization'] ||
+      '';
 
-    // If authorization header has a prefix like "Zoho-webhook-signature "
-    let cleanSignature = signature;
-    if (signature && signature.startsWith('Zoho-webhook-signature ')) {
-        cleanSignature = signature.replace('Zoho-webhook-signature ', '').trim();
-    }
-    
+    // Strip any prefix like "Zoho-webhook-signature "
+    const cleanSignature = rawSig.startsWith('Zoho-webhook-signature ')
+      ? rawSig.replace('Zoho-webhook-signature ', '').trim()
+      : rawSig;
+
+    // Debug log (remove after confirming signature works)
+    logger.info(`Zoho Webhook: event received, sig header=[${cleanSignature ? cleanSignature.slice(0, 12) + '...' : 'MISSING'}]`);
+
     if (!verifyZohoSignature(rawBody, cleanSignature, secretKey)) {
-      logger.warn('Zoho Webhook: Invalid signature detected.');
-      // Temporary bypass for sandbox testing if the user wants it to work immediately while we debug
+      logger.warn('Zoho Webhook: Invalid signature.');
       if (!useSandbox) {
-         return res.status(401).send('Unauthorized: Invalid Signature');
-      } else {
-         logger.warn('Zoho Webhook: Bypassing signature check for Sandbox debugging.');
+        return done(401, 'Unauthorized: Invalid Signature');
       }
+      logger.warn('Zoho Webhook: Bypassing signature check for Sandbox (USE_ZOHO_SANDBOX=true).');
     }
 
     const payload = JSON.parse(rawBody); // parse it manually since we use rawBody
@@ -78,21 +109,21 @@ exports.handleWebhook = async (req, res) => {
 
       if (!orderRef) {
          logger.warn(`Zoho Webhook: No order reference found in payment ${transactionId}`);
-         return res.status(200).send('OK: Ignored');
+         return done(200, 'OK: Ignored');
       }
 
       // Idempotency check: see if transaction already exists and is PAID
       const existingTxn = await PaymentTransaction.findOne({ providerTxnId: transactionId });
       if (existingTxn && existingTxn.status === 'PAID') {
         logger.info(`Zoho Webhook: Payment ${transactionId} already processed (Idempotent).`);
-        return res.status(200).send('OK: Already processed');
+        return done(200, 'OK: Already processed');
       }
 
       const order = await Order.findOne({ $or: [{ orderNumber: orderRef }, { _id: orderRef.length === 24 ? orderRef : null }] }).populate('customer', 'name email');
       
       if (!order) {
         logger.error(`Zoho Webhook: Order ${orderRef} not found.`);
-        return res.status(200).send('OK: Order not found');
+      return done(200, 'OK: Order not found');
       }
 
       // Amount verification (allow minor precision differences)
@@ -152,7 +183,8 @@ exports.handleWebhook = async (req, res) => {
         }).catch(err => logger.error(`Email error: ${err.message}`));
       }
 
-      return res.status(200).send('OK: Payment Processed');
+      return done(200, 'OK: Payment Processed');
+
     }
 
     // Handle Payment Failed Event
@@ -172,7 +204,7 @@ exports.handleWebhook = async (req, res) => {
             await order.save();
          }
        }
-       return res.status(200).send('OK: Failure Processed');
+       return done(200, 'OK: Failure Processed');
     }
 
     // Handle Refund Events
@@ -224,16 +256,15 @@ exports.handleWebhook = async (req, res) => {
               }
           }
        }
-       return res.status(200).send('OK: Refund Processed');
+       return done(200, 'OK: Refund Processed');
     }
 
     // Default response for unhandled events
-    return res.status(200).send('OK: Event ignored');
+    return done(200, 'OK: Event ignored');
 
   } catch (error) {
-    logger.error(`Zoho Webhook Error: ${error.message}`);
-    // Always return 200 for internal errors after catching, so Zoho doesn't infinitely retry unless we want it to.
-    // Actually, returning 500 tells Zoho to retry. Depending on the error, retry might be good (e.g. DB down).
-    return res.status(500).send('Internal Server Error');
+    logger.error(`Zoho Webhook Error: ${error.message}`, { stack: error.stack });
+    // Return 500 so Zoho retries on transient errors (DB down, etc.)
+    return done(500, 'Internal Server Error');
   }
 };

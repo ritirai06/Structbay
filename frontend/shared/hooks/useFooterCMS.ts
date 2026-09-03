@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { getApiV1Base } from "../../src/lib/apiBase";
 
 export interface QuickLink {
   _id: string;
@@ -49,7 +50,9 @@ const DEFAULTS: FooterData = {
   },
 };
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000/api/v1";
+
+const API_BASE = getApiV1Base();
+
 
 export function useFooterCMS() {
   const [data, setData] = useState<FooterData>(DEFAULTS);

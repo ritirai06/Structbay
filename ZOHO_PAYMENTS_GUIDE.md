@@ -15,7 +15,7 @@ This document explains exactly how the Zoho Payments integration works in the St
 
 ### B. Payment Completion & Webhooks
 1. **Payment:** The customer completes the payment on Zoho's secure page.
-2. **Zoho Webhook:** Zoho automatically sends a POST request in the background to your server: `POST https://struct-bay.hsdadigital.com/api/payment/zoho/webhook`.
+2. **Zoho Webhook:** Zoho automatically sends a POST request in the background to your server: `POST https://structbay.com/api/payment/zoho/webhook`.
 3. **Webhook Controller (`zohoWebhook.controller.js`):** 
    - It **verifies the signature** using your Webhook Secret to ensure no hacker is faking the payment.
    - It reads the `event_type` (e.g., `payment.success` or `payment_link.paid`).
@@ -33,7 +33,7 @@ Currently, the system is set up for Sandbox testing. When you are ready to accep
 1. Go to your **Live** Zoho Payments Dashboard (not Sandbox).
 2. Go to **Settings > Developer Space**.
 3. Create a **New API Key (ZAPI Key)** so your live account is authorized to create payment links.
-4. Set up the **Live Webhook** URL: `https://struct-bay.hsdadigital.com/api/payment/zoho/webhook` and copy the **Webhook Secret**.
+4. Set up the **Live Webhook** URL: `https://structbay.com/api/payment/zoho/webhook` and copy the **Webhook Secret**.
 
 ### Step 2: Generate Live OAuth Credentials
 1. Go to the **Zoho API Console** (`api-console.zoho.in`).
@@ -44,7 +44,7 @@ Currently, the system is set up for Sandbox testing. When you are ready to accep
 Unlike the Sandbox, for Live you need to use **Production Scopes**.
 1. Open this exact URL in your browser (Replace `YOUR_LIVE_CLIENT_ID` and `YOUR_LIVE_ACCOUNT_ID` with actual values):
    ```
-   https://accounts.zoho.in/oauth/v2/auth?response_type=code&client_id=YOUR_LIVE_CLIENT_ID&scope=ZohoPayments.payments.CREATE,ZohoPayments.payments.READ&redirect_uri=https://struct-bay.hsdadigital.com/api/payment/zoho/callback&access_type=offline&prompt=consent&soid=zohopay.YOUR_LIVE_ACCOUNT_ID
+   https://accounts.zoho.in/oauth/v2/auth?response_type=code&client_id=YOUR_LIVE_CLIENT_ID&scope=ZohoPayments.payments.CREATE,ZohoPayments.payments.READ&redirect_uri=https://structbay.com/api/payment/zoho/callback&access_type=offline&prompt=consent&soid=zohopay.YOUR_LIVE_ACCOUNT_ID
    ```
    *(Notice that the scope is `ZohoPayments.*` instead of `ZohoPaySandbox.*`, and the soid is `zohopay.*` instead of `zohopaysandbox.*`)*
 2. Accept the prompt, and Zoho will redirect you to your callback URL with a `code` in the URL.
